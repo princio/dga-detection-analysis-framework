@@ -1,7 +1,7 @@
 ,TLD,Type,Punycode,Language Code,Translation,Romanized,RTL,Sponsor
 0,aaa,gTLD,,,,,no,"American Automobile Association, Inc."
 1,aarp,gTLD,,,,,no,AARP
-2,abarth,gTLD,,,,,no,Fiat Chrysler Automobiles N.V.
+2,abarth,gTLD,,,,,no,
 3,abb,gTLD,,,,,no,ABB Ltd
 4,abbott,gTLD,,,,,no,"Abbott Laboratories, Inc."
 5,abbvie,gTLD,,,,,no,AbbVie Inc.
@@ -40,7 +40,7 @@
 38,airtel,gTLD,,,,,no,Bharti Airtel Limited
 39,akdn,gTLD,,,,,no,Fondation Aga Khan (Aga Khan Foundation)
 40,al,ccTLD,,,,,no,Electronic and Postal Communications Authority - AKEP
-41,alfaromeo,gTLD,,,,,no,Fiat Chrysler Automobiles N.V.
+41,alfaromeo,gTLD,,,,,no,
 42,alibaba,gTLD,,,,,no,Alibaba Group Holding Limited
 43,alipay,gTLD,,,,,no,Alibaba Group Holding Limited
 44,allfinanz,gTLD,,,,,no,Allfinanz Deutsche Vermögensberatung Aktiengesellschaft
@@ -297,7 +297,7 @@ Ltd. d/b/a Island Internet Services"
 294,contact,gTLD,,,,,no,"Dog Beach, LLC"
 295,contractors,gTLD,,,,,no,"Binky Moon, LLC"
 296,cooking,gTLD,,,,,no,"Registry Services, LLC"
-297,cookingchannel,gTLD,,,,,no,"Lifestyle Domain Holdings, Inc."
+297,cookingchannel,gTLD,,,,,no,
 298,cool,gTLD,,,,,no,"Binky Moon, LLC"
 299,coop,sTLD,,,,,no,DotCooperation LLC
 300,corsica,gTLD,,,,,no,Collectivité de Corse
@@ -444,7 +444,7 @@ Supreme Council of Universities"
 436,ferrari,gTLD,,,,,no,Fiat Chrysler Automobiles N.V.
 437,ferrero,gTLD,,,,,no,Ferrero Trading Lux S.A.
 438,fi,ccTLD,,,,,no,Finnish Transport and Communications Agency Traficom
-439,fiat,gTLD,,,,,no,Fiat Chrysler Automobiles N.V.
+439,fiat,gTLD,,,,,no,
 440,fidelity,gTLD,,,,,no,Fidelity Brokerage Services LLC
 441,fido,gTLD,,,,,no,Rogers Communications Canada Inc.
 442,film,gTLD,,,,,no,Motion Picture Domain Registry Pty Ltd
@@ -472,7 +472,7 @@ IT Services"
 463,fo,ccTLD,,,,,no,FO Council
 464,foo,gTLD,,,,,no,Charleston Road Registry Inc.
 465,food,gTLD,,,,,no,"Lifestyle Domain Holdings, Inc."
-466,foodnetwork,gTLD,,,,,no,"Lifestyle Domain Holdings, Inc."
+466,foodnetwork,gTLD,,,,,no,
 467,football,gTLD,,,,,no,"Binky Moon, LLC"
 468,ford,gTLD,,,,,no,Ford Motor Company
 469,forex,gTLD,,,,,no,"Dog Beach, LLC"
@@ -581,7 +581,7 @@ IT Services"
 572,helsinki,gTLD,,,,,no,City of Helsinki
 573,here,gTLD,,,,,no,Charleston Road Registry Inc.
 574,hermes,gTLD,,,,,no,Hermes International
-575,hgtv,gTLD,,,,,no,"Lifestyle Domain Holdings, Inc."
+575,hgtv,gTLD,,,,,no,
 576,hiphop,gTLD,,,,,no,"Dot Hip Hop, LLC"
 577,hisamitsu,gTLD,,,,,no,"Hisamitsu Pharmaceutical Co.,Inc."
 578,hitachi,gTLD,,,,,no,"Hitachi, Ltd."
@@ -728,7 +728,7 @@ Computer Centre"
 717,lamborghini,gTLD,,,,,no,Automobili Lamborghini S.p.A.
 718,lamer,gTLD,,,,,no,The Estée Lauder Companies Inc.
 719,lancaster,gTLD,,,,,no,LANCASTER
-720,lancia,gTLD,,,,,no,Fiat Chrysler Automobiles N.V.
+720,lancia,gTLD,,,,,no,
 721,lancome,gTLD,,,,,no,
 722,land,gTLD,,,,,no,"Binky Moon, LLC"
 723,landrover,gTLD,,,,,no,Jaguar Land Rover Ltd
@@ -813,7 +813,7 @@ Department of Network Solutions (DNS)"
 798,markets,gTLD,,,,,no,"Dog Beach, LLC"
 799,marriott,gTLD,,,,,no,Marriott Worldwide Corporation
 800,marshalls,gTLD,,,,,no,"The TJX Companies, Inc."
-801,maserati,gTLD,,,,,no,Fiat Chrysler Automobiles N.V.
+801,maserati,gTLD,,,,,no,
 802,mattel,gTLD,,,,,no,"Mattel Sites, Inc."
 803,mba,gTLD,,,,,no,"Binky Moon, LLC"
 804,mc,ccTLD,,,,,no,Direction des Plateformes et des Ressources Numériques
@@ -1312,7 +1312,7 @@ c/o Consulate of Tonga"
 1286,trading,gTLD,,,,,no,"Dog Beach, LLC"
 1287,training,gTLD,,,,,no,"Binky Moon, LLC"
 1288,travel,sTLD,,,,,no,"Dog	Beach, LLC"
-1289,travelchannel,gTLD,,,,,no,"Lifestyle Domain Holdings, Inc."
+1289,travelchannel,gTLD,,,,,no,
 1290,travelers,gTLD,,,,,no,"Travelers TLD, LLC"
 1291,travelersinsurance,gTLD,,,,,no,"Travelers TLD, LLC"
 1292,trust,gTLD,,,,,no,UNR Corp.

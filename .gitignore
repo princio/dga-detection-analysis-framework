@@ -1,2 +1,13 @@
+**/__pycache__/**
+
 venv
+
 pslregex/__pycache__/*
+Y/*
+X/*
+
+pslregex/pslregex/c/build/**
+pslregex/domain/c/build/**
+domain-manipulator/cpp/build/**
+
+**/*.csv

@@ -1,7 +1,7 @@
 ,Domain,Type,TLD Manager
 0,.aaa,generic,"American Automobile Association, Inc."
 1,.aarp,generic,AARP
-2,.abarth,generic,Fiat Chrysler Automobiles N.V.
+2,.abarth,generic,Not assigned
 3,.abb,generic,ABB Ltd
 4,.abbott,generic,"Abbott Laboratories, Inc."
 5,.abbvie,generic,AbbVie Inc.
@@ -40,7 +40,7 @@
 38,.airtel,generic,Bharti Airtel Limited
 39,.akdn,generic,Fondation Aga Khan (Aga Khan Foundation)
 40,.al,country-code,Electronic and Postal Communications Authority - AKEP
-41,.alfaromeo,generic,Fiat Chrysler Automobiles N.V.
+41,.alfaromeo,generic,Not assigned
 42,.alibaba,generic,Alibaba Group Holding Limited
 43,.alipay,generic,Alibaba Group Holding Limited
 44,.allfinanz,generic,Allfinanz Deutsche Vermögensberatung Aktiengesellschaft
@@ -220,7 +220,7 @@
 218,.cars,generic,XYZ.COM LLC
 219,.cartier,generic,Not assigned
 220,.casa,generic,"Registry Services, LLC"
-221,.case,generic,CNH Industrial N.V.
+221,.case,generic,"Digity, LLC"
 222,.caseih,generic,Not assigned
 223,.cash,generic,"Binky Moon, LLC"
 224,.casino,generic,"Binky Moon, LLC"
@@ -296,7 +296,7 @@
 294,.contact,generic,"Dog Beach, LLC"
 295,.contractors,generic,"Binky Moon, LLC"
 296,.cooking,generic,"Registry Services, LLC"
-297,.cookingchannel,generic,"Lifestyle Domain Holdings, Inc."
+297,.cookingchannel,generic,Not assigned
 298,.cool,generic,"Binky Moon, LLC"
 299,.coop,sponsored,DotCooperation LLC
 300,.corsica,generic,Collectivité de Corse
@@ -438,7 +438,7 @@
 436,.ferrari,generic,Fiat Chrysler Automobiles N.V.
 437,.ferrero,generic,Ferrero Trading Lux S.A.
 438,.fi,country-code,Finnish Transport and Communications Agency Traficom
-439,.fiat,generic,Fiat Chrysler Automobiles N.V.
+439,.fiat,generic,Not assigned
 440,.fidelity,generic,Fidelity Brokerage Services LLC
 441,.fido,generic,Rogers Communications Canada Inc.
 442,.film,generic,Motion Picture Domain Registry Pty Ltd
@@ -465,7 +465,7 @@
 463,.fo,country-code,FO Council
 464,.foo,generic,Charleston Road Registry Inc.
 465,.food,generic,"Lifestyle Domain Holdings, Inc."
-466,.foodnetwork,generic,"Lifestyle Domain Holdings, Inc."
+466,.foodnetwork,generic,Not assigned
 467,.football,generic,"Binky Moon, LLC"
 468,.ford,generic,Ford Motor Company
 469,.forex,generic,"Dog Beach, LLC"
@@ -497,7 +497,7 @@
 495,.games,generic,"Dog Beach, LLC"
 496,.gap,generic,"The Gap, Inc."
 497,.garden,generic,"Registry Services, LLC"
-498,.gay,generic,"Top Level Design, LLC"
+498,.gay,generic,"Registry Services, LLC"
 499,.gb,country-code,Reserved Domain - IANA
 500,.gbiz,generic,Charleston Road Registry Inc.
 501,.gd,country-code,The National Telecommunications Regulatory Commission (NTRC)
@@ -568,13 +568,13 @@
 566,.hbo,generic,"HBO Registry Services, Inc."
 567,.hdfc,generic,HOUSING DEVELOPMENT FINANCE CORPORATION LIMITED
 568,.hdfcbank,generic,HDFC Bank Limited
-569,.health,generic,"DotHealth, LLC"
+569,.health,generic,"Registry Services, LLC"
 570,.healthcare,generic,"Binky Moon, LLC"
 571,.help,generic,UNR Corp.
 572,.helsinki,generic,City of Helsinki
 573,.here,generic,Charleston Road Registry Inc.
 574,.hermes,generic,Hermes International
-575,.hgtv,generic,"Lifestyle Domain Holdings, Inc."
+575,.hgtv,generic,Not assigned
 576,.hiphop,generic,"Dot Hip Hop, LLC"
 577,.hisamitsu,generic,"Hisamitsu Pharmaceutical Co.,Inc."
 578,.hitachi,generic,"Hitachi, Ltd."
@@ -632,7 +632,7 @@
 630,.infiniti,generic,"NISSAN MOTOR CO., LTD."
 631,.info,generic,Afilias Limited
 632,.ing,generic,Charleston Road Registry Inc.
-633,.ink,generic,"Top Level Design, LLC"
+633,.ink,generic,"Registry Services, LLC"
 634,.institute,generic,"Binky Moon, LLC"
 635,.insurance,generic,fTLD Registry Services LLC
 636,.insure,generic,"Binky Moon, LLC"
@@ -719,7 +719,7 @@
 717,.lamborghini,generic,Automobili Lamborghini S.p.A.
 718,.lamer,generic,The Estée Lauder Companies Inc.
 719,.lancaster,generic,LANCASTER
-720,.lancia,generic,Fiat Chrysler Automobiles N.V.
+720,.lancia,generic,Not assigned
 721,.lancome,generic,Not assigned
 722,.land,generic,"Binky Moon, LLC"
 723,.landrover,generic,Jaguar Land Rover Ltd
@@ -800,7 +800,7 @@
 798,.markets,generic,"Dog Beach, LLC"
 799,.marriott,generic,Marriott Worldwide Corporation
 800,.marshalls,generic,"The TJX Companies, Inc."
-801,.maserati,generic,Fiat Chrysler Automobiles N.V.
+801,.maserati,generic,Not assigned
 802,.mattel,generic,"Mattel Sites, Inc."
 803,.mba,generic,"Binky Moon, LLC"
 804,.mc,country-code,Direction des Plateformes et des Ressources Numériques
@@ -1232,7 +1232,7 @@
 1230,.target,generic,"Target Domain Holdings, LLC"
 1231,.tatamotors,generic,Tata Motors Ltd
 1232,.tatar,generic,"Limited Liability Company ""Coordination Center of Regional Domain of Tatarstan Republic"""
-1233,.tattoo,generic,"Top Level Design, LLC"
+1233,.tattoo,generic,"Registry Services, LLC"
 1234,.tax,generic,"Binky Moon, LLC"
 1235,.taxi,generic,"Binky Moon, LLC"
 1236,.tc,country-code,Melrex TC
@@ -1288,7 +1288,7 @@
 1286,.trading,generic,"Dog Beach, LLC"
 1287,.training,generic,"Binky Moon, LLC"
 1288,.travel,sponsored,"Dog	Beach, LLC"
-1289,.travelchannel,generic,"Lifestyle Domain Holdings, Inc."
+1289,.travelchannel,generic,Not assigned
 1290,.travelers,generic,"Travelers TLD, LLC"
 1291,.travelersinsurance,generic,"Travelers TLD, LLC"
 1292,.trust,generic,Internet Naming Co.
@@ -1375,7 +1375,7 @@
 1373,.wf,country-code,Association Française pour le Nommage Internet en Coopération (A.F.N.I.C.)
 1374,.whoswho,generic,Who's Who Registry
 1375,.wien,generic,punkt.wien GmbH
-1376,.wiki,generic,"Top Level Design, LLC"
+1376,.wiki,generic,"Registry Services, LLC"
 1377,.williamhill,generic,William Hill Organization Limited
 1378,.win,generic,First Registry Limited
 1379,.windows,generic,Microsoft Corporation

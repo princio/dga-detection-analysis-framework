@@ -4,7 +4,7 @@ import json
 import os
 import json
 
-from pslregex.etld import ETLD
+from .etld import ETLD
 
 
 DIR = os.path.dirname(__file__)
@@ -29,6 +29,13 @@ class PSLdict:
                 json.dump(self.dicter, f)
 
         pass
+
+    def suffixes(self):
+        df = self.etld.iframe()
+        suffixes = df['4'].fillna('') + '.' + df['3'].fillna('') + '.' + df['2'].fillna('') + '.' + df['1'].fillna('') + '.' + df['0'].fillna('')
+        suffixes = suffixes.str.replace(r'\.{2,}', '.', regex=True)
+        suffixes = suffixes.str.replace(r'^\.', '', regex=True)
+        return suffixes
 
     def __dicter(self, df, l):
         if df.shape[0] == 1:
@@ -97,28 +104,3 @@ class PSLdict:
         return ds
     
     pass # end of PSLdict
-
-def init():
-    psl = PSLdict()
-    psl.init(download=True, update=True)
-    pass
-
-if __name__ == '__main__':
-    psl = PSLdict()
-
-    psl.init(download=False, update=True)
-
-    dn = 'www.example.com'
-    dn = 'ciao.issmarterthanyou.com'
-    dn = 'ciao.asterisk.compute-1.amazonaws.com'
-
-    df = psl.etld.frame
-    a = time.time()
-    single = psl.match(dn)
-    a = time.time() - a
-    print(a)
-    print(single)
-
-    df = psl.etld.frame
-
-    pass

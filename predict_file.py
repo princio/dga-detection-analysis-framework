@@ -98,26 +98,42 @@ if not os.path.exists(X_outdir):
 if not os.path.exists(Y_outdir):
     os.mkdir(Y_outdir)
 
-
-if not debug:
-    domains = pd.read_csv(args.filename, header=None, names=['dn']).dn.tolist()
-else:
-    domains = pd.read_csv(args.filename, header=None, names=['dn'], nrows=1000).dn.tolist()
-    print('Debug mode one (takes only 1000 rows)')
-
-
-
 file_psl = os.path.join(args.outdir, f'pslregex.csv')
 print('Performing pslregex...', end='')
 if not os.path.exists(file_psl):
+
+    df_check = pd.read_csv(args.filename, header=None, nrows=5)
+    if len(df_check.columns) == 2:
+        columns = ['dn', 'malicious']
+    else:
+        columns = ['dn']
+        pass
+
+    if not debug:
+        df = pd.read_csv(args.filename, header=None, names=columns)
+        pass
+    else:
+        df = pd.read_csv(args.filename, header=None, names=columns, nrows=1000)
+        print('Debug mode one (takes only 1000 rows)')
+        pass
+
+    domains = df.dn.tolist()
+
     df_dn = exec_psl(domains)
+
+    if 'malicious' in df.columns:
+        df_dn['malicious'] = df.malicious
+
     df_dn.to_csv(file_psl)
+
     print('Done')
     pass
 else:
     df_dn = pd.read_csv(file_psl)
     print('Already done')
     pass
+
+
 
 df_dn = pd.read_csv(file_psl, index_col=0)
 
@@ -182,11 +198,16 @@ for batch in range(batches):
         df_batch[f'Y_{model["psl"]}'] = model['nn'].predict(Xtf, batch_size=128, verbose=1)[:,0]
         pass
 
-    df_batch[[
+    batch_columns = [
         'dn', 'invalid',
         'tld', 'icann', 'private',
         'Y_none', 'Y_tld', 'Y_icann', 'Y_private'
-        ]].to_csv(Y_outpath)
+    ]
+
+    if 'malicious' in df_batch.columns:
+        batch_columns.append('malicious')
+
+    df_batch[batch_columns].to_csv(Y_outpath)
 
     pass
 
