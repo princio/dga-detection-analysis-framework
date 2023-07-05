@@ -1,0 +1,3 @@
+
+
+#define ALPHABET_SIZE 484

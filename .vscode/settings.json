@@ -80,7 +80,8 @@
         "__node_handle": "c",
         "__memory": "c",
         "filesystem": "c",
-        "locale": "c"
+        "locale": "c",
+        "parse_suffixes.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

@@ -26,8 +26,8 @@ make
 
 popd
 
-chmod +x "$EXAMPLE_BUILD_DIR/csv_dn_parser"
+chmod +x "$EXAMPLE_BUILD_DIR/execc"
 
 # clear
 
-"$EXAMPLE_BUILD_DIR/csv_dn_parser"
+"$EXAMPLE_BUILD_DIR/execc"

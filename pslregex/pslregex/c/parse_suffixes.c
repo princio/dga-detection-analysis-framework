@@ -2,7 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "csv_frame_psl.h"
+#include "parse_suffixes.h"
+
+
  
 // Driver Code
 int read_header()
@@ -98,22 +100,27 @@ int get_field_end(char * row, int cursor) {
     return cursor_end;
 }
 
-int main() {
-    FILE* fp = fopen("iframe.csv", "r");
- 
-    if (!fp)
-        printf("Can't open file\n");
+void load_suffixes(char *filepath, Suffix** suffixes_ptr, int *nsuffixes) {
 
     Row row;
+    FILE* fp;
+    int lines; // header count;
 
     char buffer[sizeof(row)];
+    
+    fp = fopen(filepath, "r");
+ 
+    if (!fp){
+        printf("Can't open file\n");
+        exit(1);
+    }
 
-    int lines = -1; // header count;
+    lines = -1;
     while(fgets(buffer, sizeof(row), fp)) {
         ++lines;
     }
 
-    Suffix suffixes[lines];
+    Suffix* suffixes = calloc(lines, sizeof(Suffix));
 
     suffixes[0].index = 5;
     suffixes[10].index = 15;
@@ -130,16 +137,11 @@ int main() {
         int cursor = 0;
         int cursor_end = 0;
 
-        // printf("%s|", buffer);
         memset(&row, 0, sizeof(row));
-        // memset(&suffix, 0, sizeof(suffix));
         
         cursor_end = get_field_end(buffer, cursor);
         memcpy(&row.index, &buffer[cursor], cursor_end - cursor);
-        // printf("%c\t%c\t%d\t%d\n", buffer[cursor], buffer[cursor_end], cursor, cursor_end);
-        // printf("%s\n", row.index);
         cursor = cursor_end + 1;
-
 
         // skip single labels
         int nlabels = 0;
@@ -245,6 +247,8 @@ int main() {
 
         memcpy(&suffix->code.section, row.code, strlen(row.code));
 
+        suffix->is_punycode = strlen(row.punycode) > 0;
+
         if(strcmp(row.type, "country-code") == 0) {
             suffix->type = CountryCode;
         }
@@ -340,4 +344,6 @@ int main() {
     //     printf("%-10zu\t%s\n", i, suffixes[i].suffix);
     // }
     
+    *suffixes_ptr = suffixes;
+    *nsuffixes = lines;
 }

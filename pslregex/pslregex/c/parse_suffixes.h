@@ -3,22 +3,7 @@
 
 #define MAX_SUFFIX_SIZE 100
 #define N_MAX_SUFFIXES 100000
-
-char* headers[] = {
-    "index",
-    "0",
-    "1",
-    "2",
-    "3",
-    "4",
-    "suffix",
-    "code",
-    "punycode",
-    "type",
-    "origin",
-    "section",
-    "isprivate"
-};
+#define MAX_LABEL_SIZE 63
 
 // suffix               54
 // code                 10
@@ -81,12 +66,25 @@ typedef struct StructSuffixCode {
 typedef struct _Suffix
 {
     int index;
-    char suffix[MAX_SUFFIX_SIZE]; // 60 bytes is the maximum
+
+    char label0[MAX_LABEL_SIZE];
+    char label1[MAX_LABEL_SIZE];
+    char label2[MAX_LABEL_SIZE];
+    char label3[MAX_LABEL_SIZE];
+    char label4[MAX_LABEL_SIZE];
+
+    char suffix[MAX_SUFFIX_SIZE];
+
     SuffixCode code;
     SuffixType type;
     SuffixOrigin origin;
     SuffixSection section;
+
+    int is_punycode;
     int is_private;
     int is_exception;
     int nlabels;
 } Suffix;
+
+
+void load_suffixes(char*, Suffix **, int*);

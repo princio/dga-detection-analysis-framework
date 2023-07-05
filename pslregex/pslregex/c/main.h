@@ -48,6 +48,8 @@ struct TrieNode
 };
 
  
+#define ALPHABET_SIZE 484
+
 // Returns new trie node (initialized to NULLs)
 struct TrieNode *getNode(void)
 {
