@@ -87,4 +87,8 @@ typedef struct _Suffix
 } Suffix;
 
 
+int domain_invert(const char domain[], char inverted[]);
+
+void suffix_labels(Suffix **, char *labels);
+
 void load_suffixes(char*, Suffix **, int*);

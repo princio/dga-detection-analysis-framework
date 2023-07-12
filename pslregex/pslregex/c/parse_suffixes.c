@@ -100,6 +100,36 @@ int get_field_end(char * row, int cursor) {
     return cursor_end;
 }
 
+int domain_invert(const char domain[], char inverted[]) {
+    memset(inverted, 0, strlen(domain) + 1);
+
+    int len = strlen(domain);
+
+    for(int i = len - 1; i >=0; ) {
+        int dot_position;
+        int domain_cursor;
+        int inv_cursor;
+        int label_len;
+        
+        dot_position = i - 1;
+        while(domain[dot_position] != '.' && dot_position > 0) { --dot_position; }
+
+        domain_cursor = dot_position + (dot_position > 0);
+        inv_cursor = (len - i - 1);
+        label_len = i - dot_position + (dot_position== 0);
+
+        strncpy(inverted + inv_cursor, domain + domain_cursor, label_len);
+
+        if (dot_position > 0)
+            inverted[inv_cursor + label_len] = '.';
+
+        i = dot_position - 1;
+    }
+
+    return 0;
+}
+
+
 void load_suffixes(char *filepath, Suffix** suffixes_ptr, int *nsuffixes) {
 
     Row row;
@@ -107,7 +137,7 @@ void load_suffixes(char *filepath, Suffix** suffixes_ptr, int *nsuffixes) {
     int lines; // header count;
 
     char buffer[sizeof(row)];
-    
+  
     fp = fopen(filepath, "r");
  
     if (!fp){
@@ -251,20 +281,20 @@ void load_suffixes(char *filepath, Suffix** suffixes_ptr, int *nsuffixes) {
 
         if(strcmp(row.type, "country-code") == 0) {
             suffix->type = CountryCode;
-        }
-        else if(strcmp(row.type, "generic") == 0) {
+        } else
+        if(strcmp(row.type, "generic") == 0) {
             suffix->type = Generic;
-        }
-        else if(strcmp(row.type, "generic-restricted") == 0) {
+        } else
+        if(strcmp(row.type, "generic-restricted") == 0) {
             suffix->type = GenericRestricted;
-        }
-        else if(strcmp(row.type, "infrastructure") == 0) {
+        } else
+        if(strcmp(row.type, "infrastructure") == 0) {
             suffix->type = Infrastructure;
-        }
-        else if(strcmp(row.type, "sponsored") == 0) {
+        } else
+        if(strcmp(row.type, "sponsored") == 0) {
             suffix->type = Sponsored;
-        }
-        else if(strcmp(row.type, "test") == 0) {
+        } else
+        if(strcmp(row.type, "test") == 0) {
             suffix->type = Test;
         }
 
@@ -272,10 +302,12 @@ void load_suffixes(char *filepath, Suffix** suffixes_ptr, int *nsuffixes) {
         if(strcmp(row.origin, "both") == 0) {
             suffix->origin = Origin_Both;
         }
-        else if(strcmp(row.origin, "icann") == 0) {
+        else
+        if(strcmp(row.origin, "icann") == 0) {
             suffix->origin = Origin_Icann;
         }
-        else if(strcmp(row.origin, "PSL") == 0) {
+        else
+        if(strcmp(row.origin, "PSL") == 0) {
             suffix->origin = Origin_PSL;
         }
 
@@ -284,10 +316,12 @@ void load_suffixes(char *filepath, Suffix** suffixes_ptr, int *nsuffixes) {
         if(strcmp(row.section, "icann") == 0) {
             suffix->section = Section_Icann;
         }
-        else if(strcmp(row.section, "icann-new") == 0) {
+        else
+        if(strcmp(row.section, "icann-new") == 0) {
             suffix->section = Section_IcannNew;
         }
-        else if(strcmp(row.section, "private-domain") == 0) {
+        else
+        if(strcmp(row.section, "private-domain") == 0) {
             suffix->section = Section_PrivateDomain;
         }
 
@@ -339,8 +373,7 @@ void load_suffixes(char *filepath, Suffix** suffixes_ptr, int *nsuffixes) {
         ++line_number;
     }
 
-    // for (size_t i = 0; i < lines; i++)
-    // {
+    // for (size_t i = 0; i < lines; i++) {
     //     printf("%-10zu\t%s\n", i, suffixes[i].suffix);
     // }
     
