@@ -4,95 +4,91 @@
 #include <stdbool.h>
 
 #include "main.h"
+#include "trie.h"
+
+#define BUFFER_SIZE 1024
+#define MAX_DOMAIN_SIZE 500
 
 
-// Returns new trie node (initialized to NULLs)
-struct TrieNode *getNode(void)
-{
-    struct TrieNode *pNode = NULL;
- 
-    pNode = (struct TrieNode *)malloc(sizeof(struct TrieNode));
- 
-    if (pNode)
-    {
-        int i;
- 
-        pNode->isEndOfWord = false;
- 
-        for (i = 0; i < ALPHABET_SIZE; i++)
-            pNode->children[i] = NULL;
-    }
- 
-    return pNode;
-}
- 
-// If not present, inserts key into trie
-// If the key is prefix of trie node, just marks leaf node
-void insert(struct TrieNode *root, const char *key)
-{
-    int level;
-    int length = strlen(key);
-    int index;
- 
-    struct TrieNode *pCrawl = root;
- 
-    for (level = 0; level < length; level++)
-    {
-        index = CHAR_TO_INDEX(key[level]);
-        if (!pCrawl->children[index])
-            pCrawl->children[index] = getNode();
- 
-        pCrawl = pCrawl->children[index];
-    }
- 
-    // mark last node as leaf
-    pCrawl->isEndOfWord = true;
-}
- 
-// Returns true if key presents in trie, else false
-bool search(struct TrieNode *root, const char *key)
-{
-    int level;
-    int length = strlen(key);
-    int index;
-    struct TrieNode *pCrawl = root;
- 
-    for (level = 0; level < length; level++)
-    {
-        index = CHAR_TO_INDEX(key[level]);
- 
-        if (!pCrawl->children[index])
-            return false;
- 
-        pCrawl = pCrawl->children[index];
-    }
- 
-    return (pCrawl->isEndOfWord);
-}
+struct Domain {
+    char domain[MAX_DOMAIN_SIZE];
+    int is_malware;
+    int is_dga;
+    struct SuffixSearchResult suffixes;
+};
 
+
+int main() {
+    FILE* fp;
+    int lines;
+    int line;
+    struct Domain* domains;
+
+    char buffer[BUFFER_SIZE];
+
+    struct TrieNode *root = trie_load("iframe.csv");
+  
+    fp = fopen("dataset.txt", "r");
  
-// Driver
-int main()
-{
-    // Input keys (use only 'a' through 'z' and lower case)
-    char keys[][8] = {"the", "a", "there", "answer", "any",
-                     "by", "bye", "their"};
- 
-    char output[][32] = {"Not present in trie", "Present in trie"};
- 
- 
-    struct TrieNode *root = getNode();
- 
-    // Construct trie
-    int i;
-    for (i = 0; i < ARRAY_SIZE(keys); i++)
-        insert(root, keys[i]);
- 
-    // Search for different keys
-    printf("%s --- %s\n", "the", output[search(root, "the")] );
-    printf("%s --- %s\n", "these", output[search(root, "these")] );
-    printf("%s --- %s\n", "their", output[search(root, "their")] );
-    printf("%s --- %s\n", "thaw", output[search(root, "thaw")] );
- 
+    if (!fp){
+        printf("Can't open file\n");
+        exit(1);
+    }
+
+    lines = 0; 
+    while(fgets(buffer, BUFFER_SIZE, fp)) {
+        ++lines;
+    }
+
+    lines -= 1; // ignoring header
+    rewind(fp);
+    fgets(buffer, BUFFER_SIZE, fp); // ignoring header
+
+    line = 0;
+    domains = (struct Domain*) calloc(lines, sizeof(struct Domain));
+    while(fgets(buffer, BUFFER_SIZE, fp)) {
+        char *field_begin;
+        char *field_end;
+        int len;
+        char is[2];
+        
+        field_begin = buffer;
+        field_end = strchr(field_begin, ',');
+        field_end = field_end == NULL ? (buffer + strlen(buffer)) : field_end;
+
+        len = field_end - field_begin;
+
+        strncpy(domains[line].domain, buffer, len > MAX_DOMAIN_SIZE ? MAX_DOMAIN_SIZE : len);
+        
+        field_begin += len + 1;
+        // field_end = strchr(field_begin, ',');
+        // field_end = field_end == NULL ? (buffer + strlen(buffer)) : field_end;
+        domains[line].is_malware = field_begin[0] - '0';
+        
+        // field_begin += len;
+        // field_end = strchr(field_begin, ',');
+        // field_end = field_end == NULL ? (buffer + strlen(buffer)) : field_end;
+        domains[line].is_dga = field_begin[2] - '0';
+
+        // printf("%-50s\t%d\t%d\n", domains[line].domain, domains[line].is_malware, domains[line].is_dga);
+
+        domains[line].suffixes = trie_search(root, domains[line].domain, 0);
+
+        // if (line > 10) break;
+
+        ++line;
+    }
+
+    // for (int i = 0; i < lines; ++i) {
+    //     struct Domain* domain = &domains[i];
+    //     printf("%-50s\t%10s\t%10s\t%10s\t%5d\t%5d\n",
+    //     domain->domain,
+    //     domain->suffixes.tld ? domain->suffixes.tld->suffix->suffix : "not found",
+    //     domain->suffixes.icann ? domain->suffixes.icann->suffix->suffix : "not found",
+    //     domain->suffixes.private ? domain->suffixes.private->suffix->suffix : "not found",
+    //     domain->is_malware,
+    //     domain->is_dga);
+    // }
+
     return 0;
 }

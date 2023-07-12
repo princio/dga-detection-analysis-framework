@@ -4,7 +4,7 @@ project(csv_dn_parser VERSION 0.1.0 LANGUAGES C)
 include(CTest)
 enable_testing()
 
-add_executable(execc build_trie.c parse_suffixes.c)
+add_executable(execc utils.c parser.c trie.c main.c)
 
 set(CPACK_PROJECT_NAME ${PROJECT_NAME})
 set(CPACK_PROJECT_VERSION ${PROJECT_VERSION})
