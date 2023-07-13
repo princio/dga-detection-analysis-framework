@@ -83,7 +83,9 @@
         "locale": "c",
         "parse_suffixes.h": "c",
         "stdlib.h": "c",
-        "string.h": "c"
+        "string.h": "c",
+        "trie.h": "c",
+        "training.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

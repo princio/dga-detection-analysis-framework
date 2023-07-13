@@ -4,6 +4,48 @@
 #include "utils.h"
 
 
+int domain_nlabels(const char domain[]) {
+    const char* begin;
+    const char* end;
+
+    int nlabels = 0;
+    int nlengths[10];
+
+    begin = domain;
+    end = domain;
+    while (end = strchr(begin, '.')) {
+        nlengths[nlabels] = end - begin;
+        ++nlabels;
+        begin = end + 1;
+    }
+    return nlabels + 1;
+}
+
+int domain_labels(const char domain[], char labels[][64]) {
+    const char* begin;
+    const char* end;
+
+    int nlabels = 0;
+    int nlengths[10];
+
+    begin = domain;
+    end = domain;
+    while (end = strchr(begin, '.')) {
+        nlengths[nlabels] = end - begin;
+        ++nlabels;
+        begin = end + 1;
+    }
+    nlengths[nlabels] = strlen(begin);
+    const int NLABELS = nlabels + 1;
+
+    begin = domain;
+    for (int i = 0; i < NLABELS; ++i) {
+        strncpy(labels[i], begin, nlengths[i]);
+        labels[i][nlengths[i]] = '\0';
+        begin += nlengths[i] + 1;
+    }
+}
+
 int domain_invert(const char domain[], char inverted[]) {
     memset(inverted, 0, strlen(domain) + 1);
 

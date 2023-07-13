@@ -1,0 +1,2 @@
+
+int training_run();

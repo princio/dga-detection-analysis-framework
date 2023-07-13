@@ -7,8 +7,13 @@
             "args": [
                 "-fdiagnostics-color=always",
                 "-g",
-                "${file}",
-                "parse_suffixes.c",
+                "utils.c",
+                "parser.c",
+                "trie.c",
+                "analyzer/flashstart.c",
+                "analyzer/training.c",
+                "generator/1707.c",
+                "main.c",
                 "-o",
                 "${fileDirname}/${fileBasenameNoExtension}"
             ],
