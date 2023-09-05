@@ -48,8 +48,25 @@ typedef struct InfiniteValues
     double pinf;
 } InfiniteValues;
 
+typedef struct LogitRange {
+    double min;
+    double max;
+} LogitRange;
+
+typedef struct ConfusionMatrix {
+    double th;
+    
+    int tn;
+    int fp;
+    int fn;
+    int tp;
+} ConfusionMatrix;
+
 typedef struct Pi
 {
+    int id;
+    ConfusionMatrix *cm;
+    LogitRange logit_range;
     Whitelisting whitelisting;
     WindowingType windowing;
     InfiniteValues infinite_values;
@@ -80,6 +97,9 @@ char NN_NAMES[11][10] = {
 typedef struct WindowMetrics
 {
     Pi* pi;
+    
+    int wcount;
+
     double logit;
     int dn_bad_05;
     int dn_bad_09;
@@ -89,15 +109,16 @@ typedef struct WindowMetrics
 
 typedef struct Window
 {
+    int wsize;
     int wnum;
-    int wcount;
     int nmetrics;
     int infected;
+    int pcap_id;
 
     WindowMetrics *metrics;
 } Window;
 
-typedef struct Windowing {
+typedef struct PCAPWindowing {
     int64_t pcap_id;
 
     int infected;
@@ -105,4 +126,44 @@ typedef struct Windowing {
     int wsize;
     
     Window *windows;
-} Windowing;
+} PCAPWindowing;
+
+typedef struct WindowingTotals {
+    int total;
+    int positives;
+    int negatives;
+} WindowingTotals;
+
+typedef struct WindowingDataset3 {
+    Window **windows;
+    int total;
+} WindowingDataset3;
+
+typedef struct WindowingDataset2 {
+    WindowingDataset3 n;
+    WindowingDataset3 p;
+} WindowingDataset2;
+
+typedef struct WindowingDataset {
+    WindowingDataset2 train;
+    WindowingDataset2 test;
+    float split_percentage;
+} WindowingDataset;
+
+
+typedef struct AllWindows {
+    Window **windows;
+    Window **windows_positives;
+    Window **windows_negatives;
+    int wsize;
+    int total;
+    int total_positives;
+    int total_negatives;
+} AllWindows;
+
+typedef struct  AllWindowsCursor {
+    int all;
+    int positives;
+    int negatives;
+} AllWindowsCursor;
+

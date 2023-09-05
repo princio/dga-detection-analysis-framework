@@ -67,7 +67,7 @@ CC := gcc
 STD := -std=gnu99 # See man gcc for more options
 
 # Protection for stack-smashing attack
-STACK := -fstack-protector-all -Wstack-protector
+STACK := -Wstack-protector # -fstack-protector-all
 
 # Specifies to GCC the required warnings
 WARNS := -Wall -Wextra -pedantic # -pedantic warns on language standards
