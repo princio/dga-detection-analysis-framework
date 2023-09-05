@@ -4,14 +4,19 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/pslregex/pslregex/c"
+                "${workspaceFolder}/pslregex/pslregex/c",
+                "/usr/include/postgresql/",
+                "/usr/include/postgresql/15/server"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",
             "cStandard": "c17",
             "cppStandard": "c++14",
             "intelliSenseMode": "linux-clang-x64",
-            "configurationProvider": "ms-vscode.cmake-tools"
+            "configurationProvider": "ms-vscode.cmake-tools",
+            "compilerArgs": [
+                "-libpq"
+            ]
         }
     ],
     "version": 4

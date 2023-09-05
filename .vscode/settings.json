@@ -85,7 +85,23 @@
         "stdlib.h": "c",
         "string.h": "c",
         "trie.h": "c",
-        "training.h": "c"
+        "training.h": "c",
+        "libpq-fs.h": "c",
+        "libpq-fe.h": "c",
+        "pg_type.h": "c",
+        "postgres_ext.h": "c",
+        "windowapi.h": "c",
+        "miscadmin.h": "c",
+        "pg_type_d.h": "c",
+        "genbki.h": "c",
+        "postgres.h": "c",
+        "pg_config_ext.h": "c",
+        "postgres_fe.h": "c",
+        "stdint.h": "c",
+        "ios": "c",
+        "1707.h": "c",
+        "types.h": "c",
+        "unistd.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }
