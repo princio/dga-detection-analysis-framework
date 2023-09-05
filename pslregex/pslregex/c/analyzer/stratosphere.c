@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../trie.h"
+#include "../suffixes/trie.h"
 
 #include <libpq-fe.h>
 #include <15/server/catalog/pg_type_d.h>

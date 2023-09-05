@@ -4,8 +4,6 @@
 
 #include "parser.h"
 
-
-
 /* PRIVATE METHODS */
 
 int read_header()

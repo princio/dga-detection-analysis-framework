@@ -3,7 +3,8 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "../trie.h"
+#include "flashstart.h"
+#include "../suffixes/trie.h"
 
 #define BUFFER_SIZE 1024
 #define MAX_DOMAIN_SIZE 500

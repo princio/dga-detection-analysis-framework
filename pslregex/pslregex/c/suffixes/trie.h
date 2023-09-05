@@ -1,3 +1,5 @@
+#ifndef TRIE_H
+#define TRIE_H
 
 #include "parser.h"
 
@@ -29,3 +31,5 @@ struct SuffixSearchResult {
 struct SuffixSearchResult trie_search(struct TrieNode *root, const char domain[], int print);
 
 struct TrieNode* trie_load(const char* filepath);
+
+#endif

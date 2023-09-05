@@ -1,3 +1,6 @@
+#ifndef PARSER_H
+#define PARSER_H
+
 #include <stdlib.h>
 #include <stddef.h>
 
@@ -86,3 +89,5 @@ typedef struct _Suffix
 
 
 void parser(char*, Suffix **, int*);
+
+#endif

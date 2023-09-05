@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "../trie.h"
+#include "../suffixes/trie.h"
 
 #include "training.h"
 
