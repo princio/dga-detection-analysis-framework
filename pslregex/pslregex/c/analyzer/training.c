@@ -5,6 +5,8 @@
 
 #include "../trie.h"
 
+#include "training.h"
+
 #define BUFFER_SIZE 1024
 #define MAX_DOMAIN_SIZE 500
 
@@ -30,7 +32,7 @@ struct XOutput {
 };
 
 
-int training_run() {
+int training_analyze() {
     FILE* fp;
     int line;
     int lines = 0; 

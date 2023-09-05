@@ -10,15 +10,15 @@ typedef enum _SuffixSearchHow {
 } SuffixSearchHow;
 
 
-struct TrieNode 
+typedef struct TrieNode 
 { 
-     struct TrieNode *children[ALPHABET_SIZE];
-     // isEndOfWord is true if the node 
-     // represents end of a word 
-     bool isEndOfWord;
-     Suffix* suffix;
-     char inverted[MAX_SUFFIX_SIZE];
-};
+    struct TrieNode *children[ALPHABET_SIZE];
+    // isEndOfWord is true if the node 
+    // represents end of a word 
+    int isEndOfWord;
+    Suffix* suffix;
+    char inverted[MAX_SUFFIX_SIZE];
+} TrieNode;
 
 struct SuffixSearchResult {
     struct TrieNode *tld;

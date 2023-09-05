@@ -8,7 +8,7 @@
 #define BUFFER_SIZE 1024
 #define MAX_DOMAIN_SIZE 500
 
-#define PATH "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c/dataset.txt"
+#define PATH "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c/dataset_training.csv"
 
 struct Domain {
     char domain[MAX_DOMAIN_SIZE];
@@ -26,10 +26,6 @@ struct XOutput {
     char tld[MAX_DOMAIN_SIZE];
     char icann[MAX_DOMAIN_SIZE];
     char private[MAX_DOMAIN_SIZE];
-    char first_17char[MAX_DOMAIN_SIZE];
-    char first_17char_tld[MAX_DOMAIN_SIZE];
-    char first_17char_icann[MAX_DOMAIN_SIZE];
-    char first_17char_private[MAX_DOMAIN_SIZE];
     int is_dga;
     int is_malware;
 };
@@ -61,34 +57,48 @@ static void parse_file(struct Domain domains[], FILE* fp, struct TrieNode *root,
 
     int line = 0;
     while(fgets(buffer, max_buffer_length, fp)) {
+        struct Domain* domain;
         char *field_begin;
         char *field_end;
         int len;
         char is[2];
+
+        domain = &domains[line];
         
-        field_begin = buffer;
-        field_end = strchr(field_begin, ',');
-        field_end = field_end == NULL ? (buffer + strlen(buffer)) : field_end;
+        { // DGA or LEGIT
+            char dga[10];
+            field_begin = buffer;
+            field_end = strchr(field_begin, ',');
+            len = field_end - field_begin;
+            strncpy(dga, field_begin, len);
+            dga[len] = '\0';
+            domain->is_malware = strcmp(dga, "dga") == 0;
+            domain->is_dga = domain->is_malware;
+            field_begin += len + 1;
 
-        len = field_end - field_begin;
-
-        strncpy(domains[line].domain, buffer, len > MAX_DOMAIN_SIZE ? MAX_DOMAIN_SIZE : len);
+            printf("%s\t", dga);
+        }
         
-        field_begin += len + 1;
-        // field_end = strchr(field_begin, ',');
-        // field_end = field_end == NULL ? (buffer + strlen(buffer)) : field_end;
-        domains[line].is_malware = field_begin[0] - '0';
+        { // DGA CLASS -- skip
+            field_end = strchr(field_begin, ',');
+            len = field_end - field_begin;
+            field_begin += len + 1;
+        }
         
-        // field_begin += len;
-        // field_end = strchr(field_begin, ',');
-        // field_end = field_end == NULL ? (buffer + strlen(buffer)) : field_end;
-        domains[line].is_dga = field_begin[2] - '0';
+        { // DGA CLASS -- domain
+            field_end = strchr(field_begin, ',');
+            field_end = field_end == NULL ? (buffer + strlen(buffer)) : field_end;
+            len = field_end - field_begin;
+            len > MAX_DOMAIN_SIZE ? MAX_DOMAIN_SIZE : len;
+            --len;
+            strncpy(domain->domain, field_begin, len > MAX_DOMAIN_SIZE ? MAX_DOMAIN_SIZE : len);
+        }
 
-        // printf("%-50s\t%d\t%d\n", domains[line].domain, domains[line].is_malware, domains[line].is_dga);
+        domain->suffixes = trie_search(root, domain->domain, 0);
 
-        domains[line].suffixes = trie_search(root, domains[line].domain, 0);
+        if (line > 10) break;
 
-        // if (line > 10) break;
+        printf("%s\n", domain->domain);
 
         ++line;
     }
@@ -141,72 +151,22 @@ static void generate_X(const struct Domain* domains, const int ndomains) {
             }
         }
 
-        {   
-            l = strlen(domain->domain);
-            nch = 17;
-            int start = l - 17;
-            if (start < 0) {
-                nch = 17 + start;
-                start = 0;
-            }
-            strncpy(xout->first_17char, xout->domain + start, nch);
-            xout->first_17char[xout->first_17char[nch - 1] == '.' ? nch - 1 : nch] = '\0';
-        }
-
-        {   
-            l = strlen(xout->tld);
-            nch = 17;
-            int start = l - 17;
-            if (start < 0) {
-                nch = 17 + start;
-                start = 0;
-            }
-            strncpy(xout->first_17char_tld, xout->tld + start, nch);
-            xout->first_17char[xout->first_17char[nch - 1] == '.' ? nch - 1 : nch] = '\0';
-        }
-
-        {   
-            l = strlen(xout->icann);
-            nch = 17;
-            int start = l - 17;
-            if (start < 0) {
-                nch = 17 + start;
-                start = 0;
-            }
-            strncpy(xout->first_17char_icann, xout->icann + start, nch);
-            xout->first_17char[xout->first_17char[nch - 1] == '.' ? nch - 1 : nch] = '\0';
-        }
-
-        {   
-            l = strlen(xout->private);
-            nch = 17;
-            int start = l - 17;
-            if (start < 0) {
-                nch = 17 + start;
-                start = 0;
-            }
-            strncpy(xout->first_17char_private, xout->private + start, nch);
-            xout->first_17char[xout->first_17char[nch - 1] == '.' ? nch - 1 : nch] = '\0';
-        }
 
         xout->is_malware = domain->is_malware;
         xout->is_dga = domain->is_dga;
     }
 
 
-    FILE* fp = fopen("X.csv", "w");
+    FILE* fp = fopen("/tmp/training_X.csv", "w");
 
     fprintf(
         fp,
-        ",%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n",
+        "%s,%s,%s,%s,%s,%s,%s\n",
+        "id",
         "none_X",
         "tld_X",
         "icann_X",
         "private_X",
-        "none_first_17char_X",
-        "tld_first_17char_X",
-        "icann_first_17char_X",
-        "private_first_17char_X",
         "is_malware",
         "is_dga"
     );
@@ -215,16 +175,12 @@ static void generate_X(const struct Domain* domains, const int ndomains) {
         struct XOutput xout = xoutputs[i];
         fprintf(
             fp,
-            "%u,%s,%s,%s,%s,%s,%s,%s,%s,%d,%d\n",
+            "%u,%s,%s,%s,%s,%d,%d\n",
             i,
             xout.domain,
             xout.tld,
             xout.icann,
             xout.private,
-            xout.first_17char,
-            xout.first_17char_tld,
-            xout.first_17char_icann,
-            xout.first_17char_private,
             xout.is_malware,
             xout.is_dga
         );
@@ -235,7 +191,7 @@ static void generate_X(const struct Domain* domains, const int ndomains) {
     fclose(fp);
 }
 
-int fs1707_run() {
+int training_run() {
     FILE* fp;
     int line;
     int lines = 0; 
@@ -243,7 +199,7 @@ int fs1707_run() {
 
     char buffer[BUFFER_SIZE];
 
-    struct TrieNode *root = trie_load("iframe.csv");
+    struct TrieNode *root = trie_load("/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c/iframe.csv");
   
     fp = fopen(PATH, "r");
  

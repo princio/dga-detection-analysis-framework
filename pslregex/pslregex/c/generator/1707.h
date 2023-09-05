@@ -1,2 +1,7 @@
 
-int _1707_run();
+#ifndef FS1707_H
+#define FS1707_H
+
+int fs1707_run();
+
+#endif

@@ -9,6 +9,7 @@
 #include "analyzer/flashstart.h"
 #include "analyzer/training.h"
 #include "generator/1707.h"
+#include "generator/training.h"
 
 #define BUFFER_SIZE 1024
 #define MAX_DOMAIN_SIZE 500
@@ -25,10 +26,10 @@ struct Domain {
 int main() {
     setvbuf(stdout, NULL, _IONBF, 0); 
 
-    // training_run();
+    training_run();
 
     
-    _1707_run();
+    // _1707_run();
 
     return 0;
 }
