@@ -12,6 +12,11 @@ int write_PCAP_file(char path[], PCAP* pcaps, const int N_PCAP);
 
 int read_PCAP_file(char path[], PCAP** pcaps, int* N_PCAP);
 
+
+int write_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_sizes, int N_WSIZE);
+int read_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_sizes, int N_WSIZE);
+
+
 void persister_test();
 
 #endif

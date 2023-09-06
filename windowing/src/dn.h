@@ -25,6 +25,7 @@ typedef struct PCAP
     int64_t q;
     int64_t r;
     int64_t nmessages;
+    int64_t fnreq_max;
 } PCAP;
 
 
@@ -87,6 +88,7 @@ typedef struct WindowMetrics
     int32_t wcount;
 
     double logit;
+    int32_t whitelistened;
     int32_t dn_bad_05;
     int32_t dn_bad_09;
     int32_t dn_bad_099;

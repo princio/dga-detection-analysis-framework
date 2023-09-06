@@ -36,7 +36,7 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
-#define N_WINDOWS(A,B) (A / B + (A % B > 0))
+#define N_WINDOWS(FNREQ_MAX, B) ((FNREQ_MAX + 1) / B + ((FNREQ_MAX + 1) % B > 0)) // +1 because it starts from 0
 
 char WINDOWING_NAMES[3][10] = {
     "QUERY",
@@ -178,7 +178,7 @@ PGconn* CDPGget_connection()
  * @param windowings An array of PCAPWindowing struct where each element represent the windowing of the PCAP for a defined window size.
  * @param N_WINDOWING The number of window size we chose.
  */
-void procedure(PGconn* conn, PCAP* pcap, PCAPWindowing windowings[], int N_WINDOWING)
+void procedure(PGconn* conn, PCAP* pcap, PCAPWindowing pcapwindowings_bySize[], int N_WSIZE)
 {
     char sql[1000];
     int binary = 1;
@@ -207,29 +207,37 @@ void procedure(PGconn* conn, PCAP* pcap, PCAPWindowing windowings[], int N_WINDO
         printf("Errorrrrrr:\t%d\t%ld\n", nrows, pcap->nmessages);
     }
 
-    // struct WindowDebug *debug[N_WINDOWING];
-    // for (size_t i = 0; i < N_WINDOWING; i++) {
-    //     debug[i] = calloc(N_WINDOWS(pcap->nmessages, wsize[i]), sizeof(struct WindowDebug));
-    // }
-    
-
+    int wnum_max[N_WSIZE];
+    memset(wnum_max, 0, sizeof(int) * N_WSIZE);
     for(int r = 0; r < nrows; r++) {
         Message message;
 
         parse_message(res, r, &message);
 
-        for (int w0 = 0; w0 < N_WINDOWING; ++w0) {
-            PCAPWindowing *windowing;
+        for (int w0 = 0; w0 < N_WSIZE; ++w0) {
+            PCAPWindowing *pcapwindowing;
             int wnum;
             Window *window;
             
-            windowing = &windowings[w0];
+            pcapwindowing = &pcapwindowings_bySize[w0];
 
-            wnum = (int) floor(message.fn_req / windowing->wsize);
+            wnum = (int) floor(message.fn_req / pcapwindowing->wsize);
 
-            window = &windowing->windows[wnum];
+            if (wnum >= pcapwindowing->nwindows) {
+                printf("ERROR\n");
+                printf("      wnum: %d\n", wnum);
+                printf("     wsize: %d\n", pcapwindowing->wsize);
+                printf(" fnreq_max: %d\n", pcap->fnreq_max);
+                printf("  nwindows: %d\n", pcapwindowing->nwindows);
+            }
+
+
+            wnum_max[w0] = wnum_max[w0] < wnum ? wnum : wnum_max[w0];
+
+            window = &pcapwindowing->windows[wnum];
 
             for (int w2 = 0; w2 < window->nmetrics; w2++) {
+                int whitelistened = 0;
                 double value, logit;
                 WindowMetrics *metrics;
                 Pi *pi;
@@ -254,6 +262,7 @@ void procedure(PGconn* conn, PCAP* pcap, PCAPWindowing windowings[], int N_WINDO
                 if (message.top10m > 0 && message.top10m < pi->whitelisting.rank) {
                     value = 0;
                     logit = pi->whitelisting.value;
+                    whitelistened = 1;
                 }
                 if (logit == INFINITY) {
                     logit = pi->infinite_values.pinf;
@@ -264,6 +273,7 @@ void procedure(PGconn* conn, PCAP* pcap, PCAPWindowing windowings[], int N_WINDO
 
                 ++metrics->wcount;
                 metrics->logit += logit;
+                metrics->whitelistened += whitelistened;
                 metrics->dn_bad_05 += value >= 0.5;
                 metrics->dn_bad_09 += value >= 0.9;
                 metrics->dn_bad_099 += value >= 0.99;
@@ -277,80 +287,12 @@ void procedure(PGconn* conn, PCAP* pcap, PCAPWindowing windowings[], int N_WINDO
                 }
             }
         }
-
-/*
-        for (int pi_i = 0; pi_i < N_PIS; ++pi_i) {
-            double value, logit;
-            Pi *pi;
-            // Overrall *overall;
-            int wnum;
-            Window *window;
-            WindowMetrics *metrics;
-
-            pi = &pis[pi_i];
-
-            wnum = (int) floor(message.fn_req / pi->wsize);
-
-            int wsize_index = -1;
-            do {} while(wsize[++wsize_index] != pi->wsize);
-
-            if (wsize_index == 2)// && wnum == 161 && pi_i == 26)
-                printf("%d\t%d\twindows[%d][%d]->metrics[%d/%d]\t\t%d\t\t", message.fn_req, pi->wsize, wsize_index, wnum, pi_i, N_PIS, message.top10m);
-
-
-            if (pi->windowing == WINDOWING_Q && message.is_response) {
-                continue;
-            } else
-            if (pi->windowing == WINDOWING_R && !message.is_response) {
-                continue;
-            }
-
-            debug[wsize_index][wnum].wcount++;
-
-
-            window = &windows[wsize_index][wnum];
-            metrics = &window->metrics[pi_i];
-
-            if (wnum != window->wnum) {
-                printf("Errorrrrrr:\t%d\t%d\n", wnum, window->wnum);
-            }
-
-            logit = message.logit;
-            value = message.value;
-
-            if (message.top10m > 0 && message.top10m < pi->whitelisting.rank) {
-                value = 0;
-                logit = pi->whitelisting.value;
-            }
-            if (logit == INFINITY) {
-                logit = pi->infinite_values.pinf;
-            } else
-                if (logit == (-1 * INFINITY)) {
-                logit = pi->infinite_values.ninf;
-            }
-
-            if (wsize_index == 2) //0 && wnum == 161 && pi_i == 26)
-                printf("%f\n", logit);
-
-            window->wsize += 1;
-            window->wcount += 1;
-            metrics->logit += logit;
-            metrics->dn_bad_05 += value >= 0.5;
-            metrics->dn_bad_09 += value >= 0.9;
-            metrics->dn_bad_099 += value >= 0.99;
-            metrics->dn_bad_0999 += value >= 0.999;
-
-        }
-*/        
-        
-        // for (int w = 0; w < N_WSIZE; ++w) {
-        //     int nwindows = N_WINDOWS(pcap->nmessages, wsize[w]);
-        //     for (int k = 0; k < nwindows; ++k) {
-        //         printf("%d\t%d\n", k, debug[w][k].wcount);
-        //     }
-        // }
-
     }
+
+    for (int w0 = 0; w0 < N_WSIZE; ++w0) {
+        printf("wnum_max: %d / %d -- %d / %d\n", wnum_max[w0], pcapwindowings_bySize[w0].wsize, pcap->fnreq_max, N_WINDOWS(pcap->fnreq_max, pcapwindowings_bySize[w0].wsize));
+    }
+
 
     PQclear(res);
 }
@@ -455,7 +397,6 @@ void get_pcaps(PGconn* conn, PCAP** _pcaps, int* _N_PCAPS) {
 
         for(int r = 0; r < nrows; r++)
         {
-            int nmessages = 0;
             pcaps[r].id = atoi(PQgetvalue(res, r, 0));
             pcaps[r].infected = atoi(PQgetvalue(res, r, 1));
             pcaps[r].qr = atoi(PQgetvalue(res, r, 2));
@@ -463,11 +404,15 @@ void get_pcaps(PGconn* conn, PCAP** _pcaps, int* _N_PCAPS) {
             pcaps[r].r = atoi(PQgetvalue(res, r, 4));
 
             {
+                int nmessages = 0;
                 char sql[1000];
+                // sprintf(sql,
+                //     "SELECT COUNT(*) FROM MESSAGES_%ld AS M "
+                //     "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
+                //     "JOIN DN AS DN ON M.DN_ID=DN.ID",
+                //     pcaps[r].id);
                 sprintf(sql,
-                    "SELECT COUNT(*) FROM MESSAGES_%ld AS M "
-                    "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
-                    "JOIN DN AS DN ON M.DN_ID=DN.ID",
+                    "SELECT COUNT(*) FROM MESSAGES_%ld",
                     pcaps[r].id);
 
                 PGresult* res_nrows = PQexec(conn, sql);
@@ -477,8 +422,30 @@ void get_pcaps(PGconn* conn, PCAP** _pcaps, int* _N_PCAPS) {
                     nmessages = atoi(PQgetvalue(res_nrows, 0, 0));
                 }
                 PQclear(res_nrows);
+                pcaps[r].nmessages = nmessages;
             }
-            pcaps[r].nmessages = nmessages;
+
+            {
+                int fnreq_max = 0;
+                char sql[1000];
+                // sprintf(sql,
+                //     "SELECT COUNT(*) FROM MESSAGES_%ld AS M "
+                //     "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
+                //     "JOIN DN AS DN ON M.DN_ID=DN.ID",
+                //     pcaps[r].id);
+                sprintf(sql,
+                    "SELECT MAX(FN_REQ) FROM MESSAGES_%ld",
+                    pcaps[r].id);
+
+                PGresult* res_nrows = PQexec(conn, sql);
+                if (PQresultStatus(res_nrows) != PGRES_TUPLES_OK) {
+                    printf("No data\n");
+                } else {
+                    fnreq_max = atoi(PQgetvalue(res_nrows, 0, 0));
+                }
+                PQclear(res_nrows);
+                pcaps[r].fnreq_max = fnreq_max;
+            }
         }
     }
 
@@ -627,8 +594,6 @@ int main (int argc, char* argv[]) {
     int N_PCAPS;
     PCAP* pcaps;
 
-    // Overrall overralls[pcaps_number][N_PIS];
-
     {
         char __path[150];
         snprintf(__path, 150, "%s/pcaps.bin", root_dir);
@@ -646,19 +611,18 @@ int main (int argc, char* argv[]) {
             for (size_t i = 0; i < N_PCAPS; i++)
             {
                 printf(" id: %ld\n", pcaps[i].id);
-                printf("inf: %d\n", pcaps[i].infected);
-                printf("nms: %ld\n", pcaps[i].nmessages);
-                printf("  q: %ld\n", pcaps[i].q);
-                printf(" qr: %ld\n", pcaps[i].qr);
-                printf("  r: %ld\n---------------\n", pcaps[i].r);
+                // printf("inf: %d\n", pcaps[i].infected);
+                // printf("nms: %ld\n", pcaps[i].nmessages);
+                // printf("  q: %ld\n", pcaps[i].q);
+                // printf(" qr: %ld\n", pcaps[i].qr);
+                // printf("  r: %ld\n---------------\n", pcaps[i].r);
             }
-            
         }
     }
 
-    int debug_pcaps_number = 3;
+    int debug_pcaps_number = N_PCAPS;
 
-    PCAPWindowing windowings_all[debug_pcaps_number][N_WSIZE];
+    PCAPWindowing pcapwindowings_byPcap_byWSIZE[debug_pcaps_number][N_WSIZE];
 
     AllWindows all_windows[N_WSIZE];
     memset(all_windows, 0, N_WSIZE * sizeof(AllWindows));
@@ -666,7 +630,7 @@ int main (int argc, char* argv[]) {
         all_windows[w].wsize = wsize[w];
         for (int i = 0; i < debug_pcaps_number; ++i) {
             PCAP *pcap = &pcaps[i];
-            int n_windows =  N_WINDOWS(pcap->nmessages, wsize[w]);
+            int n_windows =  N_WINDOWS(pcap->fnreq_max, wsize[w]);
             all_windows[w].total += n_windows;
             if (pcap->infected) {
                 all_windows[w].total_positives += n_windows;
@@ -680,47 +644,54 @@ int main (int argc, char* argv[]) {
         all_windows[w].windows_positives = calloc(all_windows[w].total_positives, sizeof(Window*));
     }
 
+
+    const int N_METRICS = N_PIS / N_WSIZE; 
+    printf("    N_PIS\t%d\n", N_PIS);
+    printf("N_METRICS\t%d\n", N_METRICS);
+    
     AllWindowsCursor all_windows_cursor[N_WSIZE];
     memset(all_windows_cursor, 0, N_WSIZE * sizeof(AllWindowsCursor));
+
     for (int i = 0; i < debug_pcaps_number; ++i) {
         PCAP *pcap = &pcaps[i];
 
         printf("PCAP %ld having dga=%d and nrows=%ld\n", pcap->id, pcap->infected, pcap->nmessages);
 
-        PCAPWindowing *windowings = windowings_all[i];
+        PCAPWindowing *pcapwindowings_byWSIZE = pcapwindowings_byPcap_byWSIZE[i];
         for (int w = 0; w < N_WSIZE; ++w) {
-            int nwindows = N_WINDOWS(pcap->nmessages, wsize[w]);
+            int nwindows = N_WINDOWS(pcap->fnreq_max, wsize[w]);
 
-            windowings[w].pcap_id = pcap->id;
-            windowings[w].infected = pcap->infected;
-            windowings[w].nwindows = nwindows;
-            windowings[w].windows = calloc(nwindows, sizeof(Window));
-            windowings[w].wsize = wsize[w];
+            PCAPWindowing *pcapwindowing = &pcapwindowings_byWSIZE[w];
+
+            pcapwindowing->pcap_id = pcap->id;
+            pcapwindowing->infected = pcap->infected;
+            pcapwindowing->nwindows = nwindows;
+            pcapwindowing->windows = calloc(nwindows, sizeof(Window));
+            pcapwindowing->wsize = wsize[w];
 
             for (int r = 0; r < nwindows; r++) {
-                int nmetrics;
+                Window* window = &pcapwindowing->windows[r];
                 int pi_i;
 
-                all_windows[w].windows[all_windows_cursor[w].all++] = &windowings[w].windows[r];
+                all_windows[w].windows[all_windows_cursor[w].all++] = window;
                 if (pcap->infected) {
-                    all_windows[w].windows_positives[all_windows_cursor[w].positives++] = &windowings[w].windows[r];
+                    all_windows[w].windows_positives[all_windows_cursor[w].positives++] = window;
                 } else {
-                    all_windows[w].windows_negatives[all_windows_cursor[w].negatives++] = &windowings[w].windows[r];
+                    all_windows[w].windows_negatives[all_windows_cursor[w].negatives++] = window;
                 }
 
-                windowings[w].windows[r].wsize = wsize[w];
-                windowings[w].windows[r].wnum = r;
-                windowings[w].windows[r].infected = pcap->infected;
-                windowings[w].windows[r].pcap_id = pcap->id;
-
-                nmetrics = N_PIS / N_WSIZE;
-                windowings[w].windows[r].nmetrics = nmetrics;
-                windowings[w].windows[r].metrics = calloc(nmetrics, sizeof(WindowMetrics));
+                window->wsize = wsize[w];
+                
+                window->wnum = r;
+                window->infected = pcap->infected;
+                window->pcap_id = pcap->id;
+                window->nmetrics = N_METRICS;
+                window->metrics = calloc(N_METRICS, sizeof(WindowMetrics));
 
                 pi_i = 0;
                 for (int k = 0; k < N_PIS; ++k) {
                     if (pis[k].wsize == wsize[w]) {
-                        windowings[w].windows[r].metrics[pi_i].pi = &pis[k];
+                        window->metrics[pi_i].pi = &pis[k];
                         ++pi_i;
                     }
                 }
@@ -734,169 +705,20 @@ int main (int argc, char* argv[]) {
 
         */
 
-        procedure(conn, &pcaps[i], windowings, N_WSIZE);
+        int ret = read_PCAPWindowings(root_dir, pcap, pcapwindowings_byWSIZE, N_WSIZE);
 
-        {
-            char __path[150];
-            snprintf(__path, 150, "%s/windows.bin", root_dir);
+        if (!ret) {
+            procedure(conn, pcap, pcapwindowings_byWSIZE, N_WSIZE);
+            {
+                int ret = write_PCAPWindowings(root_dir, pcap, pcapwindowings_byWSIZE, N_WSIZE);
 
-            FILE *file = fopen(__path, "rb");
-
-            if (!file) {
-                perror("write-windows");
-                return 0;
+                if (!ret) printf("pcap write error\n");
             }
-
-            printf("Writing WINDOWS to %s...", __path);
-
-            fwrite(&N_WSIZE, sizeof(int), 1, file);
-            fwrite(&debug_pcaps_number, sizeof(int), 1, file);
-
-            for (int i = 0; i < debug_pcaps_number; ++i) {
-                PCAP *pcap = &pcaps[i];
-
-                printf("PCAP %ld having dga=%d and nrows=%ld\n", pcap->id, pcap->infected, pcap->nmessages);
-
-                fwrite(&windowings[0].pcap_id, sizeof(int64_t), 1, file);
-                fwrite(&windowings[0].infected, sizeof(int), 1, file);
-
-                PCAPWindowing *windowings_sizes = windowings_all[i];
-                for (int w = 0; w < N_WSIZE; ++w) {
-                    PCAPWindowing* windowings = &windowings_sizes[w];
-
-                    fwrite(&windowings->nwindows, sizeof(int), 1, file);
-                    fwrite(&windowings->wsize, sizeof(int), 1, file);
-
-                    for (int r = 0; r < windowings->nwindows; ++r) {
-                        Window* window = &windowings->windows[r];
-                        fwrite(&window->wnum, sizeof(int), 1, file);
-                        fwrite(&window->nmetrics, sizeof(int), 1, file);
-
-                        for (int m = 0; m < window->nmetrics; ++m) {
-                            fwrite(&window->metrics[m].dn_bad_05, sizeof(int), 1, file);
-                            fwrite(&window->metrics[m].dn_bad_09, sizeof(int), 1, file);
-                            fwrite(&window->metrics[m].dn_bad_099, sizeof(int), 1, file);
-                            fwrite(&window->metrics[m].dn_bad_0999, sizeof(int), 1, file);
-                            fwrite(&window->metrics[m].logit, sizeof(double), 1, file);
-                            fwrite(&window->metrics[m].wcount, sizeof(int), 1, file);
-
-                            if (w == 0 && r == 15 && m == 17) {
-                                printf("%d\n", window->metrics[m].dn_bad_05);
-                                printf("%d\n", window->metrics[m].dn_bad_09);
-                                printf("%d\n", window->metrics[m].dn_bad_099);
-                                printf("%d\n", window->metrics[m].dn_bad_0999);
-                                printf("%f\n", window->metrics[m].logit);
-                                printf("%d\n", window->metrics[m].wcount);
-                            }
-                        }
-                    }
-                }
-            }
-
-            fclose(file);
         }
-
-
-        {
-            PCAPWindowing windowings_pcaps_sizes[debug_pcaps_number][N_WSIZE];
-            char __path[150];
-            snprintf(__path, 150, "%s/windows.bin", root_dir);
-
-            FILE *file = fopen(__path, "rb");
-
-            if (!file) {
-                perror("write-windows");
-                return 0;
-            }
-
-            fread(&N_WSIZE, sizeof(int), 1, file);
-            fread(&debug_pcaps_number, sizeof(int), 1, file);
-
-            printf("           N_WSIZE: %d\n", N_WSIZE);
-            printf("debug_pcaps_number: %d\n", debug_pcaps_number);
-
-            for (int i = 0; i < debug_pcaps_number; ++i) {
-                PCAP *pcap = &pcaps[i];
-
-                printf("PCAP %ld having dga=%d and nrows=%ld\n", pcap->id, pcap->infected, pcap->nmessages);
-
-                int64_t pcap_id;
-                int infected;
-
-                {
-                    fread(&pcap_id, sizeof(int64_t), 1, file);
-                    fread(&infected, sizeof(int), 1, file);
-
-                    if (pcap_id != pcap->id) printf("ID mismatch %ld != %ld\n", pcap_id, pcap->id);
-                    if (infected != pcap->infected) printf("INFECTED mismatch %d != %d\n", infected, pcap->infected);
-                }
-
-                PCAPWindowing *windowings_sizes = windowings_pcaps_sizes[i];
-                for (int w = 0; w < N_WSIZE; ++w) {
-
-                    PCAPWindowing* windowings = &windowings_sizes[w];
-
-                    fread(&windowings->nwindows, sizeof(int), 1, file);
-                    fread(&windowings->wsize, sizeof(int), 1, file);
-
-                    windowings->windows = calloc(windowings->nwindows, sizeof(Window));
-
-                    for (int r = 0; r < windowings->nwindows; ++r) {
-                        Window* window = &windowings->windows[r];
-
-                        fread(&window->wnum, sizeof(int), 1, file);
-                        fread(&window->nmetrics, sizeof(int), 1, file);
-
-                        window->metrics = calloc(window->nmetrics, sizeof(WindowMetrics));
-
-                        for (int m = 0; m < window->nmetrics; ++m) {
-                            fread(&window->metrics[m].dn_bad_05, sizeof(int), 1, file);
-                            fread(&window->metrics[m].dn_bad_09, sizeof(int), 1, file);
-                            fread(&window->metrics[m].dn_bad_099, sizeof(int), 1, file);
-                            fread(&window->metrics[m].dn_bad_0999, sizeof(int), 1, file);
-                            fread(&window->metrics[m].logit, sizeof(double), 1, file);
-                            fread(&window->metrics[m].wcount, sizeof(int), 1, file);
-
-                            if (w == 0 && r == 15 && m == 17) {
-                                printf("%d\n", window->metrics[m].dn_bad_05);
-                                printf("%d\n", window->metrics[m].dn_bad_09);
-                                printf("%d\n", window->metrics[m].dn_bad_099);
-                                printf("%d\n", window->metrics[m].dn_bad_0999);
-                                printf("%f\n", window->metrics[m].logit);
-                                printf("%d\n", window->metrics[m].wcount);
-                            }
-                        }
-                    }
-                }
-            }
-
-            fclose(file);
-        }
-
-        exit(0);
-
-
-        // for (int pi_i = 0; pi_i < N_WSIZE; ++pi_i) {
-        //     Windowing *windowing = &windowings[pi_i];
-
-        //     for (int k = 0; k < windowing->nwindows; ++k) {
-        //         Window *window = &windowing->windows[k];
-
-        //         printf("%d,", windowing->wsize);
-        //         printf("%ld,", windowing->pcap_id);
-        //         printf("%d,", window->infected);
-        //         printf("%d,", window->wnum);
-        //         printf("%d,", window->wcount);
-        //         printf("[%d][%d]->", pi_i, k);
-
-        //         for (int z = 0; z < window->nmetrics; ++z) {
-        //             printf("|%d,%g", z, window->metrics[z].logit);
-        //         }
-
-        //         printf("|\n");
-        //     }
-        // }
     }
+
+
+    exit(0);
 
     const int N_TH = 5;
     for (int w = 0; w < N_WSIZE; ++w) {
@@ -912,7 +734,7 @@ int main (int argc, char* argv[]) {
         }
 
         for (int i = 0; i < debug_pcaps_number; i++) {
-            PCAPWindowing *_w = &windowings_all[i][w];
+            PCAPWindowing *_w = &pcapwindowings_byPcap_byWSIZE[i][w];
 
             char tmp[100];
             sprintf(tmp, "/tmp/pcap_%ld.bin", _w->pcap_id);
@@ -938,7 +760,7 @@ int main (int argc, char* argv[]) {
         }
 
         for (int i = 0; i < debug_pcaps_number; i++) {
-            PCAPWindowing *_w = &windowings_all[i][w];
+            PCAPWindowing *_w = &pcapwindowings_byPcap_byWSIZE[i][w];
 
             char tmp[100];
             sprintf(tmp, "/tmp/pcap_%ld.bin", _w->pcap_id);

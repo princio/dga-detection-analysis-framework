@@ -236,6 +236,7 @@ int write_PCAP_file(char path[], PCAP* pcaps, int N_PCAP) {
         FW(pcaps[i].id);
         FW(pcaps[i].infected);
         FW(pcaps[i].nmessages);
+        FW(pcaps[i].fnreq_max);
         FW(pcaps[i].q);
         FW(pcaps[i].qr);
         FW(pcaps[i].r);
@@ -244,6 +245,7 @@ int write_PCAP_file(char path[], PCAP* pcaps, int N_PCAP) {
             printf(" id: %ld\n", pcaps[i].id);
             printf("inf: %d\n", pcaps[i].infected);
             printf("nms: %ld\n", pcaps[i].nmessages);
+            printf("frm: %ld\n", pcaps[i].fnreq_max);
             printf("  q: %ld\n", pcaps[i].q);
             printf(" qr: %ld\n", pcaps[i].qr);
             printf("  r: %ld\n\n", pcaps[i].r);
@@ -274,6 +276,7 @@ int read_PCAP_file(char path[], PCAP** pcaps, int* N_PCAP) {
         FR(_pcaps[i].id);
         FR(_pcaps[i].infected);
         FR(_pcaps[i].nmessages);
+        FR(_pcaps[i].fnreq_max);
         FR(_pcaps[i].q);
         FR(_pcaps[i].qr);
         FR(_pcaps[i].r);
@@ -282,6 +285,7 @@ int read_PCAP_file(char path[], PCAP** pcaps, int* N_PCAP) {
             printf("\n id: %ld\n", _pcaps[i].id);
             printf("inf: %d\n", _pcaps[i].infected);
             printf("nms: %ld\n", _pcaps[i].nmessages);
+            printf("frm: %ld\n", _pcaps[i].fnreq_max);
             printf("  q: %ld\n", _pcaps[i].q);
             printf(" qr: %ld\n", _pcaps[i].qr);
             printf("  r: %ld\n\n", _pcaps[i].r);
@@ -289,4 +293,130 @@ int read_PCAP_file(char path[], PCAP** pcaps, int* N_PCAP) {
     }
 
     return fclose(file) == 0;
+}
+
+int write_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_sizes, int N_WSIZE) {
+    char path[strlen(rootpath) + 50];
+    sprintf(path, "%s/pcap_%ld.bin", rootpath, pcap->id);
+
+    FILE *file = fopen(path, "wb");
+
+    if (!file) {
+        perror("write-windows");
+        return 0;
+    }
+
+    printf("Writing WINDOWS to %s...\n", path);
+
+    FW(windowings_sizes[0].pcap_id);
+    FW(windowings_sizes[0].infected);
+
+    for (int w = 0; w < N_WSIZE; ++w) {
+        PCAPWindowing* windowing = &windowings_sizes[w];
+
+        FW(windowing->nwindows);
+        FW(windowing->wsize);
+
+        for (int r = 0; r < windowing->nwindows; ++r) {
+            Window* window = &windowing->windows[r];
+            FW(window->wnum);
+            FW(window->nmetrics);
+
+            int rr = (windowing->nwindows-8) > 0 ? (windowing->nwindows-8) : 0;
+            if (w == 0 && (r == rr || r == 0)) {
+                // printf("   r: %d\n", r);
+                // printf("wnum: %d\n", window->wnum);
+                // printf(" wsz: %d\n", window->wsize);
+            }
+
+            for (int m = 0; m < window->nmetrics; ++m) {
+                WindowMetrics* metrics = &window->metrics[m];
+
+                FW(metrics->dn_bad_05);
+                FW(metrics->dn_bad_09);
+                FW(metrics->dn_bad_099);
+                FW(metrics->dn_bad_0999);
+                FW(metrics->logit);
+                FW(metrics->wcount);
+
+                // printf("[%d]: %f [%d/%d]\n", r, metrics->logit, metrics->whitelistened, window->wsize);
+
+                if (w == 0 && (r == rr || r == 0) && m == 0) {
+                    // printf("  05: %d\n", metrics->dn_bad_05);
+                    // printf("  09: %d\n", metrics->dn_bad_09);
+                    // printf(" 099: %d\n", metrics->dn_bad_099);
+                    // printf("0999: %d\n", metrics->dn_bad_0999);
+                    // printf(" lgt: %f\n", metrics->logit);
+                    // printf("wcnt: %d\n\n", metrics->wcount);
+                }
+            }
+        }
+    }
+
+    fclose(file);
+
+    return 1;
+}
+
+
+int read_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_sizes, int N_WSIZE) {
+    char path[strlen(rootpath) + 50];
+    sprintf(path, "%s/pcap_%ld.bin", rootpath, pcap->id);
+
+    FILE *file = fopen(path, "rb");
+
+    if (!file) {
+        perror("read-windows");
+        return 0;
+    }
+
+    // printf("Reading WINDOWS to %s...\n", path);
+
+    FR(windowings_sizes[0].pcap_id);
+    FR(windowings_sizes[0].infected);
+
+    for (int w = 0; w < N_WSIZE; ++w) {
+        PCAPWindowing* windowing = &windowings_sizes[w];
+
+        FR(windowing->nwindows);
+        FR(windowing->wsize);
+
+        for (int r = 0; r < windowing->nwindows; ++r) {
+            Window* window = &windowing->windows[r];
+            FR(window->wnum);
+            FR(window->nmetrics);
+
+
+            int rr = (windowing->nwindows-8) > 0 ? (windowing->nwindows-8) : 0;
+            if (w == 0 && (r == rr || r == 0)) {
+                // printf("   r: %d\n", r);
+                // printf("wnum: %d\n", window->wnum);
+                // printf(" wsz: %d\n", window->wsize);
+            }
+
+            for (int m = 0; m < window->nmetrics; ++m) {
+                WindowMetrics* metrics = &window->metrics[m];
+
+                FR(metrics->dn_bad_05);
+                FR(metrics->dn_bad_09);
+                FR(metrics->dn_bad_099);
+                FR(metrics->dn_bad_0999);
+                FR(metrics->logit);
+                FR(metrics->wcount);
+
+                if (w == 0 && (r == rr || r == 0) && m == 0) {
+                    // printf("  05: %d\n", metrics->dn_bad_05);
+                    // printf("  09: %d\n", metrics->dn_bad_09);
+                    // printf(" 099: %d\n", metrics->dn_bad_099);
+                    // printf("0999: %d\n", metrics->dn_bad_0999);
+                    // printf(" lgt: %f\n", metrics->logit);
+                    // printf("wcnt: %d\n", metrics->wcount);
+                }
+            }
+        }
+    }
+    
+    fclose(file);
+
+    return 1;
 }
