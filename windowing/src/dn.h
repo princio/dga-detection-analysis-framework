@@ -1,20 +1,26 @@
+#ifndef __DN_H__
+#define __DN_H__
 
 #include <stdint.h>
+
+extern char WINDOWING_NAMES[3][10];
+
+extern char NN_NAMES[11][10];
 
 typedef struct Message
 {
     int64_t fn_req;
     double value;
     double logit;
-    int is_response;
-    int top10m;
-    int dyndns;
+    int32_t is_response;
+    int32_t top10m;
+    int32_t dyndns;
 } Message;
 
 typedef struct PCAP
 {
     int64_t id;
-    int infected;
+    int32_t infected;
     int64_t qr;
     int64_t q;
     int64_t r;
@@ -24,7 +30,7 @@ typedef struct PCAP
 
 typedef struct Whitelisting
 {
-    int rank;
+    int32_t rank;
     double value;
 } Whitelisting;
 
@@ -56,64 +62,44 @@ typedef struct LogitRange {
 typedef struct ConfusionMatrix {
     double th;
     
-    int tn;
-    int fp;
-    int fn;
-    int tp;
+    int32_t tn;
+    int32_t fp;
+    int32_t fn;
+    int32_t tp;
 } ConfusionMatrix;
 
 typedef struct Pi
 {
-    int id;
+    int32_t id;
     ConfusionMatrix *cm;
     LogitRange logit_range;
     Whitelisting whitelisting;
     WindowingType windowing;
     InfiniteValues infinite_values;
     NN nn;
-    int wsize;
+    int32_t wsize;
 } Pi;
-
-char WINDOWING_NAMES[3][10] = {
-    "QUERY",
-    "RESPONSE",
-    "BOTH"
-};
-
-char NN_NAMES[11][10] = {
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "ICANN",
-    "NONE",
-    "PRIVATE",
-    "TLD"
-};
 
 typedef struct WindowMetrics
 {
     Pi* pi;
     
-    int wcount;
+    int32_t wcount;
 
     double logit;
-    int dn_bad_05;
-    int dn_bad_09;
-    int dn_bad_099;
-    int dn_bad_0999;
+    int32_t dn_bad_05;
+    int32_t dn_bad_09;
+    int32_t dn_bad_099;
+    int32_t dn_bad_0999;
 } WindowMetrics;
 
 typedef struct Window
 {
-    int wsize;
-    int wnum;
-    int nmetrics;
-    int infected;
-    int pcap_id;
+    int32_t wsize;
+    int32_t wnum;
+    int32_t nmetrics;
+    int32_t infected;
+    int32_t pcap_id;
 
     WindowMetrics *metrics;
 } Window;
@@ -121,22 +107,22 @@ typedef struct Window
 typedef struct PCAPWindowing {
     int64_t pcap_id;
 
-    int infected;
-    int nwindows;
-    int wsize;
+    int32_t infected;
+    int32_t nwindows;
+    int32_t wsize;
     
     Window *windows;
 } PCAPWindowing;
 
 typedef struct WindowingTotals {
-    int total;
-    int positives;
-    int negatives;
+    int32_t total;
+    int32_t positives;
+    int32_t negatives;
 } WindowingTotals;
 
 typedef struct WindowingDataset3 {
     Window **windows;
-    int total;
+    int32_t total;
 } WindowingDataset3;
 
 typedef struct WindowingDataset2 {
@@ -155,15 +141,16 @@ typedef struct AllWindows {
     Window **windows;
     Window **windows_positives;
     Window **windows_negatives;
-    int wsize;
-    int total;
-    int total_positives;
-    int total_negatives;
+    int32_t wsize;
+    int32_t total;
+    int32_t total_positives;
+    int32_t total_negatives;
 } AllWindows;
 
 typedef struct  AllWindowsCursor {
-    int all;
-    int positives;
-    int negatives;
+    int32_t all;
+    int32_t positives;
+    int32_t negatives;
 } AllWindowsCursor;
 
+#endif
