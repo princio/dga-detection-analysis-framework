@@ -307,34 +307,7 @@ void procedure(char* root_dir, PGconn* conn, PCAP* pcap, PCAPWindowing pcapwindo
 
     ret = write_PCAPWindowings(root_dir, pcap, pcapwindowings_byWSIZE, N_WSIZE);
     if(!ret) {
-        printf("Writing PCAPWindowing for %d error\n", pcap->id);
-    }
-}
-
-int has_been_extracted(int n, int array[n], int dado) {
-    for (int k = 0; k < n; ++k) {
-        if (dado == array[k]) {
-            return 1;
-        }
-    }
-    return 0;
-}
-
-void extract(Window** windows, int n, Window* extracted[n]) {
-    int i;
-    int extractions[n];
-    memset(extractions, 0, sizeof(int) * n);
-
-    i = 0;
-    srand(time(NULL));
-    while (i < n) {
-        int dado = rand() % n;
-
-        if (has_been_extracted(extractions, i, dado)) continue;
-
-        extractions[i] = dado;
-        extracted[i] = windows[dado];
-        ++i;
+        printf("Writing PCAPWindowing for %ld error\n", pcap->id);
     }
 }
 
@@ -636,8 +609,11 @@ int main (int argc, char* argv[]) {
     int N_PIS;
     Pi* pis;
 
-    int N_PCAPS;
+    int n_pcaps_all;
+    int n_pcaps_dga01;
     PCAP* pcaps;
+    PCAP** pcaps_all;
+    PCAP** pcaps_dga01;
 
     int N_WSIZE = 3;
     int wsize[] = { 100, 500, 2500 };
@@ -648,19 +624,42 @@ int main (int argc, char* argv[]) {
 
     generate_parameters(root_dir, &pis, &N_PIS, wsize, N_WSIZE);
     
-    get_pcaps(root_dir, conn, &pcaps, &N_PCAPS);
+    get_pcaps(root_dir, conn, &pcaps, &n_pcaps_all);
+
+    pcaps_all = calloc(sizeof(PCAP*), n_pcaps_all);
+    n_pcaps_dga01 = 0;
+    for (int i = 0; i < n_pcaps_all; i++) {
+        pcaps_all[i] = &pcaps[i];
+        n_pcaps_dga01 += pcaps[i].infected != 1;
+    }
+
+    pcaps_dga01 = calloc(sizeof(PCAP*), n_pcaps_dga01);
+    {
+        int cursor = 0;
+        for (int i = 0; i < n_pcaps_all; i++) {
+            if (pcaps[i].infected != 1) {
+                pcaps_dga01[cursor++] = &pcaps[i];
+            }
+        }
+    }
+
+    printf("PCAP NOT-INFECTED AND INFECTED: %d\n", n_pcaps_all);
+    printf("PCAP NOT-INFECTED AND DGA: %d\n", n_pcaps_dga01);
+    
 
     /**
      *  ONLY FOR DEBUG
      */
+    int pcap_subset = 1;
+    PCAP** PCAPS = pcap_subset ? pcaps_dga01 : pcaps_all;
+    const int N_PCAPS = pcap_subset ? n_pcaps_dga01 : n_pcaps_all;
+
     debug_pcaps_number = N_PCAPS;
     /**
      *  
      */
 
     // qui abbiamo tutti i PCAP e tutti i parameter-set
-
-
 
     const int N_METRICS = N_PIS / N_WSIZE; 
     printf("    N_PIS\t%d\n", N_PIS);
@@ -676,7 +675,7 @@ int main (int argc, char* argv[]) {
     for (int w = 0; w < N_WSIZE; ++w) {
         all_windows[w].wsize = wsize[w];
         for (int i = 0; i < debug_pcaps_number; ++i) {
-            PCAP *pcap = &pcaps[i];
+            PCAP *pcap = PCAPS[i];
             int n_windows =  N_WINDOWS(pcap->fnreq_max, wsize[w]);
 
             all_windows[w].total += n_windows;
@@ -697,8 +696,8 @@ int main (int argc, char* argv[]) {
     AllWindowsCursor all_windows_cursor[N_WSIZE];
     memset(all_windows_cursor, 0, N_WSIZE * sizeof(AllWindowsCursor));
     for (int i = 0; i < debug_pcaps_number; ++i) {
-        PCAP *pcap = &pcaps[i];
-
+        PCAP *pcap = PCAPS[i];
+        
         printf("PCAP %ld having dga=%d and nrows=%ld\n", pcap->id, pcap->infected, pcap->nmessages);
 
         PCAPWindowing *pcapwindowings_byWSIZE = pcapwindowings_byPcap_byWSIZE[i];
@@ -755,10 +754,10 @@ int main (int argc, char* argv[]) {
     {
         FILE*fp = fopen("pcap.csv", "w");
         fprintf(fp, "wnum,pcap\n");
-        for (size_t p = 0; p < N_PCAPS; p++)
+        for (int p = 0; p < N_PCAPS; p++)
         {
             PCAPWindowing* pcapwindowing = &pcapwindowings_byPcap_byWSIZE[p][2];
-            for (size_t i = 0; i < pcapwindowing->nwindows; i++)
+            for (int i = 0; i < pcapwindowing->nwindows; i++)
             {
                 fprintf(fp, "%d,%d\n", pcapwindowing->windows[i].wnum, pcapwindowing->windows[i].pcap_id);
             }
@@ -770,7 +769,7 @@ int main (int argc, char* argv[]) {
         FILE*fp = fopen("allwindows.csv", "w");
         fprintf(fp, "wnum,pcap\n");
         AllWindows* all_windows_2500 = &all_windows[2];
-        for (size_t i = 0; i < all_windows_2500->total_positives; i++)
+        for (int i = 0; i < all_windows_2500->total_positives; i++)
         {
             fprintf(fp, "%d,%d\n", all_windows_2500->windows_positives[i]->wnum, all_windows_2500->windows_positives[i]->pcap_id);
         }
@@ -831,8 +830,6 @@ int main (int argc, char* argv[]) {
     // all_windows
     // total_pcaps_windows
 
-    double split_percentage = 0.1;
-
     // for (int w = 0; w < N_WSIZE; ++w) {
     //     AllWindows* aw = &all_windows[w];
 
@@ -848,126 +845,174 @@ int main (int argc, char* argv[]) {
     // }
 
 
-
-
-    for (int w = 2; w < N_WSIZE; ++w) {
-        printf("\n ---- WSIZE = %d ----\n\n", wsize[w]);
-
-        FILE* __fp = fopen("/tmp/fp.csv", "w");
-        for (size_t i = 0; i < all_windows[w].total_negatives; i++)
-        {
-            fprintf(__fp, "%d,%d\n", all_windows[w].windows_negatives[i]->wnum, all_windows[w].windows_negatives[i]->pcap_id);
-        }
-        fclose(__fp);
-
-        WindowingDataset wd;
-        int32_t tot_n = all_windows[w].total_negatives;
-        int32_t tot_p = all_windows[w].total_positives;
-
-        wd.train.n.number = floor(tot_n * split_percentage);
-        wd.train.n.windows = calloc(wd.train.n.number, sizeof(Window*));
-
-        wd.test.n.number = tot_n - wd.train.n.number;
-        wd.test.n.windows = calloc(wd.test.n.number, sizeof(Window*));
-
-        wd.train.p.number = floor(tot_p * split_percentage);
-        wd.train.p.windows = calloc(wd.train.p.number, sizeof(Window*));
-
-        wd.test.p.number = tot_p - wd.train.p.number;
-        wd.test.p.windows = calloc(wd.test.p.number, sizeof(Window*));
-
-        printf("total\n");
-        printf("  n:\t%d\n", tot_n);
-        printf("  p:\t%d\n", tot_p);
-        printf("train\n");
-        printf("  n:\t%d\n", wd.train.n.number);
-        printf("  p:\t%d\n", wd.train.p.number);
-        printf("test\n");
-        printf("  n:\t%d\n", wd.test.n.number);
-        printf("  p:\t%d\n", wd.test.p.number);
-
-        extract_wd(all_windows[w].windows_negatives, &wd.train.n, &wd.test.n);
-        extract_wd(all_windows[w].windows_positives, &wd.train.p, &wd.test.p);
-
-        // for (size_t i = 0; i < wd.test.p.number; i++)
-        // {
-        //     printf("%d\t", i);
-        //     if (wd.test.p.windows[i]) {
-        //         printf("%d\t%d\n", wd.test.p.windows[i]->wnum, wd.test.p.windows[i]->pcap_id);
-        //     } else {
-        //         printf("null\n");
-        //     }
-        // }
+    char exp_name[100];
+    char exp_dir[200];
+    {
+        time_t t = time(NULL);
+        struct tm tm = *localtime(&t);
+        sprintf(exp_name, "test_%s_%d%02d%02d_%02d%02d%02d", pcap_subset ? "dga02" : "all", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
         
-
-
-        printf("\n ---- ---- ----\n\n");
-
-
-        int nmetrics = wd.train.n.windows[0]->nmetrics;
-        double logit_max[nmetrics];
-        for (size_t m = 0; m < nmetrics; m++) logit_max[m] = - DBL_MAX;
-
-        for (size_t i = 0; i < wd.train.n.number; i++)
-        {
-            Window* window = wd.train.n.windows[i];
-
-            for (size_t m = 0; m < nmetrics; m++)
-            {
-                double _l = window->metrics[m].logit;
-                if (logit_max[m] < _l) logit_max[m] = _l;
-            }
+        sprintf(exp_dir, "%s/%s", root_dir, exp_name);
+        struct stat st = {0};
+        if (stat(exp_dir, &st) == -1) {
+            mkdir(exp_dir, 0700);
         }
-
-        // for (size_t m = 0; m < nmetrics; m++)
-        // {
-        //     printf("%f\n", logit_max[m]);
-        // }
-
-        int tn[nmetrics];
-        int fp[nmetrics];
-        memset(tn, 0, sizeof(int) * nmetrics);
-        memset(fp, 0, sizeof(int) * nmetrics);
-        for (size_t i = 0; i < wd.test.n.number; i++)
-        {
-            Window* window = wd.test.n.windows[i];
-
-            for (size_t m = 0; m < nmetrics; m++)
-            {
-                if (window->metrics[m].logit >= logit_max[m]) ++fp[m];
-                else ++tn[m];
-            }
-        }
-
-        int tp[nmetrics];
-        int fn[nmetrics];
-        memset(tp, 0, sizeof(int) * nmetrics);
-        memset(fn, 0, sizeof(int) * nmetrics);
-        for (size_t i = 0; i < wd.test.p.number; i++)
-        {
-            Window* window = wd.test.p.windows[i];
-
-            for (size_t m = 0; m < nmetrics; m++)
-            {
-                if (window->metrics[m].logit < logit_max[m]) ++fn[m];
-                else ++tp[m];
-            }
-        }
-
-        int avg[4];
-        for (size_t m = 0; m < nmetrics; m++) {
-            printf("%d %d %d %d\n", tn[m], fp[m], fn[m], tp[m]);
-            avg[0] += tn[m];
-            avg[1] += fp[m];
-            avg[2] += fn[m];
-            avg[3] += tp[m];
-        }
-
-        printf("\n%f %f %f %f\n", ((double)avg[0]) / nmetrics, ((double)avg[1]) / nmetrics, ((double)avg[2]) / nmetrics, ((double)avg[3]) / nmetrics);
-
-        break;
     }
-    
+
+
+    char path[strlen(exp_dir) + 50];
+    sprintf(path, "%s/test.csv", exp_dir);
+    FILE* fp = fopen(path, "w");
+
+    int KFOLD = 50;
+    double FPR[N_WSIZE][KFOLD];
+    double TPR[N_WSIZE][KFOLD];
+    memset(FPR, 0, sizeof(double) * KFOLD * N_WSIZE);
+    memset(TPR, 0, sizeof(double) * KFOLD * N_WSIZE);
+
+    double split_percentages[10] = { 0.01, 0.05, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7 };
+    for (int p = 0; p < 10; ++p) {
+        double split_percentage = split_percentages[p];
+        for (int k = 0; k < KFOLD; ++k) {
+            for (int w = 0; w < N_WSIZE; ++w) {
+                // printf("\n ---- WSIZE = %d ----\n\n", wsize[w]);
+
+                WindowingDataset wd;
+                int32_t tot_n = all_windows[w].total_negatives;
+                int32_t tot_p = all_windows[w].total_positives;
+
+                wd.train.n.number = floor(tot_n * split_percentage);
+                wd.train.n.windows = calloc(wd.train.n.number, sizeof(Window*));
+
+                wd.test.n.number = tot_n - wd.train.n.number;
+                wd.test.n.windows = calloc(wd.test.n.number, sizeof(Window*));
+
+                wd.train.p.number = floor(tot_p * split_percentage);
+                wd.train.p.windows = calloc(wd.train.p.number, sizeof(Window*));
+
+                wd.test.p.number = tot_p - wd.train.p.number;
+                wd.test.p.windows = calloc(wd.test.p.number, sizeof(Window*));
+
+                // printf("total\n");
+                // printf("  n:\t%d\n", tot_n);
+                // printf("  p:\t%d\n", tot_p);
+                // printf("train\n");
+                // printf("  n:\t%d\n", wd.train.n.number);
+                // printf("  p:\t%d\n", wd.train.p.number);
+                // printf("test\n");
+                // printf("  n:\t%d\n", wd.test.n.number);
+                // printf("  p:\t%d\n", wd.test.p.number);
+
+                extract_wd(all_windows[w].windows_negatives, &wd.train.n, &wd.test.n);
+                extract_wd(all_windows[w].windows_positives, &wd.train.p, &wd.test.p);
+
+                // for (size_t i = 0; i < wd.test.p.number; i++)
+                // {
+                //     printf("%d\t", i);
+                //     if (wd.test.p.windows[i]) {
+                //         printf("%d\t%d\n", wd.test.p.windows[i]->wnum, wd.test.p.windows[i]->pcap_id);
+                //     } else {
+                //         printf("null\n");
+                //     }
+                // }
+                
+                int nmetrics = wd.train.n.windows[0]->nmetrics;
+                double logit_max[nmetrics];
+                for (int m = 0; m < nmetrics; m++) logit_max[m] = - DBL_MAX;
+
+                for (int i = 0; i < wd.train.n.number; i++)
+                {
+                    Window* window = wd.train.n.windows[i];
+
+                    for (int m = 0; m < nmetrics; m++)
+                    {
+                        double _l = window->metrics[m].logit;
+                        if (logit_max[m] < _l) logit_max[m] = _l;
+                    }
+                }
+
+                // for (size_t m = 0; m < nmetrics; m++)
+                // {
+                //     printf("%f\n", logit_max[m]);
+                // }
+
+                int tn[nmetrics];
+                int fp[nmetrics];
+                memset(tn, 0, sizeof(int) * nmetrics);
+                memset(fp, 0, sizeof(int) * nmetrics);
+                for (int i = 0; i < wd.test.n.number; i++)
+                {
+                    Window* window = wd.test.n.windows[i];
+
+                    for (int m = 0; m < nmetrics; m++)
+                    {
+                        if (window->metrics[m].logit >= logit_max[m]) ++fp[m];
+                        else ++tn[m];
+                    }
+                }
+
+                int tp[nmetrics];
+                int fn[nmetrics];
+                memset(tp, 0, sizeof(int) * nmetrics);
+                memset(fn, 0, sizeof(int) * nmetrics);
+                for (int i = 0; i < wd.test.p.number; i++)
+                {
+                    Window* window = wd.test.p.windows[i];
+
+                    for (int m = 0; m < nmetrics; m++)
+                    {
+                        if (window->metrics[m].logit < logit_max[m]) ++fn[m];
+                        else ++tp[m];
+                    }
+                }
+
+                double avg[4] = { 0, 0, 0, 0 };
+                for (int m = 0; m < nmetrics; m++) {
+                    // printf("%d %d %d %d\t", tn[m], fp[m], fn[m], tp[m]);
+                    // printf("%f %f %f %f\n", avg[0], avg[1], avg[2], avg[3]);
+
+                    avg[0] += tn[m];
+                    avg[1] += fp[m];
+                    avg[2] += fn[m];
+                    avg[3] += tp[m];
+                }
+
+                avg[0] /= nmetrics;
+                avg[1] /= nmetrics;
+                avg[2] /= nmetrics;
+                avg[3] /= nmetrics;
+
+                // printf("-- %f %f %f %f\n", avg[0], avg[1], avg[2], avg[3]);
+
+                int nn = tn[0] + fp[0];
+                int pp = tp[0] + fn[0];
+
+                FPR[w][k] = avg[1] / nn;
+                TPR[w][k] = avg[3] / pp;
+
+
+                // printf("results\n");
+                // printf("  FPR:\t%1.3f\n", FPR[w][k]);
+                // printf("  TPR:\t%1.3f\n", TPR[w][k]);
+                // printf(
+                //     "\n%f %f %f %f\n",
+                //     ((double)avg[0] / n) / nmetrics,
+                //     ((double)avg[1] / n) / nmetrics,
+                //     ((double)avg[2] / p) / nmetrics,
+                //     ((double)avg[3] / p) / nmetrics
+                // );
+
+                // printf("\n ---- ---- ----\n\n");
+            }
+        }
+
+        for (int k = 0; k < KFOLD; ++k) {
+            for (int w = 0; w < N_WSIZE; ++w) {
+                fprintf(fp, "%2.2f,%3d,%5d,%8.3f,%8.3f\n", split_percentage, k, wsize[w], FPR[w][k], TPR[w][k]);
+            }
+        }
+    }
+    fclose(fp);
 
     // printf("%5s,%5s,%8d", "", "", overrall.nwindows);
     // printf("%8d,%8d,%8d,%8d,", overrall.nw_infected_05, overrall.nw_infected_09, overrall.nw_infected_099, overrall.nw_infected_0999);
