@@ -7,8 +7,7 @@ extern char WINDOWING_NAMES[3][10];
 
 extern char NN_NAMES[11][10];
 
-typedef struct Message
-{
+typedef struct Message {
     int64_t fn_req;
     double value;
     double logit;
@@ -17,8 +16,7 @@ typedef struct Message
     int32_t dyndns;
 } Message;
 
-typedef struct PCAP
-{
+typedef struct PCAP {
     int64_t id;
     int32_t infected;
     int64_t qr;
@@ -29,14 +27,12 @@ typedef struct PCAP
 } PCAP;
 
 
-typedef struct Whitelisting
-{
+typedef struct Whitelisting {
     int32_t rank;
     double value;
 } Whitelisting;
 
-typedef enum WindowingType
-{
+typedef enum WindowingType {
     WINDOWING_Q,
     WINDOWING_R,
     WINDOWING_QR
@@ -49,8 +45,7 @@ typedef enum NN {
     NN_TLD
 } NN;
 
-typedef struct InfiniteValues
-{
+typedef struct InfiniteValues {
     double ninf;
     double pinf;
 } InfiniteValues;
@@ -69,8 +64,7 @@ typedef struct ConfusionMatrix {
     int32_t tp;
 } ConfusionMatrix;
 
-typedef struct Pi
-{
+typedef struct Pi {
     int32_t id;
     ConfusionMatrix *cm;
     LogitRange logit_range;
@@ -81,8 +75,7 @@ typedef struct Pi
     int32_t wsize;
 } Pi;
 
-typedef struct WindowMetrics
-{
+typedef struct WindowMetrics {
     Pi* pi;
     
     int32_t wcount;
@@ -95,8 +88,7 @@ typedef struct WindowMetrics
     int32_t dn_bad_0999;
 } WindowMetrics;
 
-typedef struct Window
-{
+typedef struct Window {
     int32_t wsize;
     int32_t wnum;
     int32_t nmetrics;
@@ -124,7 +116,7 @@ typedef struct WindowingTotals {
 
 typedef struct WindowingDataset3 {
     Window **windows;
-    int32_t total;
+    int32_t number;
 } WindowingDataset3;
 
 typedef struct WindowingDataset2 {
@@ -137,7 +129,6 @@ typedef struct WindowingDataset {
     WindowingDataset2 test;
     float split_percentage;
 } WindowingDataset;
-
 
 typedef struct AllWindows {
     Window **windows;
