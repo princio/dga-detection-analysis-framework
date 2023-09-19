@@ -39,6 +39,7 @@
 
 #define N_WINDOWS(FNREQ_MAX, B) ((FNREQ_MAX + 1) / B + ((FNREQ_MAX + 1) % B > 0)) // +1 because it starts from 0
 
+
 char WINDOWING_NAMES[3][10] = {
     "QUERY",
     "RESPONSE",
@@ -598,7 +599,7 @@ int main (int argc, char* argv[]) {
     // exit(0);
 
     char root_dir[100];
-    sprintf(root_dir, "/home/princio/Desktop/exps/exp_230904");
+    sprintf(root_dir, "/home/princio/Desktop/exps/exp_230918");
     struct stat st = {0};
     if (stat(root_dir, &st) == -1) {
         mkdir(root_dir, 0700);
@@ -615,8 +616,8 @@ int main (int argc, char* argv[]) {
     PCAP** pcaps_all;
     PCAP** pcaps_dga01;
 
-    int N_WSIZE = 3;
-    int wsize[] = { 100, 500, 2500 };
+    int N_WSIZE = 5;
+    int wsize[] = { 10, 50, 100, 500, 2500 };
 
     int debug_pcaps_number;
 
@@ -733,13 +734,33 @@ int main (int argc, char* argv[]) {
 
                 pi_i = 0;
                 for (int k = 0; k < N_PIS; ++k) {
-                    if (pis[k].wsize == wsize[w]) {
+                    if (pis[k].wsize == wsize[w] ) {
+                        window->metrics[pi_i].pi_id = pis[k].id;
                         window->metrics[pi_i].pi = &pis[k];
                         ++pi_i;
+
+                        Pi* pi = &pis[k];
+
+                        if ((i + w + r) == 0 && k % N_WSIZE == 0) {
+                            printf("%10d\t", pi_i);
+                            printf("%10d\t", pi->wsize);
+                            printf("(%10d, %10.5f)\t", pi->whitelisting.rank, pi->whitelisting.value);
+                            printf("%10d\t", pi->nn);
+                            printf("%10d\n", pi->windowing);
+                        }
                     }
+                    // if ((i + w + r) == 0 && k % N_WSIZE == 0) {
+                    //     Pi* pi = &pis[k];
+                    //     printf("%10d\t", k / N_WSIZE);
+                    //     printf("%10d\t", pi->wsize);
+                    //     printf("(%10d, %10.5f)\t", pi->whitelisting.rank, pi->whitelisting.value);
+                    //     printf("%10s\t", NN_NAMES[pi->nn]);
+                    //     printf("%10s\t\n", WINDOWING_NAMES[pi->windowing]);
+                    // }
                 }
             }
         }
+        printf(" Window size, Whitelisting, NN, Windowing\n");
 
         /*
         
@@ -776,75 +797,6 @@ int main (int argc, char* argv[]) {
         fclose(fp);
     }
 
-    // const int N_TH = 5;
-    // for (int w = 0; w < N_WSIZE; ++w) {
-    //     int tp[N_TH];
-    //     int tn[N_TH];
-    //     int fp[N_TH];
-    //     int fn[N_TH];
-    //     for (int t = 0; t < N_TH; t++) {
-    //         tp[t] = 0;
-    //         tn[t] = 0;
-    //         fp[t] = 0;
-    //         fn[t] = 0;
-    //     }
-
-    //     for (int i = 0; i < debug_pcaps_number; i++) {
-    //         PCAPWindowing *pcapwindowing = &pcapwindowings_byPcap_byWSIZE[i][w];
-
-    //         int nmetrics = pcapwindowing->windows[0].nmetrics;
-
-    //         for (int z = 0; z < pcapwindowing->nwindows; z++)
-    //         {
-    //             Window *window = &pcapwindowing->windows[z];
-    //             for (int p = 0; p < window->nmetrics; p++) {
-    //                 double min = window->metrics[p].pi->logit_range.max;
-    //                 double max = window->metrics[p].pi->logit_range.min;
-    //                 double offset = 0.2 * (max - min);
-    //                 double width = 0.2 * (max - min);
-
-    //                 for (int t = 0; t < N_TH; t++) {
-    //                     double th = min + offset + width * (t * ((double) 1)/N_TH);
-
-    //                     int pred_inf = window->metrics[p].logit > th;
-
-    //                     tp[t] += window->infected && pred_inf;
-    //                     fp[t] += !window->infected && pred_inf;
-    //                     fn[t] += window->infected && !pred_inf;
-    //                     tn[t] += !window->infected && !pred_inf;
-
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     printf("\n");
-    //     for (int t = 0; t < N_TH; t++) {
-    //         int n = tn[t] + fp[t];
-    //         int p = tp[t] + fn[t];
-    //         printf("%4.2f\t%4.2f\t%4.2f\t%4.2f\t%4.2f\n", (t * ((double)1)/N_TH), ((double)tn[t]) / n, ((double)fp[t]) / n, ((double)fn[t]) / p, ((double)tp[t]) / p);
-    //     }
-    //     printf("\n\n");
-    // }
-
-
-    // all_windows
-    // total_pcaps_windows
-
-    // for (int w = 0; w < N_WSIZE; ++w) {
-    //     AllWindows* aw = &all_windows[w];
-
-    //     int n = floor(aw->total_negatives * split_percentage);
-
-    //     Window* extracted[n];
-
-    //     extract(aw->windows_negatives, n, extracted);
-
-    //     for (int i = 0; i < n; ++i) {
-    //         printf("%5d\t%d\t%f\n", extracted[i]->pcap_id, extracted[i]->infected, extracted[i]->metrics->logit);
-    //     }
-    // }
-
-
     char exp_name[100];
     char exp_dir[200];
     {
@@ -865,13 +817,33 @@ int main (int argc, char* argv[]) {
     FILE* fp = fopen(path, "w");
 
     int KFOLD = 50;
+    int N_SPLITS = 10;
     double FPR[N_WSIZE][KFOLD];
     double TPR[N_WSIZE][KFOLD];
     memset(FPR, 0, sizeof(double) * KFOLD * N_WSIZE);
     memset(TPR, 0, sizeof(double) * KFOLD * N_WSIZE);
+    
+    double AVG_FPR[N_SPLITS][N_WSIZE];
+    double AVG_TPR[N_SPLITS][N_WSIZE];
+    memset(AVG_FPR, 0, sizeof(double) * N_SPLITS * N_WSIZE);
+    memset(AVG_TPR, 0, sizeof(double) * N_SPLITS * N_WSIZE);
+
+    double AVG_FPR_PER_METRIC[N_SPLITS][N_WSIZE][N_METRICS];
+    double AVG_TPR_PER_METRIC[N_SPLITS][N_WSIZE][N_METRICS];
+    memset(AVG_FPR_PER_METRIC, 0, sizeof(double) * N_SPLITS * N_WSIZE * N_METRICS);
+    memset(AVG_TPR_PER_METRIC, 0, sizeof(double) * N_SPLITS * N_WSIZE * N_METRICS);
 
     double split_percentages[10] = { 0.01, 0.05, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7 };
-    for (int p = 0; p < 10; ++p) {
+    int split_nwindows[N_SPLITS][3];
+
+    memset(split_nwindows, 0, N_SPLITS * 3 * sizeof(int));
+
+    printf("split");
+    for (int w = 0; w < N_WSIZE; ++w) {
+        printf("\t%18d", wsize[w]);
+    }
+    printf("\n");
+    for (int p = 0; p < N_SPLITS; ++p) {
         double split_percentage = split_percentages[p];
         for (int k = 0; k < KFOLD; ++k) {
             for (int w = 0; w < N_WSIZE; ++w) {
@@ -893,28 +865,11 @@ int main (int argc, char* argv[]) {
                 wd.test.p.number = tot_p - wd.train.p.number;
                 wd.test.p.windows = calloc(wd.test.p.number, sizeof(Window*));
 
-                // printf("total\n");
-                // printf("  n:\t%d\n", tot_n);
-                // printf("  p:\t%d\n", tot_p);
-                // printf("train\n");
-                // printf("  n:\t%d\n", wd.train.n.number);
-                // printf("  p:\t%d\n", wd.train.p.number);
-                // printf("test\n");
-                // printf("  n:\t%d\n", wd.test.n.number);
-                // printf("  p:\t%d\n", wd.test.p.number);
+                split_nwindows[p][w] = wd.train.n.number;
 
                 extract_wd(all_windows[w].windows_negatives, &wd.train.n, &wd.test.n);
                 extract_wd(all_windows[w].windows_positives, &wd.train.p, &wd.test.p);
 
-                // for (size_t i = 0; i < wd.test.p.number; i++)
-                // {
-                //     printf("%d\t", i);
-                //     if (wd.test.p.windows[i]) {
-                //         printf("%d\t%d\n", wd.test.p.windows[i]->wnum, wd.test.p.windows[i]->pcap_id);
-                //     } else {
-                //         printf("null\n");
-                //     }
-                // }
                 
                 int nmetrics = wd.train.n.windows[0]->nmetrics;
                 double logit_max[nmetrics];
@@ -928,53 +883,58 @@ int main (int argc, char* argv[]) {
                     {
                         double _l = window->metrics[m].logit;
                         if (logit_max[m] < _l) logit_max[m] = _l;
+
+                        if (p == 0 && i == 0) {
+                            Pi* pi = window->metrics[m].pi;
+                            printf("%10d\t", m);
+                            printf("%10d\t", pi->wsize);
+                            printf("(%10d, %10.5f)\t", pi->whitelisting.rank, pi->whitelisting.value);
+                            printf("%10d\t", pi->nn);
+                            printf("%10d\n", pi->windowing);
+                            // printf("%10s\t", NN_NAMES[pi->nn]);
+                            // printf("%10s\n", WINDOWING_NAMES[pi->windowing]);
+                        }
                     }
                 }
 
-                // for (size_t m = 0; m < nmetrics; m++)
-                // {
-                //     printf("%f\n", logit_max[m]);
-                // }
 
-                int tn[nmetrics];
-                int fp[nmetrics];
-                memset(tn, 0, sizeof(int) * nmetrics);
-                memset(fp, 0, sizeof(int) * nmetrics);
+                int cm[nmetrics][4];
+                memset(cm, 0, sizeof(int) * nmetrics * 4);
                 for (int i = 0; i < wd.test.n.number; i++)
                 {
                     Window* window = wd.test.n.windows[i];
 
                     for (int m = 0; m < nmetrics; m++)
                     {
-                        if (window->metrics[m].logit >= logit_max[m]) ++fp[m];
-                        else ++tn[m];
+                        if (window->metrics[m].logit >= logit_max[m]) ++cm[m][1];
+                        else ++cm[m][0];
                     }
                 }
 
-                int tp[nmetrics];
-                int fn[nmetrics];
-                memset(tp, 0, sizeof(int) * nmetrics);
-                memset(fn, 0, sizeof(int) * nmetrics);
                 for (int i = 0; i < wd.test.p.number; i++)
                 {
                     Window* window = wd.test.p.windows[i];
 
                     for (int m = 0; m < nmetrics; m++)
                     {
-                        if (window->metrics[m].logit < logit_max[m]) ++fn[m];
-                        else ++tp[m];
+                        if (window->metrics[m].logit < logit_max[m]) ++cm[m][2];
+                        else ++cm[m][3];
                     }
                 }
 
                 double avg[4] = { 0, 0, 0, 0 };
+                double fpr_avg_per_metric[N_PIS];
+                double tpr_avg_per_metric[N_PIS];
+                memset(fpr_avg_per_metric, 0, sizeof(double) * N_PIS);
+                memset(tpr_avg_per_metric, 0, sizeof(double) * N_PIS);
                 for (int m = 0; m < nmetrics; m++) {
-                    // printf("%d %d %d %d\t", tn[m], fp[m], fn[m], tp[m]);
-                    // printf("%f %f %f %f\n", avg[0], avg[1], avg[2], avg[3]);
-
-                    avg[0] += tn[m];
-                    avg[1] += fp[m];
-                    avg[2] += fn[m];
-                    avg[3] += tp[m];
+                    fpr_avg_per_metric[m] = cm[m][1];
+                    tpr_avg_per_metric[m] = cm[m][3];
+                    
+                    avg[0] += cm[m][0];
+                    avg[1] += cm[m][1];
+                    avg[2] += cm[m][2];
+                    avg[3] += cm[m][3];
                 }
 
                 avg[0] /= nmetrics;
@@ -982,37 +942,57 @@ int main (int argc, char* argv[]) {
                 avg[2] /= nmetrics;
                 avg[3] /= nmetrics;
 
-                // printf("-- %f %f %f %f\n", avg[0], avg[1], avg[2], avg[3]);
 
-                int nn = tn[0] + fp[0];
-                int pp = tp[0] + fn[0];
+                int nn = cm[0][0] + cm[0][1];
+                int pp = cm[0][2] + cm[0][3];
 
                 FPR[w][k] = avg[1] / nn;
                 TPR[w][k] = avg[3] / pp;
 
+                AVG_FPR[p][w] += avg[1] / nn;
+                AVG_TPR[p][w] += avg[3] / pp;
 
-                // printf("results\n");
-                // printf("  FPR:\t%1.3f\n", FPR[w][k]);
-                // printf("  TPR:\t%1.3f\n", TPR[w][k]);
-                // printf(
-                //     "\n%f %f %f %f\n",
-                //     ((double)avg[0] / n) / nmetrics,
-                //     ((double)avg[1] / n) / nmetrics,
-                //     ((double)avg[2] / p) / nmetrics,
-                //     ((double)avg[3] / p) / nmetrics
-                // );
-
-                // printf("\n ---- ---- ----\n\n");
+                for (int m = 0; m < nmetrics; m++) {
+                    AVG_FPR_PER_METRIC[p][w][m] += (fpr_avg_per_metric[m] / nn);
+                    AVG_TPR_PER_METRIC[p][w][m] += (tpr_avg_per_metric[m] / pp);
+                }
             }
         }
 
         for (int k = 0; k < KFOLD; ++k) {
             for (int w = 0; w < N_WSIZE; ++w) {
                 fprintf(fp, "%2.2f,%3d,%5d,%8.3f,%8.3f\n", split_percentage, k, wsize[w], FPR[w][k], TPR[w][k]);
+                // AVG_FPR[p][w] += FPR[w][k];
+                // AVG_TPR[p][w] += TPR[w][k];
+            }
+        }
+        printf("%4.2f", split_percentage);
+        for (int w = 0; w < N_WSIZE; ++w) {
+            printf("\t%6d\t", split_nwindows[p][w]);
+            printf("%6.4f/%6.4f", AVG_FPR[p][w] * 100 / KFOLD, AVG_TPR[p][w] * 100 / KFOLD);
+        }
+        printf("\n");
+    }
+
+    fclose(fp);
+
+
+    for (int p = 0; p < N_SPLITS; ++p) {
+        double split_percentage = split_percentages[p];
+        printf("\n%5.2f\n", split_percentage);
+        for (int w = 0; w < N_WSIZE; ++w) {
+            printf("%10d\n", wsize[w]);
+            for (int m = 0; m < N_METRICS; ++m) {
+                Pi* pi = &pis[m * N_WSIZE + w];
+                printf("%10d\t", m / N_WSIZE);
+                printf("%10d\t", pi->wsize);
+                printf("(%10d, %10.5f)\t", pi->whitelisting.rank, pi->whitelisting.value);
+                printf("%10s\t", NN_NAMES[pi->nn]);
+                printf("%10s\t", WINDOWING_NAMES[pi->windowing]);
+                printf("%7.4f/%7.4f\n", AVG_FPR_PER_METRIC[p][w][m] * 100 / KFOLD, AVG_TPR_PER_METRIC[p][w][m] * 100 / KFOLD);
             }
         }
     }
-    fclose(fp);
 
     // printf("%5s,%5s,%8d", "", "", overrall.nwindows);
     // printf("%8d,%8d,%8d,%8d,", overrall.nw_infected_05, overrall.nw_infected_09, overrall.nw_infected_099, overrall.nw_infected_0999);

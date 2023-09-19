@@ -203,14 +203,14 @@ int read_Pi_file(char path[], Pi** pis, int* N_PIS) {
         FR(_pis[i].wsize);
         FR(_pis[i].id);
 
-        if (i == 177) {
-            printf("read 177\n");
-            printf("inf: %f\t%f\n", _pis[i].infinite_values.ninf, _pis[i].infinite_values.pinf);
-            printf(" nn: %d\n",_pis[i].nn);
-            printf("wht: %d\t%f\n", _pis[i].whitelisting.rank, _pis[i].whitelisting.value);
-            printf("win: %d\n", _pis[i].windowing);
-            printf(" ws: %d\n", _pis[i].wsize);
-            printf(" id: %d\n\n", _pis[i].id);
+        if (1 || i == 177) {
+            Pi* pi = &_pis[i];
+
+            printf("%10d\t", i);
+            printf("%10d\t", pi->wsize);
+            printf("(%10d, %10.5f)\t", pi->whitelisting.rank, pi->whitelisting.value);
+            printf("%10d\t", pi->nn);
+            printf("%10d\n", pi->windowing);
         }
     }
 
@@ -332,6 +332,7 @@ int write_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_s
             for (int m = 0; m < window->nmetrics; ++m) {
                 WindowMetrics* metrics = &window->metrics[m];
 
+                FW(metrics->pi_id);
                 FW(metrics->dn_bad_05);
                 FW(metrics->dn_bad_09);
                 FW(metrics->dn_bad_099);
@@ -397,6 +398,7 @@ int read_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_si
             for (int m = 0; m < window->nmetrics; ++m) {
                 WindowMetrics* metrics = &window->metrics[m];
 
+                FR(metrics->pi_id);
                 FR(metrics->dn_bad_05);
                 FR(metrics->dn_bad_09);
                 FR(metrics->dn_bad_099);

@@ -77,6 +77,7 @@ typedef struct Pi {
 
 typedef struct WindowMetrics {
     Pi* pi;
+    int pi_id;
     
     int32_t wcount;
 
