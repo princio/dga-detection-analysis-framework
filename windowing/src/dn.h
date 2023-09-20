@@ -15,6 +15,7 @@ extern char WINDOWING_NAMES[3][10];
 
 extern char NN_NAMES[11][10];
 
+
 typedef struct Message {
     int64_t fn_req;
     double value;
@@ -117,6 +118,8 @@ typedef struct Window {
     WindowMetricSets metrics;
 } Window;
 
+typedef void (*FetchPtr)(char*, void*, int32_t);
+
 typedef struct Capture {
     int32_t id;
 
@@ -137,7 +140,6 @@ typedef struct Capture {
 } Capture;
 
 typedef Capture* CapturePtr;
-typedef Capture* CapturePtr;
 
 
 typedef struct WSizes {
@@ -152,8 +154,8 @@ typedef struct Captures {
 
 
 typedef struct WSet {
-    int32_t n_windows;
-    Window* windows;
+    int32_t number;
+    Window* _;
 } WSet;
 
 typedef WSet* WSets;
@@ -178,8 +180,6 @@ typedef struct Windowing {
 
 typedef struct Windowing* WindowingPtr;
 
-typedef void (*FetchPtr)(char*, WindowingPtr, int32_t);
-
 typedef struct WindowingTotals {
     int32_t total;
     int32_t positives;
@@ -193,16 +193,16 @@ typedef struct WindowingTotals {
 
 //   D A T A S E T
 
-typedef struct WindowingRefSet {
-    int32_t n_windows;
-    Window** windows;
-} WindowingRefSet;
+typedef struct WSetRef {
+    int32_t number;
+    Window** _;
+} WSetRef;
 
 
 
 typedef struct DatasetClass {
     char name[50];
-    WindowingRefSet windowingref_set;
+    WSetRef windowingref_set;
 } DatasetClass;
 
 
@@ -211,8 +211,8 @@ typedef struct DatasetTrainTest {
 
     int32_t wsize;
     double percentage_split; // train over test
-    WindowingRefSet train[N_CLASSES];
-    WindowingRefSet test[N_CLASSES];
+    WSetRef train[N_CLASSES];
+    WSetRef test[N_CLASSES];
 
 } DatasetTrainTest;
 
@@ -223,19 +223,10 @@ typedef DatasetTrainTest* DatasetTrainTestPtr;
 typedef struct Dataset {
 
     int32_t wsize;
-    WindowingRefSet total;
-    WindowingRefSet* classes;
+    WSetRef total;
+    WSetRef classes[N_CLASSES];
 
 } Dataset;
 
-typedef Dataset* DatasetPtr;
-
-
-typedef struct ConfusionMatrix {
-    int32_t trues;
-    int32_t falses;
-
-    int32_t total;
-};
 
 #endif

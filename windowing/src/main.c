@@ -113,7 +113,7 @@ int main (int argc, char* argv[]) {
 
     memset(split_nwindows, 0, N_SPLITS * 3 * sizeof(int));
 
-    Dataset dt[windowing.wsizes.number];
+    Dataset *dt = calloc(windowing.wsizes.number, sizeof(Dataset));
     dataset_fill(&windowing, dt);
 
 
@@ -129,17 +129,17 @@ int main (int argc, char* argv[]) {
                 double ths[windowing.psets.number];
                 memset(ths, 0, sizeof(double) * windowing.psets.number);
 
-                WSetPtr ws = &dt_tt.train[CLASS__NOT_INFECTED];
-                for (int i = 0; i < ws->n_windows; i++)
+                WSetRef* ws = &dt_tt.train[CLASS__NOT_INFECTED];
+                for (int i = 0; i < ws->number; i++)
                 {
-                    Window* window = &ws->windows[i];
+                    Window* window = ws->_[i];
                     for (int m = 0; m < window->metrics.number; m++) {
                         double logit = window->metrics._[m].logit;
                         if (ths[m] < logit) ths[m] = logit;
                     }
                 }
 
-                dataset_traintest_cm(&windowing.psets, &dt_tt, ths, cm[w][p][k]);
+                dataset_traintest_cm(&windowing.psets, &dt_tt, ths, &cm[w][p][k]);
             }
         }
     }

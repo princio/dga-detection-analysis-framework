@@ -2,6 +2,7 @@
 #include "persister.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 
 void parameters_generate(WindowingPtr windowing) {
 
@@ -11,7 +12,7 @@ void parameters_generate(WindowingPtr windowing) {
     PSets *psets = &windowing->psets;
 
     {
-        int ret = persister_read__parameters(__path, psets);
+        int ret = persister_read__psets(windowing);
 
         if (ret == 1) {
             return;
@@ -87,7 +88,7 @@ void parameters_generate(WindowingPtr windowing) {
     }
 
     {
-        int ret = persister_write__parameters(__path, psets);
+        int ret = persister_write__psets(windowing);
 
         if (!ret) printf("Pi-s write error\n");
     }

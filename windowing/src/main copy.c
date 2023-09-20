@@ -212,11 +212,11 @@ srand
             pcapwindowing->pcap_id = pcap->id;
             pcapwindowing->infected = pcap->infected_type;
             pcapwindowing->nwindows = nwindows;
-            pcapwindowing->windows = calloc(nwindows, sizeof(Window));
+            pcapwindowing->_ = calloc(nwindows, sizeof(Window));
             pcapwindowing->wsize = wsize[w];
 
             for (int r = 0; r < nwindows; r++) {
-                Window* window = &pcapwindowing->windows[r];
+                Window* window = &pcapwindowing->_[r];
                 int pi_i;
 
                 all_windows[w].windows[all_windows_cursor[w].all++] = window;
@@ -282,7 +282,7 @@ srand
             PCAPWindowingPtr pcapwindowing = &pcapwindowings_byPcap_byWSIZE[p][2];
             for (int i = 0; i < pcapwindowing->nwindows; i++)
             {
-                fprintf(fp, "%d,%d\n", pcapwindowing->windows[i].wnum, pcapwindowing->windows[i].pcap_id);
+                fprintf(fp, "%d,%d\n", pcapwindowing->_[i].wnum, pcapwindowing->_[i].pcap_id);
             }
         }
         fclose(fp);
@@ -294,7 +294,7 @@ srand
         AllWindows* all_windows_2500 = &all_windows[2];
         for (int i = 0; i < all_windows_2500->total_positives; i++)
         {
-            fprintf(fp, "%d,%d\n", all_windows_2500->windows_positives[i]->wnum, all_windows_2500->windows_positives[i]->pcap_id);
+            fprintf(fp, "%d,%d\n", all_windows_2500->__positives[i]->wnum, all_windows_2500->__positives[i]->pcap_id);
         }
         fclose(fp);
     }

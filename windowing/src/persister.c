@@ -346,12 +346,12 @@ int persister_write__capturewsets(WindowingPtr windowing, int32_t capture_index)
     for (int w = 0; w < windowing->wsizes.number; ++w) {
         WSetPtr capture_windowing = &capture_wsets[w];
         const int32_t wsize = windowing->wsizes._[w];
-        const int32_t n_windows = capture_windowing->n_windows;
+        const int32_t n_windows = capture_windowing->number;
 
         FW(n_windows);
 
         for (int r = 0; r < n_windows; ++r) {
-            Window* window = &capture_windowing->windows[r];
+            Window* window = &capture_windowing->_[r];
 
             FW(window->wnum);
 
@@ -418,11 +418,11 @@ int persister_read__capturewsets(WindowingPtr windowing, int32_t capture_index) 
     for (int w = 0; w < windowing->wsizes.number; ++w) {
         CaptureWSets capture_windowing = &capture_wsets[w];
 
-        FR(capture_windowing->n_windows);
+        FR(capture_windowing->number);
 
-        const int32_t n_windows = capture_windowing->n_windows;
+        const int32_t n_windows = capture_windowing->number;
         for (int r = 0; r < n_windows; ++r) {
-            Window* window = &capture_windowing->windows[r];
+            Window* window = &capture_windowing->_[r];
 
             FR(window->wnum);
 
