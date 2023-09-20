@@ -142,7 +142,8 @@ void fread64(void *v, FILE* file) {
 }
 
 
-int write_Pi_file(char path[], Pi* pis, int N_PIS) {
+
+int persister_write__psets(char path[], PSets pis, int N_PIS) {
     FILE *file = fopen(path, "wb");
 
     if (!file) {
@@ -178,7 +179,7 @@ int write_Pi_file(char path[], Pi* pis, int N_PIS) {
     return fclose(file) == 0;
 }
 
-int read_Pi_file(char path[], Pi** pis, int* N_PIS) {
+int persister_read__psets(char path[], PSets* pis, int* N_PIS) {
     FILE *file = fopen(path, "rb");
     if (!file) {
         perror("read-Pis");
@@ -189,7 +190,7 @@ int read_Pi_file(char path[], Pi** pis, int* N_PIS) {
 
     FR(_n);
 
-    Pi* _pis = calloc(sizeof(Pi), _n);
+    PSet* _pis = calloc(sizeof(PSet), _n);
     
     *pis = _pis;
     *N_PIS = _n;
@@ -204,7 +205,7 @@ int read_Pi_file(char path[], Pi** pis, int* N_PIS) {
         FR(_pis[i].id);
 
         if (1 || i == 177) {
-            Pi* pi = &_pis[i];
+            PSet* pi = &_pis[i];
 
             printf("%10d\t", i);
             printf("%10d\t", pi->wsize);
@@ -218,8 +219,8 @@ int read_Pi_file(char path[], Pi** pis, int* N_PIS) {
 }
 
 
-int write_PCAP_file(char path[], PCAP* pcaps, int N_PCAP) {
-    printf("write_PCAP_file:\t%s", path);
+int persister_write__captures(char path[], WindowingPtr windowing) {
+    printf("persister_write_pcap:\t%s", path);
 
     FILE *file = fopen(path, "wb");
 
@@ -228,34 +229,37 @@ int write_PCAP_file(char path[], PCAP* pcaps, int N_PCAP) {
         return 0;
     }
 
-    printf("write-n_pcap:\t%d", N_PCAP);
+    const int32_t n_captures = windowing->n_captures;
 
-    FW(N_PCAP);
+    printf("write-n_pcap:\t%d", windowing->n_captures);
 
-    for (int i = 0; i < N_PCAP; ++i) {
-        FW(pcaps[i].id);
-        FW(pcaps[i].infected);
-        FW(pcaps[i].nmessages);
-        FW(pcaps[i].fnreq_max);
-        FW(pcaps[i].q);
-        FW(pcaps[i].qr);
-        FW(pcaps[i].r);
+    FW(n_captures);
+
+    Captures captures = windowing->captures;
+    for (int i = 0; i < n_captures; ++i) {
+        FW(captures[i].id);
+        FW(captures[i].infected_type);
+        FW(captures[i].nmessages);
+        FW(captures[i].fnreq_max);
+        FW(captures[i].q);
+        FW(captures[i].qr);
+        FW(captures[i].r);
 
         if (i == 0) {
-            printf(" id: %ld\n", pcaps[i].id);
-            printf("inf: %d\n", pcaps[i].infected);
-            printf("nms: %ld\n", pcaps[i].nmessages);
-            printf("frm: %ld\n", pcaps[i].fnreq_max);
-            printf("  q: %ld\n", pcaps[i].q);
-            printf(" qr: %ld\n", pcaps[i].qr);
-            printf("  r: %ld\n\n", pcaps[i].r);
+            printf(" id: %ld\n", captures[i].id);
+            printf("inf: %d\n", captures[i].infected_type);
+            printf("nms: %ld\n", captures[i].nmessages);
+            printf("frm: %ld\n", captures[i].fnreq_max);
+            printf("  q: %ld\n", captures[i].q);
+            printf(" qr: %ld\n", captures[i].qr);
+            printf("  r: %ld\n\n", captures[i].r);
         }
     }
 
     return fclose(file) == 0;
 }
 
-int read_PCAP_file(char path[], PCAP** pcaps, int* N_PCAP) {
+int persister_read__captures(char path[], WindowingPtr windowing) {
     FILE *file = fopen(path, "rb");
 
     if (!file) {
@@ -265,69 +269,71 @@ int read_PCAP_file(char path[], PCAP** pcaps, int* N_PCAP) {
 
     int n;
     FR(n);
+    printf("Reading %d captures from %s...", n, path);
 
-    PCAP* _pcaps = calloc(n, sizeof(PCAP));;
-    *N_PCAP = n;
+    windowing->n_captures = n;
 
-    printf("Reading %d pcaps from %s...", *N_PCAP, path);
-    *pcaps = _pcaps;
-
+    Captures captures = windowing->captures;
     for (int i = 0; i < n; ++i) {
-        FR(_pcaps[i].id);
-        FR(_pcaps[i].infected);
-        FR(_pcaps[i].nmessages);
-        FR(_pcaps[i].fnreq_max);
-        FR(_pcaps[i].q);
-        FR(_pcaps[i].qr);
-        FR(_pcaps[i].r);
+        FR(captures[i].id);
+        FR(captures[i].infected_type);
+        FR(captures[i].nmessages);
+        FR(captures[i].fnreq_max);
+        FR(captures[i].q);
+        FR(captures[i].qr);
+        FR(captures[i].r);
 
         if (i == 0) {
-            printf("\n id: %ld\n", _pcaps[i].id);
-            printf("inf: %d\n", _pcaps[i].infected);
-            printf("nms: %ld\n", _pcaps[i].nmessages);
-            printf("frm: %ld\n", _pcaps[i].fnreq_max);
-            printf("  q: %ld\n", _pcaps[i].q);
-            printf(" qr: %ld\n", _pcaps[i].qr);
-            printf("  r: %ld\n\n", _pcaps[i].r);
+            printf("\n id: %ld\n", captures[i].id);
+            printf("inf: %d\n", captures[i].infected_type);
+            printf("nms: %ld\n", captures[i].nmessages);
+            printf("frm: %ld\n", captures[i].fnreq_max);
+            printf("  q: %ld\n", captures[i].q);
+            printf(" qr: %ld\n", captures[i].qr);
+            printf("  r: %ld\n\n", captures[i].r);
         }
     }
 
     return fclose(file) == 0;
 }
 
-int write_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_sizes, int N_WSIZE) {
-    char path[strlen(rootpath) + 50];
-    sprintf(path, "%s/pcap_%ld.bin", rootpath, pcap->id);
+int persister_write__capturewindows(char* rootpath, WindowingPtr windowing, int32_t capture_index) {
+    FILE *file;
+    CapturePtr capture;
+    CaptureWindowings capture_windowings;
 
-    FILE *file = fopen(path, "wb");
+    capture = windowing->captures[capture_index];
+    capture_windowings = windowing->captures_windowings[capture_index];
 
-    if (!file) {
-        perror("write-windows");
-        return 0;
+    {
+        char path[strlen(rootpath) + 50];
+        sprintf(path, "%s/pcap_%ld.bin", rootpath, capture->id);
+        file = fopen(path, "wb");
+        if (!file) {
+            perror("write-windows");
+            return 0;
+        }
+        printf("Writing WINDOWS to %s...\n", path);
     }
 
-    printf("Writing WINDOWS to %s...\n", path);
+    for (int w = 0; w < windowing->n_wsizes; ++w) {
+        CaptureWindowingPtr capture_windowing = &capture_windowings[w];
+        const int32_t wsize = windowing->wsizes[w];
+        const int32_t n_windows = capture_windowing->n_windows;
 
-    FW(windowings_sizes[0].pcap_id);
-    FW(windowings_sizes[0].infected);
+        FW(n_windows);
 
-    for (int w = 0; w < N_WSIZE; ++w) {
-        PCAPWindowing* windowing = &windowings_sizes[w];
+        for (int r = 0; r < n_windows; ++r) {
+            Window* window = &capture_windowing->windows[r];
 
-        FW(windowing->nwindows);
-        FW(windowing->wsize);
-
-        for (int r = 0; r < windowing->nwindows; ++r) {
-            Window* window = &windowing->windows[r];
             FW(window->wnum);
-            FW(window->nmetrics);
 
-            int rr = (windowing->nwindows-8) > 0 ? (windowing->nwindows-8) : 0;
-            if (w == 0 && (r == rr || r == 0)) {
+            // int rr = (capture_windowing->nwindows-8) > 0 ? (windowing->nwindows-8) : 0;
+            // if (w == 0 && (r == rr || r == 0)) {
                 // printf("   r: %d\n", r);
                 // printf("wnum: %d\n", window->wnum);
                 // printf(" wsz: %d\n", window->wsize);
-            }
+            // }
 
             for (int m = 0; m < window->nmetrics; ++m) {
                 WindowMetrics* metrics = &window->metrics[m];
@@ -342,14 +348,14 @@ int write_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_s
 
                 // printf("[%d]: %f [%d/%d]\n", r, metrics->logit, metrics->whitelistened, window->wsize);
 
-                if (w == 0 && (r == rr || r == 0) && m == 0) {
+                // if (w == 0 && (r == rr || r == 0) && m == 0) {
                     // printf("  05: %d\n", metrics->dn_bad_05);
                     // printf("  09: %d\n", metrics->dn_bad_09);
                     // printf(" 099: %d\n", metrics->dn_bad_099);
                     // printf("0999: %d\n", metrics->dn_bad_0999);
                     // printf(" lgt: %f\n", metrics->logit);
                     // printf("wcnt: %d\n\n", metrics->wcount);
-                }
+                // }
             }
         }
     }
@@ -360,40 +366,44 @@ int write_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_s
 }
 
 
-int read_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_sizes, int N_WSIZE) {
-    char path[strlen(rootpath) + 50];
-    sprintf(path, "%s/pcap_%ld.bin", rootpath, pcap->id);
+int persister_read__capturewindows(char* rootpath, WindowingPtr windowing, int32_t capture_index) {
 
-    FILE *file = fopen(path, "rb");
+    FILE *file;
+    CapturePtr capture;
+    CaptureWindowings capture_windowings;
 
-    if (!file) {
-        perror("read-windows");
-        return 0;
+    capture = windowing->captures[capture_index];
+    capture_windowings = windowing->captures_windowings[capture_index];
+
+    {
+        char path[strlen(rootpath) + 50];
+        sprintf(path, "%s/pcap_%ld.bin", rootpath, capture->id);
+        file = fopen(path, "rb");
+        if (!file) {
+            perror("read-windows");
+            return 0;
+        }
+        printf("Writing WINDOWS to %s...\n", path);
     }
 
-    // printf("Reading WINDOWS to %s...\n", path);
 
-    FR(windowings_sizes[0].pcap_id);
-    FR(windowings_sizes[0].infected);
+    for (int w = 0; w < windowing->n_wsizes; ++w) {
+        CaptureWindowingPtr capture_windowing = &capture_windowings[w];
 
-    for (int w = 0; w < N_WSIZE; ++w) {
-        PCAPWindowing* windowing = &windowings_sizes[w];
+        FR(capture_windowing->n_windows);
 
-        FR(windowing->nwindows);
-        FR(windowing->wsize);
+        const int32_t n_windows = capture_windowing->n_windows;
+        for (int r = 0; r < n_windows; ++r) {
+            Window* window = &capture_windowing->windows[r];
 
-        for (int r = 0; r < windowing->nwindows; ++r) {
-            Window* window = &windowing->windows[r];
             FR(window->wnum);
-            FR(window->nmetrics);
 
-
-            int rr = (windowing->nwindows-8) > 0 ? (windowing->nwindows-8) : 0;
-            if (w == 0 && (r == rr || r == 0)) {
+            // int rr = (windowing->nwindows-8) > 0 ? (windowing->nwindows-8) : 0;
+            // if (w == 0 && (r == rr || r == 0)) {
                 // printf("   r: %d\n", r);
                 // printf("wnum: %d\n", window->wnum);
                 // printf(" wsz: %d\n", window->wsize);
-            }
+            // }
 
             for (int m = 0; m < window->nmetrics; ++m) {
                 WindowMetrics* metrics = &window->metrics[m];
@@ -406,14 +416,14 @@ int read_PCAPWindowings(char* rootpath, PCAP* pcap, PCAPWindowing* windowings_si
                 FR(metrics->logit);
                 FR(metrics->wcount);
 
-                if (w == 0 && (r == rr || r == 0) && m == 0) {
+                // if (w == 0 && (r == rr || r == 0) && m == 0) {
                     // printf("  05: %d\n", metrics->dn_bad_05);
                     // printf("  09: %d\n", metrics->dn_bad_09);
                     // printf(" 099: %d\n", metrics->dn_bad_099);
                     // printf("0999: %d\n", metrics->dn_bad_0999);
                     // printf(" lgt: %f\n", metrics->logit);
                     // printf("wcnt: %d\n", metrics->wcount);
-                }
+                // }
             }
         }
     }

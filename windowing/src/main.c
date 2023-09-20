@@ -20,10 +20,9 @@
 #include "args.h"
 #include "colors.h"
 #include "dn.h"
+#include "parameters.h"
 #include "persister.h"
 
-#include <libpq-fe.h>
-#include <15/server/catalog/pg_type_d.h>
 #include <stdint.h>
 #include <float.h>
 #include <string.h>
@@ -75,405 +74,7 @@ typedef struct Overrall {
     int correct_predictions;
 } Overrall;
 
-void parse_message(PGresult* res, int row, Message* message)
-{
-    message->fn_req = atoi(PQgetvalue(res, row, 0));
-    message->value = atof(PQgetvalue(res, row, 1));
-    message->logit = atof(PQgetvalue(res, row, 2));
-    message->is_response = PQgetvalue(res, row, 3)[0] == 't';
-    message->top10m = atoi(PQgetvalue(res, row, 4));
-    message->dyndns = PQgetvalue(res, row, 5)[0] == 't';
-}
-
-
-void printdatastring(PGresult* res)
-{
-    if (PQresultStatus(res) != PGRES_TUPLES_OK)
-    {
-        printf("No data\n");
-    }
-    else
-    {
-        int ncols = PQnfields(res);
-        int nrows = 5;//PQntuples(res);
-
-        for(int r = 0; r < nrows; r++)
-        {
-            for (int c = 0; c < ncols; c++)
-            {
-                char* colname = PQfname(res, c);
-                char* value = PQgetvalue(res, r, c);
-                printf("%10s\t", colname);
-                printf("%25s\t", value);
-
-                Oid oid = PQftype(res, c);
-                switch (PQftype(res, c)) {
-                    case INT2OID:
-                        printf("%20s\n", "INT2OID");
-                    break;
-                    case INT4OID:
-                        printf("%20s\n", "INT4OID");
-                    break;
-                    case INT8OID: {
-                        int64_t iptr = atol(value);
-                        printf("%20ld\t", iptr);
-                        printf("%20s[%zu]\n", "INT8OID", sizeof (int64_t));
-                        break;
-                    }
-                    case FLOAT4OID: {
-                        double f4ptr = atoi(value);
-                        printf("%20f\t", f4ptr);
-                        printf("%20s\n", "FLOAT4OID");
-                        break;
-                    }
-                    case FLOAT8OID: {
-                        double f8ptr = atof(value);
-                        printf("%20f\t", f8ptr);
-                        printf("%20s[%zu]\n", "FLOAT8OID", sizeof (double));
-                        break;
-                    }
-                    case BOOLOID: {
-                        int _bool = value[0] == 't';
-                        printf("%20i\t", _bool);
-                        printf("%20s\n", "BOOLOID");
-                        break;
-                    }
-                    default:
-                        printf("%20u\n", oid);
-                }
-            }
-
-            puts("");
-        }
-    }
-}
-
-void CDPGclose_connection(PGconn* conn)
-{
-    PQfinish(conn);
-}
-
-PGconn* CDPGget_connection()
-{
-    PGconn *conn = PQconnectdb("postgresql://princio:postgres@localhost/dns");
-
-    if (PQstatus(conn) == CONNECTION_OK)
-    {
-        puts("CONNECTION_OK\n");
-
-        return conn;
-    }
-    
-    fprintf(stderr, "CONNECTION_BAD %s\n", PQerrorMessage(conn));
-
-    CDPGclose_connection(conn);
-
-    return NULL;
-}
-
-/**
- * @brief It execute the windowing for the pcap and the number of windowing size chosen, in order to execute the pcap retrieve from
- * the database only one time for all the windowing sizes.
- * 
- * @param conn 
- * @param pcap 
- * @param windowings An array of PCAPWindowing struct where each element represent the windowing of the PCAP for a defined window size.
- * @param N_WINDOWING The number of window size we chose.
- */
-void procedure(char* root_dir, PGconn* conn, PCAP* pcap, PCAPWindowing pcapwindowings_byWSIZE[], int N_WSIZE)
-{
-    int ret;
-    PGresult* pgresult;
-    int nrows;
-
-    ret = read_PCAPWindowings(root_dir, pcap, pcapwindowings_byWSIZE, N_WSIZE);
-
-    if (ret == 1) {
-        return;
-    }
-    
-    {
-        char sql[1000];
-        int pgresult_binary = 1;
-
-        sprintf(sql,
-                "SELECT FN_REQ, VALUE, LOGIT, IS_RESPONSE, TOP10M, DYNDNS FROM MESSAGES_%ld AS M "
-                "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
-                "JOIN DN AS DN ON M.DN_ID=DN.ID "
-                "ORDER BY FN_REQ",
-                pcap->id);
-
-        pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
-    }
-    
-    if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
-        printf("No data\n");
-        return;
-    }
-
-    nrows = PQntuples(pgresult);
-
-    if (nrows != pcap->nmessages) {
-        printf("Errorrrrrr:\t%d\t%ld\n", nrows, pcap->nmessages);
-    }
-
-    int wnum_max[N_WSIZE];
-    memset(wnum_max, 0, sizeof(int) * N_WSIZE);
-    for(int r = 0; r < nrows; r++) {
-        Message message;
-
-        parse_message(pgresult, r, &message);
-
-        for (int w0 = 0; w0 < N_WSIZE; ++w0) {
-            PCAPWindowing *pcapwindowing;
-            int wnum;
-            Window *window;
-            
-            pcapwindowing = &pcapwindowings_byWSIZE[w0];
-
-            wnum = (int) floor(message.fn_req / pcapwindowing->wsize);
-
-            if (wnum >= pcapwindowing->nwindows) {
-                printf("ERROR\n");
-                printf("      wnum: %d\n", wnum);
-                printf("     wsize: %d\n", pcapwindowing->wsize);
-                printf(" fnreq_max: %ld\n", pcap->fnreq_max);
-                printf("  nwindows: %d\n", pcapwindowing->nwindows);
-            }
-
-
-            wnum_max[w0] = wnum_max[w0] < wnum ? wnum : wnum_max[w0];
-
-            window = &pcapwindowing->windows[wnum];
-
-            for (int w2 = 0; w2 < window->nmetrics; w2++) {
-                int whitelistened = 0;
-                double value, logit;
-                WindowMetrics *metrics;
-                Pi *pi;
-                
-                metrics = &window->metrics[w2];
-                pi = metrics->pi;
-
-                if (pi->windowing == WINDOWING_Q && message.is_response) {
-                    continue;
-                } else
-                if (pi->windowing == WINDOWING_R && !message.is_response) {
-                    continue;
-                }
-
-                if (wnum != window->wnum) {
-                    printf("Errorrrrrr:\t%d\t%d\n", wnum, window->wnum);
-                }
-
-                logit = message.logit;
-                value = message.value;
-
-                if (message.top10m > 0 && message.top10m < pi->whitelisting.rank) {
-                    value = 0;
-                    logit = pi->whitelisting.value;
-                    whitelistened = 1;
-                }
-                if (logit == INFINITY) {
-                    logit = pi->infinite_values.pinf;
-                } else
-                    if (logit == (-1 * INFINITY)) {
-                    logit = pi->infinite_values.ninf;
-                }
-
-                ++metrics->wcount;
-                metrics->logit += logit;
-                metrics->whitelistened += whitelistened;
-                metrics->dn_bad_05 += value >= 0.5;
-                metrics->dn_bad_09 += value >= 0.9;
-                metrics->dn_bad_099 += value >= 0.99;
-                metrics->dn_bad_0999 += value >= 0.999;
-
-                if (pi->logit_range.min > metrics->logit) {
-                    pi->logit_range.min = metrics->logit;
-                }
-                if (pi->logit_range.max < metrics->logit) {
-                    pi->logit_range.max = metrics->logit;
-                }
-            }
-        }
-    }
-
-    for (int w0 = 0; w0 < N_WSIZE; ++w0) {
-        printf("wnum_max: %d / %d -- %ld / %ld\n", wnum_max[w0], pcapwindowings_byWSIZE[w0].wsize, pcap->fnreq_max, N_WINDOWS(pcap->fnreq_max, pcapwindowings_byWSIZE[w0].wsize));
-    }
-
-
-    PQclear(pgresult);
-
-    ret = write_PCAPWindowings(root_dir, pcap, pcapwindowings_byWSIZE, N_WSIZE);
-    if(!ret) {
-        printf("Writing PCAPWindowing for %ld error\n", pcap->id);
-    }
-}
-
-void extract_wd(Window** windows, WindowingDataset3* wd3_train, WindowingDataset3* wd3_test) {
-    int total = wd3_train->number + wd3_test->number;
-    int extracted[total]; // 1 means test, 0 means train
-    int i;
-
-    memset(extracted, 0, sizeof(int) * total);
-
-    srand(time(NULL));
-
-
-    WindowingDataset3* wd3_toextract = wd3_train->number > wd3_test->number ? wd3_train : wd3_test;
-    WindowingDataset3* wd3_tofill = wd3_train->number > wd3_test->number ? wd3_test : wd3_train;
-
-    int guard = total * 100;
-    int guard_counter = 0;
-    i = 0;
-    while (++guard_counter < guard && i < wd3_toextract->number) {
-        int dado = rand() % total;
-
-        if (extracted[dado]) continue;
-
-        extracted[dado] = 1;
-        wd3_toextract->windows[i++] = windows[dado];
-        if (wd3_toextract->number < i) {
-            printf("Error wd3_toextract->number <= i (%d <= %d)\n", wd3_toextract->number , i);
-        }
-    }
-    if (i != wd3_toextract->number) {
-        printf("Error %d != %d\n", i, wd3_toextract->number);
-    }
-
-    if (guard_counter >= guard) {
-        printf("Guard error\n");
-    }
-
-    i = 0;
-    for (int j = 0; j < total; ++j) {
-        if (0 == extracted[j]) {
-            wd3_tofill->windows[i++] = windows[j];
-            if (wd3_tofill->number < i) {
-                printf("Error wd3_tofill->number <= i (%d <= %d)\n", wd3_tofill->number , i);
-            }
-        }
-    }
-    if (i != wd3_tofill->number) {
-        printf("Error %d != %d\n", i, wd3_tofill->number);
-    }
-}
-
-int get_pcaps_number(PGconn* conn) {
-    PGresult* res = PQexec(conn, "SELECT count(*) FROM pcap");
-    int64_t rownumber = -1;
-
-    if (PQresultStatus(res) != PGRES_TUPLES_OK)
-    {
-        printf("No data\n");
-    }
-    else
-    {
-        char* srownumber = PQgetvalue(res, 0, 0);
-
-        rownumber = atoi(srownumber);
-    }
-
-    return rownumber;
-}
-
-void get_pcaps(char* root_dir, PGconn* conn, PCAP** pcaps_ptr, int* N_PCAPS_ptr) {
-    int ret;
-    int N_PCAPS;
-    PCAP* pcaps;
-    PGresult* pgresult;
-
-    char path[150];
-    snprintf(path, 150, "%s/pcaps.bin", root_dir);
-
-    ret = read_PCAP_file(path, pcaps_ptr, N_PCAPS_ptr);
-
-    if (ret == 1) {
-        return;
-    }
-
-
-    N_PCAPS = get_pcaps_number(conn);
-
-    pcaps = calloc(N_PCAPS, sizeof(PCAP));
-
-    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r FROM pcap JOIN malware as mw ON malware_id = mw.id");
-
-    if (PQresultStatus(pgresult) != PGRES_TUPLES_OK)
-    {
-        printf("No data\n");
-    }
-    else
-    {
-        int nrows = PQntuples(pgresult);
-
-        for(int r = 0; r < nrows; r++)
-        {
-            pcaps[r].id = atoi(PQgetvalue(pgresult, r, 0));
-            pcaps[r].infected = atoi(PQgetvalue(pgresult, r, 1));
-            pcaps[r].qr = atoi(PQgetvalue(pgresult, r, 2));
-            pcaps[r].q = atoi(PQgetvalue(pgresult, r, 3));
-            pcaps[r].r = atoi(PQgetvalue(pgresult, r, 4));
-
-            {
-                int nmessages = 0;
-                char sql[1000];
-                // sprintf(sql,
-                //     "SELECT COUNT(*) FROM MESSAGES_%ld AS M "
-                //     "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
-                //     "JOIN DN AS DN ON M.DN_ID=DN.ID",
-                //     pcaps[r].id);
-                sprintf(sql,
-                    "SELECT COUNT(*) FROM MESSAGES_%ld",
-                    pcaps[r].id);
-
-                PGresult* res_nrows = PQexec(conn, sql);
-                if (PQresultStatus(res_nrows) != PGRES_TUPLES_OK) {
-                    printf("No data\n");
-                } else {
-                    nmessages = atoi(PQgetvalue(res_nrows, 0, 0));
-                }
-                PQclear(res_nrows);
-                pcaps[r].nmessages = nmessages;
-            }
-
-            {
-                int fnreq_max = 0;
-                char sql[1000];
-                // sprintf(sql,
-                //     "SELECT COUNT(*) FROM MESSAGES_%ld AS M "
-                //     "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
-                //     "JOIN DN AS DN ON M.DN_ID=DN.ID",
-                //     pcaps[r].id);
-                sprintf(sql,
-                    "SELECT MAX(FN_REQ) FROM MESSAGES_%ld",
-                    pcaps[r].id);
-
-                PGresult* res_nrows = PQexec(conn, sql);
-                if (PQresultStatus(res_nrows) != PGRES_TUPLES_OK) {
-                    printf("No data\n");
-                } else {
-                    fnreq_max = atoi(PQgetvalue(res_nrows, 0, 0));
-                }
-                PQclear(res_nrows);
-                pcaps[r].fnreq_max = fnreq_max;
-            }
-        }
-    }
-
-    PQclear(pgresult);
-
-    *pcaps_ptr = pcaps;
-    *N_PCAPS_ptr = N_PCAPS;
-
-
-    ret = write_PCAP_file(path, pcaps, (const int) N_PCAPS);
-    if (!ret) printf("pcap write error\n");
-}
-
-void print_pi(Pi *pi, int z) {
+void print_pi(MetricParameters *pi, int z) {
     printf("%d\n", z);
     printf(" Window size:  %d\n", pi->wsize);
     printf("Whitelisting:  (%d, %f)\n", pi->whitelisting.rank, pi->whitelisting.value);
@@ -481,104 +82,9 @@ void print_pi(Pi *pi, int z) {
     printf("   Windowing:  %s\n\n", WINDOWING_NAMES[pi->windowing]);
 }
 
-void generate_parameters(char* root_dir, Pi** pis_ptr, int* N_PIS_ptr, int wsize[], int N_WSIZE) {
-    int N_PIS;
-    Pi* pis;
-
-    char __path[150];
-    snprintf(__path, 150, "%s/parameters.bin", root_dir);
-
-    {
-        int ret = read_Pi_file(__path, pis_ptr, N_PIS_ptr);
-
-        if (ret == 1) {
-            return;
-        }
-    }
-
-    NN nn[] = { NN_NONE, NN_TLD, NN_ICANN, NN_PRIVATE };
-
-    Whitelisting whitelisting[] = {
-        { .rank = 0, .value = 0 },
-        { .rank = 1000, .value = -50 },
-        { .rank = 100000, .value = -50 },
-        { .rank = 1000000, .value = -10 },  
-        { .rank = 1000000, .value = -50 } 
-    };
-
-    WindowingType windowing_types[] = {
-        WINDOWING_Q,
-        WINDOWING_R,
-        WINDOWING_QR
-    };
-
-    InfiniteValues infinitevalues[] = {
-        { .ninf = -20, .pinf = 20 }
-    };
-
-    size_t count_nn = sizeof(nn) / sizeof(NN);
-    size_t count_wl = sizeof(whitelisting)/sizeof(Whitelisting);
-    size_t count_wt = sizeof(windowing_types)/sizeof(WindowingType);
-    size_t count_ws = N_WSIZE;
-    size_t count_iv = sizeof(infinitevalues)/sizeof(InfiniteValues);
-
-
-    printf("NN: %ld\n", count_nn);
-    printf("WL: %ld\n", count_wl);
-    printf("WT: %ld\n", count_wt);
-    printf("WS: %ld\n", count_ws);
-    printf("IV: %ld\n", count_iv);
-
-    N_PIS = 0;
-    for (size_t i0 = 0; i0 < count_nn; ++i0) {
-        for (size_t i1 = 0; i1 < count_wl; ++i1) {
-            for (size_t i2 = 0; i2 < count_wt; ++i2) {
-                for (size_t i3 = 0; i3 < count_ws; ++i3) {
-                    for (size_t i4 = 0; i4 < count_iv; ++i4) {
-                        ++N_PIS;
-                    }
-                }
-            }
-        }
-    }
-
-    printf("Number of parameters: %d\n", N_PIS);
-
-    pis = calloc(N_PIS, sizeof(Pi));
-
-    *pis_ptr = pis;
-    *N_PIS_ptr = N_PIS;
-
-    N_PIS = 0;
-    for (size_t i0 = 0; i0 < count_nn; ++i0) {
-        for (size_t i1 = 0; i1 < count_wl; ++i1) {
-            for (size_t i2 = 0; i2 < count_wt; ++i2) {
-                for (size_t i3 = 0; i3 < count_ws; ++i3) {
-                    for (size_t i4 = 0; i4 < count_iv; ++i4) {
-                        pis[N_PIS].infinite_values = infinitevalues[i4];
-                        pis[N_PIS].nn = nn[i0];
-                        pis[N_PIS].whitelisting = whitelisting[i1];
-                        pis[N_PIS].windowing = windowing_types[i2];
-                        pis[N_PIS].wsize = wsize[i3];
-                        pis[N_PIS].id = N_PIS;
-
-                        ++N_PIS;
-                    }
-                }
-            }
-        }
-    }
-
-    {
-        int ret = write_Pi_file(__path, *pis_ptr, *N_PIS_ptr);
-
-        if (!ret) printf("Pi-s write error\n");
-    }
-}
-
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
-
+srand
     /* Read command line options */
     options_t options;
     options_parser(argc, argv, &options);
@@ -605,40 +111,36 @@ int main (int argc, char* argv[]) {
         mkdir(root_dir, 0700);
     }
 
-    PGconn* conn;
-
     int N_PIS;
-    Pi* pis;
+    PSets pis;
 
     int n_pcaps_all;
     int n_pcaps_dga01;
-    PCAP* pcaps;
-    PCAP** pcaps_all;
-    PCAP** pcaps_dga01;
+    Capture* pcaps;
+    Capture** pcaps_all;
+    Capture** pcaps_dga01;
 
     int N_WSIZE = 5;
     int wsize[] = { 10, 50, 100, 500, 2500 };
 
     int debug_pcaps_number;
 
-    conn = CDPGget_connection();
-
-    generate_parameters(root_dir, &pis, &N_PIS, wsize, N_WSIZE);
+    parameters_generate(root_dir, &pis, &N_PIS);
     
-    get_pcaps(root_dir, conn, &pcaps, &n_pcaps_all);
+    stratosphere_pcaps(root_dir, &pcaps, &n_pcaps_all);
 
-    pcaps_all = calloc(sizeof(PCAP*), n_pcaps_all);
+    pcaps_all = calloc(sizeof(Capture*), n_pcaps_all);
     n_pcaps_dga01 = 0;
     for (int i = 0; i < n_pcaps_all; i++) {
         pcaps_all[i] = &pcaps[i];
-        n_pcaps_dga01 += pcaps[i].infected != 1;
+        n_pcaps_dga01 += pcaps[i].infected_type != INFECTED;
     }
 
-    pcaps_dga01 = calloc(sizeof(PCAP*), n_pcaps_dga01);
+    pcaps_dga01 = calloc(sizeof(CapturePtr), n_pcaps_dga01);
     {
         int cursor = 0;
         for (int i = 0; i < n_pcaps_all; i++) {
-            if (pcaps[i].infected != 1) {
+            if (pcaps[i].infected_type != INFECTED) {
                 pcaps_dga01[cursor++] = &pcaps[i];
             }
         }
@@ -652,7 +154,7 @@ int main (int argc, char* argv[]) {
      *  ONLY FOR DEBUG
      */
     int pcap_subset = 1;
-    PCAP** PCAPS = pcap_subset ? pcaps_dga01 : pcaps_all;
+    Captures* PCAPS = pcap_subset ? pcaps_dga01 : pcaps_all;
     const int N_PCAPS = pcap_subset ? n_pcaps_dga01 : n_pcaps_all;
 
     debug_pcaps_number = N_PCAPS;
@@ -668,7 +170,7 @@ int main (int argc, char* argv[]) {
     
 
     /**
-     * @brief Qui inizializzaziom, per ogni wsize, uno struct AllWindows il quale detiene un array di puntatori a tutte le finestr
+     * @brief Qui inizializzazione, per ogni wsize, uno struct AllWindows il quale detiene un array di puntatori a tutte le finestr
      * 
      */
     AllWindows all_windows[N_WSIZE];
@@ -676,11 +178,11 @@ int main (int argc, char* argv[]) {
     for (int w = 0; w < N_WSIZE; ++w) {
         all_windows[w].wsize = wsize[w];
         for (int i = 0; i < debug_pcaps_number; ++i) {
-            PCAP *pcap = PCAPS[i];
+            Capture *pcap = PCAPS[i];
             int n_windows =  N_WINDOWS(pcap->fnreq_max, wsize[w]);
 
             all_windows[w].total += n_windows;
-            if (pcap->infected) {
+            if (pcap->infected_type) {
                 all_windows[w].total_positives += n_windows;
             } else {
                 all_windows[w].total_negatives += n_windows;
@@ -693,22 +195,22 @@ int main (int argc, char* argv[]) {
     }
 
 
-    PCAPWindowing pcapwindowings_byPcap_byWSIZE[debug_pcaps_number][N_WSIZE];
+    PCAPWindowingPtr pcapwindowings_byPcap_byWSIZE[debug_pcaps_number][N_WSIZE];
     AllWindowsCursor all_windows_cursor[N_WSIZE];
     memset(all_windows_cursor, 0, N_WSIZE * sizeof(AllWindowsCursor));
     for (int i = 0; i < debug_pcaps_number; ++i) {
-        PCAP *pcap = PCAPS[i];
+        Capture *pcap = PCAPS[i];
         
-        printf("PCAP %ld having dga=%d and nrows=%ld\n", pcap->id, pcap->infected, pcap->nmessages);
+        printf("PCAP %ld having dga=%d and nrows=%ld\n", pcap->id, pcap->infected_type, pcap->nmessages);
 
-        PCAPWindowing *pcapwindowings_byWSIZE = pcapwindowings_byPcap_byWSIZE[i];
+        PCAPWindowingPtr*pcapwindowings_byWSIZE = pcapwindowings_byPcap_byWSIZE[i];
         for (int w = 0; w < N_WSIZE; ++w) {
             int nwindows = N_WINDOWS(pcap->fnreq_max, wsize[w]);
 
-            PCAPWindowing *pcapwindowing = &pcapwindowings_byWSIZE[w];
+            PCAPWindowingPtr*pcapwindowing = &pcapwindowings_byWSIZE[w];
 
             pcapwindowing->pcap_id = pcap->id;
-            pcapwindowing->infected = pcap->infected;
+            pcapwindowing->infected = pcap->infected_type;
             pcapwindowing->nwindows = nwindows;
             pcapwindowing->windows = calloc(nwindows, sizeof(Window));
             pcapwindowing->wsize = wsize[w];
@@ -718,7 +220,7 @@ int main (int argc, char* argv[]) {
                 int pi_i;
 
                 all_windows[w].windows[all_windows_cursor[w].all++] = window;
-                if (pcap->infected) {
+                if (pcap->infected_type) {
                     all_windows[w].windows_positives[all_windows_cursor[w].positives++] = window;
                 } else {
                     all_windows[w].windows_negatives[all_windows_cursor[w].negatives++] = window;
@@ -727,8 +229,8 @@ int main (int argc, char* argv[]) {
                 window->wsize = wsize[w];
                 
                 window->wnum = r;
-                window->infected = pcap->infected;
-                window->pcap_id = pcap->id;
+                window->infected = pcap->infected_type;
+                window->parent_id = pcap->id;
                 window->nmetrics = N_METRICS;
                 window->metrics = calloc(N_METRICS, sizeof(WindowMetrics));
 
@@ -739,7 +241,7 @@ int main (int argc, char* argv[]) {
                         window->metrics[pi_i].pi = &pis[k];
                         ++pi_i;
 
-                        Pi* pi = &pis[k];
+                        MetricParameters* pi = &pis[k];
 
                         if ((i + w + r) == 0 && k % N_WSIZE == 0) {
                             printf("%10d\t", pi_i);
@@ -769,7 +271,7 @@ int main (int argc, char* argv[]) {
 
         */
 
-        procedure(root_dir, conn, pcap, pcapwindowings_byWSIZE, N_WSIZE);
+        stratosphere_procedure(root_dir, pcap, pcapwindowings_byWSIZE, N_WSIZE);
     }
 
     {
@@ -777,7 +279,7 @@ int main (int argc, char* argv[]) {
         fprintf(fp, "wnum,pcap\n");
         for (int p = 0; p < N_PCAPS; p++)
         {
-            PCAPWindowing* pcapwindowing = &pcapwindowings_byPcap_byWSIZE[p][2];
+            PCAPWindowingPtr pcapwindowing = &pcapwindowings_byPcap_byWSIZE[p][2];
             for (int i = 0; i < pcapwindowing->nwindows; i++)
             {
                 fprintf(fp, "%d,%d\n", pcapwindowing->windows[i].wnum, pcapwindowing->windows[i].pcap_id);
@@ -885,7 +387,7 @@ int main (int argc, char* argv[]) {
                         if (logit_max[m] < _l) logit_max[m] = _l;
 
                         if (p == 0 && i == 0) {
-                            Pi* pi = window->metrics[m].pi;
+                            MetricParameters* pi = window->metrics[m].pi;
                             printf("%10d\t", m);
                             printf("%10d\t", pi->wsize);
                             printf("(%10d, %10.5f)\t", pi->whitelisting.rank, pi->whitelisting.value);
@@ -983,7 +485,7 @@ int main (int argc, char* argv[]) {
         for (int w = 0; w < N_WSIZE; ++w) {
             printf("%10d\n", wsize[w]);
             for (int m = 0; m < N_METRICS; ++m) {
-                Pi* pi = &pis[m * N_WSIZE + w];
+                MetricParameters* pi = &pis[m * N_WSIZE + w];
                 printf("%10d\t", m / N_WSIZE);
                 printf("%10d\t", pi->wsize);
                 printf("(%10d, %10.5f)\t", pi->whitelisting.rank, pi->whitelisting.value);

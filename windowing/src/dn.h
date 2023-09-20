@@ -3,6 +3,13 @@
 
 #include <stdint.h>
 
+#define MAX_WSIZES 20
+#define MAX_CAPTURES 100
+
+#define N_CLASSES 3
+
+extern char CLASSES[3][50];
+
 extern char WINDOWING_NAMES[3][10];
 
 extern char NN_NAMES[11][10];
@@ -16,16 +23,14 @@ typedef struct Message {
     int32_t dyndns;
 } Message;
 
-typedef struct PCAP {
-    int64_t id;
-    int32_t infected;
-    int64_t qr;
-    int64_t q;
-    int64_t r;
-    int64_t nmessages;
-    int64_t fnreq_max;
-} PCAP;
+typedef enum Class {
+    CLASS__NOT_INFECTED,
+    CLASS__INFECTED_NOTDGA,
+    CLASS__INFECTED_DGA,
+} Class;
 
+
+//   P A R A M E T E R S
 
 typedef struct Whitelisting {
     int32_t rank;
@@ -45,6 +50,11 @@ typedef enum NN {
     NN_TLD
 } NN;
 
+typedef enum CaptureType {
+    CAPTURETYPE_PCAP,
+    CAPTURETYPE_LIST
+} CaptureType;
+
 typedef struct InfiniteValues {
     double ninf;
     double pinf;
@@ -55,28 +65,25 @@ typedef struct LogitRange {
     double max;
 } LogitRange;
 
-typedef struct ConfusionMatrix {
-    double th;
-    
-    int32_t tn;
-    int32_t fp;
-    int32_t fn;
-    int32_t tp;
-} ConfusionMatrix;
-
-typedef struct Pi {
+typedef struct PSet {
     int32_t id;
-    ConfusionMatrix *cm;
     LogitRange logit_range;
     Whitelisting whitelisting;
     WindowingType windowing;
     InfiniteValues infinite_values;
     NN nn;
     int32_t wsize;
-} Pi;
+} PSet;
+
+typedef PSet* PSetPtr;
+typedef PSet* PSets;
+
+
+
+//   W I N D O W,    C A P T U R E    A N D    W I N D O W I N G
 
 typedef struct WindowMetrics {
-    Pi* pi;
+    PSet* pi;
     int pi_id;
     
     int32_t wcount;
@@ -90,24 +97,64 @@ typedef struct WindowMetrics {
 } WindowMetrics;
 
 typedef struct Window {
+    int32_t parent_id;
+
     int32_t wsize;
     int32_t wnum;
-    int32_t nmetrics;
-    int32_t infected;
-    int32_t pcap_id;
+    Class class;
 
-    WindowMetrics *metrics;
+    int32_t nmetrics;
+    WindowMetrics* metrics;
 } Window;
 
-typedef struct PCAPWindowing {
-    int64_t pcap_id;
+typedef struct Capture {
+    int32_t id;
 
-    int32_t infected;
-    int32_t nwindows;
-    int32_t wsize;
-    
-    Window *windows;
-} PCAPWindowing;
+    CaptureType capture_type;
+
+    int64_t qr;
+    int64_t q;
+    int64_t r;
+    int64_t nmessages;
+    int64_t fnreq_max;
+
+    char name[50];
+    char source[50];
+
+    FetchPtr fetch;
+
+    Class class;
+} Capture;
+
+typedef Capture* CapturePtr;
+typedef Capture* Captures;
+
+
+typedef struct WindowingSet {
+    int32_t n_windows;
+    Window* windows;
+} WindowingSet;
+
+typedef WindowingSet* WindowingSetPtr;
+typedef WindowingSet* WindowingSets;
+
+typedef struct Windowing {
+
+    int32_t n_psets;
+    PSet* psets;
+
+    int32_t n_wsizes;
+    int32_t wsizes[MAX_WSIZES];
+
+    int32_t n_captures;
+    Capture* captures[MAX_CAPTURES];
+    WindowingSet captures_windowings[MAX_CAPTURES][MAX_WSIZES];
+
+} Windowing;
+
+typedef struct Windowing* WindowingPtr;
+
+typedef void (*FetchPtr)(char*, WindowingPtr, int32_t);
 
 typedef struct WindowingTotals {
     int32_t total;
@@ -115,36 +162,50 @@ typedef struct WindowingTotals {
     int32_t negatives;
 } WindowingTotals;
 
-typedef struct WindowingDataset3 {
-    Window **windows;
-    int32_t number;
-} WindowingDataset3;
 
-typedef struct WindowingDataset2 {
-    WindowingDataset3 n;
-    WindowingDataset3 p;
-} WindowingDataset2;
 
-typedef struct WindowingDataset {
-    WindowingDataset2 train;
-    WindowingDataset2 test;
-    float split_percentage;
-} WindowingDataset;
 
-typedef struct AllWindows {
-    Window **windows;
-    Window **windows_positives;
-    Window **windows_negatives;
+
+
+//   D A T A S E T
+
+typedef struct WindowingRefSet {
+    int32_t n_windows;
+    Window** windows;
+} WindowingRefSet;
+
+
+
+typedef struct DatasetClass {
+    char name[50];
+    WindowingRefSet windowingref_set;
+} DatasetClass;
+
+
+
+typedef struct DatasetTrainTest {
+
     int32_t wsize;
-    int32_t total;
-    int32_t total_positives;
-    int32_t total_negatives;
-} AllWindows;
+    double percentage_split; // train over test
+    WindowingRefSet train[N_CLASSES];
+    WindowingRefSet test[N_CLASSES];
 
-typedef struct  AllWindowsCursor {
-    int32_t all;
-    int32_t positives;
-    int32_t negatives;
-} AllWindowsCursor;
+} DatasetTrainTest;
+
+typedef DatasetTrainTest* DatasetTrainTestPtr;
+
+
+
+typedef struct Dataset {
+
+    int32_t wsize;
+    WindowingRefSet total;
+    WindowingRefSet* classes;
+
+} Dataset;
+
+typedef Dataset* DatasetPtr;
+
+
 
 #endif

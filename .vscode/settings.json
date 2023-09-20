@@ -103,7 +103,8 @@
         "types.h": "c",
         "unistd.h": "c",
         "persister.h": "c",
-        "dn.h": "c"
+        "dn.h": "c",
+        "stddef.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }
