@@ -4,8 +4,7 @@
 
 #include "dn.h"
 
-void stratosphere_captures(char* root_dir, Captures* captures_ptr, int* n_captures_ptr);
-
+void stratosphere_add_captures(WindowingPtr windowing);
 
 /**
  * @brief It execute the windowing for the pcap and the number of windowing size chosen, in order to execute the pcap retrieve from
@@ -16,7 +15,7 @@ void stratosphere_captures(char* root_dir, Captures* captures_ptr, int* n_captur
  * @param windowings An array of PCAPWindowingPtr struct where each element represent the windowing of the PCAP for a defined window size.
  * @param N_WINDOWING The number of window size we chose.
  */
-void stratosphere_procedure(char* root_dir, WindowingPtr windowing, int32_t capture_index);
+void stratosphere_procedure(WindowingPtr windowing, int32_t capture_index);
 
 void stratoshere_disconnect();
 

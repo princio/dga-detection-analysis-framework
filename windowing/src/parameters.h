@@ -5,7 +5,7 @@
 #include "dn.h"
 
 
-void parameters_generate(char* root_dir, PSets* psets_ptr, int* n_psets_ptr);
+void parameters_generate(WindowingPtr windowing);
 
 
 #endif

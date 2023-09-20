@@ -3,14 +3,15 @@
 
 #include <stdio.h>
 
-void parameters_generate(char* root_dir, PSets* pis_ptr, int* n_psets_ptr) {
-    PSets pis;
+void parameters_generate(WindowingPtr windowing) {
 
     char __path[150];
-    snprintf(__path, 150, "%s/parameters.bin", root_dir);
+    snprintf(__path, 150, "%s/parameters.bin", windowing->name);
+
+    PSets *psets = &windowing->psets;
 
     {
-        int ret = persister_read_parameters(__path, pis_ptr, n_psets_ptr);
+        int ret = persister_read__parameters(__path, psets);
 
         if (ret == 1) {
             return;
@@ -65,21 +66,19 @@ void parameters_generate(char* root_dir, PSets* pis_ptr, int* n_psets_ptr) {
     printf("IV: %ld\n", count_iv);
     printf("Number of parameters: %d\n", n_psets);
 
-    pis = calloc(n_psets, sizeof(PSet));
-
-    *pis_ptr = pis;
-    *n_psets_ptr = n_psets;
+    psets->number = n_psets;
+    psets->_ = calloc(n_psets, sizeof(PSet));
 
     int i = 0;
     for (size_t i0 = 0; i0 < count_nn; ++i0) {
         for (size_t i1 = 0; i1 < count_wl; ++i1) {
             for (size_t i2 = 0; i2 < count_wt; ++i2) {
                 for (size_t i4 = 0; i4 < count_iv; ++i4) {
-                    pis[i].infinite_values = infinitevalues[i4];
-                    pis[i].nn = nn[i0];
-                    pis[i].whitelisting = whitelisting[i1];
-                    pis[i].windowing = windowing_types[i2];
-                    pis[i].id = i;
+                    psets->_[i].infinite_values = infinitevalues[i4];
+                    psets->_[i].nn = nn[i0];
+                    psets->_[i].whitelisting = whitelisting[i1];
+                    psets->_[i].windowing = windowing_types[i2];
+                    psets->_[i].id = i;
 
                     ++i;
                 }
@@ -88,7 +87,7 @@ void parameters_generate(char* root_dir, PSets* pis_ptr, int* n_psets_ptr) {
     }
 
     {
-        int ret = persister_write_parameters(__path, *pis_ptr, *n_psets_ptr);
+        int ret = persister_write__parameters(__path, psets);
 
         if (!ret) printf("Pi-s write error\n");
     }

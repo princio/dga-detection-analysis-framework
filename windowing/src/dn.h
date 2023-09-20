@@ -2,6 +2,7 @@
 #define __DN_H__
 
 #include <stdint.h>
+#include <time.h>
 
 #define MAX_WSIZES 20
 #define MAX_CAPTURES 100
@@ -72,17 +73,22 @@ typedef struct PSet {
     WindowingType windowing;
     InfiniteValues infinite_values;
     NN nn;
-    int32_t wsize;
 } PSet;
 
 typedef PSet* PSetPtr;
-typedef PSet* PSets;
+
+
+typedef struct PSets {
+    int32_t number;
+    PSet* _;
+} PSets;
 
 
 
 //   W I N D O W,    C A P T U R E    A N D    W I N D O W I N G
 
-typedef struct WindowMetrics {
+
+typedef struct WindowMetricSet {
     PSet* pi;
     int pi_id;
     
@@ -94,7 +100,12 @@ typedef struct WindowMetrics {
     int32_t dn_bad_09;
     int32_t dn_bad_099;
     int32_t dn_bad_0999;
-} WindowMetrics;
+} WindowMetricSet;
+
+typedef struct WindowMetricSets {
+    int32_t number;
+    WindowMetricSet* _;
+} WindowMetricSets;
 
 typedef struct Window {
     int32_t parent_id;
@@ -103,8 +114,7 @@ typedef struct Window {
     int32_t wnum;
     Class class;
 
-    int32_t nmetrics;
-    WindowMetrics* metrics;
+    WindowMetricSets metrics;
 } Window;
 
 typedef struct Capture {
@@ -127,28 +137,42 @@ typedef struct Capture {
 } Capture;
 
 typedef Capture* CapturePtr;
-typedef Capture* Captures;
+typedef Capture* CapturePtr;
 
 
-typedef struct WindowingSet {
+typedef struct WSizes {
+    int32_t number;
+    int32_t _[MAX_WSIZES];
+} WSizes;
+
+typedef struct Captures {
+    int32_t number;
+    Capture _[MAX_CAPTURES];
+} Captures;
+
+
+typedef struct WSet {
     int32_t n_windows;
     Window* windows;
-} WindowingSet;
+} WSet;
 
-typedef WindowingSet* WindowingSetPtr;
-typedef WindowingSet* WindowingSets;
+typedef WSet* WSets;
+typedef WSet* WSetPtr;
+typedef WSet* CaptureWSets;
 
 typedef struct Windowing {
+    char name[50];
+    char rootpath[500];
 
-    int32_t n_psets;
-    PSet* psets;
+    time_t time;
 
-    int32_t n_wsizes;
-    int32_t wsizes[MAX_WSIZES];
+    PSets psets;
 
-    int32_t n_captures;
-    Capture* captures[MAX_CAPTURES];
-    WindowingSet captures_windowings[MAX_CAPTURES][MAX_WSIZES];
+    WSizes wsizes;
+
+    Captures captures;
+
+    WSet captures_wsets[MAX_CAPTURES][MAX_WSIZES];
 
 } Windowing;
 
@@ -207,5 +231,11 @@ typedef struct Dataset {
 typedef Dataset* DatasetPtr;
 
 
+typedef struct ConfusionMatrix {
+    int32_t trues;
+    int32_t falses;
+
+    int32_t total;
+};
 
 #endif
