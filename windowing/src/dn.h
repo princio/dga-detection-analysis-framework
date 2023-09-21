@@ -118,7 +118,7 @@ typedef struct Window {
     WindowMetricSets metrics;
 } Window;
 
-typedef void (*FetchPtr)(char*, void*, int32_t);
+typedef void (*FetchPtr)(void*, int32_t);
 
 typedef struct Capture {
     int32_t id;
@@ -160,7 +160,6 @@ typedef struct WSet {
 
 typedef WSet* WSets;
 typedef WSet* WSetPtr;
-typedef WSet* CaptureWSets;
 
 typedef struct Windowing {
     char name[50];
@@ -228,5 +227,39 @@ typedef struct Dataset {
 
 } Dataset;
 
+// CONFUSION MATRIX
+
+
+typedef struct ConfusionMatrix {
+
+    int32_t wsize;
+
+    PSet* pset;
+
+    int32_t classes[N_CLASSES][2];
+
+} ConfusionMatrix;
+
+
+typedef struct ClassificationMetricsAverages {
+
+    int32_t wsize;
+
+    PSet* pset;
+
+    int32_t classes[N_CLASSES][2];
+
+} ClassificationMetricsAverages;
+
+
+typedef struct CM {
+    int32_t classes[N_CLASSES][2];
+} CM;
+
+typedef struct CMAVG {
+    int32_t separate_id;
+    int32_t totals;
+    CM* _;
+} CMAVG;
 
 #endif

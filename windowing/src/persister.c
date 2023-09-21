@@ -152,7 +152,7 @@ int persister_write__psets(WindowingPtr windowing) {
         char path[500 + 50];
         sprintf(path, "%s/parameters.bin", windowing->rootpath);
 
-        FILE *file = fopen(path, "wb");
+        file = fopen(path, "wb");
 
         if (!file) {
             perror("write-Pis");
@@ -195,7 +195,7 @@ int persister_read__psets(WindowingPtr windowing) {
         char path[500 + 50];
         sprintf(path, "%s/parameters.bin", windowing->rootpath);
 
-        FILE *file = fopen(path, "rb");
+        file = fopen(path, "rb");
         if (!file) {
             perror("read-Pis");
             return 0;
@@ -263,7 +263,7 @@ int persister_write__captures(WindowingPtr windowing) {
         FW(captures->_[i].r);
 
         if (i == 0) {
-            printf(" id: %ld\n", captures->_[i].id);
+            printf(" id: %d\n", captures->_[i].id);
             printf("inf: %d\n", captures->_[i].class);
             printf("nms: %ld\n", captures->_[i].nmessages);
             printf("frm: %ld\n", captures->_[i].fnreq_max);
@@ -285,7 +285,7 @@ int persister_read__captures(WindowingPtr windowing) {
         char path[500 + 50];
         sprintf(path, "%s/captures.bin", windowing->rootpath);
         
-        FILE *file = fopen(path, "rb");
+        file = fopen(path, "rb");
 
         if (!file) {
             perror("read-pcap");
@@ -297,7 +297,7 @@ int persister_read__captures(WindowingPtr windowing) {
 
     windowing->captures.number = number;
 
-    Captures* captures = &windowing->captures;
+    captures = &windowing->captures;
     for (int i = 0; i < number; ++i) {
         FR(captures->_[i].id);
         FR(captures->_[i].class);
@@ -308,7 +308,7 @@ int persister_read__captures(WindowingPtr windowing) {
         FR(captures->_[i].r);
 
         if (i == 0) {
-            printf("\n id: %ld\n", captures->_[i].id);
+            printf("\n id: %d\n", captures->_[i].id);
             printf("inf: %d\n", captures->_[i].class);
             printf("nms: %ld\n", captures->_[i].nmessages);
             printf("frm: %ld\n", captures->_[i].fnreq_max);
@@ -325,8 +325,7 @@ int persister_write__capturewsets(WindowingPtr windowing, int32_t capture_index)
 
 
     FILE *file;
-    CapturePtr capture;
-    CaptureWSets capture_wsets;
+    WSet* capture_wsets;
 
     {
         char path[500 + 50];
@@ -340,12 +339,10 @@ int persister_write__capturewsets(WindowingPtr windowing, int32_t capture_index)
         printf("Writing WINDOWS to %s...\n", path);
     }
 
-    capture = &windowing->captures._[capture_index];
     capture_wsets = windowing->captures_wsets[capture_index];
 
     for (int w = 0; w < windowing->wsizes.number; ++w) {
         WSetPtr capture_windowing = &capture_wsets[w];
-        const int32_t wsize = windowing->wsizes._[w];
         const int32_t n_windows = capture_windowing->number;
 
         FW(n_windows);
@@ -362,8 +359,8 @@ int persister_write__capturewsets(WindowingPtr windowing, int32_t capture_index)
                 // printf(" wsz: %d\n", window->wsize);
             // }
 
-            for (int m = 0; m < window->nmetrics; ++m) {
-                WindowMetricSet* metric = &window->metrics->_[m];
+            for (int m = 0; m < window->metrics.number; ++m) {
+                WindowMetricSet* metric = &window->metrics._[m];
 
                 FW(metric->pi_id);
                 FW(metric->dn_bad_05);
@@ -396,8 +393,7 @@ int persister_write__capturewsets(WindowingPtr windowing, int32_t capture_index)
 int persister_read__capturewsets(WindowingPtr windowing, int32_t capture_index) {
 
     FILE *file;
-    CapturePtr capture;
-    CaptureWSets capture_wsets;
+    WSet* capture_wsets;
 
     {
         char path[500 + 50];
@@ -411,12 +407,9 @@ int persister_read__capturewsets(WindowingPtr windowing, int32_t capture_index) 
         printf("Writing WINDOWS to %s...\n", path);
     }
 
-    capture = &windowing->captures._[capture_index];
     capture_wsets = windowing->captures_wsets[capture_index];
-
-
     for (int w = 0; w < windowing->wsizes.number; ++w) {
-        CaptureWSets capture_windowing = &capture_wsets[w];
+        WSet* capture_windowing = &capture_wsets[w];
 
         FR(capture_windowing->number);
 
@@ -433,8 +426,8 @@ int persister_read__capturewsets(WindowingPtr windowing, int32_t capture_index) 
                 // printf(" wsz: %d\n", window->wsize);
             // }
 
-            for (int m = 0; m < window->nmetrics; ++m) {
-                WindowMetricSet* metric = &window->metrics->_[m];
+            for (int m = 0; m < window->metrics.number; ++m) {
+                WindowMetricSet* metric = &window->metrics._[m];
 
                 FR(metric->pi_id);
                 FR(metric->dn_bad_05);

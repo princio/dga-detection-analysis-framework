@@ -131,7 +131,7 @@ void dataset_traintest(Dataset* dt, DatasetTrainTestPtr dt_tt, double percentage
 }
 
 
-void dataset_traintest_cm(PSets* psets, DatasetTrainTestPtr dt_tt, double *th, int (*cm)[N_CLASSES][2]) {
+void dataset_traintest_cm(int32_t wsize, PSets* psets, DatasetTrainTestPtr dt_tt, int32_t m_number, double th[m_number], ConfusionMatrix cm[m_number]) {
 
     for (int cl = 0; cl < N_CLASSES; ++cl) {
         WSetRef* wrs = &dt_tt->train[cl];
@@ -147,7 +147,9 @@ void dataset_traintest_cm(PSets* psets, DatasetTrainTestPtr dt_tt, double *th, i
 
                 is_true = ((Class)(window->class / N_CLASSES)) == class_predicted; // binary trick
 
-                cm[m][cl][is_true] += 1;
+                cm[m].wsize = wsize;
+                cm[m].pset = &psets->_[m];
+                cm[m].classes[cl][is_true] += 1;
             }
         }
     }
