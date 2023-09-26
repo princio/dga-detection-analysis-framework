@@ -22,6 +22,7 @@ enum Persistence_type {
     PT_Parameters,
     PT_Captures,
     PT_CaptureWSets,
+    PT_WSizes
 };
 
 
@@ -69,6 +70,9 @@ int _open_file(FILE** file, WindowingPtr windowing, int read, enum Persistence_t
             break;
         case PT_CaptureWSets:
             sprintf(fname, "captures_windows_%d", id);
+            break;
+        case PT_WSizes:
+            sprintf(fname, "wsizes");
             break;
     }
 
@@ -209,6 +213,58 @@ void fread64(void *v, FILE* file) {
     fread(&be, sizeof(uint64_t), 1, file);
     be = be64toh(be);
     memcpy(v, &be, 8);
+}
+
+
+
+int persister_write__windowing(WindowingPtr windowing) {
+    FILE *file;
+
+    _open_file(&file, windowing, 0, PT_WSizes, 0);
+    if (file == NULL) {
+        return -1;
+    }
+    
+    int len_name = strlen(windowing->name);
+    FW(len_name);
+    fwrite((void*) &windowing->name, len_name, 1, file);
+
+    int len_rootpath = strlen(windowing->rootpath);
+    FW(len_rootpath);
+    fwrite((void*) &windowing->rootpath, len_rootpath, 1, file);
+
+    FW(windowing->wsizes.number);
+
+    for (int i = 0; i < windowing->wsizes.number; ++i) {
+        FW(windowing->wsizes._[i]);
+    }
+
+    return fclose(file);
+}
+
+int persister_read__windowing(WindowingPtr windowing) {
+    FILE *file;
+
+    _open_file(&file, windowing, 1, PT_WSizes, 0);
+    if (file == NULL) {
+        return -1;
+    }
+    
+    int len_name;
+    FR(len_name);
+    fread((void*) &windowing->name, len_name, 1, file);
+
+    int len_rootpath;
+    FR(len_rootpath);
+    fread((void*) &windowing->rootpath, len_rootpath, 1, file);
+
+    FR(windowing->wsizes.number);
+
+    for (int i = 0; i < windowing->wsizes.number; ++i) {
+        FR(windowing->wsizes._[i]);
+    }
+
+    return fclose(file);
 }
 
 
@@ -411,4 +467,84 @@ int persister_read__capturewsets(WindowingPtr windowing, int32_t capture_index) 
     }
     
     return fclose(file);
+}
+
+
+void persister_description(WindowingPtr windowing) {
+    if (_check_dir(windowing)) {
+        perror("Impossible to create the directory");
+        return;
+    }
+
+    char path[strlen(windowing->rootpath) + strlen(windowing->name) + strlen("README.md") + 50];
+    sprintf(path, "%s/%s/%s", windowing->rootpath, windowing->name, "README.md");
+    printf("%s\n", path);
+    FILE* fp = fopen(path, "w");
+
+    if (fp == NULL) {
+        printf("Error file description.\n");
+        return;
+    }
+
+    fprintf(fp, "# %s\n\n", windowing->name);
+    
+    fprintf(fp, "Rootpath: %s\n\n", windowing->rootpath);
+
+    {
+        time_t t = time(NULL);
+        struct tm tm = *localtime(&t);
+        fprintf(fp, "Test end at: %4d/%02d/%02d, %02d:%02d:%02d.\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    }
+
+
+
+    fprintf(fp, "\n\n## WSizes\n");
+    fprintf(fp, "\n\nNumber:\t%d\n\n", windowing->wsizes.number);
+    for (int ws = 0; ws < windowing->wsizes.number - 1; ws++) {
+        fprintf(fp, "%d,", windowing->wsizes._[ws]);
+    }
+    fprintf(fp, "%d\n\n\n", windowing->wsizes._[windowing->wsizes.number - 1]);
+
+
+    fprintf(fp, "## Captures\n\n");
+
+    fprintf(fp, "Captures number: %d\n\n", windowing->captures.number);
+
+    fprintf(fp, "id,name,capture_type,class,fnreq_max,nmessages,q,r,qr,source\n");
+    for (int i = 0; i < windowing->captures.number; i++) {
+        Capture* c = &windowing->captures._[i];
+        fprintf(fp,
+            "%d,\"%s\",%d,%d,%s,%ld,%ld,%ld,%ld,%ld\n",
+            c->id,
+            c->name,
+            c->capture_type,
+            c->class,
+            c->source,
+            c->fnreq_max,
+            c->nmessages,
+            c->q,
+            c->r,
+            c->qr
+        );
+    }
+
+
+    fprintf(fp, "\n\n\n## Parameters\n\n");
+
+    fprintf(fp, "Parameters number: %d\n\n", windowing->psets.number);
+
+    fprintf(fp, "id,whitelisting,windowing,infinite_values,nn\n");
+    for (int i = 0; i < windowing->psets.number; i++) {
+        PSet* p = &windowing->psets._[i];
+        fprintf(fp,
+            "%d,\"(%d,%f)\",\"(%f,%f)\",%s,%s\n",
+            p->id,
+            p->whitelisting.rank, p->whitelisting.value,
+            p->infinite_values.ninf, p->infinite_values.pinf,
+            WINDOWING_NAMES[p->windowing],
+            NN_NAMES[p->nn]
+        );
+    }
+
+    fclose(fp);
 }

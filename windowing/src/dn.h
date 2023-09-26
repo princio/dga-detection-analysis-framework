@@ -83,6 +83,21 @@ typedef struct PSet {
     NN nn;
 } PSet;
 
+
+typedef struct PSetGenerator {
+    int32_t n_whitelisting;
+    Whitelisting* whitelisting;
+
+    int32_t n_windowing;
+    WindowingType* windowing;
+
+    int32_t n_infinitevalues;
+    InfiniteValues* infinitevalues;
+
+    int32_t n_nn;
+    NN* nn;
+} PSetGenerator;
+
 typedef PSet* PSetPtr;
 
 

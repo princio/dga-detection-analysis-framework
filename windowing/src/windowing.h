@@ -10,4 +10,12 @@ void windowing_fetch(WindowingPtr windowing);
 
 int windowing_compare(WindowingPtr w1, WindowingPtr w2, int);
 
+WindowingPtr windowing_run(char* rootpath, char* name, WSizes wsizes, PSetGenerator* psetgenerator);
+
+void windowing_description(WindowingPtr windowing);
+
+int windowing_save(WindowingPtr windowing_ptr);
+
+WindowingPtr windowing_load(char* rootpath, char* name);
+
 #endif

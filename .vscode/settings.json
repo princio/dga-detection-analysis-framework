@@ -113,7 +113,8 @@
         "windowing.h": "c",
         "math.h": "c",
         "assert.h": "c",
-        "stdarg.h": "c"
+        "stdarg.h": "c",
+        "experiment.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

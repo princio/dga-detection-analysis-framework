@@ -3,33 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-void parameters_generate(WindowingPtr windowing) {
+void parameters_generate(WindowingPtr windowing, PSetGenerator* psetgenerator) {
     PSets *psets = &windowing->psets;
 
-    NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
-
-    Whitelisting whitelisting[] = {
-        { .rank = 0, .value = 0 },
-        { .rank = 1000, .value = -50 },
-        { .rank = 100000, .value = -50 },
-        { .rank = 1000000, .value = -10 },  
-        { .rank = 1000000, .value = -50 } 
-    };
-
-    WindowingType windowing_types[] = {
-        WINDOWING_Q,
-        WINDOWING_R,
-        WINDOWING_QR
-    };
-
-    InfiniteValues infinitevalues[] = {
-        { .ninf = -20, .pinf = 20 }
-    };
-
-    size_t count_nn = sizeof(nn) / sizeof(NN);
-    size_t count_wl = sizeof(whitelisting)/sizeof(Whitelisting);
-    size_t count_wt = sizeof(windowing_types)/sizeof(WindowingType);
-    size_t count_iv = sizeof(infinitevalues)/sizeof(InfiniteValues);
+    size_t count_nn = psetgenerator->n_nn;
+    size_t count_wl = psetgenerator->n_whitelisting;
+    size_t count_wt = psetgenerator->n_windowing;
+    size_t count_iv = psetgenerator->n_infinitevalues;
 
     const int n_psets = count_nn * count_wl * count_wt * count_iv;
 
@@ -62,11 +42,11 @@ void parameters_generate(WindowingPtr windowing) {
         for (size_t i1 = 0; i1 < count_wl; ++i1) {
             for (size_t i2 = 0; i2 < count_wt; ++i2) {
                 for (size_t i4 = 0; i4 < count_iv; ++i4) {
-                    psets->_[i].infinite_values = infinitevalues[i4];
-                    psets->_[i].nn = nn[i0];
-                    psets->_[i].whitelisting.rank = whitelisting[i1].rank;
-                    psets->_[i].whitelisting.value = whitelisting[i1].value;
-                    psets->_[i].windowing = windowing_types[i2];
+                    psets->_[i].infinite_values = psetgenerator->infinitevalues[i4];
+                    psets->_[i].nn = psetgenerator->nn[i0];
+                    psets->_[i].whitelisting.rank = psetgenerator->whitelisting[i1].rank;
+                    psets->_[i].whitelisting.value = psetgenerator->whitelisting[i1].value;
+                    psets->_[i].windowing = psetgenerator->windowing[i2];
                     psets->_[i].id = i;
 
                     ++i;
