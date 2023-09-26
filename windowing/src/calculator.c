@@ -1,16 +1,17 @@
 #include "calculator.h"
 
+#include <stdio.h>
 #include <math.h>
 
-void calculator_message(Message* message, WindowMetricSets *metrics) {
+void calculator_message(Message* message, WindowMetricSets *metrics, PSet* psets) {
 
     for (int m = 0; m < metrics->number; m++) {
         int whitelistened = 0;
         double value, logit;
         WindowMetricSet *metric = &metrics->_[m];
-        PSet* pi;
-        
-        pi = metric->pi;
+
+        PSet* pi = &psets[m];
+
 
         if (pi->windowing == WINDOWING_Q && message->is_response) {
             continue;
@@ -39,12 +40,13 @@ void calculator_message(Message* message, WindowMetricSets *metrics) {
         }
 
         ++metric->wcount;
-        metric->logit += logit;
-        metric->whitelistened += whitelistened;
         metric->dn_bad_05 += value >= 0.5;
         metric->dn_bad_09 += value >= 0.9;
         metric->dn_bad_099 += value >= 0.99;
         metric->dn_bad_0999 += value >= 0.999;
+
+        metric->logit = logit;
+        metric->whitelistened += whitelistened;
 
         if (pi->logit_range.min > metric->logit) {
             pi->logit_range.min = metric->logit;

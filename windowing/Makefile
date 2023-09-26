@@ -67,7 +67,7 @@ CC := gcc
 STD := -std=gnu99 # See man gcc for more options
 
 # Protection for stack-smashing attack
-STACK := -Wstack-protector # -fstack-protector-all
+STACK := #-Wstack-protector # -fstack-protector-all
 
 # Specifies to GCC the required warnings
 WARNS := -Wall -Wextra -pedantic # -pedantic warns on language standards
@@ -83,7 +83,7 @@ DEBUG := -g3 -DDEBUG=1
 
 # Dependency libraries
 POSTGRES_LIBS := -lpq  -lm -lssl -lcrypto -ldl -pthread # -lpgcommon -lpgport -lgssapi_krb5 -lldap_r 
-LIBS := $(POSTGRES_LIBS) # -lm  -I some/path/to/library
+LIBS := $(POSTGRES_LIBS) #-I /home/princio/Repo/b64.c/build/libb64c.so # -lm  -I some/path/to/library
 
 # Test libraries
 TEST_LIBS := -l cmocka -L /usr/lib

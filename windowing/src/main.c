@@ -24,20 +24,25 @@
 #include "parameters.h"
 #include "persister.h"
 #include "stratosphere.h"
+#include "tester.h"
 #include "windowing.h"
 
-#include <stdint.h>
+#include <assert.h>
 #include <float.h>
-#include <string.h>
 #include <math.h>
-#include <time.h>
-#include <sys/types.h>
+#include <stdint.h>
+#include <string.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
 
 /* for ntohl/htonl */
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+
+#include <endian.h>
 
 char WINDOWING_NAMES[3][10] = {
     "QUERY",
@@ -58,6 +63,9 @@ char NN_NAMES[11][10] = {
     "PRIVATE",
     "TLD"
 };
+
+int trys;
+char try_name[5];
 
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
@@ -81,28 +89,135 @@ int main (int argc, char* argv[]) {
 
     // exit(0);
 
-    char root_dir[100];
-    sprintf(root_dir, "/home/princio/Desktop/exps/exp_0920");
-    struct stat st = {0};
-    if (stat(root_dir, &st) == -1) {
-        mkdir(root_dir, 0700);
+
+    Windowing _windowing;
+    WindowingPtr windowing = &_windowing;
+
+    Windowing _windowing_test;
+    WindowingPtr windowing_test = &_windowing_test;
+
+    const char* root_dir_env = getenv("ROOT_DIR");
+    if(root_dir_env) {
+        assert(strlen(root_dir_env) < 200);
+        memcpy(windowing->rootpath, root_dir_env, strlen(root_dir_env));
+    } else {
+        sprintf(windowing->rootpath, "/home/princio/Desktop/exps/");
     }
 
-    Windowing windowing;
+    sprintf(windowing->name, "exp_0922");
 
-    windowing.wsizes.number = 5;
-    windowing.wsizes._[0] = 10;
-    windowing.wsizes._[1] = 50;
-    windowing.wsizes._[2] = 100;
-    windowing.wsizes._[3] = 200;
-    windowing.wsizes._[4] = 2500;
 
-    parameters_generate(&windowing);
+    _windowing.captures.number = 0;
+    _windowing.psets.number = 0;
 
-    stratosphere_add_captures(&windowing);
+    _windowing.wsizes.number = 5;
+    _windowing.wsizes._[0] = 10;
+    _windowing.wsizes._[1] = 50;
+    _windowing.wsizes._[2] = 100;
+    _windowing.wsizes._[3] = 200;
+    _windowing.wsizes._[4] = 2500;
 
-    windowing_fetch(&windowing);
+    _windowing_test = _windowing;
+
+    if (persister_read__psets(windowing) != 0) {
+        parameters_generate(windowing);
+        persister_write__psets(windowing);
+    }
+
+    printf("Parameters #%d\n", windowing->psets.number);
+
+    if (persister_read__captures(windowing)) {
+        stratosphere_add_captures(windowing);
+        persister_write__captures(windowing);
+    }
+
+    _windowing_test = _windowing;
+
+    printf("Captures #%d\n", windowing->captures.number);
+    clock_t begin = clock();
+
+    // windowing->captures.number = 6;
+    // windowing_test->captures.number = 6;
+
+    double d1 = 0xE0B79D684B045AC0;
+    double d2 = 0xDFB79D684B045AC0;
+
+    int8_t* d1t = &d1;
+    int8_t* d2t = &d2;
+
+    int z = 0;
+    d1t[z++] = 0xE0;
+    d1t[z++] = 0xB7;
+    d1t[z++] = 0x9D;
+    d1t[z++] = 0x68;
+    d1t[z++] = 0x4B;
+    d1t[z++] = 0x04;
+    d1t[z++] = 0x5A;
+    d1t[z++] = 0xC0;
+
+    z = 0;
+    d2t[z++] = 0xDF;
+    d2t[z++] = 0xB7;
+    d2t[z++] = 0x9D;
+    d2t[z++] = 0x68;
+    d2t[z++] = 0x4B;
+    d2t[z++] = 0x04;
+    d2t[z++] = 0x5A;
+    d2t[z++] = 0xC0;
+
+    printf("%f\n", d1); // -104.067103 
+    printf("%f\n", d2);
+
+    int64_t be1;
+    memcpy(&be1, &d1, 8);
+    int64_t be2;
+    memcpy(&be2, &d2, 8);
+
+    be1 = htobe64(be1);
+    be2 = htobe64(be2);
+
+    int64_t ho1 = be64toh(be1);
+    int64_t ho2 = be64toh(be2);
+
+    // DumpHex(&d1, 8);
+    // DumpHex(&ho1, 8);
+    // DumpHex(&be1, 8);
+
+    // DumpHex(&d2, 8);
+    // DumpHex(&ho2, 8);
+    // DumpHex(&be2, 8);
+
+    // exit(0);
     
+
+
+    printf("Windows initialization");
+    windowing_captures_init(windowing);
+    windowing_captures_init(windowing_test);
+
+    WindowingPtr windowings[2];
+    windowings[0] = windowing;
+    windowings[1] = windowing_test;
+
+    clock_t end = clock();
+    double time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
+
+    printf(" (%f)\n", time_spent);
+
+    tester_init();
+
+    for (int i = 0; i < windowing->captures.number; i++) {
+        printf("%d/%d\n", i + 1, windowing->captures.number);
+        for (int try = 0; try < 2; try++) {
+            trys = try;
+            windowings[try]->captures._[i].fetch(windowings[try], i);
+        }
+        windowing_compare(windowings[0], windowings[1], i);
+    }
+
+    printf("\nWe are ready for testing!\n");
+
+    exit(0);
 
     int N_SPLITRATIOs = 10;
 
@@ -113,22 +228,22 @@ int main (int argc, char* argv[]) {
 
     memset(split_nwindows, 0, N_SPLITRATIOs * 3 * sizeof(int));
 
-    Dataset *dt = calloc(windowing.wsizes.number, sizeof(Dataset));
-    dataset_fill(&windowing, dt);
+    Dataset *dt = calloc(windowing->wsizes.number, sizeof(Dataset));
+    dataset_fill(windowing, dt);
 
 
-    ConfusionMatrix cm[N_SPLITRATIOs][windowing.wsizes.number][KFOLDs][windowing.psets.number];
+    ConfusionMatrix cm[N_SPLITRATIOs][windowing->wsizes.number][KFOLDs][windowing->psets.number];
 
     for (int p = 0; p < N_SPLITRATIOs; ++p) {
         double split_percentage = split_percentages[p];
-        for (int w = 0; w < windowing.wsizes.number; ++w) {
-            const int32_t wsize = windowing.wsizes._[w];
+        for (int w = 0; w < windowing->wsizes.number; ++w) {
+            const int32_t wsize = windowing->wsizes._[w];
             for (int k = 0; k < KFOLDs; ++k) {
                 DatasetTrainTest dt_tt;
                 dataset_traintest(&dt[w], &dt_tt, split_percentage);
 
-                double ths[windowing.psets.number];
-                memset(ths, 0, sizeof(double) * windowing.psets.number);
+                double ths[windowing->psets.number];
+                memset(ths, 0, sizeof(double) * windowing->psets.number);
 
                 WSetRef* ws = &dt_tt.train[CLASS__NOT_INFECTED];
                 for (int i = 0; i < ws->number; i++)
@@ -140,15 +255,15 @@ int main (int argc, char* argv[]) {
                     }
                 }
 
-                dataset_traintest_cm(wsize, &windowing.psets, &dt_tt, windowing.psets.number, ths, &cm[p][w][k][0]); 
+                dataset_traintest_cm(wsize, &windowing->psets, &dt_tt, windowing->psets.number, ths, &cm[p][w][k][0]); 
             }
         }
     }
 
 
     {
-        const int32_t N_WSIZEs = windowing.wsizes.number;
-        const int32_t N_METRICs = windowing.psets.number;
+        const int32_t N_WSIZEs = windowing->wsizes.number;
+        const int32_t N_METRICs = windowing->psets.number;
 
         #define CMAVG_INIT(N, ID)  \
         cmavgs[ID]._ = (CM*) cms_ ## ID;\

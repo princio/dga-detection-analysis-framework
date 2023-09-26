@@ -1,25 +1,25 @@
 
 #include "calculator.h"
-#include "persister.h"
 #include "stratosphere.h"
+#include "tester.h"
 
 #include <libpq-fe.h>
 #include <15/server/catalog/pg_type_d.h>
 
 #include <math.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-
-
-#define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
 
 static PGconn *conn = NULL;
 
+static FILE* ff;
+static int _capture_index;
+static int tries = 3;
 
-void _CDPGclose_connection(PGconn* conn)
-{
+void _disconnect(PGconn* conn) {
     PQfinish(conn);
 }
 
@@ -32,6 +32,14 @@ void _parse_message(PGresult* res, int row, Message* message) {
     message->is_response = PQgetvalue(res, row, 3)[0] == 't';
     message->top10m = atoi(PQgetvalue(res, row, 4));
     message->dyndns = PQgetvalue(res, row, 5)[0] == 't';
+    message->id = atol(PQgetvalue(res, row, 6));
+
+
+    // fprintf(ff, "%ld,%d,%s,", message->id, tries, PQgetvalue(res, row, 2));
+    // for (int i = 0; i < 8; ++i) {
+	// 	fprintf(ff, "%02X", ((unsigned char*)&message->logit)[i]);
+	// }
+    // fprintf(ff, "\n");
 }
 
 
@@ -96,30 +104,29 @@ void printdatastring(PGresult* res) {
 }
 
 
-PGconn* _get_connection() {
+int _connect() {
     if (conn != NULL) {
-        return conn;
+        return 1;
     }
 
-    PGconn *conn = PQconnectdb("postgresql://princio:postgres@localhost/dns");
+    conn = PQconnectdb("postgresql://princio:postgres@localhost/dns");
 
     if (PQstatus(conn) == CONNECTION_OK) {
-        puts("CONNECTION_OK\n");
-
-        return conn;
+        return 1;
     }
     
-    fprintf(stderr, "CONNECTION_BAD %s\n", PQerrorMessage(conn));
+    // fprintf(stderr, "CONNECTION_BAD %s\n", PQerrorMessage(conn));
 
-    _CDPGclose_connection(conn);
+    _disconnect(conn);
 
-    return NULL;
+    conn = NULL;
+
+    return 0;
 }
 
 
 int _get_pcaps_number() {
-    PGconn *_conn = _get_connection();
-    if (_conn == NULL) {
+    if (!_connect()) {
         puts("Error!");
         exit(1);
     }
@@ -142,17 +149,18 @@ int _get_pcaps_number() {
 
 
 void stratosphere_procedure(WindowingPtr windowing, int32_t capture_index) {
+    ff = fopen("/tmp/bib.csv", "a");
+    _capture_index = capture_index;
+
     PGresult* pgresult;
-    int ret;
     int nrows;
     const int N_WSIZE = windowing->wsizes.number;
     Capture* capture = &windowing->captures._[capture_index];
-    WSet (*capture_wsets)[MAX_WSIZES] = (WSet(*)[MAX_WSIZES]) &windowing->captures_wsets[capture_index];
+    WSet* capture_wsets = windowing->captures_wsets[capture_index];
 
-    ret = persister_read__capturewsets(windowing, capture_index);
-
-    if (ret == 1) {
-        return;
+    if (!_connect()) {
+        puts("Error!");
+        exit(1);
     }
 
     {
@@ -160,43 +168,24 @@ void stratosphere_procedure(WindowingPtr windowing, int32_t capture_index) {
         int pgresult_binary = 1;
 
         sprintf(sql,
-                "SELECT FN_REQ, VALUE, LOGIT, IS_RESPONSE, TOP10M, DYNDNS FROM MESSAGES_%d AS M "
+                "SELECT FN_REQ, VALUE, LOGIT, IS_RESPONSE, TOP10M, DYNDNS, M.ID FROM MESSAGES_%d AS M "
                 "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
                 "JOIN DN AS DN ON M.DN_ID=DN.ID "
-                "ORDER BY FN_REQ",
+                "ORDER BY FN_REQ, ID",
                 capture->id);
 
         pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
-    }
 
-    if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
-        printf("No data\n");
-        return;
-    }
+        if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
+            printf("No data\n");
+            PQclear(pgresult);
+            return;
+        }
 
-    nrows = PQntuples(pgresult);
+        nrows = PQntuples(pgresult);
 
-    if (nrows != capture->nmessages) {
-        printf("Errorrrrrr:\t%d\t%ld\n", nrows, capture->nmessages);
-    }
-
-    { // allocating windows and metrics inside each capture_window
-        for (int32_t w = 0; w < N_WSIZE; ++w) {
-            int32_t wsize = windowing->wsizes._[w];
-
-            int32_t n_windows = N_WINDOWS(capture->fnreq_max, wsize);
-
-            capture_wsets[w]->number = n_windows;
-
-            capture_wsets[w]->_ = calloc(n_windows, sizeof(Window));
-
-            Window* windows = capture_wsets[w]->_;
-            for (int32_t w = 0; w < n_windows; ++w) {
-
-                windows[w].class = capture->class;
-                windows[w].metrics.number = windowing->psets.number;
-                windows[w].metrics._ = calloc(windowing->psets.number, sizeof(WindowMetricSets));
-            }
+        if (nrows != capture->nmessages) {
+            printf("Error[nrows != capture->nmessages]:\t%d\t%ld\n", nrows, capture->nmessages);
         }
     }
 
@@ -207,14 +196,14 @@ void stratosphere_procedure(WindowingPtr windowing, int32_t capture_index) {
 
         _parse_message(pgresult, r, &message);
 
-        for (int w = 0; w < N_WSIZE; ++w) {
+        for (int ws = 0; ws < N_WSIZE; ++ws) {
             int wnum;
             Window *window;
             int32_t wsize;
             int32_t n_windows;
 
-            wsize = windowing->wsizes._[w];
-            n_windows = capture_wsets[w]->number;
+            wsize = windowing->wsizes._[ws];
+            n_windows = capture_wsets[ws].number;
 
             wnum = (int) floor(message.fn_req / wsize);
 
@@ -227,24 +216,51 @@ void stratosphere_procedure(WindowingPtr windowing, int32_t capture_index) {
             }
 
 
-            wnum_max[w] = wnum_max[w] < wnum ? wnum : wnum_max[w];
+            wnum_max[ws] = wnum_max[ws] < wnum ? wnum : wnum_max[ws];
 
-            window = &capture_wsets[w]->_[wnum];
+            window = &capture_wsets[ws]._[wnum];
 
             if (wnum != window->wnum) {
-                printf("Errorrrrrr:\t%d\t%d\n", wnum, window->wnum);
+                printf("Error[wnum != window->wnum]:\t%d\t%d\n", wnum, window->wnum);
             }
 
-            calculator_message(&message, &window->metrics);
+            calculator_message(&message, &window->metrics, windowing->psets._);
+
+            if (ws == 0) {
+                const int S = window->metrics.number * sizeof(WindowMetricSet);
+                tester_stratosphere(trys, capture_index, wnum, ws, message.id, r, window->metrics);
+            }
         }
     }
+
+
+    // for (int ws = 0; ws < windowing->wsizes.number; ws++) {
+    //     WSet* wset = &windowing->captures_wsets[capture_index][ws];
+    //     Window* windows = wset->_;
+    //     for (int wn = 0; wn < wset->number; wn++) {
+    //         const int S = windows[wn].metrics.number * sizeof(WindowMetricSet);
+            
+    //         uint8_t* a;
+    //         FILE* ff = fopen("./ciao.csv", "a");
+    //         fprintf(ff, "%s,%d,%d,%d,%d,", try_name, trys, capture_index, ws, wn);
+
+    //         a = (uint8_t*) windows[wn].metrics._;
+    //         for (int q = 0; q < S; ++q) {
+    //             fprintf(ff, "%02X", a[q]);
+    //         }
+    //         fprintf(ff, "\n");
+    //         fclose(ff);
+    //     }
+    // }
     
-    for (int w0 = 0; w0 < N_WSIZE; ++w0) {
-        printf("wnum_max: %d / %d -- %ld / %ld\n", wnum_max[w0], windowing->wsizes._[w0], capture->fnreq_max, N_WINDOWS(capture->fnreq_max, windowing->wsizes._[w0]));
-    }
+    // for (int w0 = 0; w0 < N_WSIZE; ++w0) {
+    //     printf("wnum_max: %d / %d -- %ld / %ld\n", wnum_max[w0], windowing->wsizes._[w0], capture->fnreq_max, N_WINDOWS(capture->fnreq_max, windowing->wsizes._[w0]));
+    // }
 
 
     PQclear(pgresult);
+
+    fclose(ff);
 }
 
 
@@ -253,18 +269,17 @@ void stratosphere_add_captures(WindowingPtr windowing) {
     Captures* captures = &windowing->captures;
     PGresult* pgresult;
 
-    PGconn *_conn = _get_connection();
-    if (_conn == NULL) {
+    if (!_connect()) {
         puts("Error!");
         exit(1);
     }
 
-    // number = _get_pcaps_number(conn);
+    // int number = _get_pcaps_number(conn);
 
-    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r FROM pcap JOIN malware as mw ON malware_id = mw.id");
+    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr ASC");
 
     if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
-        printf("No data\n");
+        printf("No data\t%s\n", PQerrorMessage(conn));
         exit(1);
     }
 
@@ -330,6 +345,8 @@ void stratosphere_add_captures(WindowingPtr windowing) {
 
         ++capture_index;
     }
+
+    windowing->captures.number = capture_index;
 
     PQclear(pgresult);
 }

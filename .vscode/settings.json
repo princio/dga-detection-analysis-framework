@@ -104,7 +104,16 @@
         "unistd.h": "c",
         "persister.h": "c",
         "dn.h": "c",
-        "stddef.h": "c"
+        "stddef.h": "c",
+        "queue": "c",
+        "stack": "c",
+        "stratosphere.h": "c",
+        "__string": "c",
+        "*.def": "c",
+        "windowing.h": "c",
+        "math.h": "c",
+        "assert.h": "c",
+        "stdarg.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

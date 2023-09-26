@@ -1,7 +1,5 @@
 #include "dataset.h"
 
-#include "persister.h"
-
 #include <assert.h>
 #include <float.h>
 #include <math.h>

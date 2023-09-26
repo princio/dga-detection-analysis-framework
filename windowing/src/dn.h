@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <time.h>
 
+#define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
+
+
 #define MAX_WSIZES 20
 #define MAX_CAPTURES 100
 
@@ -15,8 +18,12 @@ extern char WINDOWING_NAMES[3][10];
 
 extern char NN_NAMES[11][10];
 
+extern int trys;
+extern char try_name[5];
+
 
 typedef struct Message {
+    int64_t id;
     int64_t fn_req;
     double value;
     double logit;
@@ -90,12 +97,9 @@ typedef struct PSets {
 
 
 typedef struct WindowMetricSet {
-    PSet* pi;
-    int pi_id;
-    
+    int     pi_id;
     int32_t wcount;
-
-    double logit;
+    double  logit;
     int32_t whitelistened;
     int32_t dn_bad_05;
     int32_t dn_bad_09;
@@ -162,7 +166,7 @@ typedef WSet* WSets;
 typedef WSet* WSetPtr;
 
 typedef struct Windowing {
-    char name[50];
+    char name[100];
     char rootpath[500];
 
     time_t time;

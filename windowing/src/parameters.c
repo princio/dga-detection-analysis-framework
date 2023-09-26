@@ -1,25 +1,12 @@
 #include "parameters.h"
-#include "persister.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 
 void parameters_generate(WindowingPtr windowing) {
-
-    char __path[150];
-    snprintf(__path, 150, "%s/parameters.bin", windowing->name);
-
     PSets *psets = &windowing->psets;
 
-    {
-        int ret = persister_read__psets(windowing);
-
-        if (ret == 1) {
-            return;
-        }
-    }
-
-    NN nn[] = { NN_NONE, NN_TLD, NN_ICANN, NN_PRIVATE };
+    NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
 
     Whitelisting whitelisting[] = {
         { .rank = 0, .value = 0 },
@@ -77,7 +64,8 @@ void parameters_generate(WindowingPtr windowing) {
                 for (size_t i4 = 0; i4 < count_iv; ++i4) {
                     psets->_[i].infinite_values = infinitevalues[i4];
                     psets->_[i].nn = nn[i0];
-                    psets->_[i].whitelisting = whitelisting[i1];
+                    psets->_[i].whitelisting.rank = whitelisting[i1].rank;
+                    psets->_[i].whitelisting.value = whitelisting[i1].value;
                     psets->_[i].windowing = windowing_types[i2];
                     psets->_[i].id = i;
 
@@ -85,11 +73,5 @@ void parameters_generate(WindowingPtr windowing) {
                 }
             }
         }
-    }
-
-    {
-        int ret = persister_write__psets(windowing);
-
-        if (!ret) printf("Pi-s write error\n");
     }
 }

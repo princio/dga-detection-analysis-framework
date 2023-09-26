@@ -6,6 +6,8 @@
 
 #include "dn.h"
 
-void calculator_message(Message* message, WindowMetricSets *metrics);
+#include <stdio.h>
+
+void calculator_message(Message* message, WindowMetricSets *metrics, PSet* pi);
 
 #endif

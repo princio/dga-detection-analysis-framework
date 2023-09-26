@@ -5,8 +5,7 @@
             "includePath": [
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/pslregex/pslregex/c",
-                "/usr/include/postgresql/",
-                "/usr/include/postgresql/15/server"
+                "/usr/include/postgresql/"
             ],
             "defines": [],
             "compilerPath": "/usr/bin/clang",

@@ -3,6 +3,8 @@
 
 #include "dn.h"
 
+void DumpHex(const void* data, size_t size);
+
 int persister_write__psets(WindowingPtr windowing);
 int persister_read__psets(WindowingPtr windowing);
 
