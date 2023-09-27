@@ -118,6 +118,34 @@ WindowingPtr exps_1() {
     return experiment_run("/home/princio/Desktop/exps", "exp_1", wsizes, &psetgenerator);
 }
 
+int ff(const int cursor[4], const int sizes[3], int avg) {
+    const int ncursor = 4;
+    int active[ncursor];
+    int last = 0;
+
+    for (int i = 0; i < ncursor; i++) active[i] = 0;
+
+    active[0] = 1;
+    for (int i = 1; i < ncursor; i++) {
+        active[i] = avg & (1 << (i-1)) ? 1 : 0;
+        last = active[i] ? i : last;
+    }
+
+    int c = 0;
+    for (int l = 0; l < last; l++) {
+        int row = 1;
+        if (cursor[l] == 0) continue;
+        if (active[l] == 0) continue;
+        for (int ll = l + 1; ll <= last; ll++) {
+            if (active[ll]) row *= sizes[ll];
+        }
+        c += row * cursor[l];
+    }
+    
+    c += cursor[last];
+
+    return c;
+}
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
 
@@ -135,7 +163,130 @@ int main (int argc, char* argv[]) {
 
     /* Do your magic here :) */
 
-    WindowingPtr windowing_exps_1 = exps_1();
+    // WindowingPtr windowing_exps_1 = exps_1();
+
+    int n0 = 3;
+    int n1 = 4;
+    int n2 = 5;
+    int n4 = 7;
+
+    int cm0[n0];
+    int cm1[n0][n1];
+    int cm2[n0][n2];
+    int cm3[n0][n1][n2];
+    int cm4[n0][n4];
+    int cm5[n0][n1][n4];
+    int cm6[n0][n2][n4];
+    int cm7[n0][n1][n2][n4];
+
+    for (int i0 = 0; i0 < n0; i0++) {
+        for (int i1 = 0; i1 < n1; i1++) {
+            for (int i2 = 0; i2 < n2; i2++) {
+                for (int i4 = 0; i4 < n4; i4++) {
+                    cm0[i0] = rand() % 1000;
+                    cm1[i0][i1] = rand() % 1000;
+                    cm2[i0][i2] = rand() % 1000;
+                    cm3[i0][i1][i2] = rand() % 1000;
+                    cm4[i0][i4] = rand() % 1000;
+                    cm5[i0][i1][i4] = rand() % 1000;
+                    cm6[i0][i2][i4] = rand() % 1000;
+                    cm7[i0][i1][i2][i4] = rand() % 1000;
+                }
+            }
+        }
+    }
+    
+
+    const int sizes[4] = { n0, n1, n2, n4 };
+
+    int cursor[4];
+
+
+
+    int wrongs = 0;
+    for (int i0 = 0; i0 < n0; i0++) {
+        for (int i1 = 1; i1 < n1; i1++) {
+            for (int i2 = 0; i2 < n2; i2++) {
+                for (int i4 = 1; i4 < n4; i4++) {
+                    cursor[0] = i0;
+                    cursor[1] = i1;
+                    cursor[2] = i2;
+                    cursor[3] = i4;
+                    int avg = 0;
+                    {
+                        int a = cm0[i0];
+                        int c = ff(cursor, sizes, avg);
+                        int v = ((int*)cm0)[c];
+                        printf("%5d\t%d\t%5d\t%5d\t%d\n", avg, c, a, v, a == v);
+                        wrongs += !(a == v);
+                    }
+                    {
+                        avg = 4;
+                        int a = cm4[i0][i4];
+                        int c = ff(cursor, sizes, avg);
+                        int v = ((int*)cm4)[c];
+                        printf("%5d\t%d\t%5d\t%5d\t%d\n", avg, c, a, v, a == v);
+                        wrongs += (a != v);
+                    }
+
+                    {
+                        avg = 2;
+                        int a = cm2[i0][i2];
+                        int c = ff(cursor, sizes, avg);
+                        int v = ((int*)cm2)[c];
+                        printf("%5d\t%d\t%5d\t%5d\t%d\n", avg, c, a, v, a == v);
+                        wrongs += (a != v);
+                    }
+
+                    {
+                        avg = 6;
+                        int a = cm6[i0][i2][i4];
+                        int c = ff(cursor, sizes, avg);
+                        int v = ((int*)cm6)[c];
+                        printf("%5d\t%d\t%5d\t%5d\t%d\n", avg, c, a, v, a == v);
+                        wrongs += (a != v);
+                    }
+
+                    {
+                        avg = 1;
+                        int a = cm1[i0][i1];
+                        int c = ff(cursor, sizes, avg);
+                        int v = ((int*)cm1)[c];
+                        printf("%5d\t%d\t%5d\t%5d\t%d\n", avg, c, a, v, a == v);
+                        wrongs += (a != v);
+                    }
+
+                    {
+                        avg = 5;
+                        int a = cm5[i0][i1][i4];
+                        int c = ff(cursor, sizes, avg);
+                        int v = ((int*)cm5)[c];
+                        printf("%5d\t%d\t%5d\t%5d\t%d\n", avg, c, a, v, a == v);
+                        wrongs += (a != v);
+                    }
+
+                    {
+                        avg = 3;
+                        int a = cm3[i0][i1][i2];
+                        int c = ff(cursor, sizes, avg);
+                        int v = ((int*)cm3)[c];
+                        printf("%5d\t%d\t%5d\t%5d\t%d\n", avg, c, a, v, a == v);
+                        wrongs += (a != v);
+                    }
+
+                    {
+                        avg = 7;
+                        int a = cm7[i0][i1][i2][i4];
+                        int c = ff(cursor, sizes, avg);
+                        int v = ((int*)cm7)[c];
+                        printf("%5d\t%d\t%5d\t%5d\t%d\n", avg, c, a, v, a == v);
+                        wrongs += (a != v);
+                    }
+                }
+            }
+        }
+    }
+    printf("%d\n", wrongs);
 
     exit(0);
 
