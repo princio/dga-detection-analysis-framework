@@ -57,14 +57,14 @@ void tester_stratosphere(int trys, int capture_index, int wnum, int ws, int id, 
     // }
 
     for (int m = 0; m < metrics.number; ++m) {
-        for (int q = 0; q < sizeof(WindowMetricSet); ++q) {
+        for (size_t q = 0; q < sizeof(WindowMetricSet); ++q) {
             fprintf(fp, "%02X", ((uint8_t*) &metrics._[m])[q]);
         }
         fprintf(fp, ",");
     }
 
 
-    for (int q = 0; q < metrics.number * sizeof(WindowMetricSet); ++q) {
+    for (size_t q = 0; q < metrics.number * sizeof(WindowMetricSet); ++q) {
         fprintf(fp, "%02X", ((uint8_t*) metrics._)[q]);
     }
 
@@ -88,13 +88,13 @@ void tester_comparer(int capture_index, int wn, int ws, WindowMetricSets metrics
     // }
 
 
-    for (int q = 0; q < metrics0.number * sizeof(WindowMetricSet); ++q) {
+    for (size_t q = 0; q < metrics0.number * sizeof(WindowMetricSet); ++q) {
         fprintf(fp2, "%02X", ((uint8_t*) metrics0._)[q]);
     }
     fprintf(fp2, ",");
 
 
-    for (int q = 0; q < metrics1.number * sizeof(WindowMetricSet); ++q) {
+    for (size_t q = 0; q < metrics1.number * sizeof(WindowMetricSet); ++q) {
         fprintf(fp2, "%02X", ((uint8_t*) metrics1._)[q]);
     }
 

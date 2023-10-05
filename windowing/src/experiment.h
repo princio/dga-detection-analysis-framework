@@ -23,4 +23,9 @@ typedef struct CMAvgCursor {
     int metric;
 } CMAvgCursor;
 
+
+WindowingPtr experiment_run(char* rootpath, char*name, WSizes wsizes, PSetGenerator* psetgenerator);
+
+void experiment_test(ExperimentSet* es);
+
 #endif

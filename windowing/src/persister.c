@@ -409,6 +409,12 @@ int persister_write__capturewsets(WindowingPtr windowing, int32_t capture_index)
 
             fwriteN(window->metrics._, S, file);
 
+            // for (int i = 0; i < window->metrics.number; i++) {
+            //     // if (window->metrics._[i].logit)
+            //         printf("%d\tlogit-> %g\n", i, window->metrics._[i].logit);
+            // }
+
+            // exit(0);
 
             // {
             //     FILE* ff = fopen("./ciao.csv", "a");
@@ -452,6 +458,12 @@ int persister_read__capturewsets(WindowingPtr windowing, int32_t capture_index) 
             int S = window->metrics.number * sizeof(WindowMetricSet);
 
             freadN(window->metrics._, S, file);
+
+            // for (int i = 0; i < window->metrics.number; i++) {
+            //     // if (window->metrics._[i].logit)
+            //         printf("%d\tlogit-> %g\n", i, window->metrics._[i].logit);
+            // }
+
 
             // {
             //     FILE* ff = fopen("./ciao.csv", "a");

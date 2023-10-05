@@ -192,7 +192,7 @@ typedef struct Windowing {
 
     Captures captures;
 
-    WSet captures_wsets[MAX_CAPTURES][MAX_WSIZES];
+    WSet captures_wsets[MAX_CAPTURES][MAX_WSIZES]; // By MAX_CAPTURES and MAX_WSIZES
 
 } Windowing;
 
@@ -205,12 +205,6 @@ typedef struct WindowingTotals {
 } WindowingTotals;
 
 
-
-
-
-
-//   D A T A S E T
-
 typedef struct WSetRef {
     int32_t number;
     Window** _;
@@ -218,36 +212,7 @@ typedef struct WSetRef {
 
 
 
-typedef struct DatasetClass {
-    char name[50];
-    WSetRef windowingref_set;
-} DatasetClass;
-
-
-
-typedef struct DatasetTrainTest {
-
-    int32_t wsize;
-    double percentage_split; // train over test
-    WSetRef train[N_CLASSES];
-    WSetRef test[N_CLASSES];
-
-} DatasetTrainTest;
-
-typedef DatasetTrainTest* DatasetTrainTestPtr;
-
-
-
-typedef struct Dataset {
-
-    int32_t wsize;
-    WSetRef total;
-    WSetRef classes[N_CLASSES];
-
-} Dataset;
-
 // CONFUSION MATRIX
-
 
 typedef struct ConfusionMatrix {
 
@@ -259,7 +224,6 @@ typedef struct ConfusionMatrix {
 
 } ConfusionMatrix;
 
-
 typedef struct ClassificationMetricsAverages {
 
     int32_t wsize;
@@ -270,15 +234,70 @@ typedef struct ClassificationMetricsAverages {
 
 } ClassificationMetricsAverages;
 
+typedef struct ConfusionMatrixs {
+    int32_t number;
+    ConfusionMatrix* _;
+} ConfusionMatrixs;
+
+
+
+
+//   D A T A S E T
+
+typedef struct Ths {
+    int32_t number;
+    double* _;
+} Ths;
+
+typedef struct DatasetClass {
+    char name[50];
+    WSetRef windowingref_set;
+} DatasetClass;
+
+typedef struct DatasetTrainTest {
+
+    int32_t wsize;
+    double percentage_split; // train over test
+    WSetRef train[N_CLASSES];
+    WSetRef test[N_CLASSES];
+    Ths ths;
+    ConfusionMatrixs cms;
+
+} DatasetTrainTest;
+
+typedef DatasetTrainTest* DatasetTrainTestPtr;
+
+typedef struct Dataset {
+
+    int32_t wsize;
+    WSetRef windows_all;
+    WSetRef windows[N_CLASSES]; // One for each class
+} Dataset;
+
+
+
+//   M E T R I C S
+
 
 typedef struct CM {
     int32_t classes[N_CLASSES][2];
+    double false_ratio[N_CLASSES];
+    double true_ratio[N_CLASSES];
 } CM;
 
-typedef struct CMAVG {
-    int32_t separate_id;
-    int32_t totals;
+typedef struct CMs {
+    int32_t number;
     CM* _;
-} CMAVG;
+} CMs;
+
+typedef struct AVG {
+    int32_t mask;
+    CMs cms;
+} AVG;
+
+typedef struct ExperimentAVG {
+    int32_t mask;
+    CMs cms;
+} ExperimentAVG;
 
 #endif

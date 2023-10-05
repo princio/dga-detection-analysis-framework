@@ -19,6 +19,7 @@ void windowing_fetch(WindowingPtr windowing) {
     }
 }
 
+
 void windowing_capture_init(WindowingPtr windowing, int capture_index) {
     Capture* capture = &windowing->captures._[capture_index];
     WSet* capture_wsets = windowing->captures_wsets[capture_index];
@@ -48,6 +49,7 @@ void windowing_capture_init(WindowingPtr windowing, int capture_index) {
         }
     }
 }
+
 
 void windowing_captures_init(WindowingPtr windowing) {
     for (int capture_index = 0; capture_index < windowing->captures.number; capture_index++) {
@@ -83,6 +85,7 @@ int windowing_compare(WindowingPtr windowing, WindowingPtr windowing_test, int c
 
     return eq;
 }
+
 
 WindowingPtr windowing_run(char* rootpath, char* name, WSizes wsizes, PSetGenerator* psetgenerator) {
     WindowingPtr windowing_ptr = calloc(1, sizeof(Windowing));
@@ -132,7 +135,7 @@ WindowingPtr windowing_run(char* rootpath, char* name, WSizes wsizes, PSetGenera
         tester_init();
 
         for (int i = 0; i < windowing_ptr->captures.number; i++) {
-            printf("%d/%d\n", i + 1, windowing_ptr->captures.number);
+            printf("%d/%d [%d]\n", i + 1, windowing_ptr->captures.number, windowing_ptr->captures._[i].class);
             if (persister_read__capturewsets(windowing_ptr, i)) {
                 for (int try = 0; try < 2; try++) {
                     trys = try;
@@ -145,9 +148,23 @@ WindowingPtr windowing_run(char* rootpath, char* name, WSizes wsizes, PSetGenera
     }
 
     for (int i = 0; i < windowing_ptr->captures.number; i++) {
-        printf("%d/%d\n", i + 1, windowing_ptr->captures.number);
+        printf("%d/%d [%d]\n", i + 1, windowing_ptr->captures.number, windowing_ptr->captures._[i].class);
         windowing_ptr->captures._[i].fetch(windowing_ptr, i);
     }
+
+
+    // for (int32_t i = 0; i < windowing_ptr->captures.number; ++i) {
+    //     for (int32_t w = 0; w < windowing_ptr->wsizes.number; ++w) {
+    //         for (int32_t j = 0; j < windowing_ptr->captures_wsets[i][w].number; ++j) {
+    //             for (int32_t m = 0; m < windowing_ptr->psets.number; ++m) {
+    //                 if (!windowing_ptr->captures_wsets[i][w]._[j].metrics._[m].logit)
+    //                 printf("%d,%d,%d,%d\t%f\n", i, w, j, m, windowing_ptr->captures_wsets[i][w]._[j].metrics._[m].logit);
+    //             }
+    //         }
+    //     }
+    // }
+
+    // exit(0);
 
     printf("\nWe are ready for testing!\n");
 
@@ -182,7 +199,7 @@ WindowingPtr windowing_load(char* rootpath, char* name) {
     windowing_captures_init(windowing_ptr);
 
     for (int i = 0; i < windowing_ptr->captures.number; i++) {
-        printf("%d/%d\n", i + 1, windowing_ptr->captures.number);
+        printf("%d/%d [%d]\n", i + 1, windowing_ptr->captures.number, windowing_ptr->captures._[i].class);
         read_done = persister_read__capturewsets(windowing_ptr, i);
         if (read_done) {
             printf("Failed to load \"capturewsets\" of %d.\n", i);
@@ -218,10 +235,8 @@ int windowing_save(WindowingPtr windowing_ptr) {
         return -1;
     }
 
-    windowing_captures_init(windowing_ptr);
-
     for (int i = 0; i < windowing_ptr->captures.number; i++) {
-        printf("%d/%d\n", i + 1, windowing_ptr->captures.number);
+        printf("%d/%d [%d]\n", i + 1, windowing_ptr->captures.number, windowing_ptr->captures._[i].class);
         save_done = persister_write__capturewsets(windowing_ptr, i);
         if (save_done) {
             printf("Failed to save \"capturewsets\" of %d.\n", i);

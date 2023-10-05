@@ -21,6 +21,8 @@
 #include "colors.h"
 #include "dataset.h"
 #include "dn.h"
+#include "experiment.h"
+#include "graph.h"
 #include "parameters.h"
 #include "persister.h"
 #include "stratosphere.h"
@@ -68,7 +70,7 @@ int trys;
 char try_name[5];
 
 
-WindowingPtr exps_1() {
+void exps_1() {
     WSizes wsizes;
     PSetGenerator psetgenerator;
 
@@ -115,10 +117,30 @@ WindowingPtr exps_1() {
         psetgenerator.infinitevalues = infinitevalues;
     }
 
-    return experiment_run("/home/princio/Desktop/exps", "exp_1", wsizes, &psetgenerator);
+    ExperimentSet es;
+
+    es.windowing = experiment_run("/home/princio/Desktop/exps", "exp_4", wsizes, &psetgenerator);
+
+    es.KFOLDs = 10;
+    es.N_SPLITRATIOs = 10;
+    {
+        int i = 0;
+        es.split_percentages[i++] = 0.01;
+        es.split_percentages[i++] = 0.05;
+        es.split_percentages[i++] = 0.1;
+        es.split_percentages[i++] = 0.2;
+        es.split_percentages[i++] = 0.25;
+        es.split_percentages[i++] = 0.3;
+        es.split_percentages[i++] = 0.4;
+        es.split_percentages[i++] = 0.5;
+        es.split_percentages[i++] = 0.6;
+        es.split_percentages[i++] = 0.7;
+    }
+
+    experiment_test(&es);
 }
 
-int ff(const int cursor[4], const int sizes[3], int avg) {
+int ff(const int cursor[4], const int sizes[4], int avg) {
     const int ncursor = 4;
     int active[ncursor];
     int last = 0;
@@ -146,6 +168,7 @@ int ff(const int cursor[4], const int sizes[3], int avg) {
 
     return c;
 }
+
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
 
@@ -163,12 +186,14 @@ int main (int argc, char* argv[]) {
 
     /* Do your magic here :) */
 
-    // WindowingPtr windowing_exps_1 = exps_1();
+    exps_1();
+
+    exit(0);
 
     int n0 = 3;
-    int n1 = 4;
+    int n1 = 1;
     int n2 = 5;
-    int n4 = 7;
+    int n4 = 237;
 
     int cm0[n0];
     int cm1[n0][n1];
@@ -196,12 +221,9 @@ int main (int argc, char* argv[]) {
         }
     }
     
-
     const int sizes[4] = { n0, n1, n2, n4 };
 
     int cursor[4];
-
-
 
     int wrongs = 0;
     for (int i0 = 0; i0 < n0; i0++) {
@@ -288,6 +310,8 @@ int main (int argc, char* argv[]) {
     }
     printf("%d\n", wrongs);
 
+
+
     exit(0);
 
 /*
@@ -311,7 +335,7 @@ int main (int argc, char* argv[]) {
     //         const int32_t wsize = windowing->wsizes._[w];
     //         for (int k = 0; k < KFOLDs; ++k) {
     //             DatasetTrainTest dt_tt;
-    //             dataset_traintest(&dt[w], &dt_tt, split_percentage);
+    //             dataset_traintestsplit(&dt[w], &dt_tt, split_percentage);
 
     //             double ths[windowing->psets.number];
     //             memset(ths, 0, sizeof(double) * windowing->psets.number);
@@ -326,7 +350,7 @@ int main (int argc, char* argv[]) {
     //                 }
     //             }
 
-    //             dataset_traintest_cm(wsize, &windowing->psets, &dt_tt, windowing->psets.number, ths, &cm[p][w][k][0]); 
+    //             dataset_traintestsplit_cm(wsize, &windowing->psets, &dt_tt, windowing->psets.number, ths, &cm[p][w][k][0]); 
     //         }
     //     }
     // }

@@ -45,7 +45,7 @@ void calculator_message(Message* message, WindowMetricSets *metrics, PSet* psets
         metric->dn_bad_099 += value >= 0.99;
         metric->dn_bad_0999 += value >= 0.999;
 
-        metric->logit = logit;
+        metric->logit += logit;
         metric->whitelistened += whitelistened;
 
         if (pi->logit_range.min > metric->logit) {

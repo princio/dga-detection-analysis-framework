@@ -227,7 +227,6 @@ void stratosphere_procedure(WindowingPtr windowing, int32_t capture_index) {
             calculator_message(&message, &window->metrics, windowing->psets._);
 
             if (ws == 0) {
-                const int S = window->metrics.number * sizeof(WindowMetricSet);
                 tester_stratosphere(trys, capture_index, wnum, ws, message.id, r, window->metrics);
             }
         }
