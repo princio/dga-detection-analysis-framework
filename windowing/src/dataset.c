@@ -13,10 +13,10 @@ void print_cm(const int N_PSETS, CM* cm) {
     for (int m = 0; m < N_PSETS; ++m) {
         printf(
             "\n| %5d, %5d |\n| %5d, %5d \n",
-            cm->classes[0][1],
-            cm->classes[0][0],
-            cm->classes[2][0],
-            cm->classes[2][1]
+            cm->single[0].trues,
+            cm->single[0].falses,
+            cm->single[1].falses,
+            cm->single[1].trues
         );
     }
 }
@@ -153,6 +153,7 @@ void dataset_traintestsplit(Dataset* dt, DatasetTrainTestPtr dt_tt, double perce
         }
 
         wrs_train->number = floor(dt->windows[cl].number * percentage_split);
+        wrs_train->number = wrs_train->number == 0 ? 1 : wrs_train->number;
         wrs_train->_ = calloc(wrs_train->number, sizeof(Window*));
 
         wrs_test->number = dt->windows[cl].number - wrs_train->number;
@@ -164,29 +165,54 @@ void dataset_traintestsplit(Dataset* dt, DatasetTrainTestPtr dt_tt, double perce
     }
 }
 
+void logit_range(double min, double max, WSetRef* ref) {
+    for (int32_t i = 0; i < ref->number; ++i) {
+        ref->_[i]->metrics[]
+    }
+}
+
 void dataset_traintestsplit_cm(int32_t wsize, PSets* psets, DatasetTrainTestPtr dt_tt) {
 
-    for (int cl = 0; cl < N_CLASSES; ++cl) {
-        if (dt_tt->train->number == 0) continue;
+    for (int m = 0; m < psets->number; ++m) {
+        double th = -1 * DBL_MAX;
+        WSetRef* ws_ni = &dt_tt->train[CLASS__NOT_INFECTED];
 
-        WSetRef* wrs = &dt_tt->train[cl];
+        for (int i = 0; i < ws_ni->number; i++) {
+            double logit = ws_ni->_[i]->metrics._[m].logit;
+            if (th < logit) th = logit;
+        }
+
+        dt_tt->ths._[m] = th;
+
+
+    }   
+
+    for (int cl = 0; cl < N_CLASSES; ++cl) {
+        if (dt_tt->test->number == 0) continue;
+
+        WSetRef* wrs = &dt_tt->test[cl];
 
         for (int i = 0; i < wrs->number; ++i) {
             Window* window = wrs->_[i];
 
             for (int m = 0; m < psets->number; ++m) {
-                int32_t is_true;
                 int32_t prediction; // 1 or 0
                 int32_t binary_class;  // 1 or 0
 
                 prediction = window->metrics._[m].logit >= dt_tt->ths._[m];
                 binary_class = window->class == CLASS__NOT_INFECTED ? 0 : 1;
 
-                is_true = prediction == binary_class; // binary trick
-
+                // printf("%d,%d,%d,%s,%5.1f\t%5.1f\n", window->class, binary_class, prediction, prediction == binary_class ? "Goot" : "Wrong", window->metrics._[m].logit, dt_tt->ths._[m]);
                 dt_tt->cms._[m].wsize = wsize;
                 dt_tt->cms._[m].pset = &psets->_[m];
-                dt_tt->cms._[m].classes[cl][is_true] += 1;
+                
+                if (prediction == binary_class) {
+                    dt_tt->cms._[m].single[binary_class].trues += 1;
+                    dt_tt->cms._[m].multi[window->class].trues += 1;
+                } else {
+                    dt_tt->cms._[m].single[binary_class].falses += 1;
+                    dt_tt->cms._[m].multi[window->class].falses += 1;
+                }
             }
         }
     }

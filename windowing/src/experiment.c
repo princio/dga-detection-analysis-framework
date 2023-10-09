@@ -5,14 +5,15 @@
 
 #include <assert.h>
 #include <float.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #define AVG_INIT(N, MASK)  \
-        cmavgs[MASK].cms._ = (CM*) calloc(N, sizeof(CM));\
+        cmavgs[MASK].ratios._ = (Ratio*) calloc(N, sizeof(Ratio));\
         cmavgs[MASK].mask = (MASK);\
-        cmavgs[MASK].cms.number = (N);
+        cmavgs[MASK].ratios.number = (N);
 
 // 0: ( 1, 0, 0, 0 )   |   SPLIT                        |
 // 1: ( 1, 0, 0, 1 )   |   SPLIT, METRICs               |
@@ -41,6 +42,45 @@ const char AVGGroups_names[4][10] = {
 const int N_AVGGroups = 8;
 
 const int ncursor = 4;
+
+
+
+double evfn_f1score_beta(Prediction pr, double beta) {
+    double tn = pr.single[0].trues;
+    double fp = pr.single[0].falses;
+    double fn = pr.single[1].falses;
+    double tp = pr.single[1].trues;
+
+    double beta_2 = beta * beta;
+
+    return ((double) ((1 + beta_2) * tp)) / (((1 + beta_2) * tp) + beta_2 * fp + fn);
+}
+
+double evfn_f1score_1(Prediction pr) {
+    return evfn_f1score_beta(pr, 1);
+}
+
+double evfn_f1score_beta_05(Prediction pr) {
+    return evfn_f1score_beta(pr, 0.5);
+}
+
+double evfn_f1score_beta_01(Prediction pr) {
+    return evfn_f1score_beta(pr, 0.1);
+}
+
+double evfn_fpr(Prediction pr) {
+    double tn = pr.single[0].trues;
+    double fp = pr.single[0].falses;
+
+    return (fp) / (tn + fp);
+}
+
+double evfn_tpr(Prediction pr) {
+    double fn = pr.single[1].falses;
+    double tp = pr.single[1].trues;
+
+    return (tp) / (tp + fn);
+}
 
 void cmavg_actives(const int avgmask, int actives[4], int* last_active) {
     for (int i = 0; i < ncursor; i++) actives[i] = 0;
@@ -137,7 +177,7 @@ WindowingPtr experiment_run(char* rootpath, char*name, WSizes wsizes, PSetGenera
 }
 
 
-void _print_cm(CM* cm) {
+void _fprintf_cm(FILE* fp, Ratio* ratio) {
     // printf(
     //     "\n| %5d, %5d |\n| %5d, %5d |\n",
     //     cm->classes[0][1],
@@ -145,14 +185,14 @@ void _print_cm(CM* cm) {
     //     cm->classes[2][0],
     //     cm->classes[2][1]
     // );
-    printf(
-        "%d,%d,%d,%d,%4.3f,%4.3f",
-        cm->classes[0][1],
-        cm->classes[0][0],
-        cm->classes[2][0],
-        cm->classes[2][1],
-        ((double)cm->classes[0][1]) / (cm->classes[0][1] + cm->classes[0][0]),
-        ((double)cm->classes[2][1]) / (cm->classes[2][1] + cm->classes[2][0])
+    fprintf(
+        fp,
+        "%d,%4.3f,%4.3f",
+        ratio->nwindows,
+        // ratio->single_ratio.zeros,
+        // ratio->single_ratio.falses_nan,
+        // ratio->single_ratio.trues_nan,
+        ratio->single_ratio.relative[1] / ratio->nwindows
     );
 }
 
@@ -165,17 +205,31 @@ void experiment_test(ExperimentSet* es) {
     const int N_SPLITRATIOs = es->N_SPLITRATIOs;
     const int KFOLDs = es->KFOLDs;
     const double* split_percentages = es->split_percentages;
+    const int N_WSIZEs = windowing->wsizes.number;
+    const int N_METRICs = windowing->psets.number;
 
     Dataset *dt = calloc(windowing->wsizes.number, sizeof(Dataset));
     dataset_fill(windowing, dt);
 
-    ConfusionMatrix cm[N_SPLITRATIOs][windowing->wsizes.number][KFOLDs][windowing->psets.number];
-    memset(cm, 0, sizeof(ConfusionMatrix) * N_SPLITRATIOs * windowing->wsizes.number * KFOLDs * windowing->psets.number);
 
+    Prediction cm_eval[N_SPLITRATIOs][N_WSIZEs][KFOLDs][N_METRICs];
+    memset(cm_eval, 0, sizeof(Prediction) * N_SPLITRATIOs * N_WSIZEs * KFOLDs * N_METRICs);
+
+    Prediction cm_test[N_SPLITRATIOs][N_WSIZEs][KFOLDs][N_METRICs];
+    memset(cm_test, 0, sizeof(Prediction) * N_SPLITRATIOs * N_WSIZEs * KFOLDs * N_METRICs);
+
+    int32_t S = N_SPLITRATIOs * N_WSIZEs * KFOLDs * N_METRICs;
+    int32_t tester[S];
+    memset(tester, 0, S);
+
+
+    char path[700];
+    sprintf(path, "%s/%s/dt_tt.csv", windowing->rootpath, windowing->name);
+    FILE* fpdttt = fopen(path, "w");
     for (int p = 0; p < N_SPLITRATIOs; ++p) {
         double split_percentage = split_percentages[p];
 
-        for (int w = 0; w < windowing->wsizes.number; ++w) {
+        for (int w = 0; w < N_WSIZEs; ++w) {
             const int32_t wsize = windowing->wsizes._[w];
 
             for (int k = 0; k < KFOLDs; ++k) {
@@ -185,23 +239,21 @@ void experiment_test(ExperimentSet* es) {
 
                 dataset_traintestsplit(&dt[w], &dt_tt, split_percentage);
 
-                double ths[windowing->psets.number];
-                for (int __i = 0; __i < windowing->psets.number; ++__i) ths[__i] = -1 * DBL_MAX;
+                double ths[N_METRICs];
+                for (int __i = 0; __i < N_METRICs; ++__i) ths[__i] = -1 * DBL_MAX;
 
-                dt_tt.ths.number = windowing->psets.number;
-                dt_tt.cms.number = windowing->psets.number;
+                dt_tt.eval.number = N_METRICs;
+                dt_tt.eval._ = cm_eval[p][w][k];
 
-                dt_tt.ths._ = ths;
-                dt_tt.cms._ = &cm[p][w][k][0];
+                dt_tt.test.number = N_METRICs;
+                dt_tt.test._ = cm_test[p][w][k];
 
-                WSetRef* ws = &dt_tt.train[CLASS__NOT_INFECTED];
+                WSetRef* ws_notinfected = &dt_tt.train[CLASS__NOT_INFECTED];
 
-                if (ws->number == 0) {
-                    continue;
-                }
+                assert(ws_notinfected->number > 0);
 
-                for (int i = 0; i < ws->number; i++) {
-                    Window* window = ws->_[i];
+                for (int i = 0; i < ws_notinfected->number; i++) {
+                    Window* window = ws_notinfected->_[i];
                     for (int m = 0; m < window->metrics.number; m++) {
                         double logit = window->metrics._[m].logit;
                         if (ths[m] < logit) ths[m] = logit;
@@ -210,14 +262,32 @@ void experiment_test(ExperimentSet* es) {
 
                 dataset_traintestsplit_cm(wsize, &windowing->psets, &dt_tt);
 
+                {
+                    fprintf(fpdttt, "%g,%d,", split_percentage, wsize);
+                    int32_t y;
+                    for (y = 0; y < N_METRICs - 1; y++)
+                    {
+                        fprintf(fpdttt, "%d,%d/%d,", dt_tt.train->number, dt_tt.cms._[y].single->falses, dt_tt.cms._[y].single->trues);
+                    }
+                    fprintf(fpdttt, "%d/%d\n", dt_tt.cms._[y].single->falses, dt_tt.cms._[y].single->trues);
+                }
+
+
+                {
+                    fprintf(fpdttt, ",,", split_percentage, wsize);
+                    int32_t y;
+                    for (y = 0; y < N_METRICs - 1; y++)
+                    {
+                        fprintf(fpdttt, "%d,%g,", dt_tt.train->number, ths[y]);
+                    }
+                    fprintf(fpdttt, "%g\n", ths[y]);
+                }
             }
         }
     }
+    fclose(fpdttt);
 
     {
-        const int32_t N_WSIZEs = windowing->wsizes.number;
-        const int32_t N_METRICs = windowing->psets.number;
-
         AVG *cmavgs = cmavg_init(es);
 
         const int sizes[4] = {
@@ -235,13 +305,44 @@ void experiment_test(ExperimentSet* es) {
                 for (cursors[2] = 0; cursors[2] < KFOLDs; ++cursors[2]) {
 
                     for (cursors[3] = 0; cursors[3] < N_METRICs; ++cursors[3]) {
+                        ConfusionMatrix* _cm = &cm[cursors[0]][cursors[1]][cursors[2]][cursors[3]];
 
-                        for (int avgmask = 0; avgmask < N_AVGGroups; ++avgmask) {
-                            int cursor = cmavg_cursor(cursors, sizes, avgmask);
+                        for (int cl = 0; cl < N_CLASSES; ++cl) {
 
-                            for (int cl = 0; cl < N_CLASSES; ++cl) {
-                                cmavgs[avgmask].cms._[cursor].classes[cl][0] += cm[cursors[0]][cursors[1]][cursors[2]][cursors[3]].classes[cl][0];
-                                cmavgs[avgmask].cms._[cursor].classes[cl][1] += cm[cursors[0]][cursors[1]][cursors[2]][cursors[3]].classes[cl][1];
+                            int32_t single_falses = _cm->single[cl != CLASS__NOT_INFECTED].falses;
+                            int32_t single_trues = _cm->single[cl != CLASS__NOT_INFECTED].trues;
+
+                            double single_false_ratio = ((double) single_falses) / (single_falses + single_trues);
+                            double single_true_ratio = ((double) single_trues) / (single_falses + single_trues);
+
+                            int32_t multi_falses = _cm->multi[cl].falses;
+                            int32_t multi_trues = _cm->multi[cl].trues;
+
+                            double multi_false_ratio = ((double) multi_falses) / (multi_falses + multi_trues);
+                            double multi_true_ratio = ((double) multi_trues) / (multi_falses + multi_trues);
+
+                            printf("%d\t%d\t%d\n", cl, single_falses, single_trues);
+                            printf("%d\t%d\t%d\n", cl, multi_falses, multi_trues);
+
+                            assert((single_falses + single_trues) > 0);
+                            assert((multi_falses + multi_trues) > 0);
+
+                            for (int avgmask = 0; avgmask < N_AVGGroups; ++avgmask) {
+                                int cursor = cmavg_cursor(cursors, sizes, avgmask);
+
+                                Ratio* ratio = &cmavgs[avgmask].ratios._[cursor];
+
+                                ratio->nwindows++;
+                                
+                                ratio->single_ratio.absolute[0] += single_falses;
+                                ratio->single_ratio.absolute[1] += single_trues;
+                                ratio->single_ratio.relative[0] += single_false_ratio;
+                                ratio->single_ratio.relative[1] += single_true_ratio;
+
+                                ratio->multi_ratio[cl].absolute[0] += multi_falses;
+                                ratio->multi_ratio[cl].absolute[1] += multi_trues;
+                                ratio->multi_ratio[cl].relative[0] += multi_false_ratio;
+                                ratio->multi_ratio[cl].relative[1] += multi_true_ratio;
                             }
                         }
                     }
@@ -249,6 +350,10 @@ void experiment_test(ExperimentSet* es) {
             }
         }
 
+
+        char path[700];
+        sprintf(path, "%s/%s/avg.csv", windowing->rootpath, windowing->name);
+        FILE* fp = fopen(path, "w");
 
         for (cursors[0] = 0; cursors[0] < N_SPLITRATIOs; ++cursors[0]) {
 
@@ -275,27 +380,27 @@ void experiment_test(ExperimentSet* es) {
                                 if (actives[i]) {
                                     switch (i) {
                                         case 0:
-                                            printf("%g", split_percentages[cursors[0]]);
+                                            fprintf(fp, "%g", split_percentages[cursors[0]]);
                                             break;
                                         case 1:
-                                            printf("%3d", windowing->wsizes._[cursors[1]]);
+                                            fprintf(fp, "%d", windowing->wsizes._[cursors[1]]);
                                             break;
                                         case 2:
-                                            printf("%3d", cursors[2]);
+                                            fprintf(fp, "%d", cursors[2]);
                                             break;
                                         case 3:
-                                            printf("%3d", windowing->psets._[cursors[3]].id);
+                                            fprintf(fp, "%d", windowing->psets._[cursors[3]].id);
                                             break;
                                     }
                                 } else {
-                                    printf("*");
+                                    fprintf(fp, "*");
                                 }
-                                printf(",");
+                                fprintf(fp, ",");
                             }
 
-                            _print_cm(&cmavgs[avgmask].cms._[cursor]);
+                            _fprintf_cm(fp, &cmavgs[avgmask].ratios._[cursor]);
 
-                            printf("\n");
+                            fprintf(fp, "\n");
 
                         }
                     }
@@ -303,7 +408,7 @@ void experiment_test(ExperimentSet* es) {
             }
         }
         
-        exit(0);
+        // exit(0);
 
 
         // for (cursors[0] = 0; cursors[0] < N_SPLITRATIOs; ++cursors[0]) {

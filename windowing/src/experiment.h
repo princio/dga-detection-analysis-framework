@@ -14,6 +14,8 @@ typedef struct ExperimentSet {
     int KFOLDs;
     
     WindowingPtr windowing;
+
+    EvaluationMetricFunctions evmfs;
 } ExperimentSet;
 
 typedef struct CMAvgCursor {
@@ -24,6 +26,19 @@ typedef struct CMAvgCursor {
 } CMAvgCursor;
 
 
+double evfn_f1score_beta1(Prediction pr);
+
+double evfn_f1score_beta05(Prediction pr);
+
+double evfn_f1score_beta01(Prediction pr);
+
+double evfn_fpr(Prediction pr);
+
+double evfn_tpr(Prediction pr);
+
+
+
+WindowingPtr experiment_run(char* rootpath, char*name, WSizes wsizes, PSetGenerator* psetgenerator);
 WindowingPtr experiment_run(char* rootpath, char*name, WSizes wsizes, PSetGenerator* psetgenerator);
 
 void experiment_test(ExperimentSet* es);

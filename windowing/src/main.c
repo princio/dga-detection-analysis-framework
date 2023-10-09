@@ -75,29 +75,30 @@ void exps_1() {
     PSetGenerator psetgenerator;
 
     {
-        wsizes.number = 5;
-        wsizes._[0] = 10;
-        wsizes._[1] = 50;
-        wsizes._[2] = 100;
-        wsizes._[3] = 200;
-        wsizes._[4] = 2500;
+        wsizes.number = 1;
+        wsizes._[0] = 100;
+        wsizes._[0] = 2500;
+    //     wsizes._[1] = 50;
+    //     wsizes._[2] = 100;
+    //     wsizes._[3] = 200;
+    //     wsizes._[4] = 2500;
     }
     
     {
-        NN nn[] = { NN_NONE, NN_TLD, NN_ICANN, NN_PRIVATE };
+        NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
 
         Whitelisting whitelisting[] = {
             { .rank = 0, .value = 0 },
-            { .rank = 1000, .value = -50 },
-            { .rank = 100000, .value = -50 },
-            { .rank = 1000000, .value = -10 },  
-            { .rank = 1000000, .value = -50 } 
+            // { .rank = 1000, .value = -50 },
+            // { .rank = 100000, .value = -50 },
+            // { .rank = 1000000, .value = -10 },  
+            // { .rank = 1000000, .value = -50 }
         };
 
         WindowingType windowing[] = {
             WINDOWING_Q,
-            WINDOWING_R,
-            WINDOWING_QR
+            // WINDOWING_R,
+            // WINDOWING_QR
         };
 
         InfiniteValues infinitevalues[] = {
@@ -119,23 +120,47 @@ void exps_1() {
 
     ExperimentSet es;
 
-    es.windowing = experiment_run("/home/princio/Desktop/exps", "exp_4", wsizes, &psetgenerator);
+    es.windowing = experiment_run("/home/princio/Desktop/exps", "exp_5", wsizes, &psetgenerator);
 
-    es.KFOLDs = 10;
-    es.N_SPLITRATIOs = 10;
+    es.KFOLDs = 5;
+    es.N_SPLITRATIOs = 2;
     {
         int i = 0;
         es.split_percentages[i++] = 0.01;
-        es.split_percentages[i++] = 0.05;
-        es.split_percentages[i++] = 0.1;
-        es.split_percentages[i++] = 0.2;
-        es.split_percentages[i++] = 0.25;
-        es.split_percentages[i++] = 0.3;
-        es.split_percentages[i++] = 0.4;
         es.split_percentages[i++] = 0.5;
-        es.split_percentages[i++] = 0.6;
-        es.split_percentages[i++] = 0.7;
+        // es.split_percentages[i++] = 0.1;
+        // es.split_percentages[i++] = 0.2;
+        // es.split_percentages[i++] = 0.25;
+        // es.split_percentages[i++] = 0.3;
+        // es.split_percentages[i++] = 0.4;
+        // es.split_percentages[i++] = 0.5;
+        // es.split_percentages[i++] = 0.6;
+        // es.split_percentages[i++] = 0.7;
     }
+
+    es.evmfs.number = 5;
+    es.evmfs._ = calloc(5, sizeof(EvaluationMetricFunction));
+    int i = 0;
+    
+    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_f1score_beta1;
+    sprintf(es.evmfs._[i].name, "f1score_1");
+    ++i;
+    
+    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_f1score_beta05;
+    sprintf(es.evmfs._[i].name, "f1score_05");
+    ++i;
+    
+    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_f1score_beta01;
+    sprintf(es.evmfs._[i].name, "f1score_01");
+    ++i;
+    
+    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_fpr;
+    sprintf(es.evmfs._[i].name, "fpr");
+    ++i;
+    
+    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_tpr;
+    sprintf(es.evmfs._[i].name, "tpr");
+    ++i;
 
     experiment_test(&es);
 }
@@ -308,11 +333,13 @@ int main (int argc, char* argv[]) {
             }
         }
     }
+
+
     printf("%d\n", wrongs);
 
 
-
     exit(0);
+
 
 /*
     // int N_SPLITRATIOs = 10;

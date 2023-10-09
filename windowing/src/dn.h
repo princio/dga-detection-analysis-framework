@@ -22,6 +22,9 @@ extern int trys;
 extern char try_name[5];
 
 
+typedef int32_t IDX;
+
+
 typedef struct Message {
     int64_t id;
     int64_t fn_req;
@@ -112,7 +115,11 @@ typedef struct PSets {
 
 
 typedef struct WindowMetricSet {
-    int     pi_id;
+    IDX wsize_idx;
+    IDX source_idx;
+    IDX window_idx;
+    IDX     pi_id;
+
     int32_t wcount;
     double  logit;
     int32_t whitelistened;
@@ -128,13 +135,11 @@ typedef struct WindowMetricSets {
 } WindowMetricSets;
 
 typedef struct Window {
-    int32_t parent_id;
+    IDX wsize_idx;
+    IDX source_idx;
+    IDX window_idx;
 
-    int32_t wsize;
-    int32_t wnum;
     Class class;
-
-    WindowMetricSets metrics;
 } Window;
 
 typedef void (*FetchPtr)(void*, int32_t);
@@ -214,15 +219,22 @@ typedef struct WSetRef {
 
 // CONFUSION MATRIX
 
-typedef struct ConfusionMatrix {
+typedef struct CMValue {
+    int32_t falses; // wrong
+    int32_t trues; // right
+} CMValue;
+
+typedef struct Prediction {
 
     int32_t wsize;
 
     PSet* pset;
 
-    int32_t classes[N_CLASSES][2];
+    CMValue single[2];
 
-} ConfusionMatrix;
+    CMValue multi[N_CLASSES];
+
+} Prediction;
 
 typedef struct ClassificationMetricsAverages {
 
@@ -234,20 +246,39 @@ typedef struct ClassificationMetricsAverages {
 
 } ClassificationMetricsAverages;
 
-typedef struct ConfusionMatrixs {
+typedef double (*EvaluationMetricFunctionPtr)(Prediction);
+
+typedef struct EvaluationMetricFunction {
+    char name[50];
+    EvaluationMetricFunctionPtr fnptr;
+} EvaluationMetricFunction;
+
+typedef struct EvaluationMetricFunctions {
     int32_t number;
-    ConfusionMatrix* _;
-} ConfusionMatrixs;
+    EvaluationMetricFunctionPtr* _;
+} EvaluationMetricFunctions;
+
+typedef struct EvaluationMetric {
+    int32_t emf_idx;
+    double value;
+} EvaluationMetric;
+
+typedef struct EvaluationMetrics {
+    int32_t number;
+    EvaluationMetric* _;
+} EvaluationMetrics;
+
+typedef struct Predictions {
+    int32_t number;
+    Prediction* _;
+    EvaluationMetrics ems;
+    double th;
+} Predictions;
 
 
 
 
 //   D A T A S E T
-
-typedef struct Ths {
-    int32_t number;
-    double* _;
-} Ths;
 
 typedef struct DatasetClass {
     char name[50];
@@ -257,11 +288,15 @@ typedef struct DatasetClass {
 typedef struct DatasetTrainTest {
 
     int32_t wsize;
+
     double percentage_split; // train over test
+
     WSetRef train[N_CLASSES];
     WSetRef test[N_CLASSES];
-    Ths ths;
-    ConfusionMatrixs cms;
+
+    Predictions eval;
+
+    Predictions test;
 
 } DatasetTrainTest;
 
@@ -280,24 +315,32 @@ typedef struct Dataset {
 
 
 typedef struct CM {
-    int32_t classes[N_CLASSES][2];
-    double false_ratio[N_CLASSES];
-    double true_ratio[N_CLASSES];
+    CMValue single[2];
+    CMValue multi[N_CLASSES];
 } CM;
 
-typedef struct CMs {
+typedef struct RatioValue {
+    int32_t nwindows;
+    int32_t absolute[2];
+    double relative[2];
+} RatioValue;
+
+typedef struct Ratio {
+    int32_t nwindows;
+
+    RatioValue single_ratio;
+
+    RatioValue multi_ratio[N_CLASSES];
+} Ratio;
+
+typedef struct Ratios {
     int32_t number;
-    CM* _;
-} CMs;
+    Ratio* _;
+} Ratios;
 
 typedef struct AVG {
     int32_t mask;
-    CMs cms;
+    Ratios ratios;
 } AVG;
-
-typedef struct ExperimentAVG {
-    int32_t mask;
-    CMs cms;
-} ExperimentAVG;
 
 #endif
