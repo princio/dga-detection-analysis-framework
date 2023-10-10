@@ -161,7 +161,7 @@ AVG* cmavg_init(ExperimentSet* es) {
     return cmavgs;
 }
 
-WindowingPtr experiment_run(char* rootpath, char*name, WSizes wsizes, PSetGenerator* psetgenerator) {
+WindowingPtr experiment_run(Experiment experiment) {
 
     WindowingPtr windowing_ptr = NULL;
 
@@ -169,11 +169,16 @@ WindowingPtr experiment_run(char* rootpath, char*name, WSizes wsizes, PSetGenera
 
     if (windowing_ptr) return windowing_ptr;
 
-    windowing_ptr = windowing_run(rootpath, name, wsizes, psetgenerator);
+    windowing_ptr = windowing_run(experiment, wsizes, psetgenerator);
 
     windowing_save(windowing_ptr);
 
     return windowing_ptr;
+}
+
+
+void experiment_load_sources(Experiment experiment) {
+
 }
 
 

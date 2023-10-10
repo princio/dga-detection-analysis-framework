@@ -19,15 +19,15 @@
 
 #include "args.h"
 #include "colors.h"
-#include "dataset.h"
+// #include "dataset.h"
 #include "dn.h"
-#include "experiment.h"
-#include "graph.h"
+// #include "experiment.h"
+// #include "graph.h"
 #include "parameters.h"
-#include "persister.h"
+// #include "persister.h"
 #include "stratosphere.h"
-#include "tester.h"
-#include "windowing.h"
+// #include "tester.h"
+// #include "windowing.h"
 
 #include <assert.h>
 #include <float.h>
@@ -75,9 +75,14 @@ void exps_1() {
     PSetGenerator psetgenerator;
 
     {
-        wsizes.number = 1;
-        wsizes._[0] = 100;
-        wsizes._[0] = 2500;
+        wsizes.number = 2;
+        wsizes._ = calloc(wsizes.number, sizeof(WSize));
+
+        wsizes._[0].id = 0;
+        wsizes._[0].value = 100;
+        
+        wsizes._[1].id = 1;
+        wsizes._[1].value = 2500;
     //     wsizes._[1] = 50;
     //     wsizes._[2] = 100;
     //     wsizes._[3] = 200;
@@ -118,51 +123,137 @@ void exps_1() {
         psetgenerator.infinitevalues = infinitevalues;
     }
 
-    ExperimentSet es;
+    PSets psets = parameters_generate(&psetgenerator);
 
-    es.windowing = experiment_run("/home/princio/Desktop/exps", "exp_5", wsizes, &psetgenerator);
+    Dataset0s datasets;
+    datasets.number = psets.number * wsizes.number;
+    datasets._ = calloc(datasets.number, sizeof(Dataset0));
 
-    es.KFOLDs = 5;
-    es.N_SPLITRATIOs = 2;
-    {
-        int i = 0;
-        es.split_percentages[i++] = 0.01;
-        es.split_percentages[i++] = 0.5;
-        // es.split_percentages[i++] = 0.1;
-        // es.split_percentages[i++] = 0.2;
-        // es.split_percentages[i++] = 0.25;
-        // es.split_percentages[i++] = 0.3;
-        // es.split_percentages[i++] = 0.4;
-        // es.split_percentages[i++] = 0.5;
-        // es.split_percentages[i++] = 0.6;
-        // es.split_percentages[i++] = 0.7;
+    int32_t d = 0;
+    for (int32_t p = 0; p < psets.number; p++) {
+        for (int32_t w = 0; w < wsizes.number; w++) {
+            datasets._[d].windowing.pset = &psets._[p];
+            datasets._[d].windowing.wsize = wsizes._[w];
+            ++d;
+        }
     }
 
-    es.evmfs.number = 5;
-    es.evmfs._ = calloc(5, sizeof(EvaluationMetricFunction));
-    int i = 0;
-    
-    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_f1score_beta1;
-    sprintf(es.evmfs._[i].name, "f1score_1");
-    ++i;
-    
-    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_f1score_beta05;
-    sprintf(es.evmfs._[i].name, "f1score_05");
-    ++i;
-    
-    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_f1score_beta01;
-    sprintf(es.evmfs._[i].name, "f1score_01");
-    ++i;
-    
-    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_fpr;
-    sprintf(es.evmfs._[i].name, "fpr");
-    ++i;
-    
-    es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_tpr;
-    sprintf(es.evmfs._[i].name, "tpr");
-    ++i;
+    Experiment exp;
 
-    experiment_test(&es);
+    strcpy(exp.name, "exp_new_2");
+    strcpy(exp.rootpath, "/home/princio/Desktop/exps");
+
+    exp.psets = psets;
+    exp.wsizes = wsizes;
+    exp.KFOLDs = 10;
+
+    Sources stratosphere_sources;
+
+    stratosphere_run(&exp, datasets, &stratosphere_sources);
+
+    for (int32_t i = 0; i < datasets.number; i++) {
+        for (int32_t w = 0; w < datasets._[i].windows[1].number; w++) {
+            Window window = datasets._[i].windows[1]._[w];
+            printf("(%d, %d, %d, %d, %d, %g)\n", i, 1, w, window.source_id, window.window_id, window.logit);
+        }
+    }
+
+
+    free(wsizes._);
+    free(psets._);
+    free(stratosphere_sources._);
+
+    for (int32_t i = 0; i < datasets.number; i++) {
+        for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+            free(datasets._[i].windows[cl]._);
+        }
+    }
+    free(datasets._);
+    
+
+    // Sources sources;
+
+    // Sources sources_by_type[1];
+
+    // Sources sources_by_type[0] = stratosphere_get_sources();
+
+    // int32_t n_sources = 0;
+    // for (size_t i = 0; i < 1; i++) {
+    //     for (size_t s = 0; s < sources_by_type->number; s++) {
+    //         n_sources += sources_by_type[i].number;
+    //     }
+    // }
+
+    // sources.number = n_sources;
+    // sources._ = calloc(n_sources, sizeof(Source));
+
+    // n_sources = 0;
+    // for (size_t i = 0; i < 1; i++) {
+    //     memcpy(&sources._[n_sources], sources_by_type[i]._, sources_by_type[i].number * sizeof(Source));
+    //     n_sources += sources_by_type[i].number;
+    // }
+    
+
+    // ExperimentSet es;
+    // Experiment exp;
+
+    // strcpy(exp.name, "exp_5");
+    // strcpy(exp.rootpath, "/home/princio/Desktop/exps");
+
+    // exp.psets = parameters_generate(&psetgenerator);
+    // exp.KFOLDs = 10;
+    // exp.wsizes = wsizes;
+
+    // // es.windowing = experiment_run("/home/princio/Desktop/exps", "exp_5", sources, wsizes, &psetgenerator);
+
+    // for (int32_t s = 0; s < sources.number; s++) {
+    //     for (int32_t i = 0; i < wsizes.number; i++) {
+    //         sources._[s].fetch(sources._[s], wsizes._[i]);
+    //     }
+    // }
+    
+
+    // es.KFOLDs = 5;
+    // es.N_SPLITRATIOs = 2;
+    // {
+    //     int i = 0;
+    //     es.split_percentages[i++] = 0.01;
+    //     es.split_percentages[i++] = 0.5;
+    //     // es.split_percentages[i++] = 0.1;
+    //     // es.split_percentages[i++] = 0.2;
+    //     // es.split_percentages[i++] = 0.25;
+    //     // es.split_percentages[i++] = 0.3;
+    //     // es.split_percentages[i++] = 0.4;
+    //     // es.split_percentages[i++] = 0.5;
+    //     // es.split_percentages[i++] = 0.6;
+    //     // es.split_percentages[i++] = 0.7;
+    // }
+
+    // es.evmfs.number = 5;
+    // es.evmfs._ = calloc(5, sizeof(EvaluationMetricFunction));
+    // int i = 0;
+    
+    // es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_f1score_beta1;
+    // sprintf(es.evmfs._[i].name, "f1score_1");
+    // ++i;
+    
+    // es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_f1score_beta05;
+    // sprintf(es.evmfs._[i].name, "f1score_05");
+    // ++i;
+    
+    // es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_f1score_beta01;
+    // sprintf(es.evmfs._[i].name, "f1score_01");
+    // ++i;
+    
+    // es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_fpr;
+    // sprintf(es.evmfs._[i].name, "fpr");
+    // ++i;
+    
+    // es.evmfs._[i].fnptr = (EvaluationMetricFunctionPtr) &evfn_tpr;
+    // sprintf(es.evmfs._[i].name, "tpr");
+    // ++i;
+
+    // experiment_test(&es);
 }
 
 int ff(const int cursor[4], const int sizes[4], int avg) {

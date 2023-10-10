@@ -87,7 +87,7 @@ void dataset_fill(WindowingPtr windowing, Dataset* dt) {
     memset(n_windows_classes, 0, sizeof(int32_t) * windowing->wsizes.number * N_CLASSES);
 
     for (int c = 0; c < windowing->captures.number; ++c) {
-        CapturePtr capture = &windowing->captures._[c];
+        SourcePtr capture = &windowing->captures._[c];
         for (int w = 0; w < windowing->wsizes.number; ++w) {
             WSetPtr capture_wsetset = &windowing->captures_wsets[c][w];
             

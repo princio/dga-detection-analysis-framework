@@ -8,7 +8,7 @@
 
 
 #define MAX_WSIZES 20
-#define MAX_CAPTURES 100
+#define MAX_Sources 100
 
 #define N_CLASSES 3
 
@@ -86,6 +86,11 @@ typedef struct PSet {
     NN nn;
 } PSet;
 
+typedef struct WSize {
+    int32_t id;
+    int32_t value;
+} WSize;
+
 
 typedef struct PSetGenerator {
     int32_t n_whitelisting;
@@ -109,6 +114,28 @@ typedef struct PSets {
     PSet* _;
 } PSets;
 
+
+typedef struct WSizes {
+    int32_t number;
+    WSize* _;
+} WSizes;
+
+
+typedef struct Experiment {
+    char name[100];
+    char rootpath[500];
+    
+    WSizes wsizes;
+    PSets psets;
+
+    int N_SPLITRATIOs;
+    double split_percentages[10];
+
+    int KFOLDs;
+    
+    // EvaluationMetricFunctions evmfs;
+
+} Experiment;
 
 
 //   W I N D O W,    C A P T U R E    A N D    W I N D O W I N G
@@ -135,17 +162,25 @@ typedef struct WindowMetricSets {
 } WindowMetricSets;
 
 typedef struct Window {
-    IDX wsize_idx;
-    IDX source_idx;
-    IDX window_idx;
+    IDX source_id;
+    IDX dataset_id;
+    IDX window_id;
 
     Class class;
+
+    int32_t wcount;
+    double  logit;
+    int32_t whitelistened;
+    int32_t dn_bad_05;
+    int32_t dn_bad_09;
+    int32_t dn_bad_099;
+    int32_t dn_bad_0999;
 } Window;
 
-typedef void (*FetchPtr)(void*, int32_t);
-
-typedef struct Capture {
+typedef struct Source {
     int32_t id;
+    
+    int32_t galaxy_id;
 
     CaptureType capture_type;
 
@@ -158,23 +193,16 @@ typedef struct Capture {
     char name[50];
     char source[50];
 
-    FetchPtr fetch;
-
     Class class;
-} Capture;
+} Source;
 
-typedef Capture* CapturePtr;
+typedef Source* SourcePtr;
 
 
-typedef struct WSizes {
+typedef struct Sources {
     int32_t number;
-    int32_t _[MAX_WSIZES];
-} WSizes;
-
-typedef struct Captures {
-    int32_t number;
-    Capture _[MAX_CAPTURES];
-} Captures;
+    Source* _;
+} Sources;
 
 
 typedef struct WSet {
@@ -185,22 +213,71 @@ typedef struct WSet {
 typedef WSet* WSets;
 typedef WSet* WSetPtr;
 
-typedef struct Windowing {
+typedef struct WindowingConfig {
     char name[100];
     char rootpath[500];
 
     time_t time;
 
+    Sources Sources;
+
     PSets psets;
 
-    WSizes wsizes;
+    int32_t wsize;
 
-    Captures captures;
+} WindowingConfig;
 
-    WSet captures_wsets[MAX_CAPTURES][MAX_WSIZES]; // By MAX_CAPTURES and MAX_WSIZES
+
+typedef struct Windows {
+    int32_t number;
+    Window* _;
+} Windows;
+
+typedef struct Windowing {
+
+    int32_t id;
+
+    WSize wsize;
+
+    PSet* pset;
 
 } Windowing;
 
+
+typedef struct Windowed {
+
+    int32_t id;
+
+    Windowing windowing;
+
+    Source* source;
+
+    Windows windows; // By CAPTURE,WINDOW
+
+} Windowed;
+
+typedef struct Windoweds {
+    int32_t number;
+    Windowed* _;
+} Windoweds;
+
+
+typedef struct WindowingID {
+
+    int32_t pset_id;
+    int32_t wsize_id;
+    int32_t source_id;
+
+} WindowingID;
+
+typedef struct Windowings {
+    int32_t number;
+    Windowing* _;
+} Windowings;
+
+typedef void (*FetchPtr)(Source*, Windowings);
+
+typedef struct WindowingConfig* WindowingConfigPtr;
 typedef struct Windowing* WindowingPtr;
 
 typedef struct WindowingTotals {
@@ -215,7 +292,17 @@ typedef struct WSetRef {
     Window** _;
 } WSetRef;
 
+typedef struct Dataset0 {
+    Windowing windowing;
 
+    Windows windows[N_CLASSES];
+} Dataset0;
+
+
+typedef struct Dataset0s {
+    int32_t number;
+    Dataset0* _;
+} Dataset0s;
 
 // CONFUSION MATRIX
 
@@ -296,7 +383,7 @@ typedef struct DatasetTrainTest {
 
     Predictions eval;
 
-    Predictions test;
+    Predictions ptest;
 
 } DatasetTrainTest;
 

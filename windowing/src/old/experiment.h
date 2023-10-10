@@ -6,6 +6,9 @@
 
 #define MAX_SPLITPERCENTAGES 10
 
+
+
+
 typedef struct ExperimentSet {
 
     int N_SPLITRATIOs;
@@ -38,8 +41,7 @@ double evfn_tpr(Prediction pr);
 
 
 
-WindowingPtr experiment_run(char* rootpath, char*name, WSizes wsizes, PSetGenerator* psetgenerator);
-WindowingPtr experiment_run(char* rootpath, char*name, WSizes wsizes, PSetGenerator* psetgenerator);
+WindowingPtr experiment_run(Experiment);
 
 void experiment_test(ExperimentSet* es);
 

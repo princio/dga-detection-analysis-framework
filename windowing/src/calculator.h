@@ -1,6 +1,3 @@
-
-
-
 #ifndef __CALCULATOR_H
 #define __CALCULATOR_H
 
@@ -8,6 +5,6 @@
 
 #include <stdio.h>
 
-void calculator_message(Message* message, WindowMetricSets *metrics, PSet* pi);
+void calculator_message(Message* message, Window *, PSet* pi);
 
 #endif
