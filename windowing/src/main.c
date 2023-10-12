@@ -19,7 +19,7 @@
 
 #include "args.h"
 #include "colors.h"
-// #include "dataset.h"
+#include "dataset.h"
 #include "dn.h"
 // #include "experiment.h"
 // #include "graph.h"
@@ -151,13 +151,47 @@ void exps_1() {
 
     stratosphere_run(&exp, datasets, &stratosphere_sources);
 
-    for (int32_t i = 0; i < datasets.number; i++) {
-        for (int32_t w = 0; w < datasets._[i].windows[1].number; w++) {
-            Window window = datasets._[i].windows[1]._[w];
-            printf("(%d, %d, %d, %d, %d, %g)\n", i, 1, w, window.source_id, window.window_id, window.logit);
-        }
-    }
+    // for (int32_t i = 0; i < datasets.number; i++) {
+    //     for (int32_t w = 0; w < datasets._[i].windows[1].number; w++) {
+    //         Window window = datasets._[i].windows[1]._[w];
+    //         printf("(%d, %d, %d, %d, %d, %g)\n", i, 1, w, window.source_id, window.window_id, window.logit);
+    //     }
+    // }
 
+    // DATASETs ARE READY
+    // TEST FOR EACH DATASET, WHICH MEAN:
+    //   - split train test
+    //   - choose with some method (f1score, fpr) the threshold within the train subset
+    //   - test with the choosen threshold the train subset
+    //   - analyze the confusion matricies obtained within the test subset
+
+
+    for (int32_t d = 0; d < datasets.number; d++) {
+        DatasetFoldsConfig dfold;
+
+        dfold.kfolds = 5;
+        dfold.balance_method = DSBM_NOT_INFECTED;
+        dfold.split_method = DSM_IGNORE_1;
+        dfold.test_folds = dfold.kfolds - 1;
+        dfold.shuffle = 0;
+
+
+        DatasetTests tests = dataset_foldstest(&datasets._[d], dfold);
+
+        for (int k = 0; k < tests.number; k++) {
+            printf("FOLD %d\n", k);
+            for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+                printf("  %12s %10g\t", thcm_names[t], tests._[k].ths[t]);
+                for (int cl = 0; cl < N_CLASSES; cl++) {
+                    printf("%6d %6d\t", tests._[k].multi[t][cl].falses, tests._[k].multi[t][cl].trues);
+                }
+                printf("\n");
+            }
+        }
+
+        free(tests._);
+    }
+    
 
     free(wsizes._);
     free(psets._);
@@ -168,6 +202,7 @@ void exps_1() {
             free(datasets._[i].windows[cl]._);
         }
     }
+
     free(datasets._);
     
 

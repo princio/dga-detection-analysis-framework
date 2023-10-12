@@ -114,7 +114,14 @@
         "math.h": "c",
         "assert.h": "c",
         "stdarg.h": "c",
-        "experiment.h": "c"
+        "experiment.h": "c",
+        "climits": "c",
+        "float.h": "c",
+        "__locale": "c",
+        "spdlog.h": "c",
+        "__hash_table": "c",
+        "__split_buffer": "c",
+        "__tree": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

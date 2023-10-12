@@ -11,3 +11,7 @@ pslregex/domain/c/build/**
 domain-manipulator/cpp/build/**
 
 **/*.csv
+windowing/bibo.tmp
+windowing/vergine_no.txt
+windowing/vergine.txt
+build/**

@@ -233,6 +233,11 @@ typedef struct Windows {
     Window* _;
 } Windows;
 
+typedef struct WindowRefs {
+    int32_t number;
+    Window** _;
+} WindowRefs;
+
 typedef struct Windowing {
 
     int32_t id;

@@ -340,7 +340,7 @@ void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr)
         for (int32_t d = 0; d < datasets.number; d++) {
 
             if (0 == _persister__windows(PERSITER_READ, exp, s, d, &windoweds[s][d])) {
-                printf("Windows of Source %d (class %d) with Dataset %d loaded from disk\n", s, sources._[s].class, d);
+                // printf("Windows of Source %d (class %d) with Dataset %d loaded from disk\n", s, sources._[s].class, d);
                 windoweds_loaded[s]++;
 
                 n_windows[d][sources._[s].class] += windoweds[s][d].number;
@@ -377,7 +377,7 @@ void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr)
     memset(n_cursor, 0, sizeof(int32_t) * N_CLASSES * datasets.number);
     for (int32_t s = 0; s < sources.number; s++) {
         if (windoweds_loaded[s] == datasets.number) {
-            printf("Source %d loaded from disk\n", s);
+            // printf("Source %d loaded from disk\n", s);
         } else {
             stratosphere_source_perform(&sources._[s], datasets, windoweds[s]);
 
