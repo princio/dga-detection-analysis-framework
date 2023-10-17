@@ -71,25 +71,16 @@ char try_name[5];
 
 
 void exps_1() {
-    WSizes wsizes;
     PSetGenerator psetgenerator;
 
     {
-        wsizes.number = 2;
-        wsizes._ = calloc(wsizes.number, sizeof(WSize));
-
-        wsizes._[0].id = 0;
-        wsizes._[0].value = 100;
-        
-        wsizes._[1].id = 1;
-        wsizes._[1].value = 2500;
+        int32_t wsizes[] = { 1, 5, 50, 100 }; //, 5, 100 };//, 5, 100, 2500 };
+    
     //     wsizes._[1] = 50;
     //     wsizes._[2] = 100;
     //     wsizes._[3] = 200;
     //     wsizes._[4] = 2500;
-    }
-    
-    {
+
         NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
 
         Whitelisting whitelisting[] = {
@@ -110,7 +101,11 @@ void exps_1() {
             { .ninf = -20, .pinf = 20 }
         };
 
-        psetgenerator.n_nn = sizeof(nn) / sizeof(nn);
+
+        psetgenerator.n_wsize = sizeof(wsizes) / sizeof(int32_t);
+        psetgenerator.wsize = wsizes;
+
+        psetgenerator.n_nn = sizeof(nn) / sizeof(NN);
         psetgenerator.nn = nn;
 
         psetgenerator.n_whitelisting = sizeof(whitelisting) / sizeof(Whitelisting);
@@ -126,26 +121,21 @@ void exps_1() {
     PSets psets = parameters_generate(&psetgenerator);
 
     Dataset0s datasets;
-    datasets.number = psets.number * wsizes.number;
+    datasets.number = psets.number;
     datasets._ = calloc(datasets.number, sizeof(Dataset0));
 
     int32_t d = 0;
     for (int32_t p = 0; p < psets.number; p++) {
-        for (int32_t w = 0; w < wsizes.number; w++) {
-            datasets._[d].windowing.pset = &psets._[p];
-            datasets._[d].windowing.wsize = wsizes._[w];
-            ++d;
-        }
+        datasets._[d].windowing.pset = &psets._[p];
+        ++d;
     }
 
     Experiment exp;
 
-    strcpy(exp.name, "exp_new_2");
+    strcpy(exp.name, "exp_new_3");
     strcpy(exp.rootpath, "/home/princio/Desktop/exps");
 
     exp.psets = psets;
-    exp.wsizes = wsizes;
-    exp.KFOLDs = 10;
 
     Sources stratosphere_sources;
 
@@ -165,35 +155,120 @@ void exps_1() {
     //   - test with the choosen threshold the train subset
     //   - analyze the confusion matricies obtained within the test subset
 
-
     for (int32_t d = 0; d < datasets.number; d++) {
         DatasetFoldsConfig dfold;
 
-        dfold.kfolds = 5;
+        dfold.kfolds = 20;
         dfold.balance_method = DSBM_NOT_INFECTED;
         dfold.split_method = DSM_IGNORE_1;
-        dfold.test_folds = dfold.kfolds - 1;
-        dfold.shuffle = 0;
+        dfold.test_folds = 2;
+        dfold.shuffle = 1;
 
 
         DatasetTests tests = dataset_foldstest(&datasets._[d], dfold);
 
+        Windowing* windowing = &datasets._[d].windowing;
+        printf("\n\n%8d, ", windowing->pset->wsize);
+        printf("(%5g, %5g), ", windowing->pset->infinite_values.ninf, windowing->pset->infinite_values.pinf);
+        printf("%8s, ", NN_NAMES[windowing->pset->nn]);
+        printf("(%8d, %8g), ", windowing->pset->whitelisting.rank, windowing->pset->whitelisting.value);
+        printf("%d\n", windowing->pset->windowing);
+
         for (int k = 0; k < tests.number; k++) {
-            printf("FOLD %d\n", k);
+            printf("FOLD %2d  %15s\t", k, " ");
+            for (int cl = 0; cl < N_CLASSES; cl++) {
+                printf("%8d\t", tests._[k].multi[0][cl].falses + tests._[k].multi[0][cl].trues);
+            }
+            printf("\n");
+
             for (int t = 0; t < N_THCHOICEMETHODs; t++) {
                 printf("  %12s %10g\t", thcm_names[t], tests._[k].ths[t]);
                 for (int cl = 0; cl < N_CLASSES; cl++) {
-                    printf("%6d %6d\t", tests._[k].multi[t][cl].falses, tests._[k].multi[t][cl].trues);
+                    printf("%8d\t", tests._[k].multi[t][cl].falses);
+                }
+                for (int cl = 0; cl < N_CLASSES; cl++) {
+                    printf("%1.5f\t", (double) tests._[k].multi[t][cl].falses / (tests._[k].multi[t][cl].falses + tests._[k].multi[t][cl].trues));
                 }
                 printf("\n");
             }
+        }
+
+        DatasetFoldsDescribe dfb;
+        memset(&dfb, 0, sizeof(DatasetFoldsDescribe));
+        for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+            dfb.th[t].min = DBL_MAX;
+            dfb.th[t].max = -1 * DBL_MAX;
+            for (int cl = 0; cl < N_CLASSES; cl++) {
+                dfb.falses[t][cl].min = DBL_MAX;
+                dfb.trues[t][cl].min = DBL_MAX;
+                dfb.false_ratio[t][cl].min = 1;
+                dfb.true_ratio[t][cl].min = 1;
+
+                dfb.falses[t][cl].max = -1 * DBL_MAX;
+                dfb.trues[t][cl].max = -1 * DBL_MAX;
+                dfb.false_ratio[t][cl].max = 0;
+                dfb.true_ratio[t][cl].max = 0;
+            }
+        }
+
+        #define MIN(A, B) (A.min) = ((B) <= (A.min) ? (B) : (A.min))
+        #define MAX(A, B) (A.max) = ((B) >= (A.max) ? (B) : (A.max))
+        for (int k = 0; k < tests.number; k++) {
+            TF (*multi)[N_CLASSES] = tests._[k].multi;
+            for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+                dfb.th[t].avg += tests._[k].ths[t];
+                MIN(dfb.th[t], tests._[k].ths[t]);
+                MAX(dfb.th[t], tests._[k].ths[t]);
+
+                for (int cl = 0; cl < N_CLASSES; cl++) {
+
+                    dfb.false_ratio[t][cl].avg += FALSERATIO(multi[t][cl]);
+                    dfb.true_ratio[t][cl].avg += TRUERATIO(multi[t][cl]);
+                    dfb.falses[t][cl].avg += multi[t][cl].falses;
+                    dfb.trues[t][cl].avg += multi[t][cl].trues;
+
+                    MIN(dfb.false_ratio[t][cl], FALSERATIO(multi[t][cl]));
+                    MIN(dfb.true_ratio[t][cl], TRUERATIO(multi[t][cl]));
+                    MIN(dfb.falses[t][cl], multi[t][cl].falses);
+                    MIN(dfb.trues[t][cl], multi[t][cl].trues);
+
+                    MAX(dfb.false_ratio[t][cl], FALSERATIO(multi[t][cl]));
+                    MAX(dfb.true_ratio[t][cl], TRUERATIO(multi[t][cl]));
+                    MAX(dfb.falses[t][cl], multi[t][cl].falses);
+                    MAX(dfb.trues[t][cl], multi[t][cl].trues);
+                }
+            }
+        }
+        #undef MIN
+        #undef MAX
+
+        for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+            dfb.th[t].avg /= tests.number;
+            for (int cl = 0; cl < N_CLASSES; cl++) {
+                dfb.false_ratio[t][cl].avg /= tests.number;
+                dfb.true_ratio[t][cl].avg /= tests.number;
+                dfb.falses[t][cl].avg /= tests.number;
+                dfb.trues[t][cl].avg /= tests.number;
+            }
+        }
+
+        for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+            printf("\n%8s\n", thcm_names[t]);
+            printf("%12s\t", "th");
+            printf("%12.4f %12.4f %12.4f\t", dfb.th[t].min, dfb.th[t].max, dfb.th[t].avg);
+            for (int cl = 0; cl < N_CLASSES; cl++) {
+                if (cl == 1) continue;
+                printf("\n%12d\t", cl);
+                printf("%12d %12d %12d\t\t", (int32_t) dfb.falses[t][cl].min, (int32_t) dfb.falses[t][cl].max, (int32_t) dfb.falses[t][cl].avg);
+                printf("%12.4f %12.4f %12.4f\t", dfb.false_ratio[t][cl].min, dfb.false_ratio[t][cl].max, dfb.false_ratio[t][cl].avg);
+            }
+            #undef PRINTD
         }
 
         free(tests._);
     }
     
 
-    free(wsizes._);
     free(psets._);
     free(stratosphere_sources._);
 

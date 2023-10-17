@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <time.h>
+#include <openssl/sha.h>
 
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
@@ -78,12 +79,12 @@ typedef struct LogitRange {
 } LogitRange;
 
 typedef struct PSet {
-    int32_t id;
-    LogitRange logit_range;
-    Whitelisting whitelisting;
-    WindowingType windowing;
     InfiniteValues infinite_values;
     NN nn;
+    Whitelisting whitelisting;
+    WindowingType windowing;
+    int32_t wsize;
+    char digest[SHA256_DIGEST_LENGTH * 2];
 } PSet;
 
 typedef struct WSize {
@@ -93,6 +94,9 @@ typedef struct WSize {
 
 
 typedef struct PSetGenerator {
+    int32_t n_wsize;
+    int32_t* wsize;
+
     int32_t n_whitelisting;
     Whitelisting* whitelisting;
 
@@ -125,15 +129,7 @@ typedef struct Experiment {
     char name[100];
     char rootpath[500];
     
-    WSizes wsizes;
     PSets psets;
-
-    int N_SPLITRATIOs;
-    double split_percentages[10];
-
-    int KFOLDs;
-    
-    // EvaluationMetricFunctions evmfs;
 
 } Experiment;
 
@@ -241,8 +237,6 @@ typedef struct WindowRefs {
 typedef struct Windowing {
 
     int32_t id;
-
-    WSize wsize;
 
     PSet* pset;
 

@@ -55,8 +55,7 @@ Ths _get_ths(WindowRefs windows[N_CLASSES]) {
         max += windows[cl].number;
     }
 
-    double ths[max];
-    memset(ths, 0, max * sizeof(double));
+    double* ths = calloc(max, sizeof(double));
 
     int n = 0;
     for (int32_t cl = 0; cl < N_CLASSES; cl++) {
@@ -242,15 +241,15 @@ WindowRefs _shuffle(Windows windows) {
     shuffled._ = calloc(windows.number, sizeof(Window*));
     shuffled.number = 0;
 
-    int guard = shuffled.number * 100;
+    int guard = windows.number * 100;
     int guard_counter = 0;
-    int i = 0;
-    while (++guard_counter < guard && i < shuffled.number) {
+    while (++guard_counter < guard && shuffled.number < windows.number) {
         int dado = rand() % number;
 
         if (shuffled._[dado]) continue;
 
         shuffled._[dado] = &windows._[dado];
+        shuffled.number++;
     }
 
     return shuffled;

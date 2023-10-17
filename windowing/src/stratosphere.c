@@ -2,6 +2,7 @@
 #include "stratosphere.h"
 
 #include "calculator.h"
+#include "parameters.h"
 #include "persister.h"
 
 #include <libpq-fe.h>
@@ -277,7 +278,7 @@ void stratosphere_source_perform(Source* source, Dataset0s datasets, Windows* wi
             int32_t wsize;
             int32_t n_windows;
 
-            wsize = windowing->wsize.value;
+            wsize = windowing->pset->wsize;
             n_windows = windows[widx].number;
 
             wnum = (int) floor(message.fn_req / wsize);
@@ -307,25 +308,27 @@ void stratosphere_source_perform(Source* source, Dataset0s datasets, Windows* wi
     PQclear(pgresult);
 }
 
-int _persister__sources(PersisterReadWrite read, Experiment* exp, Sources* sources) {
+int _persister_sources(PersisterReadWrite read, Experiment* exp, Sources* sources) {
     char subname[20];
     sprintf(subname, "stratosphere");
-    return persister__sources(read, exp, subname, sources);
+    return persister_sources(read, exp, subname, sources);
 }
 
-int _persister__windows(PersisterReadWrite read, Experiment* exp, int32_t source_id, int32_t dataset_id, Windows* windows) {
-    char subname[20];
-    sprintf(subname, "stratosphere_%d_%d", source_id, dataset_id);
-    return persister__windows(read, exp, subname, windows);
+int _persister_windows(PersisterReadWrite read, Experiment* exp, int32_t source_id, PSet* pset, Windows* windows) {
+    char subname[100];
+    char subdigest[9] = "";
+    strncpy(subdigest, &pset->digest[56], 8);
+    sprintf(subname, "stratosphere_%d_%s", source_id, subdigest);
+    return persister_windows(read, exp, subname, windows);
 }
 
 
 void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr) {
     Sources sources;
 
-    if (_persister__sources(PERSITER_READ, exp, &sources)) {
+    if (_persister_sources(PERSITER_READ, exp, &sources)) {
         sources = stratosphere_get_sources();
-        _persister__sources(PERSITER_WRITE, exp, &sources);
+        _persister_sources(PERSITER_WRITE, exp, &sources);
     }
 
     Windows windoweds[sources.number][datasets.number];
@@ -339,7 +342,7 @@ void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr)
     for (int32_t s = 0; s < sources.number; s++) {
         for (int32_t d = 0; d < datasets.number; d++) {
 
-            if (0 == _persister__windows(PERSITER_READ, exp, s, d, &windoweds[s][d])) {
+            if (0 == _persister_windows(PERSITER_READ, exp, s, datasets._[d].windowing.pset, &windoweds[s][d])) {
                 // printf("Windows of Source %d (class %d) with Dataset %d loaded from disk\n", s, sources._[s].class, d);
                 windoweds_loaded[s]++;
 
@@ -348,9 +351,9 @@ void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr)
                 continue;
             }
     
-            printf("Windows of Source %d with Dataset\n", s);
+            // printf("Windows of Source %d with Dataset\n", s);
 
-            int32_t nw = N_WINDOWS(sources._[s].fnreq_max, datasets._[d].windowing.wsize.value);
+            int32_t nw = N_WINDOWS(sources._[s].fnreq_max, datasets._[d].windowing.pset->wsize);
             windoweds[s][d].number = nw;
             windoweds[s][d]._ = calloc(windoweds[s][d].number, sizeof(Window));
 
@@ -382,7 +385,7 @@ void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr)
             stratosphere_source_perform(&sources._[s], datasets, windoweds[s]);
 
             for (int32_t d = 0; d < datasets.number; d++) {
-                _persister__windows(PERSITER_WRITE, exp, s, d, &windoweds[s][d]);
+                _persister_windows(PERSITER_WRITE, exp, s, datasets._[d].windowing.pset, &windoweds[s][d]);
             }
         }
 
@@ -395,7 +398,6 @@ void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr)
 
             memcpy(&datasets._[d].windows[class]._[n_cursor[d][class]], windoweds[s][d]._, windoweds[s][d].number * sizeof(Window));
             n_cursor[d][class] += windoweds[s][d].number;
-
 
             free(windoweds[s][d]._);
         }

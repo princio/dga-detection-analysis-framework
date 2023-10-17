@@ -17,9 +17,9 @@ int persister_read__windowing(Experiment*);
 int persister_write__psets(Experiment*);
 int persister_read__psets(Experiment*);
 
-int persister__sources(int read, Experiment* exp, char subname[50], Sources* sources);
+int persister_sources(int read, Experiment* exp, char subname[50], Sources* sources);
 
-int persister__windows(PersisterReadWrite read, Experiment*, char subname[20], Windows*);
+int persister_windows(PersisterReadWrite read, Experiment*, char subname[20], Windows*);
 
 void persister_description(Experiment*, Sources);
 

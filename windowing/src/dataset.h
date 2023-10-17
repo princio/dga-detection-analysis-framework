@@ -9,6 +9,10 @@
 
 char thcm_names[5][20];
 
+#define FALSERATIO(tf) (((double) (tf).falses) / ((tf).falses + (tf).trues))
+#define TRUERATIO(tf) (((double) (tf).trues) / ((tf).falses + (tf).trues))
+
+
 typedef enum DatasetSplitBalanceMethod {
     DSBM_EACH,
     DSBM_NOT_INFECTED
@@ -81,6 +85,26 @@ typedef struct DatasetTests {
     int32_t number;
     DatasetTest* _;
 } DatasetTests;
+
+typedef struct DatasetFoldsDescribeItems {
+    
+    double min;
+    double max;
+    double avg;
+    
+} DatasetFoldsDescribeItems;
+
+typedef struct DatasetFoldsDescribe {
+
+    DatasetFoldsDescribeItems th[N_THCHOICEMETHODs];
+
+    DatasetFoldsDescribeItems falses[N_THCHOICEMETHODs][N_CLASSES];
+    DatasetFoldsDescribeItems trues[N_THCHOICEMETHODs][N_CLASSES];
+
+    DatasetFoldsDescribeItems false_ratio[N_THCHOICEMETHODs][N_CLASSES];
+    DatasetFoldsDescribeItems true_ratio[N_THCHOICEMETHODs][N_CLASSES];
+
+} DatasetFoldsDescribe;
 
 
 void dataset_traintestsplit(Dataset* dt, DatasetTrainTestPtr dt_tt, double percentage_split, DatasetSplitMethod dsm);

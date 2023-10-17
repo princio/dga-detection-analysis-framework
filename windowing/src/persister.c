@@ -220,80 +220,24 @@ void fread64(void *v, FILE* file) {
 }
 
 
-
-int persister_write__windowing(Experiment* exp) {
-    FILE *file;
-
-    _open_file(&file, exp, 0, PT_WSizes, 0);
-    if (file == NULL) {
-        return -1;
-    }
-    
-    int len_name = strlen(exp->name);
-    FW(len_name);
-    fwrite((void*) &exp->name, len_name, 1, file);
-
-    int len_rootpath = strlen(exp->rootpath);
-    FW(len_rootpath);
-    fwrite((void*) &exp->rootpath, len_rootpath, 1, file);
-
-    FW(exp->wsizes.number);
-
-    for (int i = 0; i < exp->wsizes.number; ++i) {
-        FW(exp->wsizes._[i]);
-    }
-
-    return fclose(file);
-}
-
-int persister_read__windowing(Experiment* exp) {
-    FILE *file;
-
-    _open_file(&file, exp, 1, PT_WSizes, 0);
-    if (file == NULL) {
-        return -1;
-    }
-    
-    int len_name;
-    FR(len_name);
-    fread((void*) &exp->name, len_name, 1, file);
-
-    int len_rootpath;
-    FR(len_rootpath);
-    fread((void*) &exp->rootpath, len_rootpath, 1, file);
-
-    FR(exp->wsizes.number);
-
-    for (int i = 0; i < exp->wsizes.number; ++i) {
-        FR(exp->wsizes._[i]);
-    }
-
-    return fclose(file);
-}
-
-
-
 int persister_write__psets(Experiment* exp) {
     FILE *file;
     int32_t number;
-    PSet* psets;
-
     _open_file(&file, exp, 0, PT_Parameters, 0);
     if (file == NULL) {
         return -1;
     }
 
     number = exp->psets.number;
-    psets = exp->psets._;
 
     FW(number);
 
     for (int i = 0; i < number; ++i) {
-        FW(psets[i].infinite_values);
-        FW(psets[i].nn);
-        FW(psets[i].whitelisting);
-        FW(psets[i].windowing);
-        FW(psets[i].id);
+        FW(exp->psets._[i].infinite_values);
+        FW(exp->psets._[i].nn);
+        FW(exp->psets._[i].whitelisting);
+        FW(exp->psets._[i].windowing);
+        FW(exp->psets._[i].wsize);
     }
 
     return fclose(file);
@@ -316,14 +260,14 @@ int persister_read__psets(Experiment* exp) {
         FR(exp->psets._[i].nn);
         FR(exp->psets._[i].whitelisting);
         FR(exp->psets._[i].windowing);
-        FR(exp->psets._[i].id);
+        FR(exp->psets._[i].wsize);
     }
 
     return fclose(file);
 }
 
 
-int persister__sources(int read, Experiment* exp, char subname[50], Sources* sources) {
+int persister_sources(int read, Experiment* exp, char subname[50], Sources* sources) {
 
     FILE *file;
 
@@ -355,7 +299,7 @@ int persister__sources(int read, Experiment* exp, char subname[50], Sources* sou
     return fclose(file);
 }
 
-int persister__windows(PersisterReadWrite read, Experiment* exp, char subname[20], Windows* windows) {
+int persister_windows(PersisterReadWrite read, Experiment* exp, char subname[20], Windows* windows) {
     FILE *file;
 
     _open_file(&file, exp, read, PT_Windows, subname);
@@ -418,12 +362,12 @@ void persister_description(Experiment* exp, Sources sources) {
 
 
 
-    fprintf(fp, "\n\n## WSizes\n");
-    fprintf(fp, "\n\nNumber:\t%d\n\n", exp->wsizes.number);
-    for (int ws = 0; ws < exp->wsizes.number - 1; ws++) {
-        fprintf(fp, "%d,", exp->wsizes._[ws].value);
-    }
-    fprintf(fp, "%d\n\n\n", exp->wsizes._[exp->wsizes.number - 1].value);
+    // fprintf(fp, "\n\n## WSizes\n");
+    // fprintf(fp, "\n\nNumber:\t%d\n\n", exp->wsizes.number);
+    // for (int ws = 0; ws < exp->wsizes.number - 1; ws++) {
+    //     fprintf(fp, "%d,", exp->wsizes._[ws].value);
+    // }
+    // fprintf(fp, "%d\n\n\n", exp->wsizes._[exp->wsizes.number - 1].value);
 
 
     fprintf(fp, "## Captures\n\n");
@@ -457,8 +401,7 @@ void persister_description(Experiment* exp, Sources sources) {
     for (int i = 0; i < exp->psets.number; i++) {
         PSet* p = &exp->psets._[i];
         fprintf(fp,
-            "%d,\"(%d,%f)\",\"(%f,%f)\",%s,%s\n",
-            p->id,
+            "\"(%d,%f)\",\"(%f,%f)\",%s,%s\n",
             p->whitelisting.rank, p->whitelisting.value,
             p->infinite_values.ninf, p->infinite_values.pinf,
             WINDOWING_NAMES[p->windowing],

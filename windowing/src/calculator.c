@@ -41,11 +41,4 @@ void calculator_message(Message* message, Window *window, PSet* pset) {
 
     window->logit += logit;
     window->whitelistened += whitelistened;
-
-    if (pset->logit_range.min > window->logit) {
-        pset->logit_range.min = window->logit;
-    }
-    if (pset->logit_range.max < window->logit) {
-        pset->logit_range.max = window->logit;
-    }
 }
