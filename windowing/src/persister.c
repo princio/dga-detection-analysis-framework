@@ -285,15 +285,20 @@ int persister_sources(int read, Experiment* exp, char subname[50], Sources* sour
     }
 
     for (int32_t i = 0; i < sources->number; i++) {
-        FRW(fn, sources->_[i].id);
+        FRW(fn, sources->_[i].binary_index);
         FRW(fn, sources->_[i].galaxy_id);
-        FRW(fn, sources->_[i].class);
+        FRW(fn, sources->_[i].class_);
         FRW(fn, sources->_[i].nmessages);
         FRW(fn, sources->_[i].fnreq_max);
         FRW(fn, sources->_[i].q);
         FRW(fn, sources->_[i].qr);
         FRW(fn, sources->_[i].r);
         FRW(fn, sources->_[i].capture_type);
+
+        sourcelist_insert(&exp->sources_lists, &sources->_[i]);
+
+        sources->_[i].binary_index = exp->sources_lists.binary.size - 1;
+        sources->_[i].multi_index = exp->sources_lists.multi[sources->_[i].class_].size - 1;
     }
 
     return fclose(file);
@@ -316,7 +321,7 @@ int persister_windows(PersisterReadWrite read, Experiment* exp, char subname[20]
     }
     
     for (int i = 0; i < windows->number; ++i) {
-        FRW(fn, windows->_[i].source_id);
+        FRW(fn, windows->_[i].source_index);
         FRW(fn, windows->_[i].dataset_id);
         FRW(fn, windows->_[i].window_id);
 
@@ -374,15 +379,16 @@ void persister_description(Experiment* exp, Sources sources) {
 
     fprintf(fp, "Captures number: %d\n\n", sources.number);
 
-    fprintf(fp, "id,name,capture_type,class,fnreq_max,nmessages,q,r,qr,source\n");
+    fprintf(fp, "id,galaxy_id,name,capture_type,class,fnreq_max,nmessages,q,r,qr,source\n");
     for (int i = 0; i < sources.number; i++) {
         Source* c = &sources._[i];
         fprintf(fp,
-            "%d,\"%s\",%d,%d,%s,%ld,%ld,%ld,%ld,%ld\n",
-            c->id,
+            "%d,%d,\"%s\",%d,%d,%s,%ld,%ld,%ld,%ld,%ld\n",
+            c->binary_index,
+            c->galaxy_id,
             c->name,
             c->capture_type,
-            c->class,
+            c->class_,
             c->source,
             c->fnreq_max,
             c->nmessages,

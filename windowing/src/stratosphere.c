@@ -14,16 +14,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 static PGconn *conn = NULL;
 
 void _disconnect(PGconn* conn) {
     PQfinish(conn);
 }
 
-
-
-void _parse_message(PGresult* res, int row, Message* message) {
+void _parse_message(PGresult* res, int row, DNSMessage* message) {
     message->fn_req = atoi(PQgetvalue(res, row, 0));
     message->value = atof(PQgetvalue(res, row, 1));
     message->logit = atof(PQgetvalue(res, row, 2));
@@ -145,7 +142,7 @@ int _get_pcaps_number() {
 }
 
 
-Sources stratosphere_get_sources() {
+Sources stratosphere_get_sources(Experiment* exp) {
     PGresult* pgresult;
     Sources sources;
 
@@ -169,19 +166,22 @@ Sources stratosphere_get_sources() {
     sources.number = nrows;
     sources._ = calloc(nrows, sizeof(Source));
 
-    for(int source_idx = 0; source_idx < nrows; source_idx++) {
-        Source* source = &sources._[source_idx];
+    for(int r = 0; r < nrows; r++) {
+        Source* source = &sources._[r];
 
-        source->id = source_idx;
-
-        source->galaxy_id = atoi(PQgetvalue(pgresult, source_idx, 0));
+        source->galaxy_id = atoi(PQgetvalue(pgresult, r, 0));
 
         source->capture_type = CAPTURETYPE_PCAP;
 
-        source->class = atoi(PQgetvalue(pgresult, source_idx, 1));
-        source->qr = atoi(PQgetvalue(pgresult, source_idx, 2));
-        source->q = atoi(PQgetvalue(pgresult, source_idx, 3));
-        source->r = atoi(PQgetvalue(pgresult, source_idx, 4));
+        source->class_ = atoi(PQgetvalue(pgresult, r, 1));
+        source->qr = atoi(PQgetvalue(pgresult, r, 2));
+        source->q = atoi(PQgetvalue(pgresult, r, 3));
+        source->r = atoi(PQgetvalue(pgresult, r, 4));
+
+        source->binary_index = exp->sources_lists.binary.size;
+        source->multi_index = exp->sources_lists.multi[source->class_].size;
+
+        experiment_sources_add(exp, source);
 
         {
             int nmessages = 0;
@@ -196,7 +196,7 @@ Sources stratosphere_get_sources() {
                 nmessages = atoi(PQgetvalue(res_nrows, 0, 0));
             }
             PQclear(res_nrows);
-            sources._[source_idx].nmessages = nmessages;
+            sources._[r].nmessages = nmessages;
         }
 
         {
@@ -212,7 +212,7 @@ Sources stratosphere_get_sources() {
                 fnreq_max = atoi(PQgetvalue(res_nrows, 0, 0));
             }
             PQclear(res_nrows);
-            sources._[source_idx].fnreq_max = fnreq_max;
+            sources._[r].fnreq_max = fnreq_max;
         }
     }
 
@@ -222,7 +222,7 @@ Sources stratosphere_get_sources() {
 }
 
 
-void stratosphere_source_perform(Source* source, Dataset0s datasets, Windows* windows) {
+void stratosphere_source_perform(Source* source, Datasets datasets, Windows* windows) {
     PGresult* pgresult;
     int nrows;
 
@@ -267,18 +267,18 @@ void stratosphere_source_perform(Source* source, Dataset0s datasets, Windows* wi
     // int wnum_max[N_WSIZE];
     // memset(wnum_max, 0, sizeof(int) * N_WSIZE);
     for(int r = 0; r < nrows; r++) {
-        Message message;
+        DNSMessage message;
 
         _parse_message(pgresult, r, &message);
 
         for (int widx = 0; widx < datasets.number; ++widx) {
             int wnum;
-            Windowing* windowing = &datasets._[widx].windowing;
+            PSet* pset = datasets._[widx].pset;
             Window *window;
             int32_t wsize;
             int32_t n_windows;
 
-            wsize = windowing->pset->wsize;
+            wsize = pset->wsize;
             n_windows = windows[widx].number;
 
             wnum = (int) floor(message.fn_req / wsize);
@@ -300,7 +300,7 @@ void stratosphere_source_perform(Source* source, Dataset0s datasets, Windows* wi
                 printf("Error[wnum != window->wnum]:\t%d\t%d\n", wnum, window->window_id);
             }
 
-            calculator_message(&message, window, windowing->pset);
+            calculator_message(&message, window, pset);
 
         }
     }
@@ -323,11 +323,11 @@ int _persister_windows(PersisterReadWrite read, Experiment* exp, int32_t source_
 }
 
 
-void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr) {
+void stratosphere_run(Experiment* exp, Datasets datasets, Sources* sources_ptr) {
     Sources sources;
 
     if (_persister_sources(PERSITER_READ, exp, &sources)) {
-        sources = stratosphere_get_sources();
+        sources = stratosphere_get_sources(exp);
         _persister_sources(PERSITER_WRITE, exp, &sources);
     }
 
@@ -342,33 +342,33 @@ void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr)
     for (int32_t s = 0; s < sources.number; s++) {
         for (int32_t d = 0; d < datasets.number; d++) {
 
-            if (0 == _persister_windows(PERSITER_READ, exp, s, datasets._[d].windowing.pset, &windoweds[s][d])) {
+            if (0 == _persister_windows(PERSITER_READ, exp, s, datasets._[d].pset, &windoweds[s][d])) {
                 // printf("Windows of Source %d (class %d) with Dataset %d loaded from disk\n", s, sources._[s].class, d);
                 windoweds_loaded[s]++;
 
-                n_windows[d][sources._[s].class] += windoweds[s][d].number;
+                n_windows[d][sources._[s].class_] += windoweds[s][d].number;
 
                 continue;
             }
     
             // printf("Windows of Source %d with Dataset\n", s);
 
-            int32_t nw = N_WINDOWS(sources._[s].fnreq_max, datasets._[d].windowing.pset->wsize);
+            int32_t nw = N_WINDOWS(sources._[s].fnreq_max, datasets._[d].pset->wsize);
             windoweds[s][d].number = nw;
             windoweds[s][d]._ = calloc(windoweds[s][d].number, sizeof(Window));
 
             for (int32_t w = 0; w < windoweds[s][d].number; w++) {
-                windoweds[s][d]._[w].source_id = sources._[s].id;
+                windoweds[s][d]._[w].source_index = sources._[s].binary_index;
                 windoweds[s][d]._[w].window_id = w;
                 windoweds[s][d]._[w].dataset_id = d;
             }
 
-            n_windows[d][sources._[s].class] += nw;
+            n_windows[d][sources._[s].class_] += nw;
         }
     }
 
     for (int32_t d = 0; d < datasets.number; d++) {
-        Dataset0* dataset = &datasets._[d];
+        Dataset* dataset = &datasets._[d];
 
         for (int32_t cl = 0; cl < N_CLASSES; cl++) {
             dataset->windows[cl].number = n_windows[d][cl];
@@ -385,11 +385,11 @@ void stratosphere_run(Experiment* exp, Dataset0s datasets, Sources* sources_ptr)
             stratosphere_source_perform(&sources._[s], datasets, windoweds[s]);
 
             for (int32_t d = 0; d < datasets.number; d++) {
-                _persister_windows(PERSITER_WRITE, exp, s, datasets._[d].windowing.pset, &windoweds[s][d]);
+                _persister_windows(PERSITER_WRITE, exp, s, datasets._[d].pset, &windoweds[s][d]);
             }
         }
 
-        Class class = sources._[s].class;
+        Class class = sources._[s].class_;
 
         for (int32_t d = 0; d < datasets.number; d++) {
             if (n_cursor[d][class] + windoweds[s][d].number > datasets._[d].windows[class].number) {

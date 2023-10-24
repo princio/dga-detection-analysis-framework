@@ -1,10 +1,10 @@
 #ifndef __CALCULATOR_H
 #define __CALCULATOR_H
 
-#include "dn.h"
+#include "parameters.h"
 
 #include <stdio.h>
 
-void calculator_message(Message* message, Window *, PSet* pi);
+void calculator_message(DNSMessage* message, Window *, PSet* pi);
 
 #endif

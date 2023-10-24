@@ -1,7 +1,7 @@
 #ifndef __PERSISTER_H__
 #define __PERSISTER_H__
 
-#include "dn.h"
+#include "experiment.h"
 
 typedef enum PersisterReadWrite {
     PERSITER_WRITE,

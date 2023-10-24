@@ -121,7 +121,14 @@
         "spdlog.h": "c",
         "__hash_table": "c",
         "__split_buffer": "c",
-        "__tree": "c"
+        "__tree": "c",
+        "sha.h": "c",
+        "parameters.h": "c",
+        "utils.h": "c",
+        "common.h": "c",
+        "sources.h": "c",
+        "folding.h": "c",
+        "dataset.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

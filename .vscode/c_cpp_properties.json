@@ -15,7 +15,12 @@
             "configurationProvider": "ms-vscode.cmake-tools",
             "compilerArgs": [
                 "-libpq"
-            ]
+            ],
+            "browse": {
+                "path": [
+                    "${workspaceFolder}/windowing/src/**"
+                ]
+            }
         }
     ],
     "version": 4

@@ -23,9 +23,6 @@ extern int trys;
 extern char try_name[5];
 
 
-typedef int32_t IDX;
-
-
 typedef struct Message {
     int64_t id;
     int64_t fn_req;
@@ -125,40 +122,12 @@ typedef struct WSizes {
 } WSizes;
 
 
-typedef struct Experiment {
-    char name[100];
-    char rootpath[500];
-    
-    PSets psets;
-
-} Experiment;
-
-
 //   W I N D O W,    C A P T U R E    A N D    W I N D O W I N G
 
 
-typedef struct WindowMetricSet {
-    IDX wsize_idx;
-    IDX source_idx;
-    IDX window_idx;
-    IDX     pi_id;
-
-    int32_t wcount;
-    double  logit;
-    int32_t whitelistened;
-    int32_t dn_bad_05;
-    int32_t dn_bad_09;
-    int32_t dn_bad_099;
-    int32_t dn_bad_0999;
-} WindowMetricSet;
-
-typedef struct WindowMetricSets {
-    int32_t number;
-    WindowMetricSet* _;
-} WindowMetricSets;
-
 typedef struct Window {
-    IDX source_id;
+    IDX source_index;
+    IDX source_classindex;
     IDX dataset_id;
     IDX window_id;
 
@@ -173,33 +142,15 @@ typedef struct Window {
     int32_t dn_bad_0999;
 } Window;
 
-typedef struct Source {
-    int32_t id;
+typedef struct Experiment {
+    char name[100];
+    char rootpath[500];
     
-    int32_t galaxy_id;
+    PSets psets;
 
-    CaptureType capture_type;
+    SourcesSet sources_lists;
 
-    int64_t qr;
-    int64_t q;
-    int64_t r;
-    int64_t nmessages;
-    int64_t fnreq_max;
-
-    char name[50];
-    char source[50];
-
-    Class class;
-} Source;
-
-typedef Source* SourcePtr;
-
-
-typedef struct Sources {
-    int32_t number;
-    Source* _;
-} Sources;
-
+} Experiment;
 
 typedef struct WSet {
     int32_t number;
@@ -286,10 +237,10 @@ typedef struct WindowingTotals {
 } WindowingTotals;
 
 
-typedef struct WSetRef {
+typedef struct WindowRefs {
     int32_t number;
     Window** _;
-} WSetRef;
+} WindowRefs;
 
 typedef struct Dataset0 {
     Windowing windowing;
@@ -368,7 +319,7 @@ typedef struct Predictions {
 
 typedef struct DatasetClass {
     char name[50];
-    WSetRef windowingref_set;
+    WindowRefs windowingref_set;
 } DatasetClass;
 
 typedef struct DatasetTrainTest {
@@ -377,8 +328,8 @@ typedef struct DatasetTrainTest {
 
     double percentage_split; // train over test
 
-    WSetRef train[N_CLASSES];
-    WSetRef test[N_CLASSES];
+    WindowRefs train[N_CLASSES];
+    WindowRefs test[N_CLASSES];
 
     Predictions eval;
 
@@ -391,8 +342,8 @@ typedef DatasetTrainTest* DatasetTrainTestPtr;
 typedef struct Dataset {
 
     int32_t wsize;
-    WSetRef windows_all;
-    WSetRef windows[N_CLASSES]; // One for each class
+    WindowRefs windows_all;
+    WindowRefs windows[N_CLASSES]; // One for each class
 } Dataset;
 
 

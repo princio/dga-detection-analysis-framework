@@ -2,7 +2,41 @@
 #ifndef __PARAMETERS_H__
 #define __PARAMETERS_H__
 
-#include "dn.h"
+#include "common.h"
+
+
+typedef struct PSet {
+    InfiniteValues infinite_values;
+    NN nn;
+    Whitelisting whitelisting;
+    WindowingType windowing;
+    int32_t wsize;
+    char digest[SHA256_DIGEST_LENGTH * 2];
+} PSet;
+
+
+typedef struct PSetGenerator {
+    int32_t n_wsize;
+    int32_t* wsize;
+
+    int32_t n_whitelisting;
+    Whitelisting* whitelisting;
+
+    int32_t n_windowing;
+    WindowingType* windowing;
+
+    int32_t n_infinitevalues;
+    InfiniteValues* infinitevalues;
+
+    int32_t n_nn;
+    NN* nn;
+} PSetGenerator;
+
+typedef struct PSets {
+    int32_t number;
+    PSet* _;
+} PSets;
+
 
 void parameters_hash(PSet*);
 

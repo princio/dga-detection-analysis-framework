@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <math.h>
 
-void calculator_message(Message* message, Window *window, PSet* pset) {
+void calculator_message(DNSMessage* message, Window *window, PSet* pset) {
     int whitelistened = 0;
     double value, logit;
 

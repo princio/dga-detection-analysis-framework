@@ -2,7 +2,8 @@
 #ifndef __STRATOSPHERE_H__
 #define __STRATOSPHERE_H__
 
-#include "dn.h"
+#include "dataset.h"
+#include "experiment.h"
 
 typedef struct StratosphereInfo { 
     int32_t id;
@@ -19,6 +20,8 @@ typedef struct StratosphereInfo {
  */
 // void stratosphere_procedure(WindowingPtr windowing, int32_t capture_index);
 
-void stratosphere_run(Experiment*, Dataset0s datasets, Sources* sources);
+void stratosphere_run(Experiment*, Datasets datasets, Sources* sources);
+
+Sources stratosphere_get_sources(Experiment*);
 
 #endif
