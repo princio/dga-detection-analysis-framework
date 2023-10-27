@@ -61,7 +61,7 @@ typedef struct Evaluation {
 
 typedef Evaluation Evaluations[N_DGADETECTIONs][N_EVALUATEMETHODs];
 
-void detect_evaluations_init(Evaluations, SourcesArrays);
+void detect_evaluations_init(Evaluations evaluations, int32_t n_sources[N_DGACLASSES]);
 void detect_evaluations_free(Evaluations);
 
 double detect_f1score_beta(DGADetection, Detections, double);

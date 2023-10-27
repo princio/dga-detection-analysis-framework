@@ -80,6 +80,8 @@ const FoldingEvalMethod folding_eval_methods[N_FOLDINGEVAL_METHODS_TYPES][N_FOLD
 
 typedef FoldingEvalDescribe FoldingEval[N_DGADETECTIONs][N_EVALUATEMETHODs];
 
-void folding_eval(Folding*, FoldingEval);
+void foldingeval(Folding*, FoldingEval);
+
+void foldingeval_print(FoldingEval fe);
 
 #endif

@@ -22,6 +22,7 @@ void folding_generate(Dataset* ds, Folding* folding) {
     assert((folding->config.balance_method != FOLDING_DSBM_EACH) || (folding->config.split_method != FOLDING_DSM_IGNORE_1));
 
     RWindows rwindows[N_DGACLASSES];
+    folding->ks = calloc(folding->config.kfolds, sizeof(FoldingK));
 
     dataset_rwindows(ds, rwindows, folding->config.shuffle);
 
@@ -48,9 +49,12 @@ void folding_generate(Dataset* ds, Folding* folding) {
 
             int32_t train_size;
             int32_t test_size;
-            FoldingK* fk;
+            FoldingK* fk = &folding->ks[k];
 
-            detect_evaluations_init(fk->train.evaluations, ds->sources.arrays);
+            fk->n_sources[cl] = ds->sources.arrays[cl].number;
+
+            detect_evaluations_init(fk->train.evaluations, fk->n_sources);
+            detect_evaluations_init(fk->test.evaluations, fk->n_sources);
 
             train_size = kfold_size * TRAIN_KFOLDs;
             test_size = kfold_size * TEST_KFOLDs;
@@ -108,6 +112,7 @@ void folding_k_train(FoldingK* fk) {
 
     for (int t = 0; t < ths.number; t++) {
         Evaluations evaluations;
+        detect_evaluations_init(evaluations, fk->n_sources);
         detect_evaluate_many(fk->train.rwindows, ths._[t], evaluations); // perform the detection with this `th`
 
         for (int dd = 0; dd < N_DGADETECTIONs; dd++) {

@@ -23,6 +23,7 @@
 #include "common.h"
 // #include "experiment.h"
 #include "folding.h"
+#include "foldingeval.h"
 #include "parameters.h"
 // #include "persister.h"
 #include "stratosphere.h"
@@ -140,7 +141,7 @@ void exps_1() {
     Experiment exp;
     memset(&exp, 0, sizeof(Experiment));
 
-    strcpy(exp.name, "exp_new_3");
+    strcpy(exp.name, "exp_new_4");
     strcpy(exp.rootpath, "/home/princio/Desktop/exps");
 
     exp.psets = psets;
@@ -167,7 +168,6 @@ void exps_1() {
 
     printf("Sources loaded\n\n");
 
-    /*
     for (int32_t d = 0; d < datasets.number; d++) {
         {
             printf("Processing dataset %d:\t", d);
@@ -176,127 +176,22 @@ void exps_1() {
             printf("(%5g, %5g), ", pset->infinite_values.ninf, pset->infinite_values.pinf);
             printf("%6s, ", NN_NAMES[pset->nn]);
             printf("(%6d, %6g)\n", pset->whitelisting.rank, pset->whitelisting.value);
-            // printf("%d\n", windowing->pset->windowing);
         }
-        FoldingConfig dfold;
+        Folding folding;
 
-        dfold.kfolds = 5;
-        dfold.balance_method = FOLDING_DSBM_NOT_INFECTED;
-        dfold.split_method = FOLDING_DSM_IGNORE_1;
-        dfold.test_folds = 1;
-        dfold.shuffle = 0;
+        folding.config.kfolds = 5;
+        folding.config.balance_method = FOLDING_DSBM_NOT_INFECTED;
+        folding.config.split_method = FOLDING_DSM_IGNORE_1;
+        folding.config.test_folds = 1;
+        folding.config.shuffle = 0;
 
-        folding_run(&exp, &datasets._[d], dfold);
+        folding_run(&datasets._[d], &folding);
 
-        for (int k = 0; k < tests.number; k++) {
-            printf("FOLD %2d  %15s\t", k, " ");
-            for (int cl = 0; cl < N_DGACLASSES; cl++) {
-                printf("%8d\t", tests._[k].multi[0][cl].all.falses + tests._[k].multi[0][cl].all.trues);
-            }
-            printf("\n");
 
-            for (int t = 0; t < N_EVALUATEMETHODs; t++) {
-                printf("  %12s %10g\t", thcm_names[t], tests._[k].ths[t]);
-                for (int cl = 0; cl < N_DGACLASSES; cl++) {
-                    printf("%8d\t", tests._[k].multi[t][cl].all.falses);
-                }
-                for (int cl = 0; cl < N_DGACLASSES; cl++) {
-                    printf("%1.5f\t", (double) tests._[k].multi[t][cl].all.falses / (tests._[k].multi[t][cl].all.falses + tests._[k].multi[t][cl].all.trues));
-                }
-                printf("\n");
-            }
-        }
+        FoldingEval eval;
+        foldingeval(&folding, eval);
 
-        DatasetFoldsDescribe dfb;
-        memset(&dfb, 0, sizeof(DatasetFoldsDescribe));
-        for (int t = 0; t < N_EVALUATEMETHODs; t++) {
-            dfb.th[t].min = DBL_MAX;
-            dfb.th[t].max = -1 * DBL_MAX;
-            for (int cl = 0; cl < N_DGACLASSES; cl++) {
-                dfb.falses[t][cl].min = DBL_MAX;
-                dfb.trues[t][cl].min = DBL_MAX;
-                dfb.false_ratio[t][cl].min = 1;
-                dfb.true_ratio[t][cl].min = 1;
-                dfb.sources_trues[t][cl].min = INT32_MAX;
-
-                dfb.falses[t][cl].max = -1 * DBL_MAX;
-                dfb.trues[t][cl].max = -1 * DBL_MAX;
-                dfb.false_ratio[t][cl].max = 0;
-                dfb.true_ratio[t][cl].max = 0;
-                dfb.sources_trues[t][cl].max = 0;
-            }
-        }
-
-        #define MIN(A, B) (A.min) = ((B) <= (A.min) ? (B) : (A.min))
-        #define MAX(A, B) (A.max) = ((B) >= (A.max) ? (B) : (A.max))
-        for (int k = 0; k < tests.number; k++) {
-            Evaluation (*multi)[N_DGACLASSES] = tests._[k].multi;
-            for (int t = 0; t < N_EVALUATEMETHODs; t++) {
-                dfb.th[t].avg += tests._[k].ths[t];
-                MIN(dfb.th[t], tests._[k].ths[t]);
-                MAX(dfb.th[t], tests._[k].ths[t]);
-
-                for (int cl = 0; cl < N_DGACLASSES; cl++) {
-                    int32_t sources_trues = 0;
-                    for (int32_t i = 0; i < exp.sources_arrays.multi[cl].number; i++) {
-                        sources_trues += multi[t][cl].sources[i].trues > 0;
-                    }
-                    
-
-                    dfb.false_ratio[t][cl].avg += FALSERATIO(multi[t][cl]);
-                    dfb.true_ratio[t][cl].avg += TRUERATIO(multi[t][cl]);
-                    dfb.falses[t][cl].avg += multi[t][cl].all.falses;
-                    dfb.trues[t][cl].avg += multi[t][cl].all.trues;
-                    dfb.sources_trues[t][cl].avg += sources_trues;
-
-                    MIN(dfb.false_ratio[t][cl], FALSERATIO(multi[t][cl]));
-                    MIN(dfb.true_ratio[t][cl], TRUERATIO(multi[t][cl]));
-                    MIN(dfb.falses[t][cl], multi[t][cl].all.falses);
-                    MIN(dfb.trues[t][cl], multi[t][cl].all.trues);
-                    MIN(dfb.sources_trues[t][cl], sources_trues);
-
-                    MAX(dfb.false_ratio[t][cl], FALSERATIO(multi[t][cl]));
-                    MAX(dfb.true_ratio[t][cl], TRUERATIO(multi[t][cl]));
-                    MAX(dfb.falses[t][cl], multi[t][cl].all.falses);
-                    MAX(dfb.sources_trues[t][cl], sources_trues);
-                }
-            }
-        }
-        #undef MIN
-        #undef MAX
-
-        for (int t = 0; t < N_EVALUATEMETHODs; t++) {
-            dfb.th[t].avg /= tests.number;
-            for (int cl = 0; cl < N_DGACLASSES; cl++) {
-                dfb.false_ratio[t][cl].avg /= tests.number;
-                dfb.true_ratio[t][cl].avg /= tests.number;
-                dfb.falses[t][cl].avg /= tests.number;
-                dfb.trues[t][cl].avg /= tests.number;
-                dfb.sources_trues[t][cl].avg /= tests.number;
-            }
-        }
-
-        for (int t = 0; t < N_EVALUATEMETHODs; t++) {
-            printf("\n%8s\n", thcm_names[t]);
-            printf("%12s\t", "th");
-            printf("%12.4f %12.4f %12.4f\t", dfb.th[t].min, dfb.th[t].max, dfb.th[t].avg);
-            printf("%12.4f %12.4f %12.4f\t", 0., 0., 0.);
-
-            int s_counts[N_DGACLASSES];
-            source_count(stratosphere_sources, s_counts);
-            
-            printf("%12d %12d %12d\n", s_counts[0], s_counts[1], s_counts[2]);
-            for (int cl = 0; cl < N_DGACLASSES; cl++) {
-                if (cl == 1) continue;
-                printf("\n%12d\t", cl);
-                printf("%12d %12d %12d\t\t", (int32_t) dfb.falses[t][cl].min, (int32_t) dfb.falses[t][cl].max, (int32_t) dfb.falses[t][cl].avg);
-                printf("%12.4f %12.4f %12.4f\t", dfb.false_ratio[t][cl].min, dfb.false_ratio[t][cl].max, dfb.false_ratio[t][cl].avg);
-                printf("%12.4f %12.4f %12.4f\t", dfb.sources_trues[t][cl].min, dfb.sources_trues[t][cl].max, dfb.sources_trues[t][cl].avg);
-            }
-            #undef PRINTD
-        }
-
-        free(tests._);
+        foldingeval_print(eval);
     }
 
 
@@ -310,8 +205,7 @@ void exps_1() {
     }
 
     free(datasets._);
-    */
-
+}
     // Sources sources;
 
     // Sources sources_by_type[1];
@@ -393,36 +287,35 @@ void exps_1() {
     // ++i;
 
     // experiment_test(&es);
-}
 
-int ff(const int cursor[4], const int sizes[4], int avg) {
-    const int ncursor = 4;
-    int active[ncursor];
-    int last = 0;
+// int ff(const int cursor[4], const int sizes[4], int avg) {
+//     const int ncursor = 4;
+//     int active[ncursor];
+//     int last = 0;
 
-    for (int i = 0; i < ncursor; i++) active[i] = 0;
+//     for (int i = 0; i < ncursor; i++) active[i] = 0;
 
-    active[0] = 1;
-    for (int i = 1; i < ncursor; i++) {
-        active[i] = avg & (1 << (i-1)) ? 1 : 0;
-        last = active[i] ? i : last;
-    }
+//     active[0] = 1;
+//     for (int i = 1; i < ncursor; i++) {
+//         active[i] = avg & (1 << (i-1)) ? 1 : 0;
+//         last = active[i] ? i : last;
+//     }
 
-    int c = 0;
-    for (int l = 0; l < last; l++) {
-        int row = 1;
-        if (cursor[l] == 0) continue;
-        if (active[l] == 0) continue;
-        for (int ll = l + 1; ll <= last; ll++) {
-            if (active[ll]) row *= sizes[ll];
-        }
-        c += row * cursor[l];
-    }
+//     int c = 0;
+//     for (int l = 0; l < last; l++) {
+//         int row = 1;
+//         if (cursor[l] == 0) continue;
+//         if (active[l] == 0) continue;
+//         for (int ll = l + 1; ll <= last; ll++) {
+//             if (active[ll]) row *= sizes[ll];
+//         }
+//         c += row * cursor[l];
+//     }
     
-    c += cursor[last];
+//     c += cursor[last];
 
-    return c;
-}
+//     return c;
+// }
 
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
@@ -443,6 +336,7 @@ int main (int argc, char* argv[]) {
 
     exps_1();
 
+/*
     int n0 = 3;
     int n1 = 1;
     int n2 = 5;
@@ -569,7 +463,6 @@ int main (int argc, char* argv[]) {
     exit(0);
 
 
-/*
     // int N_SPLITRATIOs = 10;
 
     // double split_percentages[10] = { 0.01, 0.05, 0.1, 0.2, 0.25, 0.3, 0.4, 0.5, 0.6, 0.7 };

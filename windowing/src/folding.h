@@ -53,6 +53,7 @@ typedef struct FoldingTT {
 
 typedef struct FoldingK {
     int32_t k;
+    int32_t n_sources[N_DGACLASSES];
     FoldingTT train;
     FoldingTT test;
 } FoldingK;

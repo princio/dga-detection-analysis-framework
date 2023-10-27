@@ -18,6 +18,10 @@ const char dgadetection_names[N_DGADETECTIONs][50] = {
     "merge"
 };
 
+double detect_f1score_beta(DGADetection dgadetection, Detections dtfs, double beta);
+double detect_fpr(DGADetection dgadetection, Detections dtfs, double __ignore);
+double detect_tpr(DGADetection dgadetection, Detections dtfs, double __ignore);
+
 const EvaluationMethod evaluation_methods[N_EVALUATEMETHODs] = {
     { .id=DETECT_SF_F1SCORE, .beta = 1.0, .name = "F1SCORE_1.0", .func=&detect_f1score_beta, .greater=1 },
     { .id=DETECT_SF_F1SCORE, .beta = 0.5, .name = "F1SCORE_0.5", .func=&detect_f1score_beta, .greater=1 },
@@ -25,7 +29,6 @@ const EvaluationMethod evaluation_methods[N_EVALUATEMETHODs] = {
     { .id=DETECT_SF_FPR, .beta = 0., .name = "FPR", .func=&detect_fpr, .greater=0 },
     { .id=DETECT_SF_TPR, .beta = 0., .name = "TPR", .func=&detect_tpr, .greater=1 },
 };
-
 
 double detect_f1score_beta(DGADetection dgadetection, Detections dtfs, double beta) {
     double f1;
@@ -101,14 +104,14 @@ void detect_reset_detections(Detections detections) {
     }
 }
 
-void detect_evaluations_init(Evaluations evaluations, SourcesArrays sa) {
+void detect_evaluations_init(Evaluations evaluations, int32_t n_sources[N_DGACLASSES]) {
     for (int dd = 0; dd < N_DGADETECTIONs; dd++) {
         for (int ev = 0; ev <= N_EVALUATEMETHODs; ev++) {
-            detect_reset_detections(evaluations[dd][ev].detections);
             for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-                evaluations[dd][ev].detections[cl].sources.number = sa[cl].number;
-                evaluations[dd][ev].detections[cl].sources._ = calloc(sa[cl].number, sizeof(TF));
+                evaluations[dd][ev].detections[cl].sources.number = n_sources[cl];
+                evaluations[dd][ev].detections[cl].sources._ = calloc(n_sources[cl], sizeof(TF));
             }
+            detect_reset_detections(evaluations[dd][ev].detections);
         }
     }
 }
@@ -157,7 +160,7 @@ void detect_evaluate(DGADetection dd, int ev_id, DatasetRWindows drw, double th,
 
 void detect_evaluate_many(DatasetRWindows drw, double th, Evaluations evaluations) {
     for (int dd = 0; dd < N_DGADETECTIONs; dd++) {
-        for (int ev = 0; ev <= N_EVALUATEMETHODs; ev++) {
+        for (int ev = 0; ev < N_EVALUATEMETHODs; ev++) {
             detect_evaluate(dd, ev, drw, th, &evaluations[dd][ev]);
         }
     }
