@@ -10,9 +10,9 @@
 #define MAX_WSIZES 20
 #define MAX_Sources 100
 
-#define N_CLASSES 3
+#define N_DGACLASSES 3
 
-extern char CLASSES[3][50];
+extern char CLASSES[N_DGACLASSES][50];
 
 extern char WINDOWING_NAMES[3][10];
 
@@ -20,12 +20,11 @@ extern char NN_NAMES[11][10];
 
 typedef int32_t IDX;
 
-typedef enum Class {
-    CLASS__NOT_INFECTED,
-    CLASS__INFECTED_NOTDGA,
-    CLASS__INFECTED_DGA,
-} Class;
-
+typedef enum DGAClass {
+    DGACLASS_0,
+    DGACLASS_1,
+    DGACLASS_2,
+} DGAClass;
 
 typedef struct DNSMessage {
     int64_t id;
@@ -82,72 +81,9 @@ typedef struct LogitRange {
     double max;
 } LogitRange;
 
-//   W I N D O W,    C A P T U R E    A N D    W I N D O W I N G
-
-typedef struct Window {
-    IDX source_index;
-    IDX source_classindex;
-    IDX dataset_id;
-    IDX window_id;
-
-    Class class;
-
-    int32_t wcount;
-    double  logit;
-    int32_t whitelistened;
-    int32_t dn_bad_05;
-    int32_t dn_bad_09;
-    int32_t dn_bad_099;
-    int32_t dn_bad_0999;
-} Window;
-
-typedef struct Windows {
+typedef struct Ths {
     int32_t number;
-    Window* _;
-} Windows;
-
-typedef struct WindowRefs {
-    int32_t number;
-    Window** _;
-} WindowRefs;
-
-//   D A T A S E T
-
-typedef struct CMValue {
-    int32_t falses; // wrong
-    int32_t trues; // right
-} CMValue;
-
-//   M E T R I C S
-
-
-typedef struct CM {
-    CMValue single[2];
-    CMValue multi[N_CLASSES];
-} CM;
-
-typedef struct RatioValue {
-    int32_t nwindows;
-    int32_t absolute[2];
-    double relative[2];
-} RatioValue;
-
-typedef struct Ratio {
-    int32_t nwindows;
-
-    RatioValue single_ratio;
-
-    RatioValue multi_ratio[N_CLASSES];
-} Ratio;
-
-typedef struct Ratios {
-    int32_t number;
-    Ratio* _;
-} Ratios;
-
-typedef struct AVG {
-    int32_t mask;
-    Ratios ratios;
-} AVG;
+    double* _;
+} Ths;
 
 #endif

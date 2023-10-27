@@ -173,13 +173,12 @@ Sources stratosphere_get_sources(Experiment* exp) {
 
         source->capture_type = CAPTURETYPE_PCAP;
 
-        source->class_ = atoi(PQgetvalue(pgresult, r, 1));
+        source->dgaclass = atoi(PQgetvalue(pgresult, r, 1));
         source->qr = atoi(PQgetvalue(pgresult, r, 2));
         source->q = atoi(PQgetvalue(pgresult, r, 3));
         source->r = atoi(PQgetvalue(pgresult, r, 4));
 
-        source->binary_index = exp->sources_lists.binary.size;
-        source->multi_index = exp->sources_lists.multi[source->class_].size;
+        source->multi_index = exp->sources.lists[source->dgaclass].size;
 
         experiment_sources_add(exp, source);
 
@@ -337,8 +336,8 @@ void stratosphere_run(Experiment* exp, Datasets datasets, Sources* sources_ptr) 
     int32_t windoweds_loaded[sources.number];
     memset(windoweds_loaded, 0, sizeof(int32_t) * sources.number);
 
-    int32_t n_windows[datasets.number][N_CLASSES];
-    memset(n_windows, 0, sizeof(int32_t) * N_CLASSES * datasets.number);
+    int32_t n_windows[datasets.number][N_DGACLASSES];
+    memset(n_windows, 0, sizeof(int32_t) * N_DGACLASSES * datasets.number);
     for (int32_t s = 0; s < sources.number; s++) {
         for (int32_t d = 0; d < datasets.number; d++) {
 
@@ -346,7 +345,7 @@ void stratosphere_run(Experiment* exp, Datasets datasets, Sources* sources_ptr) 
                 // printf("Windows of Source %d (class %d) with Dataset %d loaded from disk\n", s, sources._[s].class, d);
                 windoweds_loaded[s]++;
 
-                n_windows[d][sources._[s].class_] += windoweds[s][d].number;
+                n_windows[d][sources._[s].dgaclass] += windoweds[s][d].number;
 
                 continue;
             }
@@ -363,21 +362,21 @@ void stratosphere_run(Experiment* exp, Datasets datasets, Sources* sources_ptr) 
                 windoweds[s][d]._[w].dataset_id = d;
             }
 
-            n_windows[d][sources._[s].class_] += nw;
+            n_windows[d][sources._[s].dgaclass] += nw;
         }
     }
 
     for (int32_t d = 0; d < datasets.number; d++) {
         Dataset* dataset = &datasets._[d];
 
-        for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+        for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
             dataset->windows[cl].number = n_windows[d][cl];
             dataset->windows[cl]._ = calloc(n_windows[d][cl], sizeof(Window));
         }
     }
 
-    int32_t n_cursor[datasets.number][N_CLASSES];
-    memset(n_cursor, 0, sizeof(int32_t) * N_CLASSES * datasets.number);
+    int32_t n_cursor[datasets.number][N_DGACLASSES];
+    memset(n_cursor, 0, sizeof(int32_t) * N_DGACLASSES * datasets.number);
     for (int32_t s = 0; s < sources.number; s++) {
         if (windoweds_loaded[s] == datasets.number) {
             // printf("Source %d loaded from disk\n", s);
@@ -389,7 +388,7 @@ void stratosphere_run(Experiment* exp, Datasets datasets, Sources* sources_ptr) 
             }
         }
 
-        Class class = sources._[s].class_;
+        DGAClass class = sources._[s].dgaclass;
 
         for (int32_t d = 0; d < datasets.number; d++) {
             if (n_cursor[d][class] + windoweds[s][d].number > datasets._[d].windows[class].number) {

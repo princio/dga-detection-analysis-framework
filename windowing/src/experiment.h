@@ -2,15 +2,15 @@
 #ifndef __EXPERIMENT_H__
 #define __EXPERIMENT_H__
 
+#include "folding.h"
+#include "foldingeval.h"
 #include "parameters.h"
-#include "sources.h"
-
 
 typedef struct ExperimentFolding {
 
-    DatasetFoldsConfig config;
-    DatasetFolds folds;
-    DatasetFoldsDescribe describe;
+    FoldingConfig config;
+    FoldingEval eval;
+    Folding* folds;
 
 } ExperimentFolding;
 
@@ -20,8 +20,7 @@ typedef struct Experiment {
     
     PSets psets;
 
-    SourcesLists sources_lists;
-    SourcesArrays sources_arrays;
+    DatasetSources sources;
 
     ExperimentFolding folding;
 } Experiment;

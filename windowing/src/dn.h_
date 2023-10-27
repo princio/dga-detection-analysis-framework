@@ -11,7 +11,7 @@
 #define MAX_WSIZES 20
 #define MAX_Sources 100
 
-#define N_CLASSES 3
+#define N_DGACLASSES 3
 
 extern char CLASSES[3][50];
 
@@ -245,7 +245,7 @@ typedef struct WindowRefs {
 typedef struct Dataset0 {
     Windowing windowing;
 
-    Windows windows[N_CLASSES];
+    Windows windows[N_DGACLASSES];
 } Dataset0;
 
 
@@ -269,7 +269,7 @@ typedef struct Prediction {
 
     CMValue single[2];
 
-    CMValue multi[N_CLASSES];
+    CMValue multi[N_DGACLASSES];
 
 } Prediction;
 
@@ -279,7 +279,7 @@ typedef struct ClassificationMetricsAverages {
 
     PSet* pset;
 
-    int32_t classes[N_CLASSES][2];
+    int32_t classes[N_DGACLASSES][2];
 
 } ClassificationMetricsAverages;
 
@@ -328,8 +328,8 @@ typedef struct DatasetTrainTest {
 
     double percentage_split; // train over test
 
-    WindowRefs train[N_CLASSES];
-    WindowRefs test[N_CLASSES];
+    WindowRefs train[N_DGACLASSES];
+    WindowRefs test[N_DGACLASSES];
 
     Predictions eval;
 
@@ -343,7 +343,7 @@ typedef struct Dataset {
 
     int32_t wsize;
     WindowRefs windows_all;
-    WindowRefs windows[N_CLASSES]; // One for each class
+    WindowRefs windows[N_DGACLASSES]; // One for each class
 } Dataset;
 
 
@@ -353,7 +353,7 @@ typedef struct Dataset {
 
 typedef struct CM {
     CMValue single[2];
-    CMValue multi[N_CLASSES];
+    CMValue multi[N_DGACLASSES];
 } CM;
 
 typedef struct RatioValue {
@@ -367,7 +367,7 @@ typedef struct Ratio {
 
     RatioValue single_ratio;
 
-    RatioValue multi_ratio[N_CLASSES];
+    RatioValue multi_ratio[N_DGACLASSES];
 } Ratio;
 
 typedef struct Ratios {

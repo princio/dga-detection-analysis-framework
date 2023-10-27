@@ -21,22 +21,17 @@ typedef struct Source {
     char name[50];
     char source[50];
 
-    Class class_;
+    DGAClass dgaclass;
 } Source;
-
-typedef Source* SourcePtr;
-
 
 typedef struct Sources {
     int32_t number;
     Source* _;
 } Sources;
-
-
-typedef struct SourcesRef {
+typedef struct RSources {
     int32_t number;
     Source** _;
-} SourcesRef;
+} RSources;
 
 typedef struct SourcesListItem {
     Source* source;
@@ -53,21 +48,12 @@ typedef struct SourcesArray {
     Source** _;
 } SourcesArray;
 
-typedef struct SourcesLists {
-    SourcesList binary;
-    SourcesList multi[N_CLASSES];
-} SourcesLists;
+typedef SourcesList SourcesLists[N_DGACLASSES];
 
-typedef struct SourcesArrays {
-    SourcesArray binary;
-    SourcesArray multi[N_CLASSES];
-} SourcesArrays;
+typedef SourcesArray SourcesArrays[N_DGACLASSES];
 
+void sourcelist_insert(SourcesLists lists, Source* source);
 
-
-void sourcelist_insert(SourcesLists* lists, Source* source);
-
-void sourceslists_toarray(SourcesLists* lists, SourcesArrays* arrays);
-
+void sourceslists_toarray(SourcesLists lists, SourcesArrays arrays);
 
 #endif

@@ -49,16 +49,16 @@ int _ths_exist(int n, double ths[n], int th) {
     return 0;
 }
 
-Ths _get_ths(WindowRefs windows[N_CLASSES]) {
+Ths _get_ths(WindowRefs windows[N_DGACLASSES]) {
     int max = 0;
-    for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
         max += windows[cl].number;
     }
 
     double* ths = calloc(max, sizeof(double));
 
     int n = 0;
-    for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
         for (int32_t w = 0; w < windows[cl].number; w++) {
             int logit = floor(windows[cl]._[w]->logit);
             int exists = _ths_exist(n, ths, logit);
@@ -76,7 +76,7 @@ Ths _get_ths(WindowRefs windows[N_CLASSES]) {
     return ths_ret;
 }
 
-double _f1score_beta(Test tf[N_CLASSES], double beta) {
+double _f1score_beta(Test tf[N_DGACLASSES], double beta) {
     // double tn = tf[0].trues;
     double fp = tf[0].all.falses;
     double fn = tf[2].all.falses;
@@ -87,10 +87,10 @@ double _f1score_beta(Test tf[N_CLASSES], double beta) {
     return ((double) ((1 + beta_2) * tp)) / (((1 + beta_2) * tp) + beta_2 * fp + fn);
 }
 
-void _test(Experiment* exp, WindowRefs windows[N_CLASSES], double th, Test test[N_CLASSES]) {
-    memset(test, 0, sizeof(TF) * N_CLASSES);
+void _test(Experiment* exp, WindowRefs windows[N_DGACLASSES], double th, Test test[N_DGACLASSES]) {
+    memset(test, 0, sizeof(TF) * N_DGACLASSES);
 
-    for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
         test[cl].sources = calloc(exp->sources_arrays.multi[cl].number, sizeof(int32_t));
         
         // HashMapItem* item = hash_push(&test[cl].hashmap_sources, windows[cl]._[0]->source_index);
@@ -147,9 +147,9 @@ void dataset_folds(Dataset* dt, DatasetFolds* df) {
     const int32_t TRAIN_KFOLDs = df->kfolds - df->test_folds;
     const int32_t TEST_KFOLDs = df->test_folds;
 
-    WindowRefs windows[N_CLASSES];
+    WindowRefs windows[N_DGACLASSES];
 
-    for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
         if (df->shuffle) {
             windows[cl] = _shuffle(dt->windows[cl]);
         } else {
@@ -173,7 +173,7 @@ void dataset_folds(Dataset* dt, DatasetFolds* df) {
     }
 
 
-    for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
         int32_t kfold_size = windows[cl].number / KFOLDs;
         int32_t kfold_size_rest = windows[cl].number - (kfold_size * KFOLDs);
 
@@ -213,12 +213,12 @@ void dataset_folds(Dataset* dt, DatasetFolds* df) {
     }
 
 
-    for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
         free(windows[cl]._);
     }
 
     // for (int32_t k = 0; k < KFOLDs; k++) {
-    //     for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+    //     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
     //         for (int32_t w = 0; w < df->splits[k].train.multi[cl].number; w++) {
     //             printf("%d, %d, %d, %g\n", k, cl, w, df->splits[k].train.multi[cl]._[w]->logit);
     //         }
@@ -251,7 +251,7 @@ void _split(Experiment* exp, DatasetSplit* ds, DatasetTest* test) {
     double f1_score_05 = 0;
     Ths ths = _get_ths(ds->train.multi);
     for (int t = 0; t < ths.number; t++) {
-        Test multi[N_CLASSES];
+        Test multi[N_DGACLASSES];
         _test(exp, ds->train.multi, ths._[t], multi);
         {
             double f1_score = _f1score_beta(multi, 1);
@@ -318,7 +318,7 @@ DatasetTests dataset_foldstest(Experiment* exp, Dataset* dt, DatasetFoldsConfig 
 
 void dataset_folds_free(DatasetFolds* df) {
     for (int32_t k = 0; k < df->kfolds; k++) {
-        for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+        for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
             free(df->splits[k].test.multi[cl]._);
             free(df->splits[k].train.multi[cl]._);
         }

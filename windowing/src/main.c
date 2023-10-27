@@ -70,10 +70,10 @@ int trys;
 char try_name[5];
 
 
-void source_count(Sources sources, int counts[N_CLASSES]) {
+void source_count(Sources sources, int counts[N_DGACLASSES]) {
     memset(counts, 0, sizeof(int32_t));
     for (int32_t i = 0; i < sources.number; i++) {
-        counts[sources._[i].class_]++;
+        counts[sources._[i].dgaclass]++;
     }
 }
 
@@ -167,6 +167,7 @@ void exps_1() {
 
     printf("Sources loaded\n\n");
 
+    /*
     for (int32_t d = 0; d < datasets.number; d++) {
         {
             printf("Processing dataset %d:\t", d);
@@ -185,21 +186,21 @@ void exps_1() {
         dfold.test_folds = 1;
         dfold.shuffle = 0;
 
-        olding_run(&exp, &datasets._[d], dfold);
+        folding_run(&exp, &datasets._[d], dfold);
 
         for (int k = 0; k < tests.number; k++) {
             printf("FOLD %2d  %15s\t", k, " ");
-            for (int cl = 0; cl < N_CLASSES; cl++) {
+            for (int cl = 0; cl < N_DGACLASSES; cl++) {
                 printf("%8d\t", tests._[k].multi[0][cl].all.falses + tests._[k].multi[0][cl].all.trues);
             }
             printf("\n");
 
-            for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+            for (int t = 0; t < N_EVALUATEMETHODs; t++) {
                 printf("  %12s %10g\t", thcm_names[t], tests._[k].ths[t]);
-                for (int cl = 0; cl < N_CLASSES; cl++) {
+                for (int cl = 0; cl < N_DGACLASSES; cl++) {
                     printf("%8d\t", tests._[k].multi[t][cl].all.falses);
                 }
-                for (int cl = 0; cl < N_CLASSES; cl++) {
+                for (int cl = 0; cl < N_DGACLASSES; cl++) {
                     printf("%1.5f\t", (double) tests._[k].multi[t][cl].all.falses / (tests._[k].multi[t][cl].all.falses + tests._[k].multi[t][cl].all.trues));
                 }
                 printf("\n");
@@ -208,10 +209,10 @@ void exps_1() {
 
         DatasetFoldsDescribe dfb;
         memset(&dfb, 0, sizeof(DatasetFoldsDescribe));
-        for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+        for (int t = 0; t < N_EVALUATEMETHODs; t++) {
             dfb.th[t].min = DBL_MAX;
             dfb.th[t].max = -1 * DBL_MAX;
-            for (int cl = 0; cl < N_CLASSES; cl++) {
+            for (int cl = 0; cl < N_DGACLASSES; cl++) {
                 dfb.falses[t][cl].min = DBL_MAX;
                 dfb.trues[t][cl].min = DBL_MAX;
                 dfb.false_ratio[t][cl].min = 1;
@@ -229,13 +230,13 @@ void exps_1() {
         #define MIN(A, B) (A.min) = ((B) <= (A.min) ? (B) : (A.min))
         #define MAX(A, B) (A.max) = ((B) >= (A.max) ? (B) : (A.max))
         for (int k = 0; k < tests.number; k++) {
-            Test (*multi)[N_CLASSES] = tests._[k].multi;
-            for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+            Evaluation (*multi)[N_DGACLASSES] = tests._[k].multi;
+            for (int t = 0; t < N_EVALUATEMETHODs; t++) {
                 dfb.th[t].avg += tests._[k].ths[t];
                 MIN(dfb.th[t], tests._[k].ths[t]);
                 MAX(dfb.th[t], tests._[k].ths[t]);
 
-                for (int cl = 0; cl < N_CLASSES; cl++) {
+                for (int cl = 0; cl < N_DGACLASSES; cl++) {
                     int32_t sources_trues = 0;
                     for (int32_t i = 0; i < exp.sources_arrays.multi[cl].number; i++) {
                         sources_trues += multi[t][cl].sources[i].trues > 0;
@@ -264,9 +265,9 @@ void exps_1() {
         #undef MIN
         #undef MAX
 
-        for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+        for (int t = 0; t < N_EVALUATEMETHODs; t++) {
             dfb.th[t].avg /= tests.number;
-            for (int cl = 0; cl < N_CLASSES; cl++) {
+            for (int cl = 0; cl < N_DGACLASSES; cl++) {
                 dfb.false_ratio[t][cl].avg /= tests.number;
                 dfb.true_ratio[t][cl].avg /= tests.number;
                 dfb.falses[t][cl].avg /= tests.number;
@@ -275,17 +276,17 @@ void exps_1() {
             }
         }
 
-        for (int t = 0; t < N_THCHOICEMETHODs; t++) {
+        for (int t = 0; t < N_EVALUATEMETHODs; t++) {
             printf("\n%8s\n", thcm_names[t]);
             printf("%12s\t", "th");
             printf("%12.4f %12.4f %12.4f\t", dfb.th[t].min, dfb.th[t].max, dfb.th[t].avg);
             printf("%12.4f %12.4f %12.4f\t", 0., 0., 0.);
 
-            int s_counts[N_CLASSES];
+            int s_counts[N_DGACLASSES];
             source_count(stratosphere_sources, s_counts);
             
             printf("%12d %12d %12d\n", s_counts[0], s_counts[1], s_counts[2]);
-            for (int cl = 0; cl < N_CLASSES; cl++) {
+            for (int cl = 0; cl < N_DGACLASSES; cl++) {
                 if (cl == 1) continue;
                 printf("\n%12d\t", cl);
                 printf("%12d %12d %12d\t\t", (int32_t) dfb.falses[t][cl].min, (int32_t) dfb.falses[t][cl].max, (int32_t) dfb.falses[t][cl].avg);
@@ -303,13 +304,13 @@ void exps_1() {
     free(stratosphere_sources._);
 
     for (int32_t i = 0; i < datasets.number; i++) {
-        for (int32_t cl = 0; cl < N_CLASSES; cl++) {
+        for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
             free(datasets._[i].windows[cl]._);
         }
     }
 
     free(datasets._);
-    
+    */
 
     // Sources sources;
 
@@ -661,7 +662,7 @@ int main (int argc, char* argv[]) {
     //         for (int w = 0; w < N_WSIZEs; ++w) {
     //             for (int k = 0; k < KFOLDs; ++k) {
     //                 for (int m = 0; m < N_METRICs; ++m) {
-    //                     for (int cl = 0; cl < N_CLASSES; ++cl) {
+    //                     for (int cl = 0; cl < N_DGACLASSES; ++cl) {
     //                         int falses = cm[s][w][k][m].classes[cl][0];
     //                         int trues = cm[s][w][k][m].classes[cl][1];
     //                         { // 
@@ -705,7 +706,7 @@ int main (int argc, char* argv[]) {
     //     const int32_t MAX = N_SPLITRATIOs * N_WSIZEs * KFOLDs * N_METRICs;
     //     for (int i = 0; i < MAX; ++i) {
     //         for (int k = 0; k < 8; ++k) {
-    //             for (int cl = 0; cl < N_CLASSES; ++cl) {
+    //             for (int cl = 0; cl < N_DGACLASSES; ++cl) {
     //                 if (i < cmavgs[k].totals) {
     //                     cmavgs[k]._[i].classes[cl][0] /= cmavgs[k].totals;
     //                     cmavgs[k]._[i].classes[cl][1] /= cmavgs[k].totals;

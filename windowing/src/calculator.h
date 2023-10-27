@@ -2,9 +2,8 @@
 #define __CALCULATOR_H
 
 #include "parameters.h"
+#include "windows.h"
 
-#include <stdio.h>
-
-void calculator_message(DNSMessage* message, Window *, PSet* pi);
+void calculator_message(DNSMessage*, Window *, PSet*);
 
 #endif

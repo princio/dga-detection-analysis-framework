@@ -3,16 +3,13 @@
 #define __FOLDING_H__
 
 #include "dataset.h"
-#include "experiment.h"
+#include "detect.h"
 
 #define N_THCHOICEMETHODs 5
 
+#define N_FOLDINGDESCRIBEMETRICs 5
+
 char thcm_names[5][20];
-
-#define FALSERATIO(tf) (((double) (tf).all.falses) / ((tf).all.falses + (tf).all.trues))
-#define TRUERATIO(tf) (((double) (tf).all.trues) / ((tf).all.falses + (tf).all.trues))
-
-
 
 
 typedef enum FoldingTestConfigSplitBalanceMethod {
@@ -27,62 +24,18 @@ typedef enum FoldingTestConfigSplitMethod {
     FOLDING_DSM_MERGE_12
 } FoldingTestConfigSplitMethod;
 
+// typedef struct DatasetSplitConfig {
+//     FoldingTestConfigSplitBalanceMethod dsbm;
+//     FoldingTestConfigSplitMethod dsm;
+// } DatasetSplitConfig;
 
+typedef struct FoldingDetection {
+    double score;
+    double th;
+    Evaluation detection;
+} FoldingDetection;
 
-typedef enum FoldingTestThresoldChoiceMethod {
-    FOLDING_DTTCM_F1SCORE,
-    FOLDING_DTTCM_F1SCORE_05,
-    FOLDING_DTTCM_F1SCORE_01,
-    FOLDING_DTTCM_FPR, // il train non ha senso sugli infetti
-    FOLDING_DTTCM_TPR  // il train non ha senso sui non infetti
-} FoldingTestThresoldChoiceMethod;
-
-typedef struct DatasetTrainTest {
-
-    int32_t wsize;
-
-    double percentage_split; // train over test
-
-    WindowRefs train[N_CLASSES];
-    WindowRefs test[N_CLASSES];
-
-} DatasetTrainTest;
-
-typedef struct DatasetSplitConfig {
-    FoldingTestConfigSplitBalanceMethod dsbm;
-    FoldingTestConfigSplitMethod dsm;
-} DatasetSplitConfig;
-
-typedef struct DatasetWindows {
-    WindowRefs single[2];
-    WindowRefs multi[N_CLASSES];
-} DatasetWindows;
-
-typedef struct FoldingDataset {
-    int32_t kfold;
-
-    Sources sources;
-
-    DatasetWindows train;
-    DatasetWindows test;
-} FoldingDataset;
-
-typedef struct FoldingDatasets {
-    int32_t number;
-    FoldingDataset* _;
-} FoldingDatasets;
-
-typedef struct FoldingConfig {
-    int32_t kfolds;
-    int32_t test_folds; // usually kfold - 1
-    int32_t shuffle;
-
-    FoldingTestConfigSplitBalanceMethod balance_method;
-    FoldingTestConfigSplitMethod split_method;
-    
-} FoldingConfig;
-
-
+typedef int32_t SourcesNumbers[N_DGACLASSES];
 typedef struct FoldingConfig {
     int32_t kfolds;
     
@@ -93,74 +46,31 @@ typedef struct FoldingConfig {
     FoldingTestConfigSplitMethod split_method;
 } FoldingConfig;
 
-typedef struct TF {
-    int32_t falses;
-    int32_t trues;
-} TF;
+typedef struct FoldingTT {
+    DatasetRWindows rwindows;
+    Evaluations evaluations; // in the train case they are BEST evaluations
+} FoldingTT;
 
-typedef struct Test {
-    TF windows;
-    TF* sources; // number of trues/falses windows for each source
-} Test;
-
-
-typedef struct FoldingTest {
-    double ths[N_THCHOICEMETHODs];
-    Test single[2];
-    Test multi[N_THCHOICEMETHODs][N_CLASSES];
-} FoldingTest;
-
-typedef struct FoldingTests {
-    int32_t number;
-    FoldingTest* _;
-} FoldingTests;
-
-typedef struct FoldingsDescribeItems {
-    
-    double min;
-    double max;
-    double avg;
-    
-} FoldingsDescribeItems;
-
-typedef struct FoldingsDescribe {
-
-    FoldingsDescribeItems th[N_THCHOICEMETHODs];
-
-    FoldingsDescribeItems falses[N_THCHOICEMETHODs][N_CLASSES];
-    FoldingsDescribeItems trues[N_THCHOICEMETHODs][N_CLASSES];
-
-    FoldingsDescribeItems false_ratio[N_THCHOICEMETHODs][N_CLASSES];
-    FoldingsDescribeItems true_ratio[N_THCHOICEMETHODs][N_CLASSES];
-
-    FoldingsDescribeItems sources_trues[N_THCHOICEMETHODs][N_CLASSES];
-
-} FoldingsDescribe;
-
-
-typedef struct FoldingItem {
-    FoldingDataset dataset;
-    FoldingTest test;
-} FoldingItem;
-
+typedef struct FoldingK {
+    int32_t k;
+    FoldingTT train;
+    FoldingTT test;
+} FoldingK;
 
 typedef struct Folding {
+    SourcesNumbers sources_numbers;
     FoldingConfig config;
-    FoldingItem* items;
+    FoldingK* ks;
 } Folding;
-
-
-typedef struct Foldings {
-    int32_t number;
-    Folding* _;
-} Foldings;
 
 void folding_datasets(Dataset*, Folding*);
 
-void folding_test(Dataset*, FoldingItem*);
+void folding_train(FoldingK*);
 
-void folding_tests(Dataset*, Folding*);
+void folding_test(FoldingK*);
 
-void folding_generate(Dataset*, FoldingConfig, Folding**);
+void folding_generate(Dataset* ds, Folding* folding);
+
+void folding_run(Dataset* ds, Folding* folding);
 
 #endif

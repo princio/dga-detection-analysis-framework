@@ -287,7 +287,7 @@ int persister_sources(int read, Experiment* exp, char subname[50], Sources* sour
     for (int32_t i = 0; i < sources->number; i++) {
         FRW(fn, sources->_[i].binary_index);
         FRW(fn, sources->_[i].galaxy_id);
-        FRW(fn, sources->_[i].class_);
+        FRW(fn, sources->_[i].dgaclass);
         FRW(fn, sources->_[i].nmessages);
         FRW(fn, sources->_[i].fnreq_max);
         FRW(fn, sources->_[i].q);
@@ -295,10 +295,9 @@ int persister_sources(int read, Experiment* exp, char subname[50], Sources* sour
         FRW(fn, sources->_[i].r);
         FRW(fn, sources->_[i].capture_type);
 
-        sourcelist_insert(&exp->sources_lists, &sources->_[i]);
+        sourcelist_insert(exp->sources.lists, &sources->_[i]);
 
-        sources->_[i].binary_index = exp->sources_lists.binary.size - 1;
-        sources->_[i].multi_index = exp->sources_lists.multi[sources->_[i].class_].size - 1;
+        sources->_[i].multi_index = exp->sources.lists[sources->_[i].dgaclass].size - 1;
     }
 
     return fclose(file);
@@ -325,7 +324,7 @@ int persister_windows(PersisterReadWrite read, Experiment* exp, char subname[20]
         FRW(fn, windows->_[i].dataset_id);
         FRW(fn, windows->_[i].window_id);
 
-        FRW(fn, windows->_[i].class);
+        FRW(fn, windows->_[i].dgaclass);
         FRW(fn, windows->_[i].wcount);
         FRW(fn, windows->_[i].logit);
         FRW(fn, windows->_[i].whitelistened);
@@ -388,7 +387,7 @@ void persister_description(Experiment* exp, Sources sources) {
             c->galaxy_id,
             c->name,
             c->capture_type,
-            c->class_,
+            c->dgaclass,
             c->source,
             c->fnreq_max,
             c->nmessages,
