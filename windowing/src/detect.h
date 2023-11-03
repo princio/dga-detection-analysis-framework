@@ -6,73 +6,70 @@
 #include "sources.h"
 #include "windows.h"
 
-#define N_EVALUATEMETHODs 5
-#define N_DGADETECTIONs 2
-
-typedef enum EvaluationFunctionID {
-    DETECT_SF_F1SCORE,
-    DETECT_SF_FPR, // il train non ha senso sugli infetti
-    DETECT_SF_TPR  // il train non ha senso sui non infetti
-} EvaluationFunctionID;
-
-const char evaluation_functions[3][50];
-
-typedef enum DGADetection {
-    DGADETECTION_IGNORE_1,
-    DGADETECTION_MERGE_1
-} DGADetection;
-
-const char dgadetection_names[N_DGADETECTIONs][50];
-
-typedef struct TF {
+typedef struct CM {
     int32_t falses;
     int32_t trues;
-} TF;
+} CM;
 
-typedef struct TFs {
+typedef struct CMs {
     int32_t number; // number of trues/falses windows for each source
-    TF* _; // number of trues/falses windows for each source
-} TFs;
+    CM* _; // number of trues/falses windows for each source
+} CMs;
+
+typedef struct CM2 {
+    CM windows;
+    CMs sources;
+} CM2;
+
+MAKEDGA(CM2);
+MAKEMANY(CM2);
+MAKEDGAMANY(CM2);
 
 typedef struct Detection {
-    TF windows;
-    TFs sources;
+    double th;
+    DGA(CM2) cm2dga;
 } Detection;
 
-typedef Detection Detections[N_DGACLASSES];
+#define N_PERFORMANCE_DGAHANDLINGs 2
 
-typedef double (*EvaluationFunctionPtr)(DGADetection, Detections, double);
+enum PerformanceRange {
+    PERFORMANCE_RANGE_01,
+    PERFORMANCE_RANGE_INF,
+    PERFORMANCE_RANGE_INT_POS,
+};
 
-typedef struct EvaluationMethod {
-    EvaluationFunctionID id;
+enum PerfomanceDGAHandling {
+    PERFORMANCE_DGAHANDLING_IGNORE_1,
+    PERFORMANCE_DGAHANDLING_MERGE_1
+};
+
+struct Performance;
+
+typedef double (*PerformanceFunctionPtr)(Detection*, struct Performance*);
+
+typedef struct Performance {
     char name[20];
-    double beta;
-    EvaluationFunctionPtr func;
-    int greater;
-} EvaluationMethod;
 
-const EvaluationMethod evaluation_methods[N_EVALUATEMETHODs];
+    enum PerfomanceDGAHandling dgadet;
 
-typedef struct Evaluation {
-    double score;
-    double th;
-    Detections detections;
-} Evaluation;
+    PerformanceFunctionPtr func;
+    
+    int greater_is_better;
+} Performance;
 
-typedef Evaluation Evaluations[N_DGADETECTIONs][N_EVALUATEMETHODs];
+MAKEMANY(Performance);
 
-void detect_evaluations_init(Evaluations evaluations, int32_t n_sources[N_DGACLASSES]);
-void detect_evaluations_free(Evaluations);
 
-double detect_f1score_beta(DGADetection, Detections, double);
-double detect_fpr(DGADetection, Detections, double);
-double detect_tpr(DGADetection, Detections, double);
 
-void detect_reset_tfs(Detections);
+void detect_reset(Detection*);
+void detect_init(Detection*);
+void detect_free(Detection*);
+void detect_copy(Detection* src, Detection* dst);
 
-void detect_detect(DatasetRWindows, double, Detections);
+void detect_run(DGAMANY(RWindow), double, Detection*);
 
-void detect_evaluate(DGADetection, int, DatasetRWindows, double, Evaluation*);
-void detect_evaluate_many(DatasetRWindows, double, Evaluations);
+double detect_performance(Detection*, Performance*);
+
+int detect_performance_compare(Performance*, double, double);
 
 #endif

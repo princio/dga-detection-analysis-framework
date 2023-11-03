@@ -4,11 +4,14 @@
 
 #include "common.h"
 
+#include "sources.h"
+
 typedef struct Window {
     IDX source_index;
-    IDX source_classindex;
-    IDX dataset_id;
-    IDX window_id;
+
+    IDX pset_index;
+    
+    IDX wnum;
 
     DGAClass dgaclass;
 
@@ -21,22 +24,16 @@ typedef struct Window {
     int32_t dn_bad_0999;
 } Window;
 
-typedef struct Windows {
-    int32_t number;
-    Window* _;
-} Windows;
-
 typedef Window* RWindow;
 
-typedef struct RWindows {
-    int32_t number;
-    RWindow* _;
-} RWindows;
+MAKEMANY(Window);
+MAKEMANY(MANY(Window));
 
+MAKEMANY(RWindow);
+MAKEDGAMANY(RWindow);
 
-void rwindows_from(Windows, RWindows*);
+void rwindows_from(MANY(Window), MANY(RWindow) *);
 
-void rwindows_shuffle(RWindows*);
-
+void rwindows_shuffle(MANY(RWindow)*);
 
 #endif

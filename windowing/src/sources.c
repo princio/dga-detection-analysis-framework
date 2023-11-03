@@ -4,31 +4,39 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-
-void sourcelist_insert(SourcesLists lists, Source* source) {
-    SourcesListItem** cursor = &lists[source->dgaclass].root;
-
-    while (*cursor) {
-        cursor = &(*cursor)->next;
-    }
-
-    (*cursor) = calloc(1, sizeof(SourcesListItem));
-
-    (*cursor)->source = source;
-    (*cursor)->next = NULL;
-    lists[source->dgaclass].size++;
+int32_t _index(DGA(List) lists) {
+    int32_t index = 0;
+    EXEC_ARRAY_ALLDGA(index += lists[DGACURSOR].size);
+    return index;
 }
 
-void sourceslists_toarray(SourcesLists lists, SourcesArrays arrays) {
-    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        arrays[cl].number = lists[cl].size;
-        arrays[cl]._ = calloc(arrays[cl].number, sizeof(Source*));
-
-        SourcesListItem* cursor = lists[cl].root;
-        int32_t i = 0;
-        while (cursor) {
-            arrays[cl]._[i++] = cursor->source;
-            cursor = cursor->next;
-        }
+int32_t _binary_index(DGA(List) lists, Source* source) {
+    int32_t bindex = 0;
+    if (source->dgaclass == DGACLASS_0) {
+        bindex = lists[DGACLASS_0].size;
+    } else {
+        bindex = lists[DGACLASS_1].size + lists[DGACLASS_2].size;
     }
+    return bindex;
+}
+
+void sources_list_insert(DGA(List) lists, Source* source) {
+
+    list_insert(&lists[source->dgaclass], source);
+
+    source->index = _index(lists);
+    source->binary_index = _binary_index(lists, source);
+    source->multi_index = lists[source->dgaclass].size;
+}
+
+void sources_lists_to_arrays(DGA(List) lists, DGA(Many) arrays) {
+    EXEC_ARRAY_ALLDGA(arrays[DGACURSOR] = list_to_array(lists[DGACURSOR]));
+}
+
+void sources_lists_free(DGA(List) lists) {
+    EXEC_ARRAY_ALLDGA(list_free(lists[DGACURSOR], 1));
+}
+
+void sources_arrays_free(DGA(Many) arrays) {
+    EXEC_ARRAY_ALLDGA(array_free(arrays[DGACURSOR]));
 }

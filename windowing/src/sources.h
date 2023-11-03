@@ -4,56 +4,62 @@
 
 #include "common.h"
 
-typedef struct Source {
-    int32_t binary_index;
-    int32_t multi_index;
-    
-    int32_t galaxy_id;
+#include "list.h"
 
+typedef struct SourceIndex {
+    int32_t galaxy;
+    int32_t source_galaxy;
+    
+    int32_t all;
+    int32_t binary;
+    int32_t multi;
+} SourceIndex;
+
+typedef struct Source {
+    SourceIndex index;
+
+    int32_t parent_galaxy_index;
+
+    char name[50];
+
+    DGAClass dgaclass;
     CaptureType capture_type;
 
+    int32_t id;
     int64_t qr;
     int64_t q;
     int64_t r;
-    int64_t nmessages;
     int64_t fnreq_max;
-
-    char name[50];
-    char source[50];
-
-    DGAClass dgaclass;
 } Source;
 
-typedef struct Sources {
-    int32_t number;
-    Source* _;
-} Sources;
-typedef struct RSources {
-    int32_t number;
-    Source** _;
-} RSources;
+MAKEMANY(Source);
+MAKEDGA(Source);
+MAKEDGAMANY(Source);
+MAKEMANYDGA(Source);
 
-typedef struct SourcesListItem {
-    Source* source;
-    struct SourcesListItem* next; 
-} SourcesListItem;
+typedef Source* RSource;
+MAKEMANY(RSource);
+MAKEDGAMANY(RSource);
 
-typedef struct SourcesList {
-    int32_t size;
-    struct SourcesListItem* root;
-} SourcesList;
+typedef struct Galaxy {
+    int32_t index;
+    char name[50];
+    DGAMANY(RSource) sources;
+} Galaxy;
 
-typedef struct SourcesArray {
-    int32_t number;
-    Source** _;
-} SourcesArray;
+MAKEMANY(Galaxy);
 
-typedef SourcesList SourcesLists[N_DGACLASSES];
+MAKEDGA(List);
+MAKEDGA(Many);
 
-typedef SourcesArray SourcesArrays[N_DGACLASSES];
+void sources_list_findbyid(DGA(List) lists, Source* source);
 
-void sourcelist_insert(SourcesLists lists, Source* source);
+void sources_list_insert(DGA(List) lists, Source* source);
 
-void sourceslists_toarray(SourcesLists lists, SourcesArrays arrays);
+void sources_lists_to_arrays(DGA(List) lists, DGA(Many) arrays);
+
+void sources_lists_free(DGA(List) lists);
+
+void sources_arrays_free(DGA(Many) arrays);
 
 #endif

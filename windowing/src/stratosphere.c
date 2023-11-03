@@ -4,6 +4,7 @@
 #include "calculator.h"
 #include "parameters.h"
 #include "persister.h"
+#include "windowing.h"
 
 #include <libpq-fe.h>
 #include <15/server/catalog/pg_type_d.h>
@@ -14,13 +15,38 @@
 #include <stdlib.h>
 #include <string.h>
 
+const char GALAXY_NAME[] = "stratosphere";
+
+WindowingGalaxy* GALAXY_PTR;
+
+int32_t PREPARED = 0;
+
 static PGconn *conn = NULL;
 
-void _disconnect(PGconn* conn) {
+void disconnect() {
     PQfinish(conn);
+    conn = NULL;
 }
 
-void _parse_message(PGresult* res, int row, DNSMessage* message) {
+int connect() {
+    if (conn != NULL) {
+        return 0;
+    }
+
+    conn = PQconnectdb("postgresql://princio:postgres@localhost/dns");
+
+    if (PQstatus(conn) == CONNECTION_OK) {
+        return 0;
+    }
+    
+    fprintf(stderr, "CONNECTION_BAD %s\n", PQerrorMessage(conn));
+
+    disconnect();
+
+    return -1;
+}
+
+void parse_message(PGresult* res, int row, DNSMessage* message) {
     message->fn_req = atoi(PQgetvalue(res, row, 0));
     message->value = atof(PQgetvalue(res, row, 1));
     message->logit = atof(PQgetvalue(res, row, 2));
@@ -28,16 +54,7 @@ void _parse_message(PGresult* res, int row, DNSMessage* message) {
     message->top10m = atoi(PQgetvalue(res, row, 4));
     message->dyndns = PQgetvalue(res, row, 5)[0] == 't';
     message->id = atol(PQgetvalue(res, row, 6));
-
-
-    // fprintf(ff, "%ld,%d,%s,", message->id, tries, PQgetvalue(res, row, 2));
-    // for (int i = 0; i < 8; ++i) {
-	// 	fprintf(ff, "%02X", ((unsigned char*)&message->logit)[i]);
-	// }
-    // fprintf(ff, "\n");
 }
-
-
 
 void printdatastring(PGresult* res) {
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
@@ -45,7 +62,7 @@ void printdatastring(PGresult* res) {
     }
     else {
         int ncols = PQnfields(res);
-        int nrows = 5;//PQntuples(res);
+        int nrows = 5;
 
         for(int r = 0; r < nrows; r++)
         {
@@ -98,30 +115,8 @@ void printdatastring(PGresult* res) {
     }
 }
 
-
-int _connect() {
-    if (conn != NULL) {
-        return 1;
-    }
-
-    conn = PQconnectdb("postgresql://princio:postgres@localhost/dns");
-
-    if (PQstatus(conn) == CONNECTION_OK) {
-        return 1;
-    }
-    
-    // fprintf(stderr, "CONNECTION_BAD %s\n", PQerrorMessage(conn));
-
-    _disconnect(conn);
-
-    conn = NULL;
-
-    return 0;
-}
-
-
-int _get_pcaps_number() {
-    if (!_connect()) {
+int get_pcaps_number() {
+    if (!connect()) {
         puts("Error!");
         exit(1);
     }
@@ -141,20 +136,27 @@ int _get_pcaps_number() {
     return rownumber;
 }
 
+int32_t get_fnreq_max(int32_t id) {
+    int fnreq_max;
+    char sql[1000];
+    sprintf(sql, "SELECT MAX(FN_REQ) FROM MESSAGES_%d", id);
 
-Sources stratosphere_get_sources(Experiment* exp) {
-    PGresult* pgresult;
-    Sources sources;
-
-
-    if (!_connect()) {
-        puts("Error!");
-        exit(1);
+    PGresult* res_nrows = PQexec(conn, sql);
+    if (PQresultStatus(res_nrows) != PGRES_TUPLES_OK) {
+        printf("[%s:%d] Get MAX(FN_REQ) for source %d failed\n", __FILE__, __LINE__, id);
+    } else {
+        fnreq_max = atoi(PQgetvalue(res_nrows, 0, 0));
     }
+    PQclear(res_nrows);
 
-    // int number = _get_pcaps_number(conn);
+    return fnreq_max;
+}
 
-    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr ASC");
+
+void fetch_sources_and_add_to_experiment() {
+    PGresult* pgresult;
+
+    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr ASC");
 
     if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
         printf("[%s:%d] Get pcaps failed: %s\n", __FILE__, __LINE__, PQerrorMessage(conn));
@@ -163,249 +165,155 @@ Sources stratosphere_get_sources(Experiment* exp) {
 
     int nrows = PQntuples(pgresult);
 
-    sources.number = nrows;
-    sources._ = calloc(nrows, sizeof(Source));
-
     for(int r = 0; r < nrows; r++) {
-        Source* source = &sources._[r];
-
-        source->galaxy_id = atoi(PQgetvalue(pgresult, r, 0));
+        Source* source;
+        char name[10];
+    
+        {
+            int z = 0;
+            source->id = atoi(PQgetvalue(pgresult, r, z++));
+            source->dgaclass = atoi(PQgetvalue(pgresult, r, z++));
+            source->qr = atoi(PQgetvalue(pgresult, r, z++));
+            source->q = atoi(PQgetvalue(pgresult, r, z++));
+            source->r = atoi(PQgetvalue(pgresult, r, z++));
+            source->fnreq_max = atoi(PQgetvalue(pgresult, r, z++));
+        }
 
         source->capture_type = CAPTURETYPE_PCAP;
+        sprintf(source->name, "%s_%d", GALAXY_NAME, source->id);
 
-        source->dgaclass = atoi(PQgetvalue(pgresult, r, 1));
-        source->qr = atoi(PQgetvalue(pgresult, r, 2));
-        source->q = atoi(PQgetvalue(pgresult, r, 3));
-        source->r = atoi(PQgetvalue(pgresult, r, 4));
-
-        source->multi_index = exp->sources.lists[source->dgaclass].size;
-
-        experiment_sources_add(exp, source);
-
-        {
-            int nmessages = 0;
-            char sql[1000];
-            // sprintf(sql, "SELECT COUNT(*) FROM MESSAGES_%ld AS M JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID JOIN DN AS DN ON M.DN_ID=DN.ID", capture[source_idx].id);
-            sprintf(sql, "SELECT COUNT(*) FROM MESSAGES_%d", source->galaxy_id);
-
-            PGresult* res_nrows = PQexec(conn, sql);
-            if (PQresultStatus(res_nrows) != PGRES_TUPLES_OK) {
-                printf("[%s:%d] Count messages for source %d failed\n", __FILE__, __LINE__, source->galaxy_id);
-            } else {
-                nmessages = atoi(PQgetvalue(res_nrows, 0, 0));
-            }
-            PQclear(res_nrows);
-            sources._[r].nmessages = nmessages;
-        }
-
-        {
-            int fnreq_max = 0;
-            char sql[1000];
-            // sprintf(sql, "SELECT COUNT(*) FROM MESSAGES_%ld AS M JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID JOIN DN AS DN ON M.DN_ID=DN.ID", capture[source_idx].id);
-            sprintf(sql, "SELECT MAX(FN_REQ) FROM MESSAGES_%d", source->galaxy_id);
-
-            PGresult* res_nrows = PQexec(conn, sql);
-            if (PQresultStatus(res_nrows) != PGRES_TUPLES_OK) {
-                printf("[%s:%d] Get MAX(FN_REQ) for source %d failed\n", __FILE__, __LINE__, source->galaxy_id);
-            } else {
-                fnreq_max = atoi(PQgetvalue(res_nrows, 0, 0));
-            }
-            PQclear(res_nrows);
-            sources._[r].fnreq_max = fnreq_max;
-        }
+        windowing_sources_add(GALAXY_PTR, source, perform_windowing);
     }
 
     PQclear(pgresult);
-
-    return sources;
 }
 
+void fetch_source_messages(const Source* source, int32_t* nrows, PGresult** pgresult) {
+    char sql[1000];
+    int pgresult_binary = 1;
 
-void stratosphere_source_perform(Source* source, Datasets datasets, Windows* windows) {
+    printf("id: %d\n", source->id);
+    
+    sprintf(sql,
+            "SELECT FN_REQ, VALUE, LOGIT, IS_RESPONSE, TOP10M, DYNDNS, M.ID FROM MESSAGES_%d AS M "
+            "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
+            "JOIN DN AS DN ON M.DN_ID=DN.ID "
+            "ORDER BY FN_REQ, ID",
+            source->id
+            );
+
+    *pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
+
+    if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
+        printf("[%s:%d] Select messages error for pcap %d: %s\n", __FILE__, __LINE__, source->id, PQerrorMessage(conn));
+        PQclear(pgresult);
+        return;
+    }
+
+    *nrows = PQntuples(*pgresult);
+
+    if ((*nrows) != source->qr) {
+        printf("[%s:%d] nrows != source->qr:\t%d != %ld\n", __FILE__, __LINE__, *nrows, source->qr);
+
+        if ((*nrows) > source->qr) {
+            (*nrows) = source->qr; // we may occur in a new unallocated window
+        }
+    }
+}
+
+void perform_windowing(const Source* source, MANY(WindowingWindows) wws, const int32_t row) {
     PGresult* pgresult;
     int nrows;
 
-    if (!_connect()) {
-        printf("[%s:%d] Connection error: %s\n", __FILE__, __LINE__, PQerrorMessage(conn));
-        exit(1);
+    fetch_source_messages(&source, &nrows, &pgresult);
+
+    for(int r = 0; r < nrows; r++) {
+        DNSMessage message;
+        WindowingWindows* const sw_row = &wws._[row];
+
+        parse_message(pgresult, r, &message);
+
+        windowing_message(message, windowing.psets, sw_row);
+    }
+}
+
+/*
+MANY(Dataset) stratosphere_bo() {
+    Windowings windowings;
+    
+    INITMANY(datasets, experiment.psets.number, Dataset);
+    INITMANY(windowings, GALAXY_PTR->sources->number, Windowing);
+
+    for (int32_t d = 0; d < datasets.number; d++) {
+        for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
+            datasets._[d].windows[cl].number = GALAXY_PTR->nwindows[cl];
+            datasets._[d].windows[cl]._ = calloc(n_windows[d][cl], sizeof(Window));
+        }
     }
 
-    {
-        char sql[1000];
-        int pgresult_binary = 1;
+    Windowings* windowings[N_DGACLASSES];
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
+        windowings[cl][GALAXY_PTR->sources[cl].number];
 
-        printf("id: %d\n", source->galaxy_id);
-        
-        sprintf(sql,
-                "SELECT FN_REQ, VALUE, LOGIT, IS_RESPONSE, TOP10M, DYNDNS, M.ID FROM MESSAGES_%d AS M "
-                "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
-                "JOIN DN AS DN ON M.DN_ID=DN.ID "
-                "ORDER BY FN_REQ, ID",
-                source->galaxy_id
-                );
+        int32_t nw = 0;
+        for (int32_t s = 0; s < GALAXY_PTR->sources[cl].number; s++) {
+            windowings[s] = stratosphere_source_perform(GALAXY_PTR->sources[cl]._[s]);
+        }
 
-        pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
+        for (int32_t d = 0; d < psets.number; d++) {
+            datasets._[d]->windows[cl].number = n_windows[d][cl];
+            datasets._[d].windows[cl]._ = calloc(n_windows[d][cl], sizeof(Window));
+            memcpy(&datasets._[d].windows[cl]._, windowings[s]., windoweds[s][d].number * sizeof(Window));
+        }
+    }
 
-        if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
-            printf("[%s:%d] Select messages error for pcap %d: %s\n", __FILE__, __LINE__, source->galaxy_id, PQerrorMessage(conn));
-            PQclear(pgresult);
+    // for (int32_t d = 0; d < psets.number; d++) {
+    //     Dataset* dataset = &datasets._[d];
+
+    //     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
+    //         dataset->windows[cl].number = n_windows[d][cl];
+    //         dataset->windows[cl]._ = calloc(n_windows[d][cl], sizeof(Window));
+    //     }
+    // }
+
+    // int32_t n_cursor[psets.number][N_DGACLASSES];
+    // memset(n_cursor, 0, sizeof(int32_t) * N_DGACLASSES * datasets.number);
+    // for (int32_t s = 0; s < sources->number; s++) {
+    //     if (windoweds_loaded[s] == datasets.number) {
+    //         // printf("Source %d loaded from disk\n", s);
+    //     } else {
+    //         MANY(Window__s) windowss = stratosphere_source_perform(&sources->_[s], psets);
+    //     }
+
+    //     DGAClass class = sources->_[s].dgaclass;
+
+    //     for (int32_t d = 0; d < datasets.number; d++) {
+    //         if (n_cursor[d][class] + windoweds[s][d].number > datasets._[d].windows[class].number) {
+    //             printf("[%s:%d] Error: (%d + %d) > %d\n", __FILE__, __LINE__, n_cursor[d][class], windoweds[s][d].number, datasets._[d].windows[class].number);
+    //         }
+
+    //         memcpy(&datasets._[d].windows[class]._[n_cursor[d][class]], windoweds[s][d]._, windoweds[s][d].number * sizeof(Window));
+    //         n_cursor[d][class] += windoweds[s][d].number;
+
+    //         free(windoweds[s][d]._);
+    //     }
+    // }
+}
+*/
+
+void stratosphere_prepare() {
+    if (!PREPARED) {
+        if (connect()) {
+            printf("Stratosphere: cannot connect to database.");
             return;
         }
 
-        nrows = PQntuples(pgresult);
+        GALAXY_PTR = windowing_galaxy_add("stratosphere");
 
-        if (nrows != source->nmessages) {
-            printf("[%s:%d] nrows != source->nmessages:\t%d != %ld\n", __FILE__, __LINE__, nrows, source->nmessages);
+        fetch_sources_and_add_to_experiment();
 
-            if (nrows > source->nmessages) {
-                nrows = source->nmessages; // we may occur in a new unallocated window
-            }
-        }
+        disconnect();
+
+        PREPARED = 1;
     }
-
-    // int wnum_max[N_WSIZE];
-    // memset(wnum_max, 0, sizeof(int) * N_WSIZE);
-    for(int r = 0; r < nrows; r++) {
-        DNSMessage message;
-
-        _parse_message(pgresult, r, &message);
-
-        for (int widx = 0; widx < datasets.number; ++widx) {
-            int wnum;
-            PSet* pset = datasets._[widx].pset;
-            Window *window;
-            int32_t wsize;
-            int32_t n_windows;
-
-            wsize = pset->wsize;
-            n_windows = windows[widx].number;
-
-            wnum = (int) floor(message.fn_req / wsize);
-
-            if (wnum >= n_windows) {
-                printf("ERROR\n");
-                printf("      wnum: %d\n", wnum);
-                printf("     wsize: %d\n", wsize);
-                printf(" fnreq_max: %ld\n", source->fnreq_max);
-                printf("  nwindows: %d\n", n_windows);
-            }
-
-
-            // wnum_max[ws] = wnum_max[ws] < wnum ? wnum : wnum_max[ws];
-
-            window = &windows[widx]._[wnum];
-
-            if (wnum != 0 && wnum != window->window_id) {
-                printf("Error[wnum != window->wnum]:\t%d\t%d\n", wnum, window->window_id);
-            }
-
-            calculator_message(&message, window, pset);
-
-        }
-    }
-
-    PQclear(pgresult);
-}
-
-int _persister_sources(PersisterReadWrite read, Experiment* exp, Sources* sources) {
-    char subname[20];
-    sprintf(subname, "stratosphere");
-    return persister_sources(read, exp, subname, sources);
-}
-
-int _persister_windows(PersisterReadWrite read, Experiment* exp, int32_t source_id, PSet* pset, Windows* windows) {
-    char subname[100];
-    char subdigest[9] = "";
-    strncpy(subdigest, &pset->digest[56], 8);
-    sprintf(subname, "stratosphere_%d_%s", source_id, subdigest);
-    return persister_windows(read, exp, subname, windows);
-}
-
-
-void stratosphere_run(Experiment* exp, Datasets datasets, Sources* sources_ptr) {
-    Sources sources;
-
-    if (_persister_sources(PERSITER_READ, exp, &sources)) {
-        sources = stratosphere_get_sources(exp);
-        _persister_sources(PERSITER_WRITE, exp, &sources);
-    }
-
-    Windows windoweds[sources.number][datasets.number];
-    memset(windoweds, 0, sizeof(Windows) * sources.number * datasets.number);
-
-    int32_t windoweds_loaded[sources.number];
-    memset(windoweds_loaded, 0, sizeof(int32_t) * sources.number);
-
-    int32_t n_windows[datasets.number][N_DGACLASSES];
-    memset(n_windows, 0, sizeof(int32_t) * N_DGACLASSES * datasets.number);
-    for (int32_t s = 0; s < sources.number; s++) {
-        for (int32_t d = 0; d < datasets.number; d++) {
-
-            if (0 == _persister_windows(PERSITER_READ, exp, s, datasets._[d].pset, &windoweds[s][d])) {
-                // printf("Windows of Source %d (class %d) with Dataset %d loaded from disk\n", s, sources._[s].class, d);
-                windoweds_loaded[s]++;
-
-                n_windows[d][sources._[s].dgaclass] += windoweds[s][d].number;
-
-                continue;
-            }
-    
-            // printf("Windows of Source %d with Dataset\n", s);
-
-            int32_t nw = N_WINDOWS(sources._[s].fnreq_max, datasets._[d].pset->wsize);
-            windoweds[s][d].number = nw;
-            windoweds[s][d]._ = calloc(windoweds[s][d].number, sizeof(Window));
-
-            for (int32_t w = 0; w < windoweds[s][d].number; w++) {
-                windoweds[s][d]._[w].source_index = sources._[s].binary_index;
-                windoweds[s][d]._[w].window_id = w;
-                windoweds[s][d]._[w].dataset_id = d;
-            }
-
-            n_windows[d][sources._[s].dgaclass] += nw;
-        }
-    }
-
-    for (int32_t d = 0; d < datasets.number; d++) {
-        Dataset* dataset = &datasets._[d];
-
-        for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-            dataset->windows[cl].number = n_windows[d][cl];
-            dataset->windows[cl]._ = calloc(n_windows[d][cl], sizeof(Window));
-        }
-    }
-
-    int32_t n_cursor[datasets.number][N_DGACLASSES];
-    memset(n_cursor, 0, sizeof(int32_t) * N_DGACLASSES * datasets.number);
-    for (int32_t s = 0; s < sources.number; s++) {
-        if (windoweds_loaded[s] == datasets.number) {
-            // printf("Source %d loaded from disk\n", s);
-        } else {
-            stratosphere_source_perform(&sources._[s], datasets, windoweds[s]);
-
-            for (int32_t d = 0; d < datasets.number; d++) {
-                _persister_windows(PERSITER_WRITE, exp, s, datasets._[d].pset, &windoweds[s][d]);
-            }
-        }
-
-        DGAClass class = sources._[s].dgaclass;
-
-        for (int32_t d = 0; d < datasets.number; d++) {
-            if (n_cursor[d][class] + windoweds[s][d].number > datasets._[d].windows[class].number) {
-                printf("[%s:%d] Error: (%d + %d) > %d\n", __FILE__, __LINE__, n_cursor[d][class], windoweds[s][d].number, datasets._[d].windows[class].number);
-            }
-
-            memcpy(&datasets._[d].windows[class]._[n_cursor[d][class]], windoweds[s][d]._, windoweds[s][d].number * sizeof(Window));
-            n_cursor[d][class] += windoweds[s][d].number;
-
-            free(windoweds[s][d]._);
-        }
-    }
-
-    *sources_ptr = sources;
-}
-
-void stratoshere_disconnect() {
-    PQfinish(conn);
-    conn = NULL;
 }

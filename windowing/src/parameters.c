@@ -39,9 +39,7 @@ void parameters_print(PSet* pset) {
     printf("\n");
 }
 
-PSets parameters_generate(PSetGenerator* psetgenerator) {
-    PSets psets;
-
+MANYCONST(PSet) parameters_generate(PSetGenerator* psetgenerator) {
     size_t count_ws = psetgenerator->n_wsize;
     size_t count_nn = psetgenerator->n_nn;
     size_t count_wl = psetgenerator->n_whitelisting;
@@ -50,8 +48,10 @@ PSets parameters_generate(PSetGenerator* psetgenerator) {
 
     const int n_psets = count_ws * count_nn * count_wl * count_wt * count_iv;
 
-    psets.number = n_psets;
-    psets._ = calloc(n_psets, sizeof(PSet));
+    MANY(PSet) psets = {
+        .number = n_psets,
+        ._ = calloc(n_psets, sizeof(PSet))
+    };
 
     int i = 0;
     for (size_t i0 = 0; i0 < count_nn; ++i0) {
@@ -59,12 +59,18 @@ PSets parameters_generate(PSetGenerator* psetgenerator) {
             for (size_t i2 = 0; i2 < count_wt; ++i2) {
                 for (size_t i4 = 0; i4 < count_iv; ++i4) {
                     for (size_t i5 = 0; i5 < count_ws; ++i5) {
-                        psets._[i].wsize = psetgenerator->wsize[i5];
-                        psets._[i].infinite_values = psetgenerator->infinitevalues[i4];
-                        psets._[i].nn = psetgenerator->nn[i0];
-                        psets._[i].whitelisting.rank = psetgenerator->whitelisting[i1].rank;
-                        psets._[i].whitelisting.value = psetgenerator->whitelisting[i1].value;
-                        psets._[i].windowing = psetgenerator->windowing[i2];
+                        PSet pset;
+
+                        pset.id = i;
+                        
+                        pset.wsize = psetgenerator->wsize[i5];
+                        pset.infinite_values = psetgenerator->infinitevalues[i4];
+                        pset.nn = psetgenerator->nn[i0];
+                        pset.whitelisting.rank = psetgenerator->whitelisting[i1].rank;
+                        pset.whitelisting.value = psetgenerator->whitelisting[i1].value;
+                        pset.windowing = psetgenerator->windowing[i2];
+
+                        psets._[i] = pset;
 
                         ++i;
                     }
@@ -76,6 +82,8 @@ PSets parameters_generate(PSetGenerator* psetgenerator) {
     for (int32_t p = 0; p < n_psets; p++) {
         parameters_hash(&psets._[p]);
     }
+
+    MANY2CONST(psets_const, psets, PSet);
     
-    return psets;
+    return psets_const;
 }

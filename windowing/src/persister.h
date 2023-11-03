@@ -3,25 +3,20 @@
 
 #include "experiment.h"
 
-typedef enum PersisterReadWrite {
-    PERSITER_WRITE,
-    PERSITER_READ
-} PersisterReadWrite;
+typedef enum IOReadWrite {
+    IO_WRITE,
+    IO_READ
+} IOReadWrite;
 
 void DumpHex(const void* data, size_t size);
 
-int persister_write__windowing(Experiment*);
-int persister_read__windowing(Experiment*);
+int persister_psets(IOReadWrite);
 
+Source* persister_source(IOReadWrite, char[100]);
 
-int persister_write__psets(Experiment*);
-int persister_read__psets(Experiment*);
+int persister_windowing(IOReadWrite rw, const Galaxy* galaxy, const Source* source, const PSet* pset, MANY(Window)* windows);
 
-int persister_sources(int read, Experiment* exp, char subname[50], Sources* sources);
-
-int persister_windows(PersisterReadWrite read, Experiment*, char subname[20], Windows*);
-
-void persister_description(Experiment*, Sources);
+void persister_description(Sources);
 
 void persister_test();
 

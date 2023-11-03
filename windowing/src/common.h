@@ -5,20 +5,69 @@
 #include <time.h>
 #include <openssl/sha.h>
 
-#define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
 #define MAX_WSIZES 20
 #define MAX_Sources 100
 
 #define N_DGACLASSES 3
+#define DGABINARY(cl) (cl > 0)
 
-extern char CLASSES[N_DGACLASSES][50];
+#define DGACURSOR ID_DGA_cursor
+#define EXEC_ARRAY_ALLDGA(fn) {\
+    int32_t DGACURSOR = 0;\
+    fn; ++ ## DGACURSOR; \
+    fn; ++ ## DGACURSOR; \
+    fn; ++ ## DGACURSOR; \
+};
 
-extern char WINDOWING_NAMES[3][10];
+#define DGA(A) A ## __dga
+#define MANY(T) T ## __s
+#define DGAMANY(T) T ## __dga__s
+#define MANYDGA(T) T ## __s__dga
+#define MANYCONST(T) c__ ## T ## __s
 
-extern char NN_NAMES[11][10];
+#define MAKEMANY(T) typedef struct MANY(T){\
+    int32_t number; \
+    T* _; \
+} MANY(T)
+
+#define MAKEDGA(A) typedef A DGA(A)[N_DGACLASSES]
+#define MAKEDGAMANY(A) typedef MANY(A) DGAMANY(A)[N_DGACLASSES]
+
+#define MAKEMANYDGA(T) typedef struct MANYDGA(T){\
+    int32_t number; \
+    DGA(T)* _; \
+} MANYDGA(T)
+
+#define MAKEMANYCONST(T) typedef struct MANYCONST(T){\
+    const int32_t number; \
+    const T* _; \
+} MANYCONST(T)
+
+#define MANY2CONST(a, b, T) MANYCONST(T) a = { .number = b.number, ._ = b._ };
+
+#define INITMANY(A, N, T) A.number = N;\
+            A._ = calloc(A.number, sizeof(T))
+
+#define INITMANYREF(A, N, T) A->number = N;\
+            A->_ = calloc(A->number, sizeof(T))
+
+typedef int32_t NSourcesID_DGA[N_DGACLASSES];
 
 typedef int32_t IDX;
+
+typedef struct __MANY_STRUCT {
+    int32_t number;
+    void* _;
+} __MANY_STRUCT;
+
+inline int32_t dgamany_number_sum(__MANY_STRUCT many[N_DGACLASSES]){
+    int32_t sum = 0;
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
+        sum += many[cl].number;
+    }
+    return sum;
+}
 
 typedef enum DGAClass {
     DGACLASS_0,
@@ -81,9 +130,39 @@ typedef struct LogitRange {
     double max;
 } LogitRange;
 
-typedef struct Ths {
+typedef struct  {
     int32_t number;
     double* _;
-} Ths;
+} DGA__s;
+
+extern char CLASSES[N_DGACLASSES][50];
+
+extern char WINDOWING_NAMES[3][10];
+
+extern char NN_NAMES[11][10];
+
+
+#define FW32(A) fwrite32((void*) &A, file)
+#define FW64(A) fwrite64((void*) &A, file)
+#define FR32(A) fread32((void*) &A, file)
+#define FR64(A) fread64((void*) &A, file)
+
+#define FWR(R, A) { if (R) freadN((void*) &A, sizeof(A), file); else fwriteN((void*) &A, sizeof(A), file); }
+#define FRW(FN, A) (*FN)((void*) &A, sizeof(A), file);
+#define FW(A) fwriteN((void*) &A, sizeof(A), file)
+#define FR(A) freadN((void*) &A, sizeof(A), file)
+
+typedef void (*FRWNPtr)(void* v, size_t s, FILE* file);
+
+int dir_exists(char* dir);
+int check_dir();
+FILE* open_file(IOReadWrite read, char fname[200]);
+void DumpHex(const void* data, size_t size);
+void fwrite32(uint32_t* n, FILE* file);
+void fwriteN(void* v, size_t s, FILE* file);
+void freadN(void* v, size_t s, FILE* file);
+void fwrite64(void* n, FILE* file);
+void fread32(void *v, FILE* file);
+void fread64(void *v, FILE* file);
 
 #endif

@@ -1,0 +1,42 @@
+
+#ifndef __EVALUATE_H__
+#define __EVALUATE_H__
+
+#include "common.h"
+#include "dataset.h"
+#include "detect.h"
+#include "sources.h"
+
+typedef void (*EvaluationStatisticFunctionPtr)(Detection*, struct EvaluationStatisticOutput*);
+
+typedef struct EvaluationStatisticInput {
+    char name[20];
+
+    EvaluationRange range;
+
+    EvaluationStatisticFunctionPtr func;
+    
+    int increasing;
+} EvaluationStatisticInput;
+
+typedef struct EvaluationStatisticOutput {
+    EvaluationStatisticInput* input;
+    
+    double min;
+    double max;
+    double avg;
+} EvaluationStatisticOutput;
+
+MAKEMANY(Detection);
+MAKEMANY(EvaluationInput);
+MAKEMANY(EvaluationOutput);
+MAKEMANY(EvaluationStatisticInput);
+MAKEMANY(EvaluationStatisticOutput);
+
+int evaluate_isbetter(EvaluationOutput*, EvaluationOutput*);
+
+void evaluate_run(EvaluationInput*, Detection* detection, EvaluationOutput*);
+
+void evaluate_describe(EvaluationStatisticInput, MANY(Detection)*, EvaluationStatisticOutput*);
+
+#endif

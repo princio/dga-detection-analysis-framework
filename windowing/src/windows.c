@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
-void rwindows_from(Windows windows, RWindows* rwindows) {
+void rwindows_from(MANY(Window) windows, MANY(RWindow)* rwindows) {
     rwindows->number = windows.number;
     rwindows->_ = calloc(rwindows->number, sizeof(Window*));
     
@@ -13,7 +13,7 @@ void rwindows_from(Windows windows, RWindows* rwindows) {
     }
 }
 
-void rwindows_shuffle(RWindows* rwindows) {
+void rwindows_shuffle(MANY(RWindow)* rwindows) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
     srand48(tv.tv_usec);

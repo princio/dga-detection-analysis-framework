@@ -1,0 +1,40 @@
+
+#ifndef __KFOLD_DESCRIBE_H__
+#define __KFOLD_DESCRIBE_H__
+
+#include "evaluate.h"
+#include "kfold.h"
+
+#include <stdint.h>
+
+
+typedef struct KFoldEvaluationInput {
+    char name[20];
+
+    FoldingEvaluationRange range;
+
+    EvaluationsFunctionPtr func;
+    
+    int increasing;
+} KFoldEvaluationInput;
+
+typedef void (*EvaluationsFunctionPtr)(EvaluationOutput*, struct KFoldEvaluationOutput*);
+
+typedef struct KFoldEvaluationOutput {
+    KFoldEvaluationInput* input;
+    
+    double min;
+    double max;
+    double avg;
+} KFoldEvaluationOutput;
+
+MAKEDGA(KFoldEvaluationInput);
+MAKEMANY(KFoldEvaluationInput);
+MAKEDGAMANY(KFoldEvaluationInput);
+
+MAKEDGA(KFoldEvaluationOutput);
+MAKEMANY(KFoldEvaluationOutput);
+MAKEDGAMANY(KFoldEvaluationOutput);
+
+
+#endif

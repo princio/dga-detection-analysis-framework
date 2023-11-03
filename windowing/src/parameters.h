@@ -4,8 +4,9 @@
 
 #include "common.h"
 
-
 typedef struct PSet {
+    int32_t id;
+    
     InfiniteValues infinite_values;
     NN nn;
     Whitelisting whitelisting;
@@ -13,7 +14,6 @@ typedef struct PSet {
     int32_t wsize;
     char digest[SHA256_DIGEST_LENGTH * 2];
 } PSet;
-
 
 typedef struct PSetGenerator {
     int32_t n_wsize;
@@ -32,17 +32,21 @@ typedef struct PSetGenerator {
     NN* nn;
 } PSetGenerator;
 
-typedef struct PSets {
-    int32_t number;
-    PSet* _;
-} PSets;
+MAKEMANY(PSet);
 
+typedef struct PSet__s {
+    const int32_t number;
+    const PSet* _;
+} PSet__s;
+
+MAKEMANY(PSet);
+MAKEMANYCONST(PSet);
 
 void parameters_hash(PSet*);
 
 void parameters_print(PSet* pset);
 
-PSets parameters_generate(PSetGenerator*);
+MANY(PSet) parameters_generate(PSetGenerator*);
 
 
 #endif

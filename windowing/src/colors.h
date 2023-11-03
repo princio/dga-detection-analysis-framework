@@ -3,7 +3,7 @@
  *
  *       Filename:  colors.h
  *
- *    Description:  This file define the output colors used by the program
+ *    Description:  DGAis file define the output colors used by the program
  *
  *        Created:  24/03/2015 22:20:40 PM
  *       Compiler:  gcc

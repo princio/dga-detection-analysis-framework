@@ -1,6 +1,6 @@
 #include "persister.h"
 
-#include "stratosphere.h"
+#include "windowing.h"
 
 #include <assert.h>
 #include <endian.h>
@@ -22,33 +22,25 @@
 
 typedef void (*FRWNPtr)(void* v, size_t s, FILE* file);
 
-enum Persistence_type {
-    PT_Parameters,
-    PT_Sources,
-    PT_Windows,
-    PT_WSizes
-};
-
-
-int _dir_exists(char* dir) {
+int dir_exists(char* dir) {
     struct stat st = {0};
     return stat(dir, &st) == 0 && S_ISDIR(st.st_mode);
 }
 
 
-int _check_dir(Experiment* exp) {
-    if (strlen(exp->name) == 0) {
+int check_dir() {
+    if (strlen(experiment.name) == 0) {
         time_t t = time(NULL);
         struct tm tm = *localtime(&t);
-        sprintf(exp->name, "test_%d%02d%02d_%02d%02d%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        sprintf(experiment.name, "test_%d%02d%02d_%02d%02d%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     }
 
-    char dir[strlen(exp->rootpath) + strlen(exp->name) + 10];
+    char dir[strlen(experiment.rootpath) + strlen(experiment.name) + 10];
 
-    sprintf(dir, "%s/%s", exp->rootpath, exp->name);
+    sprintf(dir, "%s/%s", experiment.rootpath, experiment.name);
 
     if (strlen(dir) > 0) {
-        if (_dir_exists(dir)) {
+        if (dir_exists(dir)) {
             return 0;
         }
         if (mkdir(dir, 0700) == 0) {
@@ -58,41 +50,20 @@ int _check_dir(Experiment* exp) {
     return -1;
 }
 
-int _open_file(FILE** file, Experiment* exp, PersisterReadWrite read, enum Persistence_type pt, char* subname) {
-    if (_check_dir(exp)) {
+FILE* open_file(IOReadWrite read, char fname[200]) {
+    FILE* file;
+
+    if (check_dir()) {
         perror("Impossible to create the directory");
-        return -1;
+        return NULL;
     }
 
-    char fname[50];
-    switch (pt) {
-        case PT_Parameters:
-            sprintf(fname, "parameters");
-            break;
-        case PT_Sources:
-            sprintf(fname, "source_%s", subname);
-            break;
-        case PT_Windows:
-            sprintf(fname, "windows_%s", subname);
-            break;
-        case PT_WSizes:
-            sprintf(fname, "wsizes");
-            break;
-    }
+    char path[strlen(experiment.rootpath) + strlen(experiment.name) + 200];
+    sprintf(path, "%s/%s/%s.bin", experiment.rootpath, experiment.name, fname);
 
-    char path[strlen(exp->rootpath) + strlen(exp->name) + 50];
-    sprintf(path, "%s/%s/%s.bin", exp->rootpath, exp->name, fname);
-
-    *file = fopen(path, read ? "rb+" : "wb+");
-    if (!*file) {
-        // printf("%s Error %s\n", read ? "Reading" : "Writing", path);
-        *file = NULL;
-        return -1;
-    }
-    // printf("%s %s\n", read ? "Reading" : "Writing", path);
-    return 0;
+    file = fopen(path, read ? "rb+" : "wb+");
+    return file;
 }
-
 
 void DumpHex(const void* data, size_t size) {
 	char ascii[17];
@@ -174,30 +145,6 @@ void freadN(void* v, size_t s, FILE* file) {
     }
 }
 
-void persister_test() {
-    {
-        FILE *file = fopen("/tmp/test.bin", "wb+");
-
-        InfiniteValues inf = { .ninf = -2.71, .pinf = 9.908 };
-
-        FW(inf);
-
-        fclose(file);
-    }
-    {
-        FILE *file = fopen("/tmp/test.bin", "rb");
-
-        InfiniteValues inf = { .ninf = 0, .pinf = 0 };
-
-        FR(inf);
-
-        printf("%f\n", inf.ninf);
-        printf("%f\n", inf.pinf);
-
-        fclose(file);
-    }
-}
-
 void fwrite64(void* n, FILE* file) {
     uint64_t be;
     memcpy(&be, n, 8);
@@ -220,132 +167,119 @@ void fread64(void *v, FILE* file) {
 }
 
 
-int persister_write__psets(Experiment* exp) {
+int persister_psets(IOReadWrite rw) {
     FILE *file;
     int32_t number;
-    _open_file(&file, exp, 0, PT_Parameters, 0);
+    char fname[200];
+
+    sprintf(fname, "parameters.bin");
+
+    file = open_file(rw, fname);
     if (file == NULL) {
         return -1;
     }
 
-    number = exp->psets.number;
+    FRWNPtr fn = rw ? freadN : fwriteN;
 
-    FW(number);
+    FRW(fn, experiment.psets.number);
 
-    for (int i = 0; i < number; ++i) {
-        FW(exp->psets._[i].infinite_values);
-        FW(exp->psets._[i].nn);
-        FW(exp->psets._[i].whitelisting);
-        FW(exp->psets._[i].windowing);
-        FW(exp->psets._[i].wsize);
+    if (rw) {
+        experiment.psets._ = calloc(experiment.psets.number, sizeof(Source));
+    }
+
+    for (int i = 0; i < experiment.psets.number; ++i) {
+        FRW(fn, experiment.psets._[i].infinite_values);
+        FRW(fn, experiment.psets._[i].nn);
+        FRW(fn, experiment.psets._[i].whitelisting);
+        FRW(fn, experiment.psets._[i].windowing);
+        FRW(fn, experiment.psets._[i].wsize);
     }
 
     return fclose(file);
 }
 
-int persister_read__psets(Experiment* exp) {
+Source* persister_source(IOReadWrite rw, char name[100]) {
+
     FILE *file;
+    Source* source;
+    char fname[200];
 
-    _open_file(&file, exp, 1, PT_Parameters, 0);
+    source = NULL;
+
+    snprintf(fname, "source_%s_%d.bin", 200, name);
+
+    file = open_file(rw, fname);
     if (file == NULL) {
-        return -1;
+        return NULL;
     }
 
-    FR(exp->psets.number);
+    source = calloc(1, sizeof(Source));
 
-    exp->psets._ = calloc(sizeof(PSet), exp->psets.number);
-    
-    for (int i = 0; i < exp->psets.number; ++i) {
-        FR(exp->psets._[i].infinite_values);
-        FR(exp->psets._[i].nn);
-        FR(exp->psets._[i].whitelisting);
-        FR(exp->psets._[i].windowing);
-        FR(exp->psets._[i].wsize);
-    }
+    FRWNPtr fn = rw ? freadN : fwriteN;
 
-    return fclose(file);
+    FRW(fn, source->dgaclass);
+    FRW(fn, source->fnreq_max);
+    FRW(fn, source->q);
+    FRW(fn, source->qr);
+    FRW(fn, source->r);
+    FRW(fn, source->capture_type);
+
+    fclose(file);
+
+    return source;
 }
 
-
-int persister_sources(int read, Experiment* exp, char subname[50], Sources* sources) {
-
+int persister_windowing(IOReadWrite rw, const WindowingGalaxy* wg, const WindowingSource* ws, const PSet* pset, MANY(Window)* windows) {
     FILE *file;
+    char fname[200];
+    char subdigest[9];
 
-    _open_file(&file, exp, read, PT_Sources, subname);
+    strncpy(subdigest, pset->digest, sizeof subdigest);
+    sprintf(fname, "%s_%s_%s", wg->name, ws->source.name, subdigest);
+
+    file = open_file(rw, fname);
     if (file == NULL) {
         return -1;
     }
 
-    FRWNPtr fn = read ? freadN : fwriteN;
-
-    FRW(fn, sources->number);
-
-    if (read) {
-        sources->_ = calloc(sources->number, sizeof(Source));
-    }
-
-    for (int32_t i = 0; i < sources->number; i++) {
-        FRW(fn, sources->_[i].binary_index);
-        FRW(fn, sources->_[i].galaxy_id);
-        FRW(fn, sources->_[i].dgaclass);
-        FRW(fn, sources->_[i].nmessages);
-        FRW(fn, sources->_[i].fnreq_max);
-        FRW(fn, sources->_[i].q);
-        FRW(fn, sources->_[i].qr);
-        FRW(fn, sources->_[i].r);
-        FRW(fn, sources->_[i].capture_type);
-
-        sourcelist_insert(exp->sources.lists, &sources->_[i]);
-
-        sources->_[i].multi_index = exp->sources.lists[sources->_[i].dgaclass].size - 1;
-    }
-
-    return fclose(file);
-}
-
-int persister_windows(PersisterReadWrite read, Experiment* exp, char subname[20], Windows* windows) {
-    FILE *file;
-
-    _open_file(&file, exp, read, PT_Windows, subname);
-    if (file == NULL) {
-        return -1;
-    }
-
-    FRWNPtr fn = read ? freadN : fwriteN;
+    FRWNPtr fn = rw ? freadN : fwriteN;
 
     FRW(fn, windows->number);
 
-    if (read) {
+    if (rw) {
         windows->_ = calloc(windows->number, sizeof(Window));
     }
     
     for (int i = 0; i < windows->number; ++i) {
-        FRW(fn, windows->_[i].source_index);
-        FRW(fn, windows->_[i].dataset_id);
-        FRW(fn, windows->_[i].window_id);
+        Window* window = &windows->_[i];
 
-        FRW(fn, windows->_[i].dgaclass);
-        FRW(fn, windows->_[i].wcount);
-        FRW(fn, windows->_[i].logit);
-        FRW(fn, windows->_[i].whitelistened);
-        FRW(fn, windows->_[i].dn_bad_05);
-        FRW(fn, windows->_[i].dn_bad_09);
-        FRW(fn, windows->_[i].dn_bad_099);
-        FRW(fn, windows->_[i].dn_bad_0999);
+        FRW(fn, window->source_index);
+        FRW(fn, window->pset_index);
+        
+        FRW(fn, window->wnum);
+
+        FRW(fn, window->dgaclass);
+        FRW(fn, window->wcount);
+        FRW(fn, window->logit);
+        FRW(fn, window->whitelistened);
+        FRW(fn, window->dn_bad_05);
+        FRW(fn, window->dn_bad_09);
+        FRW(fn, window->dn_bad_099);
+        FRW(fn, window->dn_bad_0999);
     }
 
     return fclose(file);
 }
 
 
-void persister_description(Experiment* exp, Sources sources) {
-    if (_check_dir(exp)) {
+void persister_description(MANY(Source) sources) {
+    if (check_dir()) {
         perror("Impossible to create the directory");
         return;
     }
 
-    char path[strlen(exp->rootpath) + strlen(exp->name) + strlen("README.md") + 50];
-    sprintf(path, "%s/%s/%s", exp->rootpath, exp->name, "README.md");
+    char path[strlen(experiment.rootpath) + strlen(experiment.name) + strlen("README.md") + 50];
+    sprintf(path, "%s/%s/%s", experiment.rootpath, experiment.name, "README.md");
     printf("%s\n", path);
     FILE* fp = fopen(path, "w");
 
@@ -354,9 +288,9 @@ void persister_description(Experiment* exp, Sources sources) {
         return;
     }
 
-    fprintf(fp, "# %s\n\n", exp->name);
+    fprintf(fp, "# %s\n\n", experiment.name);
     
-    fprintf(fp, "Rootpath: %s\n\n", exp->rootpath);
+    fprintf(fp, "Rootpath: %s\n\n", experiment.rootpath);
 
     {
         time_t t = time(NULL);
@@ -364,33 +298,22 @@ void persister_description(Experiment* exp, Sources sources) {
         fprintf(fp, "Test end at: %4d/%02d/%02d, %02d:%02d:%02d.\n", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     }
 
-
-
-    // fprintf(fp, "\n\n## WSizes\n");
-    // fprintf(fp, "\n\nNumber:\t%d\n\n", exp->wsizes.number);
-    // for (int ws = 0; ws < exp->wsizes.number - 1; ws++) {
-    //     fprintf(fp, "%d,", exp->wsizes._[ws].value);
-    // }
-    // fprintf(fp, "%d\n\n\n", exp->wsizes._[exp->wsizes.number - 1].value);
-
-
     fprintf(fp, "## Captures\n\n");
 
     fprintf(fp, "Captures number: %d\n\n", sources.number);
 
-    fprintf(fp, "id,galaxy_id,name,capture_type,class,fnreq_max,nmessages,q,r,qr,source\n");
+    fprintf(fp, "id,galaxy_id,name,capture_type,class,fnreq_max,q,r,qr,source\n");
     for (int i = 0; i < sources.number; i++) {
         Source* c = &sources._[i];
         fprintf(fp,
-            "%d,%d,\"%s\",%d,%d,%s,%ld,%ld,%ld,%ld,%ld\n",
-            c->binary_index,
-            c->galaxy_id,
+            "%d,%d,\"%s\",%d,%d,%s,%ld,%ld,%ld,%ld\n",
+            c->index.binary,
+            c->index.galaxy,
             c->name,
             c->capture_type,
             c->dgaclass,
-            c->source,
+            0,
             c->fnreq_max,
-            c->nmessages,
             c->q,
             c->r,
             c->qr
@@ -400,11 +323,11 @@ void persister_description(Experiment* exp, Sources sources) {
 
     fprintf(fp, "\n\n\n## Parameters\n\n");
 
-    fprintf(fp, "Parameters number: %d\n\n", exp->psets.number);
+    fprintf(fp, "Parameters number: %d\n\n", experiment.psets.number);
 
     fprintf(fp, "id,whitelisting,windowing,infinite_values,nn\n");
-    for (int i = 0; i < exp->psets.number; i++) {
-        PSet* p = &exp->psets._[i];
+    for (int i = 0; i < experiment.psets.number; i++) {
+        PSet* p = &experiment.psets._[i];
         fprintf(fp,
             "\"(%d,%f)\",\"(%f,%f)\",%s,%s\n",
             p->whitelisting.rank, p->whitelisting.value,

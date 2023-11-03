@@ -2,35 +2,29 @@
 #ifndef __DATASET_H__
 #define __DATASET_H__
 
+#include "common.h"
+
 #include "parameters.h"
 #include "sources.h"
 #include "windows.h"
 
-typedef Windows DatasetWindows[N_DGACLASSES];
-typedef RWindows DatasetRWindows[N_DGACLASSES];
-
-typedef SourcesList DatasetSourcesLists[N_DGACLASSES];
-typedef SourcesArray DatasetSourcesArrays[N_DGACLASSES];
+MAKEDGAMANY(Window);
+MAKEDGAMANY(RWindow);
 
 typedef struct DatasetSources {
-    DatasetSourcesLists lists;
-    DatasetSourcesArrays arrays;
+    DGA(SourcesList) lists;
+    DGA(SourcesArray) arrays;
 } DatasetSources;
 
 typedef struct Dataset {
     int32_t id;
     PSet* pset;
     DatasetSources sources;
-    DatasetWindows windows;
+    DGAMANY(Window) windows;
 } Dataset;
 
-typedef struct Datasets {
-    int32_t number;
-    Dataset* _;
-} Datasets;
+MAKEMANY(Dataset);
 
-void dataset_rwindows(Dataset*, DatasetRWindows, int32_t);
-
-void dataset_rwindows_ths(DatasetRWindows dsrwindows, Ths* ths);
+void dataset_rwindows(Dataset*, DGAMANY(RWindow), int32_t);
 
 #endif

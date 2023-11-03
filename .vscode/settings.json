@@ -128,7 +128,17 @@
         "common.h": "c",
         "sources.h": "c",
         "folding.h": "c",
-        "dataset.h": "c"
+        "dataset.h": "c",
+        "time.h": "c",
+        "detect.h": "c",
+        "windows.h": "c",
+        "kfold_evaluation.h": "c",
+        "kfold_describe.h": "c",
+        "kfold.h": "c",
+        "evaluate.h": "c",
+        "evaluate_functions.h": "c",
+        "performance_defaults.h": "c",
+        "calculator.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

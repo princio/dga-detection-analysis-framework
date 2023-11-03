@@ -154,7 +154,6 @@ valgrind:
 		$(BINDIR)/$(BINARY)
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 
-
 # Compile tests and run the test binary
 tests:
 	@echo -en "$(BROWN)CC $(END_COLOR)";
@@ -167,3 +166,10 @@ tests:
 # Rule for cleaning the project
 clean:
 	@rm -rvf $(BINDIR)/* $(LIBDIR)/* $(LOGDIR)/*;
+
+ca: clean all
+
+cab: clean all
+	bin/binary
+
+cav: clean all valgrind

@@ -2,8 +2,8 @@
 #define __CALCULATOR_H
 
 #include "parameters.h"
-#include "windows.h"
+#include "windowing.h"
 
-void calculator_message(DNSMessage*, Window *, PSet*);
+void calculator_1message_Npsets(const DNSMessage message, const MANY(PSet) psets, MANY(WindowingWindows)* sw);
 
 #endif

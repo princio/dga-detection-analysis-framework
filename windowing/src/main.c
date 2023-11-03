@@ -22,11 +22,12 @@
 #include "dataset.h"
 #include "common.h"
 // #include "experiment.h"
-#include "folding.h"
-#include "foldingeval.h"
+#include "performance_defaults.h"
+#include "kfold.h"
 #include "parameters.h"
 // #include "persister.h"
 #include "stratosphere.h"
+#include "tt.h"
 // #include "tester.h"
 // #include "windowing.h"
 
@@ -67,9 +68,7 @@ char NN_NAMES[11][10] = {
     "TLD"
 };
 
-int trys;
-char try_name[5];
-
+DGA(NSources) NSOURCES;
 
 void source_count(Sources sources, int counts[N_DGACLASSES]) {
     memset(counts, 0, sizeof(int32_t));
@@ -77,6 +76,23 @@ void source_count(Sources sources, int counts[N_DGACLASSES]) {
         counts[sources._[i].dgaclass]++;
     }
 }
+
+
+MANY(Performance) gen_performance() {
+    MANY(Performance) performances;
+
+    INITMANY(performances, 5, Performance);
+
+    int i = 0;
+    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_1];
+    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_05];
+    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_01];
+    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_TPR];
+    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_FPR];
+
+    return performances;
+}
+
 
 void exps_1() {
     PSetGenerator psetgenerator;
@@ -126,7 +142,7 @@ void exps_1() {
         psetgenerator.infinitevalues = infinitevalues;
     }
 
-    PSets psets = parameters_generate(&psetgenerator);
+    MANY(PSet) psets = parameters_generate(&psetgenerator);
 
     Datasets datasets;
     datasets.number = psets.number;
@@ -138,20 +154,18 @@ void exps_1() {
         ++d;
     }
 
-    Experiment exp;
-    memset(&exp, 0, sizeof(Experiment));
+    experiment_set_name("exp_new_4");
+    experiment_set_path("/home/princio/Desktop/exps");
+    experiment_set_psets(psets);
 
-    strcpy(exp.name, "exp_new_4");
-    strcpy(exp.rootpath, "/home/princio/Desktop/exps");
-
-    exp.psets = psets;
+    stratosphere_add_to_galaxyes();
 
     Sources stratosphere_sources;
 
     stratosphere_run(&exp, datasets, &stratosphere_sources);
 
     experiment_sources_fill(&exp);
-
+    
     // for (int32_t i = 0; i < datasets.number; i++) {
     //     for (int32_t w = 0; w < datasets._[i].windows[1].number; w++) {
     //         Window window = datasets._[i].windows[1]._[w];
@@ -168,7 +182,9 @@ void exps_1() {
 
     printf("Sources loaded\n\n");
 
-    for (int32_t d = 0; d < datasets.number; d++) {
+    MANY(Performance) perfomances = gen_performance();
+
+    for (int32_t d = 0; d < 0; d++) {
         {
             printf("Processing dataset %d:\t", d);
             PSet* pset = datasets._[d].pset;
@@ -177,25 +193,24 @@ void exps_1() {
             printf("%6s, ", NN_NAMES[pset->nn]);
             printf("(%6d, %6g)\n", pset->whitelisting.rank, pset->whitelisting.value);
         }
-        Folding folding;
 
-        folding.config.kfolds = 5;
-        folding.config.balance_method = FOLDING_DSBM_NOT_INFECTED;
-        folding.config.split_method = FOLDING_DSM_IGNORE_1;
-        folding.config.test_folds = 1;
-        folding.config.shuffle = 0;
+        const KFoldConfig kfoldconfig = {
+            .kfolds = 2,
+            .balance_method = FOLDING_DSBM_NOT_INFECTED,
+            .split_method = FOLDING_DSM_IGNORE_1,
+            .test_folds = 1,
+            .shuffle = 0
+        };
 
-        folding_run(&datasets._[d], &folding);
+        KFold kfold = kfold_run(&datasets._[d], kfoldconfig, perfomances);
 
-
-        FoldingEval eval;
-        foldingeval(&folding, eval);
-
-        foldingeval_print(eval);
+        kfold_free(kfold);
     }
 
-
     free(psets._);
+
+    sources_lists_free(exp.sources.lists);
+    sources_arrays_free(exp.sources.arrays);
     free(stratosphere_sources._);
 
     for (int32_t i = 0; i < datasets.number; i++) {
@@ -205,6 +220,8 @@ void exps_1() {
     }
 
     free(datasets._);
+
+    free(perfomances._);
 }
     // Sources sources;
 
