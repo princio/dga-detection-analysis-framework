@@ -77,12 +77,13 @@ void windowing_message(const DNSMessage message, const MANY(PSet) psets, MANY(Wi
     }
 }
 
-void io_windowing_path(const WindowingGalaxy* wg, const Source* source, const PSet *pset, char path[500]) {
+void io_windowing_path(const WindowingSource* ws, int32_t pset_index, char path[500]) {
     char fname[200];
     char subdigest[9];
+    const PSet* const pset = &windowing.psets._[pset_index];
 
     strncpy(subdigest, pset->digest, sizeof subdigest);
-    sprintf(fname, "%s_%s_%s", windowing.rootpath, wg->name, source->name, subdigest);
+    sprintf(fname, "%s_%s_%s", windowing.rootpath, ws->galaxy->name, ws->source.name, subdigest);
 }
 
 int32_t io_windowing(IOReadWrite rw, char path, MANY(Window)* windows) {
@@ -149,6 +150,7 @@ WindowingSource* windowing_sources_add(const Source* source, WindowingGalaxy* gl
     ws_ptr = calloc(1, sizeof(WindowingSource));
 
     ws_ptr->source = *source;
+    ws_ptr->galaxy = gl;
 
     INITMANY(ws_ptr->windows, windowing.psets.number, WindowingWindows);
     
@@ -177,43 +179,45 @@ WindowingWindows windowing_windows_make(const Source* source, const PSet* pset) 
     return ww;
 }
 
-void windowing_windows_load(WindowingGalaxy* wg, const Source* source, const PSet* pset, WindowingWindows* const ww) {
+void windowing_windows_load(WindowingSource* ws, const int32_t pset_index) {
     char path[500];
-    io_windowing_path(wg, source, pset, path);
+    io_windowing_path(ws, pset_index, path);
 
-    if (0 == io_windowing(IO_READ, path, &ww->windows)) {
-        ww->loaded = 1;
+    if (0 == io_windowing(IO_READ, path, &ws->windows._[pset_index])) {
+        ws->windows._[pset_index].loaded = 1;
     }
 }
 
-void windowing_windows_save(WindowingGalaxy* wg, const Source* source, const PSet* pset, WindowingWindows* ww) {
+void windowing_windows_save(WindowingSource* ws, const int32_t pset_index) {
     char path[500];
 
-    io_windowing_path(wg, source, pset, path);
+    io_windowing_path(ws, pset_index, path);
 
-    if (io_windowing(IO_WRITE, path, &ww->windows)) {
-        ww->saved = 1;
+    if (io_windowing(IO_WRITE, path, &ws->windows._[pset_index])) {
+        ws->windows._[pset_index].saved = 1;
+        ws->saved += 1;
     }
 }
 
-WindowingWindows windowing_wsource_load(WindowingGalaxy const * const wg, WindowingSource* const wsource) {
+WindowingWindows windowing_wsource_load(WindowingSource* const wsource) {
     const Source* const source = &wsource->source;
 
     for (int32_t p = 0; p < windowing.psets.number; p++) {
         wsource->windows._[p] = windowing_windows_make(source, &windowing.psets._[p]);
-        windowing_windows_load(wg, &wsource->source, &windowing.psets._[p], &wsource->windows._[p]);
+        windowing_windows_load(wsource, p);
 
         wsource->loaded += wsource->windows._[p].loaded;
     }
 }
 
-WindowingWindows windowing_wsource_save(WindowingGalaxy const * const wg, WindowingSource* const wsource) {
+WindowingWindows windowing_wsource_save(WindowingSource* const wsource) {
     const Source* const source = &wsource->source;
 
     for (int32_t p = 0; p < windowing.psets.number; p++) {
-        windowing_windows_save(wg, &wsource->source, &windowing.psets._[p], &wsource->windows._[p]);
-
-        wsource->saved += wsource->windows._[p].saved;
+        if (!wsource->windows._[p].loaded) {
+            windowing_windows_save(wsource, p);
+            wsource->saved += wsource->windows._[p].saved;
+        }
     }
 }
 
@@ -231,18 +235,13 @@ void windowing_run() {
 
             INITMANY(wsource->windows, windowing.psets.number, MANY(WindowingWindows));
 
-            windowing_wsource_load(wg, wsource);
+            windowing_wsource_load(wsource);
 
             if (wsource->loaded < wsource->windows.number) {
                 wsource->fn(&wsource->source, &wsource->windows);
             }
 
-            for (int32_t p = 0; p < windowing.psets.number; p++) {
-                WindowingWindows* const ww = &wsource->windows._[p];
-                if (!ww->loaded) {
-                    windowing_windows_save(wg, wsource, &windowing.psets._[p], ww);
-                }
-            }
+            windowing_wsource_load(wsource);
 
             wsource_cursor = wsource_cursor->next;
         }

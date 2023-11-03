@@ -20,8 +20,22 @@ MAKEMANY(WindowingWindows);
 
 typedef void (*WindowingFunction)(const Source*, MANY(WindowingWindows)* const);
 
+typedef struct WindowingGalaxy {
+    int32_t index;
+
+    char name[50];
+
+    int loaded;
+
+    List sourceloaders;
+} WindowingGalaxy;
+
+MAKEMANY(WindowingGalaxy);
+
 typedef struct WindowingSource {
     int32_t index;
+
+    WindowingGalaxy* galaxy;
 
     int loaded;
     int saved;
@@ -34,18 +48,6 @@ typedef struct WindowingSource {
 } WindowingSource;
 
 MAKEMANY(WindowingSource);
-
-typedef struct WindowingGalaxy {
-    int32_t index;
-
-    char name[50];
-
-    int loaded;
-
-    List sourceloaders;
-} WindowingGalaxy;
-
-MAKEMANY(WindowingGalaxy);
 
 typedef struct Windowing {
     char rootpath[300];
