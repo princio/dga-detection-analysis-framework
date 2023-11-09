@@ -1,7 +1,6 @@
 #ifndef __WINDOWINGTESTBED_H__
 #define __WINDOWINGTESTBED_H__
 
-#include "kfold.h"
 #include "parameters.h"
 #include "windowing.h"
 
@@ -22,6 +21,12 @@ typedef struct TestBedPSetApply {
     TestBedWindows windows;
 } TestBedPSetApply;
 
+typedef struct TestBedSources {
+    MANY(Source) all;
+    MANY(RSource) binary[2];
+    DGAMANY(RSource) multi;
+} TestBedSources;
+
 /// @brief This is needed because of performance reasons.
 /// We cannot perform Windowing one source and one parameter set per time, it would require too much time.
 /// For this reason, we perform $p$ parameter sets for noe source per time.
@@ -31,11 +36,7 @@ typedef struct TestBed {
 
     MANY(Galaxy) galaxies; // UNUSED
 
-    struct {
-        MANY(Source) all;
-        MANY(RSource) binary[2];
-        DGAMANY(RSource) multi;
-    } sources;
+    TestBedSources sources;
 
     /**
      * @brief Construct a new `windowings` object composed by N_PSETs x N_SOURCES Windowing

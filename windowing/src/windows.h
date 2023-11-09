@@ -4,13 +4,11 @@
 
 #include "common.h"
 
-#include "sources.h"
-
 typedef struct Window {
-    IDX source_index;
-
-    IDX pset_index;
+    Index index;
     
+    IDX pset_index;
+
     IDX wnum;
 
     DGAClass dgaclass;
@@ -33,8 +31,8 @@ MAKEDGAMANY(Window);
 MAKEMANY(RWindow);
 MAKEDGAMANY(RWindow);
 
-void rwindows_from(MANY(Window), MANY(RWindow) *);
+void rwindows_from(MANY(Window), MANY(RWindow)*);
 
-void rwindows_shuffle(MANY(RWindow)*);
+void rwindows_shuffle(MANY(RWindow));
 
 #endif

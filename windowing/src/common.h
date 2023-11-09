@@ -64,6 +64,12 @@ typedef int32_t NSourcesID_DGA[N_DGACLASSES];
 
 typedef int32_t IDX;
 
+typedef struct Index {
+    int32_t all;
+    int32_t binary[2];
+    int32_t multi[N_DGACLASSES];
+} Index;
+
 typedef struct __MANY_STRUCT {
     int32_t number;
     void* _;

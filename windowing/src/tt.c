@@ -10,7 +10,7 @@
 #include <time.h>
 
 
-void _rwindows_ths(DGAMANY(RWindow) dsrwindows, MANY(DGA)* ths) {
+void _rwindows_ths(const DGAMANY(RWindow) dsrwindows, MANY(DGA)* ths) {
     int max = 0;
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
         max += dsrwindows[cl].number;
@@ -46,12 +46,12 @@ void _rwindows_ths(DGAMANY(RWindow) dsrwindows, MANY(DGA)* ths) {
     free(ths_tmp);
 }
 
-void tt_evaluations_init(MANY(Performance) performances, MANY(TTEvaluation)* ttes) {
+void tt_evaluations_init(MANY(Performance) performances, const Index nsources, MANY(TTEvaluation)* ttes) {
     INITMANYREF(ttes, performances.number, TTEvaluation);
 
     for (int32_t p = 0; p < ttes->number; p++) {
-        detect_init(&ttes->_[p].train.detection);
-        detect_init(&ttes->_[p].test.detection);
+        detect_init(&ttes->_[p].train.detection, nsources);
+        detect_init(&ttes->_[p].test.detection, nsources);
         ttes->_[p].performance = &performances._[p];
     }
 }
@@ -64,14 +64,16 @@ void tt_evaluations_free(MANY(TTEvaluation) ttes) {
     free(ttes._);
 }
 
-void _tt_train(TT* tt, MANY(TTEvaluation)* ttes) {
+void _tt_train(TCPC(TT) tt, MANY(TTEvaluation)* ttes) {
     MANY(DGA) ths;
     Detection _detection;
 
     {
         _rwindows_ths(tt->train, &ths);
-        detect_init(&_detection);
+        detect_init(&_detection, tt->nsources);
     }
+
+    printf("ths.number\t%d\n", ths.number);
 
     int8_t outputs_init[ttes->number];
 
@@ -95,13 +97,13 @@ void _tt_train(TT* tt, MANY(TTEvaluation)* ttes) {
     detect_free(&_detection);
 }
 
-void _tt_test(TT* tt, MANY(TTEvaluation)* ttes) {
+void _tt_test(TCPC(TT) tt, MANY(TTEvaluation)* ttes) {
     for (int32_t i = 0; i < ttes->number; i++) {
         double th;
 
         th = ttes->_[i].train.detection.th;
 
-        detect_init(&ttes->_[i].test.detection);
+        detect_init(&ttes->_[i].test.detection, tt->nsources);
         
         detect_run(tt->test, th, &ttes->_[i].test.detection);
         
@@ -109,10 +111,10 @@ void _tt_test(TT* tt, MANY(TTEvaluation)* ttes) {
     }
 }
 
-MANY(TTEvaluation) tt_run(TT* tt, MANY(Performance) performances) {
+MANY(TTEvaluation) tt_run(TCPC(TT) tt, MANY(Performance) performances) {
     MANY(TTEvaluation) ttes;
     
-    tt_evaluations_init(performances, &ttes);
+    tt_evaluations_init(performances, tt->nsources, &ttes);
     
     _tt_train(tt, &ttes);
 

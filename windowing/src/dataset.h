@@ -16,6 +16,4 @@ typedef struct Dataset {
 
 MAKEMANY(Dataset);
 
-void dataset_rwindows(Dataset*, DGAMANY(RWindow), int32_t);
-
 #endif

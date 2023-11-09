@@ -139,6 +139,39 @@ void exps_1() {
 
     TestBed tb = testbed_run();
 
+    for (int32_t i = 0; i < tb.applies[0].windowings.all.number; i++) {
+        int nw = tb.applies[0].windowings.all._[i].windows.number;
+        for (int32_t w = 0; w < (nw < 10 ? nw : 10); w++) {
+            printf("%6d\t%g\n", tb.applies[0].windowings.all._[i].windows._[w].wnum, tb.applies[0].windowings.all._[i].windows._[w].logit);
+        }
+    }
+    printf("\n");
+    for (int32_t i = 0; i < tb.applies[0].windowings.binary[0].number; i++) {
+        int nw = tb.applies[0].windowings.binary[0]._[i].windows.number;
+        for (int32_t w = 0; w < (nw < 10 ? nw : 10); w++) {
+            printf("%6d\t%g\n", tb.applies[0].windowings.binary[0]._[i].windows._[w].wnum, tb.applies[0].windowings.binary[0]._[i].windows._[w].logit);
+        }
+    }
+    printf("\n");
+    for (int32_t i = 0; i < tb.applies[0].windowings.multi[0].number; i++) {
+        int nw = tb.applies[0].windowings.multi[0]._[i].windows.number;
+        for (int32_t w = 0; w < (nw < 10 ? nw : 10); w++) {
+            printf("%6d\t%g\n", tb.applies[0].windowings.multi[0]._[i].windows._[w].wnum, tb.applies[0].windowings.multi[0]._[i].windows._[w].logit);
+        }
+    }
+
+    KFoldConfig kconfig = {
+        .balance_method = FOLDING_DSBM_NOT_INFECTED,
+        .kfolds = 10,
+        .shuffle = 0,
+        .split_method = FOLDING_DSM_IGNORE_1,
+        .test_folds = 2,
+    };
+
+    MANY(Performance) performances = gen_performance();
+
+    KFold kfold = kfold_run(&tb.applies[0].windows, &tb.sources, kconfig, performances);
+
     testbed_free(&tb);
 }
 

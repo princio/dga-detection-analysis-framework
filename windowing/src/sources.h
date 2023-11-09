@@ -25,7 +25,7 @@ typedef struct SourceIndex {
 struct Galaxy;
 
 typedef struct Source {
-    // SourceIndex index;
+    // Index index;
 
     // int32_t parent_galaxy_index;
 

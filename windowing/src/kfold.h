@@ -2,9 +2,9 @@
 #ifndef __KFOLD_H__
 #define __KFOLD_H__
 
-#include "dataset.h"
 #include "detect.h"
 #include "tt.h"
+#include "testbed.h"
 
 char thcm_names[5][20];
 typedef enum FoldingTestConfigSplitBalanceMethod {
@@ -46,11 +46,11 @@ typedef struct KFold {
 } KFold;
 
 
-MANY(TT) kfold_sets(Dataset* ds, KFoldConfig config);
+MANY(TT) kfold_sets(TCPC(TestBedWindows) ds, TCPC(TestBedSources) sources,  KFoldConfig config);
 
 MANY(KFoldSet) kfold_evaluation(MANY(TT) tts, MANY(Performance) performances);
 
-KFold kfold_run(Dataset* ds, KFoldConfig config, MANY(Performance) performances);
+KFold kfold_run(TCPC(TestBedWindows) ds, TCPC(TestBedSources) sources, KFoldConfig config, MANY(Performance) performances);
 
 void kfold_free(KFold kfold);
 

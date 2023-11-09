@@ -1,9 +1,6 @@
 
 #include "testbed.h"
 
-#include "common.h"
-#include "parameters.h"
-
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -13,20 +10,16 @@
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
 struct ExecSource {
+    Index index;
     Source* source;
     SourceWindowingExecution type;
     WindowingAPFunction fn;
 };
 
-struct Index {
-    int32_t all;
-    int32_t binary[2];
-    int32_t multi[N_DGACLASSES];
-} sources_count;
-
 MANY(PSet) psets;
 List galaxies;
 List execsources_list;
+Index sources_count;
 
 void testbed_init(TCPC(PSetGenerator) psetgen) {
     memset(&sources_count, 0, sizeof(sources_count));
@@ -42,6 +35,7 @@ void testbed_source_add(Source* source, int type, WindowingAPFunction fn) {
     exec_source->fn = fn;
     exec_source->source = source;
     exec_source->type = type;
+    exec_source->index = sources_count;
 
     list_insert(&execsources_list, exec_source);
 
@@ -108,6 +102,10 @@ TestBed testbed_run() {
 
             MANY(Windowing) windowings_p = windowing_run_1source_manypsets(rsource, psets, execsources[s]->fn);
 
+            // for (int32_t w = 0; w < windowings_p._[0].windows.number; w++) {
+            //     printf("%6d\t%g\n", windowings_p._[0].windows._[w].wnum, windowings_p._[0].windows._[w].logit);
+            // }
+
             for (int32_t p = 0; p < psets.number; p++) {
                 testbed.applies[p].windowings.all._[s] = windowings_p._[p];
                 testbed.applies[p].windowings.binary[bc]._[index[p].binary[bc]] = windowings_p._[p];
@@ -144,6 +142,8 @@ TestBed testbed_run() {
                 const int dclass = windowing->source->dgaclass;
 
                 for (int32_t w = 0; w < windowing->windows.number; w++) {
+                    windowing->windows._[w].index = execsources[s]->index;
+
                     tbw->all._[index.all + w] = &windowing->windows._[w];
                     tbw->binary[bclass]._[index.binary[bclass] + w] = &windowing->windows._[w];
                     tbw->multi[dclass]._[index.multi[dclass] + w] = &windowing->windows._[w];

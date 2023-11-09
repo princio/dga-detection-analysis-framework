@@ -17,9 +17,9 @@ void detect_reset(Detection* det) {
 }
 
 
-void detect_init(Detection* det) {
+void detect_init(Detection* det, const Index nsources) {
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        INITMANY(det->cm2dga[cl].sources, NSOURCES[cl], CM);
+        INITMANY(det->cm2dga[cl].sources, nsources.multi[cl], CM);
     }
 
     detect_reset(det);
@@ -31,11 +31,11 @@ void detect_free(Detection* det) {
     }
 }
 
-void detect_copy(Detection* src, Detection* dst) {
+void detect_copy(TCPC(Detection) src, Detection* dst) {
     memcpy(dst, src, sizeof(Detection));
 }
 
-void detect_run(DGAMANY(RWindow) drw, double th, Detection* det) {
+void detect_run(const DGAMANY(RWindow) drw, const double th, Detection* det) {
     detect_reset(det);
 
     det->th = th;
@@ -50,16 +50,16 @@ void detect_run(DGAMANY(RWindow) drw, double th, Detection* det) {
 
             if (prediction == infected) {
                 cm->windows.trues++;
-                cm->sources._[window->dgaclass].trues++;
+                cm->sources._[window->index.multi[cl]].trues++;
             } else {
                 cm->windows.falses++;
-                cm->sources._[window->dgaclass].falses++;
+                cm->sources._[window->index.multi[cl]].falses++;
             }
         }
     }
 }
 
-double detect_performance(Detection* detection, Performance* performance) {
+double detect_performance(TCPC(Detection) detection, Performance* performance) {
     return performance->func(detection, performance);
 }
 

@@ -1,7 +1,5 @@
 #include "list.h"
 
-#include "testbed.h"
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>

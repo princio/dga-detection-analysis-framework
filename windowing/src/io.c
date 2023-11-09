@@ -1,7 +1,5 @@
 #include "io.h"
 
-#include "windowing.h"
-
 #include <assert.h>
 #include <endian.h>
 #include <errno.h>

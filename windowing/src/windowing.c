@@ -4,7 +4,6 @@
 #include "cache.h"
 #include "common.h"
 #include "io.h"
-#include "parameters.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -46,7 +45,6 @@ int io_windowing(IOReadWrite rw, TCPC(Windowing) windowing) {
         for (int i = 0; i < windowing->windows.number; ++i) {
             Window* window = &windowing->windows._[i];
 
-            FRW(fn, window->source_index);
             FRW(fn, window->pset_index);
             
             FRW(fn, window->wnum);
@@ -75,6 +73,7 @@ void windowing_windows_init(T_PC(Windowing) windowing) {
     const int32_t nw = N_WINDOWS(windowing->source->fnreq_max, windowing->pset->wsize);
     INITMANY(windowing->windows, nw, Window);
     for (int32_t w = 0; w < nw; w++) {
+        windowing->windows._[w].pset_index = windowing->pset->id;
         windowing->windows._[w].wnum = w;
     }
 }

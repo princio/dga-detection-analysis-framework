@@ -1,9 +1,9 @@
 #ifndef __WINDOWING_H__
 #define __WINDOWING_H__
 
-#include "kfold.h"
 #include "parameters.h"
 #include "sources.h"
+#include "windows.h"
 
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 

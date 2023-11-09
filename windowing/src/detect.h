@@ -2,7 +2,6 @@
 #ifndef __DETECT_H__
 #define __DETECT_H__
 
-#include "dataset.h"
 #include "sources.h"
 #include "windows.h"
 
@@ -45,7 +44,7 @@ enum PerfomanceDGAHandling {
 
 struct Performance;
 
-typedef double (*PerformanceFunctionPtr)(Detection*, struct Performance*);
+typedef double (*PerformanceFunctionPtr)(TCPC(Detection), struct Performance*);
 
 typedef struct Performance {
     char name[20];
@@ -62,13 +61,13 @@ MAKEMANY(Performance);
 
 
 void detect_reset(Detection*);
-void detect_init(Detection*);
+void detect_init(Detection*, const Index);
 void detect_free(Detection*);
-void detect_copy(Detection* src, Detection* dst);
+void detect_copy(TCPC(Detection) src, Detection* dst);
 
-void detect_run(DGAMANY(RWindow), double, Detection*);
+void detect_run(const DGAMANY(RWindow), const double, Detection*);
 
-double detect_performance(Detection*, Performance*);
+double detect_performance(TCPC(Detection), Performance*);
 
 int detect_performance_compare(Performance*, double, double);
 

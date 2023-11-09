@@ -14,7 +14,7 @@ const Performance performance_defaults[5] = {
     { .name = "TPR", .func=&performancedefaults_tpr, .greater_is_better=1 },
 };
 
-double _performancedefaults_f1score_beta(Detection* detection, Performance* performance, double beta) {
+double _performancedefaults_f1score_beta(TCPC(Detection) detection, Performance* performance, double beta) {
     double f1;
     switch (performance->dgadet)
     {
@@ -44,19 +44,19 @@ double _performancedefaults_f1score_beta(Detection* detection, Performance* perf
     return f1;
 }
 
-double performancedefaults_f1score_1(Detection* detection, Performance* performance) {
+double performancedefaults_f1score_1(TCPC(Detection) detection, Performance* performance) {
     return _performancedefaults_f1score_beta(detection, performance, 1.0);
 }
 
-double performancedefaults_f1score_05(Detection* detection, Performance* performance) {
+double performancedefaults_f1score_05(TCPC(Detection) detection, Performance* performance) {
     return _performancedefaults_f1score_beta(detection, performance, 0.5);
 }
 
-double performancedefaults_f1score_01(Detection* detection, Performance* performance) {
+double performancedefaults_f1score_01(TCPC(Detection) detection, Performance* performance) {
     return _performancedefaults_f1score_beta(detection, performance, 0.1);
 }
 
-double performancedefaults_fpr(Detection* detection, Performance* performance) {
+double performancedefaults_fpr(TCPC(Detection) detection, Performance* performance) {
     UNUSED(performance);
 
     double fp = detection->cm2dga[0].windows.falses;
@@ -65,7 +65,7 @@ double performancedefaults_fpr(Detection* detection, Performance* performance) {
     return ((double) fp) / (fp + tn);
 }
 
-double performancedefaults_tpr(Detection* detection, Performance* performance) {
+double performancedefaults_tpr(TCPC(Detection) detection, Performance* performance) {
     double fn, tp;
 
     switch (performance->dgadet)

@@ -20,7 +20,7 @@
 #define MAX(A, B) (A.max) = ((B) >= (A.max) ? (B) : (A.max))
 
 
-MANY(TT) kfold_sets(Dataset* ds, KFoldConfig config) {
+MANY(TT) kfold_sets(TCPC(TestBedWindows) ds, TCPC(TestBedSources) sources, KFoldConfig config) {
     assert((config.balance_method != FOLDING_DSBM_EACH) || (config.split_method != FOLDING_DSM_IGNORE_1));
 
     if (config.kfolds <= 1 || config.kfolds - 1 < config.test_folds) {
@@ -32,10 +32,26 @@ MANY(TT) kfold_sets(Dataset* ds, KFoldConfig config) {
 
     tts.number = config.kfolds;
     tts._ = calloc(config.kfolds, sizeof(TT));
+    for (int32_t k = 0; k < config.kfolds; k++) {
+        tts._[k].nsources.all = sources->all.number;
+        tts._[k].nsources.binary[0] = sources->binary[0].number;
+        tts._[k].nsources.binary[1] = sources->binary[0].number;
+        DGAFOR(cl) {
+            tts._[k].nsources.multi[cl] = sources->multi[cl].number;
+        }
+    }
 
     MANY(RWindow) rwindows[N_DGACLASSES];
 
-    dataset_rwindows(ds, rwindows, config.shuffle);
+    {
+        for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
+            INITMANY(rwindows[cl], ds->multi[cl].number, RWindow);
+            memcpy(rwindows[cl]._, ds->multi[cl]._, sizeof(RWindow) * ds->multi[cl].number);
+            if (config.shuffle) {
+                rwindows_shuffle(rwindows[cl]);
+            }
+        }   
+    }
 
     const int32_t KFOLDs = config.kfolds;
     const int32_t TRAIN_KFOLDs = config.kfolds - config.test_folds;
@@ -117,8 +133,9 @@ MANY(KFoldSet) kfold_evaluation(MANY(TT) tts, MANY(Performance) performances) {
     return ks;
 }
 
-KFold kfold_run(Dataset* ds, KFoldConfig config, MANY(Performance) performances) {
-    MANY(TT) tts = kfold_sets(ds, config);
+KFold kfold_run(TCPC(TestBedWindows) ds, TCPC(TestBedSources) sources, KFoldConfig config, MANY(Performance) performances) {
+    MANY(TT) tts = kfold_sets(ds, sources, config);
+
     MANY(KFoldSet) ks = kfold_evaluation(tts, performances);
 
     KFold kfold;
