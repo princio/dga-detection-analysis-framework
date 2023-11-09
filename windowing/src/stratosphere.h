@@ -18,12 +18,6 @@ typedef struct StratosphereInfo {
  * @param windowings An array of PCAPWindowingPtr struct where each element represent the windowing of the PCAP for a defined window size.
  * @param N_WINDOWING DGAe number of window size we chose.
  */
-// void stratosphere_procedure(WindowingPtr windowing, int32_t capture_index);
-
-void stratosphere_add_to_galaxyes();
-
-MANY(Dataset) stratosphere_run(MANY(PSet) parameters);
-
-MANY(Source) stratosphere_get_sources();
+void stratosphere_run();
 
 #endif

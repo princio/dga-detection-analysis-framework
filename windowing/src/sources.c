@@ -6,7 +6,9 @@
 
 int32_t _index(DGA(List) lists) {
     int32_t index = 0;
-    EXEC_ARRAY_ALLDGA(index += lists[DGACURSOR].size);
+    DGAFOR(cl) {
+        index += lists[cl].size;
+    }
     return index;
 }
 
@@ -21,22 +23,23 @@ int32_t _binary_index(DGA(List) lists, Source* source) {
 }
 
 void sources_list_insert(DGA(List) lists, Source* source) {
-
     list_insert(&lists[source->dgaclass], source);
-
-    source->index = _index(lists);
-    source->binary_index = _binary_index(lists, source);
-    source->multi_index = lists[source->dgaclass].size;
 }
 
 void sources_lists_to_arrays(DGA(List) lists, DGA(Many) arrays) {
-    EXEC_ARRAY_ALLDGA(arrays[DGACURSOR] = list_to_array(lists[DGACURSOR]));
+    DGAFOR(cl) {
+        arrays[cl] = list_to_array(lists[cl]);
+    }
 }
 
 void sources_lists_free(DGA(List) lists) {
-    EXEC_ARRAY_ALLDGA(list_free(lists[DGACURSOR], 1));
+    DGAFOR(cl) {
+        list_free(lists[cl], 1);
+    }
 }
 
 void sources_arrays_free(DGA(Many) arrays) {
-    EXEC_ARRAY_ALLDGA(array_free(arrays[DGACURSOR]));
+    DGAFOR(cl) {
+        array_free(arrays[cl]);
+    }
 }

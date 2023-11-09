@@ -6,6 +6,13 @@
 
 #include "list.h"
 
+
+typedef enum SourceWindowingExecution {
+    SOURCE_WINDOWING_TYPE_SINGLE,
+    SOURCE_WINDOWING_TYPE_MANYPSETs,
+    SOURCE_WINDOWING_TYPE_MANYSOURCEs
+} SourceWindowingExecution;
+
 typedef struct SourceIndex {
     int32_t galaxy;
     int32_t source_galaxy;
@@ -15,15 +22,21 @@ typedef struct SourceIndex {
     int32_t multi;
 } SourceIndex;
 
-typedef struct Source {
-    SourceIndex index;
+struct Galaxy;
 
-    int32_t parent_galaxy_index;
+typedef struct Source {
+    // SourceIndex index;
+
+    // int32_t parent_galaxy_index;
 
     char name[50];
+    char galaxy[50];
 
+    BinaryClass binaryclass;
     DGAClass dgaclass;
+    
     CaptureType capture_type;
+    SourceWindowingExecution windowing_type;
 
     int32_t id;
     int64_t qr;
@@ -37,14 +50,18 @@ MAKEDGA(Source);
 MAKEDGAMANY(Source);
 MAKEMANYDGA(Source);
 
-typedef Source* RSource;
+typedef TCP_(Source) RSource;
 MAKEMANY(RSource);
 MAKEDGAMANY(RSource);
 
 typedef struct Galaxy {
-    int32_t index;
     char name[50];
-    DGAMANY(RSource) sources;
+
+    struct {
+        MANY(Source) all;
+        MANY(RSource) binary[2];
+        DGAMANY(RSource) multi;
+    } sources;
 } Galaxy;
 
 MAKEMANY(Galaxy);

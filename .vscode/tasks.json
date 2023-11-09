@@ -1,6 +1,14 @@
 {
     "tasks": [
         {
+            "label": "Make windowing",
+            "type": "shell",
+            "command": "make ca",
+            "options": {
+                "cwd": "/home/princio/Repo/princio/malware_detection_preditc_file/windowing"
+            }
+        },
+        {
             "type": "cppbuild",
             "label": "C/C++: gcc-9 build active file",
             "command": "/usr/bin/gcc-9",

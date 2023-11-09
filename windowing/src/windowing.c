@@ -1,9 +1,10 @@
 
 #include "windowing.h"
 
+#include "cache.h"
 #include "common.h"
+#include "io.h"
 #include "parameters.h"
-#include "persister.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -11,99 +12,39 @@
 #include <stdio.h>
 #include <string.h>
 
-#define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
+int io_windowing(IOReadWrite rw, TCPC(Windowing) windowing) {
+    char fname[700]; {
+        char subdigest[10];
 
-Windowing windowing;
-
-void windowing_message(const DNSMessage message, const MANY(PSet) psets, MANY(WindowingWindows)* sw) {
-    for (int32_t p = 0; p < psets.number; p++) {
-        
-        int wnum;
-        PSet* pset;
-        Window *window;
-        MANY(Window)* windows;
-
-        pset = &psets._[p];
-        windows = &sw->_[p].windows;
-
-        wnum = (int) floor(message.fn_req / pset->wsize);
-
-        if (wnum >= windows->number) {
-            printf("ERROR\n");
-            printf("      wnum: %d\n", wnum);
-            printf("     wsize: %d\n", pset->wsize);
-            printf("  nwindows: %d\n", windows->number);
-        }
-
-        window = &windows->_[wnum];
-
-        if (wnum != 0 && wnum != window->wnum) {
-            printf("Error[wnum != window->wnum]:\t%d\t%d\n", wnum, window->wnum);
-        }
-
-        int whitelistened = 0;
-        double value, logit;
-
-        if (pset->windowing == WINDOWING_Q && message.is_response) {
-            return;
-        } else
-        if (pset->windowing == WINDOWING_R && !message.is_response) {
-            return;
-        }
-
-        logit = message.logit;
-        value = message.value;
-
-        if (message.top10m > 0 && message.top10m < pset->whitelisting.rank) {
-            value = 0;
-            logit = pset->whitelisting.value;
-            whitelistened = 1;
-        }
-        if (logit == INFINITY) {
-            logit = pset->infinite_values.pinf;
-        } else
-            if (logit == (-1 * INFINITY)) {
-            logit = pset->infinite_values.ninf;
-        }
-
-        ++window->wcount;
-        window->dn_bad_05 += value >= 0.5;
-        window->dn_bad_09 += value >= 0.9;
-        window->dn_bad_099 += value >= 0.99;
-        window->dn_bad_0999 += value >= 0.999;
-
-        window->logit += logit;
-        window->whitelistened += whitelistened;
+        strncpy(subdigest, windowing->pset->digest, sizeof subdigest);
+        subdigest[9] = '\0';
+        sprintf(fname, "%s/%s_%s.bin", CACHE_PATH, windowing->source->name, subdigest);
     }
-}
 
-void io_windowing_path(const WindowingSource* ws, int32_t pset_index, char path[500]) {
-    char fname[200];
-    char subdigest[9];
-    const PSet* const pset = &windowing.psets._[pset_index];
+    if(rw == IO_WRITE && io_fileexists(fname)) {
+        printf("Warning: the file %s already exists.", fname);
+    }
 
-    strncpy(subdigest, pset->digest, sizeof subdigest);
-    sprintf(fname, "%s_%s_%s", windowing.rootpath, ws->galaxy->name, ws->source.name, subdigest);
-}
-
-int32_t io_windowing(IOReadWrite rw, char path, MANY(Window)* windows) {
     FILE* file;
     int error;
 
     error = 0;
-    file = open_file(rw, path);
+    file = io_openfile(rw, fname);
     if (file) {
-        FRWNPtr fn = rw ? freadN : fwriteN;
-        int32_t nw;
+        FRWNPtr fn = rw ? io_freadN : io_fwriteN;
 
-        FRW(fn, nw);
-
-        if (nw != windows->number) {
-            printf("Warning: nw_read != windows->number [%d != %d]\n", nw, windows->number);
+        if (rw == IO_WRITE) {
+            FRW(fn, windowing->windows.number);
+        } else {
+            int32_t nw = 0;
+            FRW(fn, nw);
+            if (nw != windowing->windows.number) {
+                printf("Warning: nw_read != windows->number [%d != %d]\n", nw, windowing->windows.number);
+            }
         }
 
-        for (int i = 0; i < windows->number; ++i) {
-            Window* window = &windows->_[i];
+        for (int i = 0; i < windowing->windows.number; ++i) {
+            Window* window = &windowing->windows._[i];
 
             FRW(fn, window->source_index);
             FRW(fn, window->pset_index);
@@ -130,209 +71,106 @@ int32_t io_windowing(IOReadWrite rw, char path, MANY(Window)* windows) {
     return error;
 }
 
-void windowing_init(PSetGenerator* psetgenerator) {
-    windowing.psets = parameters_generate(psetgenerator);
-}
-
-WindowingGalaxy* windowing_galaxy_add(char name[50]) {
-    WindowingGalaxy* wg = calloc(1, sizeof(WindowingGalaxy));
-    sprintf(wg->name, "%s", name);
-    list_insert(&windowing.galaxies, wg);
-    return wg;
-}
-
-WindowingSource* windowing_sources_add(const Source* source, WindowingGalaxy* gl, WindowingFunction fn) {
-    WindowingSource* ws_ptr;
-    int32_t* sources;
-    int32_t* binary;
-    int32_t* multi;
-
-    ws_ptr = calloc(1, sizeof(WindowingSource));
-
-    ws_ptr->source = *source;
-    ws_ptr->galaxy = gl;
-
-    INITMANY(ws_ptr->windows, windowing.psets.number, WindowingWindows);
-    
-    list_insert(&gl->sourceloaders, ws_ptr);
-
-    ++windowing.sources_count.all;
-    ++windowing.sources_count.binary[source->dgaclass > 0];
-    ++windowing.sources_count.multi[source->dgaclass];
-
-    ws_ptr->fn = fn;
-
-    return ws_ptr;
-}
-
-WindowingWindows windowing_windows_make(const Source* source, const PSet* pset) {
-    const int32_t nw = N_WINDOWS(source->fnreq_max, pset->wsize);
-
-    WindowingWindows ww;
-
-    ww.windows.number = nw;
-    INITMANY(ww.windows, ww.windows.number, Window);
-    for (int32_t w = 0; w < ww.windows.number; w++) {
-        ww.windows._[w].wnum = w;
-    }
-
-    return ww;
-}
-
-void windowing_windows_load(WindowingSource* ws, const int32_t pset_index) {
-    char path[500];
-    io_windowing_path(ws, pset_index, path);
-
-    if (0 == io_windowing(IO_READ, path, &ws->windows._[pset_index])) {
-        ws->windows._[pset_index].loaded = 1;
+void windowing_windows_init(T_PC(Windowing) windowing) {
+    const int32_t nw = N_WINDOWS(windowing->source->fnreq_max, windowing->pset->wsize);
+    INITMANY(windowing->windows, nw, Window);
+    for (int32_t w = 0; w < nw; w++) {
+        windowing->windows._[w].wnum = w;
     }
 }
 
-void windowing_windows_save(WindowingSource* ws, const int32_t pset_index) {
-    char path[500];
-
-    io_windowing_path(ws, pset_index, path);
-
-    if (io_windowing(IO_WRITE, path, &ws->windows._[pset_index])) {
-        ws->windows._[pset_index].saved = 1;
-        ws->saved += 1;
-    }
+int windowing_load(T_PC(Windowing) windowing) {
+    windowing_windows_init(windowing);
+    return io_windowing(IO_READ, windowing);
 }
 
-WindowingWindows windowing_wsource_load(WindowingSource* const wsource) {
-    const Source* const source = &wsource->source;
-
-    for (int32_t p = 0; p < windowing.psets.number; p++) {
-        wsource->windows._[p] = windowing_windows_make(source, &windowing.psets._[p]);
-        windowing_windows_load(wsource, p);
-
-        wsource->loaded += wsource->windows._[p].loaded;
-    }
+int windowing_save(TCPC(Windowing) windowing) {
+    return io_windowing(IO_WRITE, windowing);
 }
 
-WindowingWindows windowing_wsource_save(WindowingSource* const wsource) {
-    const Source* const source = &wsource->source;
+MANY(Windowing) windowing_run_1source_manypsets(TCPC(Source) source, MANY(PSet) psets, WindowingAPFunction fn) {
+    MANY(Windowing) windowingaps;
+    INITMANY(windowingaps, psets.number, Windowing);
 
-    for (int32_t p = 0; p < windowing.psets.number; p++) {
-        if (!wsource->windows._[p].loaded) {
-            windowing_windows_save(wsource, p);
-            wsource->saved += wsource->windows._[p].saved;
+    int32_t n_loaded = 0;
+    int32_t loaded[psets.number];
+    memset(loaded, 0, psets.number);
+    for (int32_t p = 0; p < psets.number; p++) {
+        windowingaps._[p].pset = &psets._[p];
+        windowingaps._[p].source = source;
+        
+        int32_t is_loaded = 0 == windowing_load(&windowingaps._[p]);
+        loaded[p] = is_loaded;
+        n_loaded += is_loaded;
+    }
+
+    if (n_loaded < psets.number) {
+        fn(source, psets, loaded, windowingaps);
+    }
+
+    for (int32_t p = 0; p < psets.number; p++) {
+        if (loaded[p]) {
+            continue;
         }
+        windowing_save(&windowingaps._[p]);
     }
+
+    return windowingaps;
 }
 
-void windowing_run() {
-    ListItem* wg_cursor = windowing.galaxies.root;
-    while(wg_cursor) {
-        WindowingGalaxy* wg;
-        ListItem* wsource_cursor;
+void windowing_domainname(const DNSMessage message, TCPC(Windowing) windowing) {
+    TCPC(PSet) pset = windowing->pset;
+    MANY(Window) const windows = windowing->windows;
 
-        wg  = wg_cursor->item;
-        wsource_cursor = wg->sourceloaders.root;
+    int wnum;
+    Window *window;
 
-        while(wsource_cursor) {
-            WindowingSource* wsource = wsource_cursor->item;
+    wnum = (int) floor(message.fn_req / pset->wsize);
 
-            INITMANY(wsource->windows, windowing.psets.number, MANY(WindowingWindows));
-
-            windowing_wsource_load(wsource);
-
-            if (wsource->loaded < wsource->windows.number) {
-                wsource->fn(&wsource->source, &wsource->windows);
-            }
-
-            windowing_wsource_load(wsource);
-
-            wsource_cursor = wsource_cursor->next;
-        }
-
-        wg_cursor = wg_cursor->next;
+    if (wnum >= windows.number) {
+        printf("ERROR\n");
+        printf("      wnum: %d\n", wnum);
+        printf("     wsize: %d\n", pset->wsize);
+        printf("  nwindows: %d\n", windows.number);
     }
-}
 
-void windowing_perform(const WindowingSource* wsource, const MANY(WindowingWindows) wws, const int32_t row) {
+    window = &windows._[wnum];
 
-}
-
-Experiment windowing_experiment() {
-
-    Experiment exp;
-
-    exp.psets = windowing.psets;
-
-    struct {
-        int32_t galaxies;
-        int32_t all;
-        int32_t binary[2];
-        int32_t multi[N_DGACLASSES];
-    } index;
-
-    struct {
-        int32_t all;
-        int32_t binary[2];
-        int32_t multi[N_DGACLASSES];
-    } windowing_index;
-
-    INITMANY(exp.galaxies, windowing.galaxies.size, Galaxy);
-
-    INITMANY(exp.sources.all, windowing.sources_count.all, Source);
-    INITMANY(exp.sources.binary[0], windowing.sources_count.binary[0], RSource);
-    INITMANY(exp.sources.binary[1], windowing.sources_count.binary[1], RSource);
-    INITMANY(exp.sources.multi[0], windowing.sources_count.multi[0], RSource);
-    INITMANY(exp.sources.multi[1], windowing.sources_count.multi[1], RSource);
-    INITMANY(exp.sources.multi[2], windowing.sources_count.multi[2], RSource);
-
-    INITMANY(exp.windowings.all, windowing.psets.number * windowing.sources_count.all, Windowing2);
-    INITMANY(exp.windowings.binary[0], windowing.psets.number * windowing.sources_count.binary[0], RWindowing2);
-    INITMANY(exp.windowings.binary[1], windowing.psets.number * windowing.sources_count.binary[1], RWindowing2);
-    INITMANY(exp.windowings.multi[0], windowing.psets.number * windowing.sources_count.multi[0], RWindowing2);
-    INITMANY(exp.windowings.multi[1], windowing.psets.number * windowing.sources_count.multi[1], RWindowing2);
-    INITMANY(exp.windowings.multi[2], windowing.psets.number * windowing.sources_count.multi[2], RWindowing2);
-
-    
-    memset(&index, 0, sizeof(index));
-    memset(&windowing_index, 0, sizeof(windowing_index));
-
-    ListItem* wg_cursor = windowing.galaxies.root;
-    while(wg_cursor) {
-        WindowingGalaxy* const wg  = wg_cursor->item;
-        Galaxy* const galaxy = &exp.galaxies._[index.galaxies++];
-
-        ListItem* wsource_cursor = wg->sourceloaders.root;
-
-        {
-            strcpy(galaxy->name, wg->name);
-        }
-
-        while(wsource_cursor) {
-            WindowingSource* wsource = wsource_cursor->item;
-            Source* const source = &exp.sources.all._[index.all];
-
-            exp.sources.binary[DGABINARY(source->dgaclass)]._[index.binary[DGABINARY(source->dgaclass)]] = source;
-            exp.sources.multi[source->dgaclass]._[index.multi[source->dgaclass]] = source;
-
-            source->index.all = index.all;
-            source->index.binary = index.binary[DGABINARY(source->dgaclass)];
-            source->index.multi = index.multi[source->dgaclass];
-
-            source->index.galaxy = index.galaxies;
-
-            for (int32_t p = 0; p < windowing.psets.number; p++) {
-                WindowingWindows* ww = &wsource->windows._[p];
-                Windowing2* const windowing2 = &exp.windowings.all._[windowing_index.all];
-
-                exp.windowings.binary[DGABINARY(source->dgaclass)]._[index.binary[DGABINARY(source->dgaclass)]] = windowing2;
-                exp.windowings.multi[source->dgaclass]._[index.binary[source->dgaclass]] = windowing2;
-
-                for (int32_t w = 0; w < windowing2->number; w++) {
-                    windowing2->_[w].source_index = index.all;
-                    windowing2->_[w].pset_index = p;
-                }
-            }
-
-            wsource_cursor = wsource_cursor->next;
-        }
-
-        wg_cursor = wg_cursor->next;
+    if (wnum != 0 && wnum != window->wnum) {
+        printf("Error[wnum != window->wnum]:\t%d\t%d\n", wnum, window->wnum);
     }
+
+    int whitelistened = 0;
+    double value, logit;
+
+    if (pset->windowing == WINDOWING_Q && message.is_response) {
+        return;
+    } else
+    if (pset->windowing == WINDOWING_R && !message.is_response) {
+        return;
+    }
+
+    logit = message.logit;
+    value = message.value;
+
+    if (message.top10m > 0 && message.top10m < pset->whitelisting.rank) {
+        value = 0;
+        logit = pset->whitelisting.value;
+        whitelistened = 1;
+    }
+    if (logit == INFINITY) {
+        logit = pset->infinite_values.pinf;
+    } else
+        if (logit == (-1 * INFINITY)) {
+        logit = pset->infinite_values.ninf;
+    }
+
+    ++window->wcount;
+    window->dn_bad_05 += value >= 0.5;
+    window->dn_bad_09 += value >= 0.9;
+    window->dn_bad_099 += value >= 0.99;
+    window->dn_bad_0999 += value >= 0.999;
+
+    window->logit += logit;
+    window->whitelistened += whitelistened;
 }

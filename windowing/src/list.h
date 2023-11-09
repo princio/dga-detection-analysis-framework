@@ -21,9 +21,12 @@ typedef struct Many {
     void** _;
 } Many;
 
+List list_create(const int32_t element_size);
+void list_init(List* list, const int32_t element_size);
+
 ListItem* list_get(const List* list, const int32_t index);
 
-void list_insert(const List* lists, void* item);
+void list_insert(List* lists, TCPC(void));
 
 Many list_to_array(List list);
 

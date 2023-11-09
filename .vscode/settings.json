@@ -138,7 +138,11 @@
         "evaluate.h": "c",
         "evaluate_functions.h": "c",
         "performance_defaults.h": "c",
-        "calculator.h": "c"
+        "calculator.h": "c",
+        "errno.h": "c",
+        "io.h": "c",
+        "testbed.h": "c",
+        "list.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

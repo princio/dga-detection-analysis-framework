@@ -15,8 +15,10 @@
 #define FALSERATIO(tf) (((double) (tf).falses) / ((tf).falses + (tf).trues))
 #define TRUERATIO(tf) (((double) (tf).trues) / ((tf).falses + (tf).trues))
 
+
 #define MIN(A, B) (A.min) = ((B) <= (A.min) ? (B) : (A.min))
 #define MAX(A, B) (A.max) = ((B) >= (A.max) ? (B) : (A.max))
+
 
 MANY(TT) kfold_sets(Dataset* ds, KFoldConfig config) {
     assert((config.balance_method != FOLDING_DSBM_EACH) || (config.split_method != FOLDING_DSM_IGNORE_1));

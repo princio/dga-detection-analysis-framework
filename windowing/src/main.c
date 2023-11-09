@@ -20,16 +20,15 @@
 #include "args.h"
 #include "colors.h"
 #include "dataset.h"
+#include "cache.h"
 #include "common.h"
-// #include "experiment.h"
 #include "performance_defaults.h"
 #include "kfold.h"
 #include "parameters.h"
-// #include "persister.h"
 #include "stratosphere.h"
 #include "tt.h"
-// #include "tester.h"
-// #include "windowing.h"
+#include "testbed.h"
+#include "windowing.h"
 
 #include <assert.h>
 #include <float.h>
@@ -67,16 +66,6 @@ char NN_NAMES[11][10] = {
     "PRIVATE",
     "TLD"
 };
-
-DGA(NSources) NSOURCES;
-
-void source_count(Sources sources, int counts[N_DGACLASSES]) {
-    memset(counts, 0, sizeof(int32_t));
-    for (int32_t i = 0; i < sources.number; i++) {
-        counts[sources._[i].dgaclass]++;
-    }
-}
-
 
 MANY(Performance) gen_performance() {
     MANY(Performance) performances;
@@ -142,8 +131,41 @@ void exps_1() {
         psetgenerator.infinitevalues = infinitevalues;
     }
 
-    MANY(PSet) psets = parameters_generate(&psetgenerator);
+    cache_setpath("/home/princio/Desktop/exps/refactor/exp_2");
 
+    testbed_init(&psetgenerator);
+
+    stratosphere_run();
+
+    TestBed tb = testbed_run();
+
+    testbed_free(&tb);
+}
+
+int main (int argc, char* argv[]) {
+    setbuf(stdout, NULL);
+
+    /* Read command line options */
+    options_t options;
+    options_parser(argc, argv, &options);
+
+#ifdef DEBUG
+    fprintf(stdout, BLUE "Command line options:\n" NO_COLOR);
+    fprintf(stdout, BROWN "help: %d\n" NO_COLOR, options.help);
+    fprintf(stdout, BROWN "version: %d\n" NO_COLOR, options.version);
+    fprintf(stdout, BROWN "use colors: %d\n" NO_COLOR, options.use_colors);
+    fprintf(stdout, BROWN "filename: %s\n" NO_COLOR, options.file_name);
+#endif
+
+    /* Do your magic here :) */
+
+    exps_1();
+
+    return 0;
+}
+
+
+/*
     Datasets datasets;
     datasets.number = psets.number;
     datasets._ = calloc(datasets.number, sizeof(Dataset));
@@ -160,25 +182,23 @@ void exps_1() {
 
     stratosphere_add_to_galaxyes();
 
-    Sources stratosphere_sources;
-
     stratosphere_run(&exp, datasets, &stratosphere_sources);
 
     experiment_sources_fill(&exp);
     
-    // for (int32_t i = 0; i < datasets.number; i++) {
-    //     for (int32_t w = 0; w < datasets._[i].windows[1].number; w++) {
-    //         Window window = datasets._[i].windows[1]._[w];
-    //         printf("(%d, %d, %d, %d, %d, %g)\n", i, 1, w, window.source_id, window.window_id, window.logit);
-    //     }
-    // }
+    for (int32_t i = 0; i < datasets.number; i++) {
+        for (int32_t w = 0; w < datasets._[i].windows[1].number; w++) {
+            Window window = datasets._[i].windows[1]._[w];
+            printf("(%d, %d, %d, %d, %d, %g)\n", i, 1, w, window.source_id, window.window_id, window.logit);
+        }
+    }
 
-    // DATASETs ARE READY
-    // TEST FOR EACH DATASET, WHICH MEAN:
-    //   - split train test
-    //   - choose with some method (f1score, fpr) the threshold within the train subset
-    //   - test with the choosen threshold the train subset
-    //   - analyze the confusion matricies obtained within the test subset
+    DATASETs ARE READY
+    TEST FOR EACH DATASET, WHICH MEAN:
+      - split train test
+      - choose with some method (f1score, fpr) the threshold within the train subset
+      - test with the choosen threshold the train subset
+      - analyze the confusion matricies obtained within the test subset
 
     printf("Sources loaded\n\n");
 
@@ -223,6 +243,7 @@ void exps_1() {
 
     free(perfomances._);
 }
+*/
     // Sources sources;
 
     // Sources sources_by_type[1];
@@ -333,26 +354,6 @@ void exps_1() {
 
 //     return c;
 // }
-
-int main (int argc, char* argv[]) {
-    setbuf(stdout, NULL);
-
-    /* Read command line options */
-    options_t options;
-    options_parser(argc, argv, &options);
-
-#ifdef DEBUG
-    fprintf(stdout, BLUE "Command line options:\n" NO_COLOR);
-    fprintf(stdout, BROWN "help: %d\n" NO_COLOR, options.help);
-    fprintf(stdout, BROWN "version: %d\n" NO_COLOR, options.version);
-    fprintf(stdout, BROWN "use colors: %d\n" NO_COLOR, options.use_colors);
-    fprintf(stdout, BROWN "filename: %s\n" NO_COLOR, options.file_name);
-#endif
-
-    /* Do your magic here :) */
-
-    exps_1();
-
 /*
     int n0 = 3;
     int n1 = 1;
@@ -627,5 +628,5 @@ int main (int argc, char* argv[]) {
     // }
 
     return EXIT_SUCCESS;
-    */
 }
+*/

@@ -6,6 +6,8 @@
 
 #define UNUSED(x) (void)(x)
 
+int32_t NSOURCES[10];
+
 void detect_reset(Detection* det) {
     det->th = -1 * DBL_MIN;
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
@@ -48,10 +50,10 @@ void detect_run(DGAMANY(RWindow) drw, double th, Detection* det) {
 
             if (prediction == infected) {
                 cm->windows.trues++;
-                cm->sources._[window->source_classindex].trues++;
+                cm->sources._[window->dgaclass].trues++;
             } else {
                 cm->windows.falses++;
-                cm->sources._[window->source_classindex].falses++;
+                cm->sources._[window->dgaclass].falses++;
             }
         }
     }

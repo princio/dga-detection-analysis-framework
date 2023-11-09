@@ -151,6 +151,7 @@ valgrind:
 		--leak-check=full \
 		--leak-resolution=high \
 		--log-file=$(LOGDIR)/$@.log \
+		--main-stacksize=83886080\
 		$(BINDIR)/$(BINARY)
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 

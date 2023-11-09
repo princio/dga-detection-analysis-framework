@@ -28,6 +28,7 @@ typedef Window* RWindow;
 
 MAKEMANY(Window);
 MAKEMANY(MANY(Window));
+MAKEDGAMANY(Window);
 
 MAKEMANY(RWindow);
 MAKEDGAMANY(RWindow);

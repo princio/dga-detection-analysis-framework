@@ -33,20 +33,13 @@ typedef struct PSetGenerator {
 } PSetGenerator;
 
 MAKEMANY(PSet);
-
-typedef struct PSet__s {
-    const int32_t number;
-    const PSet* _;
-} PSet__s;
-
-MAKEMANY(PSet);
 MAKEMANYCONST(PSet);
 
 void parameters_hash(PSet*);
 
 void parameters_print(PSet* pset);
 
-MANY(PSet) parameters_generate(PSetGenerator*);
+MANY(PSet) parameters_generate(TCPC(PSetGenerator));
 
 
 #endif

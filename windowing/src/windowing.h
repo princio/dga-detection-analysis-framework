@@ -5,81 +5,42 @@
 #include "parameters.h"
 #include "sources.h"
 
-MAKEDGA(List);
-
-typedef struct WindowingWindows {
-    int loaded;
-    int initilized;
-    int saved;
-
-    MANY(Window) windows;
-
-} WindowingWindows;
-
-MAKEMANY(WindowingWindows);
-
-typedef void (*WindowingFunction)(const Source*, MANY(WindowingWindows)* const);
-
-typedef struct WindowingGalaxy {
-    int32_t index;
-
-    char name[50];
-
-    int loaded;
-
-    List sourceloaders;
-} WindowingGalaxy;
-
-MAKEMANY(WindowingGalaxy);
-
-typedef struct WindowingSource {
-    int32_t index;
-
-    WindowingGalaxy* galaxy;
-
-    int loaded;
-    int saved;
-
-    WindowingFunction fn;
-    
-    MANY(WindowingWindows) windows;
-    
-    Source source;
-} WindowingSource;
-
-MAKEMANY(WindowingSource);
+#define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
 typedef struct Windowing {
-    char rootpath[300];
-    struct {
-        int32_t all;
-        int32_t binary[2];
-        int32_t multi[N_DGACLASSES];
-    } sources_count;
+    RSource source;
     
-    MANY(PSet) psets;
-    List galaxies;
+    PSet* pset;
+
+    MANY(Window) windows;
 } Windowing;
 
-typedef MANY(Window) Windowing2;
-MAKEMANY(Windowing2);
+typedef Windowing* RWindowing;
 
-typedef MANY(Window)* RWindowing2;
-MAKEMANY(RWindowing2);
-MAKEDGAMANY(RWindowing2);
+MAKEMANY(Windowing);
+MAKEMANY(RWindowing);
+MAKEDGA(Windowing);
+MAKEDGA(RWindowing);
 
-extern Windowing windowing;
+MAKEDGAMANY(Windowing);
+MAKEDGAMANY(RWindowing);
 
-void windowing_message(const DNSMessage message, const MANY(PSet) psets, MANY(WindowingWindows)* sw);
+typedef void (*WindowingFunction)(TCPC(Source), MANY(RWindowing) const);
 
-void windowing_init(PSetGenerator* psetgenerator);
+typedef struct WindowingOrigin {
+    MANY(Galaxy) galaxies;
 
-WindowingGalaxy* windowing_galaxy_add(char[50]);
+    struct {
+        MANY(Source) all;
+        MANY(RSource) binary[2];
+        DGAMANY(RSource) multi;
+    } sources;
+} WindowingOrigin;
 
-WindowingSource* windowing_sources_add(const Source*, WindowingGalaxy*, WindowingFunction);
+typedef void (*WindowingAPFunction)(TCPC(Source), MANY(PSet), int32_t[], MANY(Windowing));
 
-WindowingWindows windowing_galaxy_windows_load(const WindowingGalaxy*);
+void windowing_domainname(const DNSMessage message, TCPC(Windowing) windowing);
 
-void windowing_save();
+MANY(Windowing) windowing_run_1source_manypsets(TCPC(Source) source, MANY(PSet) psets, WindowingAPFunction fn);
 
 #endif

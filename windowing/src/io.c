@@ -10,12 +10,17 @@
 #include <string.h>
 #include <sys/stat.h>
 
-int dir_exists(char* dir) {
+int io_direxists(char* dir) {
     struct stat st = {0};
     return stat(dir, &st) == 0 && S_ISDIR(st.st_mode);
 }
 
-int make_dir(char* dir, int append_time) {
+int io_fileexists(char* dir) {
+    struct stat st = {0};
+    return stat(dir, &st) == 0 && S_ISREG(st.st_mode);
+}
+
+int io_makedir(char* dir, int append_time) {
     char dir2[strlen(dir) + 50];
 
     if (append_time) {
@@ -26,20 +31,20 @@ int make_dir(char* dir, int append_time) {
         strcpy(dir2, dir);
     }
 
-    if (dir_exists(dir) || mkdir(dir, 0700) == 0) {
-        return 0;
+    if (!io_direxists(dir2)) {
+        if(mkdir(dir2, 0700) == -1) return -1;
     }
 
-    return -1;
+    return 0;
 }
 
-FILE* open_file(IOReadWrite read, char fname[500]) {
+FILE* io_openfile(IOReadWrite read, char fname[500]) {
     FILE* file;
     file = fopen(fname, read ? "rb+" : "wb+");
     return file;
 }
 
-void DumpHex(const void* data, size_t size) {
+void io_dumphex(const void* data, size_t size) {
 	char ascii[17];
 	size_t i, j;
 	ascii[16] = '\0';
@@ -69,14 +74,14 @@ void DumpHex(const void* data, size_t size) {
     printf("\n");
 }
 
-void fwrite32(uint32_t* n, FILE* file) {
+void io_fwrite32(uint32_t* n, FILE* file) {
     uint32_t be;
     memcpy(&be, n, 4);
     be = htobe32(be);
     fwrite(&be, sizeof(uint32_t), 1, file);
 }
 
-void fwriteN(void* v, size_t s, FILE* file) {
+void io_fwriteN(void* v, size_t s, FILE* file) {
     // printf("Size of = %ld\n", s);
     if (s % 8 == 0) {
         uint64_t be[s/8];
@@ -98,7 +103,7 @@ void fwriteN(void* v, size_t s, FILE* file) {
     }
 }
 
-void freadN(void* v, size_t s, FILE* file) {
+void io_freadN(void* v, size_t s, FILE* file) {
     if (s % 8 == 0) {
         uint64_t be[s/8];
         fread(be, s, 1, file);
@@ -119,21 +124,21 @@ void freadN(void* v, size_t s, FILE* file) {
     }
 }
 
-void fwrite64(void* n, FILE* file) {
+void io_fwrite64(void* n, FILE* file) {
     uint64_t be;
     memcpy(&be, n, 8);
     be = htobe64(be);
     fwrite(&be, sizeof(uint64_t), 1, file);
 }
 
-void fread32(void *v, FILE* file) {
+void io_fread32(void *v, FILE* file) {
     uint32_t be;
     fread(&be, sizeof(uint32_t), 1, file);
     be = be32toh(be);
     memcpy(v, &be, 4);
 }
 
-void fread64(void *v, FILE* file) {
+void io_fread64(void *v, FILE* file) {
     uint64_t be;
     fread(&be, sizeof(uint64_t), 1, file);
     be = be64toh(be);
