@@ -2,6 +2,7 @@
 #ifndef __DETECT_H__
 #define __DETECT_H__
 
+#include "dataset.h"
 #include "sources.h"
 #include "windows.h"
 
@@ -10,24 +11,12 @@ typedef struct CM {
     int32_t trues;
 } CM;
 
-typedef struct CMs {
-    int32_t number; // number of trues/falses windows for each source
-    CM* _; // number of trues/falses windows for each source
-} CMs;
-
-typedef struct CM2 {
-    CM windows;
-    CMs sources;
-} CM2;
-
-MAKEDGA(CM2);
-MAKEMANY(CM2);
-MAKEDGAMANY(CM2);
-
 typedef struct Detection {
-    double th;
-    DGA(CM2) cm2dga;
+    CM windows;
+    CM sources[MAX_SOURCEs];
 } Detection;
+
+typedef Detection FullDetection[N_DGACLASSES];
 
 #define N_PERFORMANCE_DGAHANDLINGs 2
 
@@ -44,7 +33,7 @@ enum PerfomanceDGAHandling {
 
 struct Performance;
 
-typedef double (*PerformanceFunctionPtr)(TCPC(Detection), struct Performance*);
+typedef double (*PerformanceFunctionPtr)(Detection*[N_DGACLASSES], TCPC(struct Performance));
 
 typedef struct Performance {
     char name[20];
@@ -61,13 +50,11 @@ MAKEMANY(Performance);
 
 
 void detect_reset(Detection*);
-void detect_init(Detection*, const Index);
-void detect_free(Detection*);
 void detect_copy(TCPC(Detection) src, Detection* dst);
 
-void detect_run(const DGAMANY(RWindow), const double, Detection*);
+Detection* detect_run(MANY(RWindow) ds, const double th);
 
-double detect_performance(TCPC(Detection), Performance*);
+double detect_performance(Detection*[N_DGACLASSES], TCPC(Performance));
 
 int detect_performance_compare(Performance*, double, double);
 

@@ -1,6 +1,7 @@
 #ifndef __WINDOWINGTESTBED_H__
 #define __WINDOWINGTESTBED_H__
 
+#include "dataset.h"
 #include "parameters.h"
 #include "windowing.h"
 
@@ -17,8 +18,8 @@ typedef struct TestBedWindows {
 } TestBedWindows;
 
 typedef struct TestBedPSetApply {
-    TestBedWindowing windowings;
-    TestBedWindows windows;
+    TestBedWindowing windowings; // composed by N_SOURCEs elements
+    TestBedWindows windows; // composed by one element.
 } TestBedPSetApply;
 
 typedef struct TestBedSources {
@@ -31,17 +32,13 @@ typedef struct TestBedSources {
 /// We cannot perform Windowing one source and one parameter set per time, it would require too much time.
 /// For this reason, we perform $p$ parameter sets for noe source per time.
 typedef struct TestBed {
-
     MANY(PSet) psets;
 
     MANY(Galaxy) galaxies; // UNUSED
 
     TestBedSources sources;
 
-    /**
-     * @brief Construct a new `windowings` object composed by N_PSETs x N_SOURCES Windowing
-     */
-    TestBedPSetApply* applies;
+    TestBedPSetApply* applies; // composed by N_PSETs elements
 } TestBed;
 
 void testbed_source_add(Source* source, int type, WindowingAPFunction fn);

@@ -6,28 +6,11 @@
 
 #define UNUSED(x) (void)(x)
 
-int32_t NSOURCES[10];
-
 void detect_reset(Detection* det) {
-    det->th = -1 * DBL_MIN;
+    // det->th = -1 * DBL_MIN;
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        memset(det->cm2dga[cl].sources._, 0, det->cm2dga[cl].sources.number * sizeof(CM));
-        memset(&det->cm2dga[cl].windows, 0, sizeof(CM));
-    }
-}
-
-
-void detect_init(Detection* det, const Index nsources) {
-    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        INITMANY(det->cm2dga[cl].sources, nsources.multi[cl], CM);
-    }
-
-    detect_reset(det);
-}
-
-void detect_free(Detection* det) {
-    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        free(det->cm2dga[cl].sources._);
+        memset(det->sources, 0, MAX_SOURCEs * sizeof(CM));
+        memset(&det->windows, 0, sizeof(CM));
     }
 }
 
@@ -35,31 +18,31 @@ void detect_copy(TCPC(Detection) src, Detection* dst) {
     memcpy(dst, src, sizeof(Detection));
 }
 
-void detect_run(const DGAMANY(RWindow) drw, const double th, Detection* det) {
-    detect_reset(det);
+Detection* detect_run(MANY(RWindow) ds, const double th) {
+    Detection* detection = calloc(1, sizeof(Detection));
 
-    det->th = th;
+    detect_reset(detection);
 
-    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        CM2* cm = &det->cm2dga[cl];
+    for (int32_t i = 0; i < ds.number; i++) {
+        RWindow window = ds._[i];
 
-        for (int32_t i = 0; i < drw[cl].number; i++) {
-            Window* window = drw[cl]._[i];
-            int prediction = window->logit >= th;
-            int infected = cl > 0;
+        const int cl = window->dgaclass;
+        const int prediction = window->logit >= th;
+        const int infected = window->dgaclass > 0;
 
-            if (prediction == infected) {
-                cm->windows.trues++;
-                cm->sources._[window->index.multi[cl]].trues++;
-            } else {
-                cm->windows.falses++;
-                cm->sources._[window->index.multi[cl]].falses++;
-            }
+        if (prediction == infected) {
+            detection->windows.trues++;
+            detection->sources[window->index.multi[cl]].trues++;
+        } else {
+            detection->windows.falses++;
+            detection->sources[window->index.multi[cl]].falses++;
         }
     }
+
+    return detection;
 }
 
-double detect_performance(TCPC(Detection) detection, Performance* performance) {
+double detect_performance(Detection* detection[N_DGACLASSES], TCPC(Performance) performance) {
     return performance->func(detection, performance);
 }
 

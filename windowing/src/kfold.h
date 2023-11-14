@@ -45,13 +45,6 @@ typedef struct KFold {
     MANY(KFoldSet) ks;
 } KFold;
 
-
-MANY(TT) kfold_sets(TCPC(TestBedWindows) ds, TCPC(TestBedSources) sources,  KFoldConfig config);
-
-MANY(KFoldSet) kfold_evaluation(MANY(TT) tts, MANY(Performance) performances);
-
-KFold kfold_run(TCPC(TestBedWindows) ds, TCPC(TestBedSources) sources, KFoldConfig config, MANY(Performance) performances);
-
-void kfold_free(KFold kfold);
+MANY(TT) kfold_run(const Dataset ds,  KFoldConfig config);
 
 #endif

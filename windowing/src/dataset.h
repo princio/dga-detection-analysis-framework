@@ -4,16 +4,10 @@
 
 #include "common.h"
 
-#include "parameters.h"
-#include "sources.h"
 #include "windows.h"
 
-typedef struct Dataset {
-    int32_t id;
-    PSet* pset;
-    DGAMANY(Window) windows;
-} Dataset;
+typedef MANY(RWindow) Dataset[N_DGACLASSES];
 
-MAKEMANY(Dataset);
+Index dataset_count_sources(Dataset);
 
 #endif

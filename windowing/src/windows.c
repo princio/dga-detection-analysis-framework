@@ -4,13 +4,20 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
-void rwindows_from(MANY(Window) windows, MANY(RWindow)* rwindows) {
-    rwindows->number = windows.number;
-    rwindows->_ = calloc(rwindows->number, sizeof(Window*));
+MANY(RWindow) rwindows_from(MANY(RWindow) rwindows_src) {
+    MANY(RWindow) rwindows;
+    Window** _windows;
     
-    for (int32_t w = 0; w < rwindows->number; w++) {
-        rwindows->_[w] = &windows._[w];
+    _windows = calloc(rwindows_src.number, sizeof(Window*));
+    
+    for (int32_t w = 0; w < rwindows_src.number; w++) {
+        _windows[w] = rwindows_src._[w];
     }
+
+    rwindows.number = rwindows_src.number;
+    rwindows._ = _windows;
+
+    return rwindows;
 }
 
 void rwindows_shuffle(MANY(RWindow) rwindows) {

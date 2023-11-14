@@ -67,6 +67,95 @@ char NN_NAMES[11][10] = {
     "TLD"
 };
 
+typedef struct Score {
+    double th;
+    double score;
+    Performance performance;
+} Score;
+
+MANY(Performance) performances;
+
+MAKEMANY(double);
+
+MANY(double) _rwindows_ths(const DGAMANY(RWindow) dsrwindows) {
+    MANY(double) ths;
+    int max;
+    double* ths_tmp;
+
+    max = 0;
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
+        max += dsrwindows[cl].number;
+    }
+
+    ths_tmp = calloc(max, sizeof(double));
+
+    int n = 0;
+    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
+        for (int32_t w = 0; w < dsrwindows[cl].number; w++) {
+            int logit;
+            int exists;
+
+            logit = floor(dsrwindows[cl]._[w]->logit);
+            exists = 0;
+            for (int32_t i = 0; i < n; i++) {
+                if (ths_tmp[i] == logit) {
+                    exists = 1;
+                    break;
+                }
+            }
+
+            if(!exists) {
+                ths_tmp[n++] = logit;
+            }
+        }
+    }
+
+    ths.number = n;
+    ths._ = calloc(n, sizeof(double));
+    memcpy(ths._, ths_tmp, sizeof(double) * n);
+
+    free(ths_tmp);
+
+    return ths;
+}
+
+void train(TT tt, MANY(Performance) performances, Score scores[performances.number]) {
+    MANY(double) ths;
+    int8_t outputs_init[tt[DGACLASS_0].train.number];
+
+    ths = _rwindows_ths(&tt[DGACLASS_0].train);
+
+    printf("ths.number\t%d\n", ths.number);
+
+    memset(outputs_init, 0, tt[DGACLASS_0].train.number * sizeof(int8_t));
+
+    for (int t = 0; t < ths.number; t++) {
+        Detection* fulldetection[N_DGACLASSES];
+
+        DGAFOR(cl) {
+            fulldetection[cl] = detect_run(tt[DGACLASS_0].train, ths._[t]);
+        }
+
+        for (int32_t ev = 0; ev < performances.number; ev++) {
+            double performance_score = detect_performance(fulldetection, &performances._[ev]);
+
+            const int is_better = detect_performance_compare(&performances._[ev], performance_score, scores[ev].score);
+            if (outputs_init[ev] == 0 || is_better) {
+                outputs_init[ev] = 1;
+                scores[ev].score = performance_score;
+                scores[ev].th = ths._[t];
+                scores[ev].performance = performances._[ev];
+            }
+        }
+
+        DGAFOR(cl) {
+            free(fulldetection[cl]);
+        }
+    }
+
+    free(ths._);
+}
+
 MANY(Performance) gen_performance() {
     MANY(Performance) performances;
 
@@ -88,11 +177,10 @@ void exps_1() {
 
     {
         int32_t wsizes[] = { 100 }; //, 5, 100 };//, 5, 100, 2500 };
-    
-    //     wsizes._[1] = 50;
-    //     wsizes._[2] = 100;
-    //     wsizes._[3] = 200;
-    //     wsizes._[4] = 2500;
+        //     wsizes._[1] = 50;
+        //     wsizes._[2] = 100;
+        //     wsizes._[3] = 200;
+        //     wsizes._[4] = 2500;
 
         NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
 
@@ -113,7 +201,6 @@ void exps_1() {
         InfiniteValues infinitevalues[] = {
             { .ninf = -20, .pinf = 20 }
         };
-
 
         psetgenerator.n_wsize = sizeof(wsizes) / sizeof(int32_t);
         psetgenerator.wsize = wsizes;
@@ -139,27 +226,6 @@ void exps_1() {
 
     TestBed tb = testbed_run();
 
-    for (int32_t i = 0; i < tb.applies[0].windowings.all.number; i++) {
-        int nw = tb.applies[0].windowings.all._[i].windows.number;
-        for (int32_t w = 0; w < (nw < 10 ? nw : 10); w++) {
-            printf("%6d\t%g\n", tb.applies[0].windowings.all._[i].windows._[w].wnum, tb.applies[0].windowings.all._[i].windows._[w].logit);
-        }
-    }
-    printf("\n");
-    for (int32_t i = 0; i < tb.applies[0].windowings.binary[0].number; i++) {
-        int nw = tb.applies[0].windowings.binary[0]._[i].windows.number;
-        for (int32_t w = 0; w < (nw < 10 ? nw : 10); w++) {
-            printf("%6d\t%g\n", tb.applies[0].windowings.binary[0]._[i].windows._[w].wnum, tb.applies[0].windowings.binary[0]._[i].windows._[w].logit);
-        }
-    }
-    printf("\n");
-    for (int32_t i = 0; i < tb.applies[0].windowings.multi[0].number; i++) {
-        int nw = tb.applies[0].windowings.multi[0]._[i].windows.number;
-        for (int32_t w = 0; w < (nw < 10 ? nw : 10); w++) {
-            printf("%6d\t%g\n", tb.applies[0].windowings.multi[0]._[i].windows._[w].wnum, tb.applies[0].windowings.multi[0]._[i].windows._[w].logit);
-        }
-    }
-
     KFoldConfig kconfig = {
         .balance_method = FOLDING_DSBM_NOT_INFECTED,
         .kfolds = 10,
@@ -168,11 +234,44 @@ void exps_1() {
         .test_folds = 2,
     };
 
-    MANY(Performance) performances = gen_performance();
+    MANY(Performance) performances;
+    MANY(TT) tts;
 
-    KFold kfold = kfold_run(&tb.applies[0].windows, &tb.sources, kconfig, performances);
+    performances = gen_performance();
 
+    tts = kfold_run(tb.applies[0].windows.multi, kconfig);
+
+    Score scores[kconfig.kfolds][performances.number];
+
+    for (int32_t k = 0; k < kconfig.kfolds; k++) {
+        Score train_scores[performances.number];
+
+        train(tts._[k], performances, train_scores);
+
+        for (int32_t s = 0; s < performances.number; s++) {
+            Detection* detection[N_DGACLASSES];
+            DGAFOR(cl) {
+                scores[k][s] = train_scores[s];
+                detection[cl] = detect_run(tts._[k][DGACLASS_2].test, scores[k][s].th);
+            }
+            scores[k][s].score = detect_performance(detection, &scores[k][s].performance);
+            DGAFOR(cl) {
+                free(detection[cl]);
+            }
+        }
+    }
+    
     testbed_free(&tb);
+    free(performances._);
+
+    for (int32_t k = 0; k < kconfig.kfolds; k++) {
+        DGAFOR(cl) {
+            free(tts._[k][cl].train._);
+            free(tts._[k][cl].test._);
+        }
+    }
+
+    free(tts._);
 }
 
 int main (int argc, char* argv[]) {

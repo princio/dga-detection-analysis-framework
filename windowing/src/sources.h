@@ -6,6 +6,7 @@
 
 #include "list.h"
 
+#define MAX_SOURCEs 100
 
 typedef enum SourceWindowingExecution {
     SOURCE_WINDOWING_TYPE_SINGLE,

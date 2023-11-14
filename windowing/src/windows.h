@@ -31,7 +31,14 @@ MAKEDGAMANY(Window);
 MAKEMANY(RWindow);
 MAKEDGAMANY(RWindow);
 
-void rwindows_from(MANY(Window), MANY(RWindow)*);
+typedef struct RWindowSplit {
+    MANY(RWindow) train;
+    MANY(RWindow) test;
+} RWindowSplit;
+
+MAKEMANY(RWindowSplit);
+
+MANY(RWindow) rwindows_from(MANY(RWindow) rwindows_src);
 
 void rwindows_shuffle(MANY(RWindow));
 

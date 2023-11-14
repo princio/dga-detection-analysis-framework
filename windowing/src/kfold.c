@@ -1,6 +1,6 @@
 #include "kfold.h"
 
-#include "dataset.h"
+#include "testbed.h"
 
 #include <assert.h>
 #include <float.h>
@@ -19,8 +19,60 @@
 #define MIN(A, B) (A.min) = ((B) <= (A.min) ? (B) : (A.min))
 #define MAX(A, B) (A.max) = ((B) >= (A.max) ? (B) : (A.max))
 
+void kfold_splits(MANY(RWindow) rwindows_src, MANY(TT) tts, DGAClass cl, KFoldConfig config, const int32_t _max_windows) {
+    const int32_t KFOLDs = config.kfolds;
+    const int32_t TRAIN_KFOLDs = config.kfolds - config.test_folds;
+    const int32_t TEST_KFOLDs = config.test_folds;
 
-MANY(TT) kfold_sets(TCPC(TestBedWindows) ds, TCPC(TestBedSources) sources, KFoldConfig config) {
+    const int32_t max_windows = (_max_windows != 0) && (_max_windows < rwindows_src.number) ? _max_windows : rwindows_src.number;
+
+    const int32_t kfold_size = max_windows / KFOLDs;
+    const int32_t kfold_size_rest = max_windows - (kfold_size * KFOLDs);
+
+    int32_t kindexes[KFOLDs][KFOLDs]; {
+        for (int32_t k = 0; k < KFOLDs; k++) {
+            for (int32_t kindex = k; kindex < (k + TRAIN_KFOLDs); kindex++) {
+                kindexes[k][kindex % KFOLDs] = 0;
+            }
+            for (int32_t kindex = k + TRAIN_KFOLDs; kindex < (k + KFOLDs); kindex++) {
+                kindexes[k][kindex % KFOLDs] = 1;
+            }
+        }
+    }
+
+    for (int32_t k = 0; k < KFOLDs; k++) {
+        
+        int32_t train_index;
+        int32_t test_index;
+
+        const int32_t train_size = kfold_size * TRAIN_KFOLDs + (!kindexes[k][KFOLDs - 1] ? kfold_size_rest : 0);
+        const int32_t test_size = kfold_size * TEST_KFOLDs + (kindexes[k][KFOLDs - 1] ? kfold_size_rest : 0);
+
+        T_PC(MANY(RWindow)) drw_train = &tts._[k][cl].train;
+        T_PC(MANY(RWindow)) drw_test = &tts._[k][cl].test;
+
+        INITMANYREF(drw_train, train_size, RWindow);
+        INITMANYREF(drw_test, test_size, RWindow);
+
+        train_index = 0;
+        test_index = 0;
+        for (int32_t kk = 0; kk < KFOLDs; kk++) {
+
+            int32_t start = kk * kfold_size;
+            int32_t nwindows = kfold_size + (kk == (KFOLDs - 1) ? kfold_size_rest : 0);
+
+            if (kindexes[k][kk] == 0) {
+                memcpy(&drw_train->_[train_index], &rwindows_src._[start], sizeof(Window*) * nwindows);
+                train_index += nwindows;
+            } else {
+                memcpy(&drw_test->_[test_index], &rwindows_src._[start], sizeof(Window*) * nwindows);
+                test_index += nwindows;
+            }
+        }
+    }
+}
+
+MANY(TT) kfold_run(const Dataset ds, KFoldConfig config) {
     assert((config.balance_method != FOLDING_DSBM_EACH) || (config.split_method != FOLDING_DSM_IGNORE_1));
 
     if (config.kfolds <= 1 || config.kfolds - 1 < config.test_folds) {
@@ -29,127 +81,23 @@ MANY(TT) kfold_sets(TCPC(TestBedWindows) ds, TCPC(TestBedSources) sources, KFold
     }
 
     MANY(TT) tts;
-
-    tts.number = config.kfolds;
-    tts._ = calloc(config.kfolds, sizeof(TT));
-    for (int32_t k = 0; k < config.kfolds; k++) {
-        tts._[k].nsources.all = sources->all.number;
-        tts._[k].nsources.binary[0] = sources->binary[0].number;
-        tts._[k].nsources.binary[1] = sources->binary[0].number;
-        DGAFOR(cl) {
-            tts._[k].nsources.multi[cl] = sources->multi[cl].number;
-        }
-    }
-
-    MANY(RWindow) rwindows[N_DGACLASSES];
-
-    {
-        for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-            INITMANY(rwindows[cl], ds->multi[cl].number, RWindow);
-            memcpy(rwindows[cl]._, ds->multi[cl]._, sizeof(RWindow) * ds->multi[cl].number);
-            if (config.shuffle) {
-                rwindows_shuffle(rwindows[cl]);
-            }
-        }   
-    }
-
-    const int32_t KFOLDs = config.kfolds;
-    const int32_t TRAIN_KFOLDs = config.kfolds - config.test_folds;
-    const int32_t TEST_KFOLDs = config.test_folds;
-
-    int32_t kindexes[KFOLDs][KFOLDs];
-    for (int32_t k = 0; k < KFOLDs; k++) {
-        for (int32_t kindex = k; kindex < (k + TRAIN_KFOLDs); kindex++) {
-            kindexes[k][kindex % KFOLDs] = 0;
-        }
-        for (int32_t kindex = k + TRAIN_KFOLDs; kindex < (k + KFOLDs); kindex++) {
-            kindexes[k][kindex % KFOLDs] = 1;
-        }
-    }
-
+    INITMANY(tts, config.kfolds, TT);
 
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        int32_t kfold_size = rwindows[cl].number / KFOLDs;
-        int32_t kfold_size_rest = rwindows[cl].number - (kfold_size * KFOLDs);
+        MANY(RWindow) rwindows;
 
-        for (int32_t k = 0; k < KFOLDs; k++) {
+        INITMANY(rwindows, ds[cl].number, RWindow);
 
-            int32_t train_size;
-            int32_t test_size;
+        memcpy(rwindows._, ds[cl]._, sizeof(RWindow) * ds[cl].number);
 
-            train_size = kfold_size * TRAIN_KFOLDs;
-            test_size = kfold_size * TEST_KFOLDs;
-
-            MANY(RWindow)* drw_train = tts._[k].train;
-            MANY(RWindow)* drw_test = tts._[k].test;
-
-            if (kindexes[k][KFOLDs - 1]) {
-                test_size += kfold_size_rest;
-            } else {
-                train_size += kfold_size_rest;
-            }
-
-            INITMANY(drw_train[cl], train_size, RWindow);
-            INITMANY(drw_test[cl], test_size, RWindow);
-
-            int32_t train_index = 0;
-            int32_t test_index = 0;
-            for (int32_t kk = 0; kk < KFOLDs; kk++) {
-
-                int32_t start = kk * kfold_size;
-                int32_t nwindows = kfold_size + (kk == (KFOLDs - 1) ? kfold_size_rest : 0);
-
-                if (kindexes[k][kk] == 0) {
-                    memcpy(&drw_train[cl]._[train_index], &rwindows[cl]._[start], sizeof(Window*) * nwindows);
-                    train_index += nwindows;
-                } else {
-                    memcpy(&drw_test[cl]._[test_index], &rwindows[cl]._[start], sizeof(Window*) * nwindows);
-                    test_index += nwindows;
-                }
-            }
+        if (config.shuffle) {
+            rwindows_shuffle(rwindows);
         }
-    }
 
-    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        free(rwindows[cl]._);
+        kfold_splits(rwindows, tts, cl, config, 0);
+
+        free(rwindows._);
     }
 
     return tts;
-}
-
-MANY(KFoldSet) kfold_evaluation(MANY(TT) tts, MANY(Performance) performances) {
-    MANY(KFoldSet) ks;
-
-    ks.number = tts.number;
-    ks._ = calloc(tts.number, sizeof(KFoldSet));
-
-    for (int32_t k = 0; k < tts.number; k++) {
-        ks._[k].tt = tts._[k];
-        ks._[k].evaluations = tt_run(&tts._[k], performances);
-    }
-
-    free(tts._);
-
-    return ks;
-}
-
-KFold kfold_run(TCPC(TestBedWindows) ds, TCPC(TestBedSources) sources, KFoldConfig config, MANY(Performance) performances) {
-    MANY(TT) tts = kfold_sets(ds, sources, config);
-
-    MANY(KFoldSet) ks = kfold_evaluation(tts, performances);
-
-    KFold kfold;
-
-    kfold.config = config;
-    kfold.ks = ks;
-
-    return kfold;
-}
-
-void kfold_free(KFold kfold) {
-    for (int32_t k = 0; k < kfold.config.kfolds; k++) {
-        tt_free(kfold.ks._[k].tt);
-        tt_evaluations_free(kfold.ks._[k].evaluations);
-    }
-    free(kfold.ks._);
 }

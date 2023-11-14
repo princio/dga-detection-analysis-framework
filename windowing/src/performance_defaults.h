@@ -14,11 +14,11 @@ enum PerformanceFunctionsEnum {
 
 extern const Performance performance_defaults[5];
 
-double performancedefaults_f1score_1(TCPC(Detection) detection, Performance* performance);
-double performancedefaults_f1score_05(TCPC(Detection) detection, Performance* performance);
-double performancedefaults_f1score_01(TCPC(Detection) detection, Performance* performance);
+double performancedefaults_f1score_1(Detection*[N_DGACLASSES], TCPC(Performance));
+double performancedefaults_f1score_05(Detection*[N_DGACLASSES], TCPC(Performance));
+double performancedefaults_f1score_01(Detection*[N_DGACLASSES], TCPC(Performance));
 
-double performancedefaults_fpr(TCPC(Detection) detection, Performance* performance);
-double performancedefaults_tpr(TCPC(Detection) detection, Performance* performance);
+double performancedefaults_fpr(Detection*[N_DGACLASSES], TCPC(Performance));
+double performancedefaults_tpr(Detection*[N_DGACLASSES], TCPC(Performance));
 
 #endif

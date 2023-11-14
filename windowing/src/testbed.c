@@ -127,11 +127,11 @@ TestBed testbed_run() {
         for (int32_t p = 0; p < psets.number; p++) {
             TestBedWindows* tbw = &testbed.applies[p].windows;
 
-            INITMANY(tbw->all, wcount[p].all, Window);
-            INITMANY(tbw->binary[0], wcount[p].binary[0], Window);
-            INITMANY(tbw->binary[1], wcount[p].binary[1], Window);
+            INITMANY(tbw->all, wcount[p].all, RWindow);
+            INITMANY(tbw->binary[0], wcount[p].binary[0], RWindow);
+            INITMANY(tbw->binary[1], wcount[p].binary[1], RWindow);
             DGAFOR(cl) {
-                INITMANY(tbw->multi[cl], wcount[p].multi[cl], Window);
+                INITMANY(tbw->multi[cl], wcount[p].multi[cl], RWindow);
             }
 
             struct Index index;
