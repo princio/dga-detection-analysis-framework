@@ -18,7 +18,7 @@ Index dataset_count_sources(Dataset ds) {
         for (int32_t i = 0; i < ds[cl].number; i++)
         {
             for (int32_t w = 0; w < ds[cl].number; w++) {
-                const int32_t all_index = ds[cl]._[w]->index.all;
+                const int32_t all_index = ds[cl]._[w]->source_index.all;
                 if (sources[all_index] == 0) {
                     count_sources.all++;
                     count_sources.binary[ds[cl]._[w]->dgaclass > 0]++;

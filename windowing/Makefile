@@ -137,7 +137,6 @@ all: $(OBJECTS)
 	@echo -en "\n--\nBinary file placed at" \
 			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
 
-
 # Rule for object binaries compilation
 $(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@echo -en "$(BROWN)CC $(END_COLOR)";
@@ -170,7 +169,12 @@ clean:
 
 ca: clean all
 
+ab: all
+	clear; bin/binary
+
+av: all valgrind
+
 cab: clean all
-	bin/binary
+	clear; bin/binary
 
 cav: clean all valgrind

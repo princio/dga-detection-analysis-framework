@@ -8,9 +8,9 @@
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
 typedef struct Windowing {
-    RSource source;
+    TCP_(Source) source;
     
-    PSet* pset;
+    TCP_(PSet) pset;
 
     MANY(Window) windows;
 } Windowing;
@@ -39,8 +39,15 @@ typedef struct WindowingOrigin {
 
 typedef void (*WindowingAPFunction)(TCPC(Source), MANY(PSet), int32_t[], MANY(Windowing));
 
-void windowing_domainname(const DNSMessage message, TCPC(Windowing) windowing);
+void windowing_init(TCPC(Source), TCPC(PSet),T_PC(Windowing));
 
-MANY(Windowing) windowing_run_1source_manypsets(TCPC(Source) source, MANY(PSet) psets, WindowingAPFunction fn);
+void windowing_domainname(const DNSMessage, TCPC(Windowing));
+
+int windowing_load(T_PC(Windowing));
+
+MANY(Windowing) windowing_run_1source_manypsets(TCPC(Source), MANY(PSet), WindowingAPFunction);
+
+void windowing_io(IOReadWrite, FILE*, void*);
+void windowing_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);
 
 #endif

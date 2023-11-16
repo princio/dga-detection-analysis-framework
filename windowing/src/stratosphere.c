@@ -203,6 +203,8 @@ void perform_windowingap(RSource source, MANY(PSet) psets, int32_t loaded[], MAN
         }
     }
 
+    PQclear(pgresult);
+
     _stratosphere_disconnect();
 }
 
@@ -217,6 +219,8 @@ void run() {
     }
 
     int nrows = PQntuples(pgresult);
+
+    nrows = 5;
 
     for(int row = 0; row < nrows; row++) {
         int32_t id;

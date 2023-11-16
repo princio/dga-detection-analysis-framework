@@ -1,30 +1,12 @@
 #include "parameters.h"
 
+#include "cache.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include <openssl/sha.h>
-
-void parameters_hash(PSet* pset) {
-    uint8_t out[SHA256_DIGEST_LENGTH];
-    SHA256_CTX sha;
-
-    memset(out, 0, SHA256_DIGEST_LENGTH);
-
-    SHA256_Init(&sha);
-    SHA256_Update(&sha, pset, sizeof(PSet));
-    SHA256_Final(out, &sha);
-
-    char hex[16] = {
-        '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
-    };
-
-    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        pset->digest[i * 2] = hex[out[i] >> 4];
-        pset->digest[i * 2 + 1] = hex[out[i] & 0x0F];
-    }
-}
 
 void parameters_print(PSet* pset) {
     printf("%8d, ", pset->wsize);
@@ -80,9 +62,24 @@ MANY(PSet) parameters_generate(TCPC(PSetGenerator) psetgenerator) {
         }
     }
 
-    for (int32_t p = 0; p < n_psets; p++) {
-        parameters_hash(&psets._[p]);
-    }
-
     return psets;
 }
+
+void parameters_io(IOReadWrite rw, FILE* file, void* obj) {
+    PSet *pset = obj;
+
+    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    FRW(pset->id);
+    FRW(pset->infinite_values);
+    FRW(pset->nn);
+    FRW(pset->whitelisting);
+    FRW(pset->windowing);
+    FRW(pset->wsize);
+}
+
+void parameters_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]) {
+    memset(objid, 0, IO_OBJECTID_LENGTH);
+    io_subdigest(obj, sizeof(PSet), objid);
+}
+

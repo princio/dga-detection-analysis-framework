@@ -47,4 +47,6 @@ typedef struct KFold {
 
 MANY(TT) kfold_run(const Dataset ds,  KFoldConfig config);
 
+void kfold_free(MANY(TT) tts);
+
 #endif

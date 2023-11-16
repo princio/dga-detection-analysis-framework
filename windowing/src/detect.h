@@ -18,6 +18,8 @@ typedef struct Detection {
 
 typedef Detection FullDetection[N_DGACLASSES];
 
+MAKEMANY(FullDetection);
+
 #define N_PERFORMANCE_DGAHANDLINGs 2
 
 enum PerformanceRange {
@@ -33,7 +35,7 @@ enum PerfomanceDGAHandling {
 
 struct Performance;
 
-typedef double (*PerformanceFunctionPtr)(Detection*[N_DGACLASSES], TCPC(struct Performance));
+typedef double (*PerformanceFunctionPtr)(Detection[N_DGACLASSES], TCPC(struct Performance));
 
 typedef struct Performance {
     char name[20];
@@ -52,9 +54,9 @@ MAKEMANY(Performance);
 void detect_reset(Detection*);
 void detect_copy(TCPC(Detection) src, Detection* dst);
 
-Detection* detect_run(MANY(RWindow) ds, const double th);
+void detect_run(MANY(RWindow), const double, Detection* const);
 
-double detect_performance(Detection*[N_DGACLASSES], TCPC(Performance));
+double detect_performance(Detection[N_DGACLASSES], TCPC(Performance));
 
 int detect_performance_compare(Performance*, double, double);
 

@@ -14,6 +14,7 @@
 
 #define DGACURSOR ID_DGA_cursor
 
+#define BINFOR(bn) for (int32_t bn = 0; bn < 2; bn++)
 #define DGAFOR(cl) for (int32_t cl = 0; cl < N_DGACLASSES; cl++)
 
 #define TCP_(T) T const *
@@ -54,8 +55,8 @@
     DGA(REF(T)) multi;\
 } MULTICLASS(a)
 
-#define INITMANY(A, N, T) A.number = N;\
-            A._ = calloc(A.number, sizeof(T))
+#define INITMANY(A, N, T) { A.number = N;\
+            A._ = calloc(A.number, sizeof(T)); }
 
 #define INITMANYREF(A, N, T) A->number = N;\
             A->_ = calloc(A->number, sizeof(T))

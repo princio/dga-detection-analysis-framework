@@ -3,7 +3,7 @@
         {
             "label": "Make windowing",
             "type": "shell",
-            "command": "make ca",
+            "command": "make all",
             "options": {
                 "cwd": "/home/princio/Repo/princio/malware_detection_preditc_file/windowing"
             }

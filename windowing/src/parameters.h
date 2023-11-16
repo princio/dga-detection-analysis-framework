@@ -4,6 +4,8 @@
 
 #include "common.h"
 
+#include "io.h"
+
 typedef struct PSet {
     int32_t id;
     
@@ -12,7 +14,6 @@ typedef struct PSet {
     Whitelisting whitelisting;
     WindowingType windowing;
     int32_t wsize;
-    char digest[SHA256_DIGEST_LENGTH * 2];
 } PSet;
 
 typedef struct PSetGenerator {
@@ -41,5 +42,7 @@ void parameters_print(PSet* pset);
 
 MANY(PSet) parameters_generate(TCPC(PSetGenerator));
 
+void parameters_io(IOReadWrite, FILE*, void*);
+void parameters_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);
 
 #endif

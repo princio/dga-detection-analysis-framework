@@ -5,7 +5,7 @@
 #include "common.h"
 
 typedef struct Window {
-    Index index;
+    Index source_index;
     
     IDX pset_index;
 

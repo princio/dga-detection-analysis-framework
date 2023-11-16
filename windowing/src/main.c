@@ -24,8 +24,10 @@
 #include "common.h"
 #include "performance_defaults.h"
 #include "kfold.h"
+#include "io.h"
 #include "parameters.h"
 #include "stratosphere.h"
+#include "result.h"
 #include "tt.h"
 #include "testbed.h"
 #include "windowing.h"
@@ -71,11 +73,106 @@ typedef struct Score {
     double th;
     double score;
     Performance performance;
+    Detection fulldetection[N_DGACLASSES];
 } Score;
 
 MANY(Performance) performances;
 
 MAKEMANY(double);
+
+// void result_save(PSet* pset, MANY(TT) tts, MANY(Performance) performances, Score score[tts.number][2][performances.number]) {
+//     FILE* file;
+//     char path[500]; {
+//         char subdigest[10];
+//         time_t t = time(NULL);
+//         struct tm tm = *localtime(&t);
+
+//         strncpy(subdigest, pset->digest, sizeof subdigest);
+//         subdigest[9] = '\0';
+
+//         sprintf(path, "%s/result_%s_%d%02d%02d_%02d%02d%02d", CACHE_PATH, subdigest, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+//     }
+
+//     int rw = IO_WRITE;
+
+//     file = io_openfile(rw, file);
+//     if (file) {
+//         FRWNPtr fn = rw ? io_freadN : io_fwriteN;
+
+//         FRW(tts.number);
+//         FRW(performances.number);
+
+//         for (int32_t k = 0; k < tts.number; k++) {
+//             for (int32_t ev = 0; ev < performances.number; ev++) {
+//                 FRW(score[k][0][ev]);
+//                 FRW(score[k][1][ev]);
+//             }
+//         }
+//     }
+// }
+
+PSetGenerator* gen_psetgenerator() {
+    PSetGenerator* psetgenerator = calloc(1, sizeof(PSetGenerator));
+
+    {
+        int32_t wsize[] = { 1, 100 }; //, 5, 100 };//, 5, 100, 2500 };
+        //     wsizes._[1] = 50;
+        //     wsizes._[2] = 100;
+        //     wsizes._[3] = 200;
+        //     wsizes._[4] = 2500;
+
+        NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
+
+        Whitelisting whitelisting[] = {
+            { .rank = 0, .value = 0 },
+            // { .rank = 1000, .value = -50 },
+            // { .rank = 100000, .value = -50 },
+            // { .rank = 1000000, .value = -10 },  
+            // { .rank = 1000000, .value = -50 }
+        };
+
+        WindowingType windowing[] = {
+            WINDOWING_Q,
+            // WINDOWING_R,
+            // WINDOWING_QR
+        };
+
+        InfiniteValues infinitevalues[] = {
+            { .ninf = -20, .pinf = 20 }
+        };
+
+        #define _COPY(A) psetgenerator->A = calloc(1, sizeof(A)); \
+        memcpy(psetgenerator->A, A, sizeof(A));
+    
+        psetgenerator->n_wsize = sizeof(wsize) / sizeof(int32_t);
+        _COPY(wsize);
+
+        psetgenerator->n_nn = sizeof(nn) / sizeof(NN);
+        _COPY(nn);
+
+        psetgenerator->n_whitelisting = sizeof(whitelisting) / sizeof(Whitelisting);
+        _COPY(whitelisting);
+
+        psetgenerator->n_windowing = sizeof(windowing) / sizeof(WindowingType);
+        _COPY(windowing);
+
+        psetgenerator->n_infinitevalues = sizeof(infinitevalues) / sizeof(InfiniteValues);
+        _COPY(infinitevalues);
+
+        #undef _COPY
+    }
+
+    return psetgenerator;
+}
+
+void free_psetgenerator(PSetGenerator* psetgenerator) {
+    free(psetgenerator->wsize);
+    free(psetgenerator->nn);
+    free(psetgenerator->whitelisting);
+    free(psetgenerator->windowing);
+    free(psetgenerator->infinitevalues);
+    free(psetgenerator);
+}
 
 MANY(double) _rwindows_ths(const DGAMANY(RWindow) dsrwindows) {
     MANY(double) ths;
@@ -119,159 +216,226 @@ MANY(double) _rwindows_ths(const DGAMANY(RWindow) dsrwindows) {
     return ths;
 }
 
-void train(TT tt, MANY(Performance) performances, Score scores[performances.number]) {
-    MANY(double) ths;
-    int8_t outputs_init[tt[DGACLASS_0].train.number];
-
-    ths = _rwindows_ths(&tt[DGACLASS_0].train);
-
-    printf("ths.number\t%d\n", ths.number);
-
-    memset(outputs_init, 0, tt[DGACLASS_0].train.number * sizeof(int8_t));
-
-    for (int t = 0; t < ths.number; t++) {
-        Detection* fulldetection[N_DGACLASSES];
-
-        DGAFOR(cl) {
-            fulldetection[cl] = detect_run(tt[DGACLASS_0].train, ths._[t]);
-        }
-
-        for (int32_t ev = 0; ev < performances.number; ev++) {
-            double performance_score = detect_performance(fulldetection, &performances._[ev]);
-
-            const int is_better = detect_performance_compare(&performances._[ev], performance_score, scores[ev].score);
-            if (outputs_init[ev] == 0 || is_better) {
-                outputs_init[ev] = 1;
-                scores[ev].score = performance_score;
-                scores[ev].th = ths._[t];
-                scores[ev].performance = performances._[ev];
-            }
-        }
-
-        DGAFOR(cl) {
-            free(fulldetection[cl]);
-        }
-    }
-
-    free(ths._);
-}
-
 MANY(Performance) gen_performance() {
     MANY(Performance) performances;
 
-    INITMANY(performances, 5, Performance);
+    INITMANY(performances, 3, Performance);
 
     int i = 0;
     performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_1];
-    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_05];
-    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_01];
+    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_05];
+    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_01];
     performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_TPR];
     performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_FPR];
 
     return performances;
 }
 
+void print_score(Score* score) {
+    printf("%10s\t%8.2f\t%5.4f\t", score->performance.name, score->th, score->score);
+    DGAFOR(cl) {
+        Detection d = score->fulldetection[cl];
+        printf("%6d/%-6d\t", d.windows.trues, d.windows.trues + d.windows.falses);
+    }
+}
 
-void exps_1() {
-    PSetGenerator psetgenerator;
+void print_detection(Detection* d) {
+    const int32_t tot_test = d->windows.trues + d->windows.falses;
+    printf("(%8d/%-8d)", d->windows.trues, tot_test);
+}
 
-    {
-        int32_t wsizes[] = { 100 }; //, 5, 100 };//, 5, 100, 2500 };
-        //     wsizes._[1] = 50;
-        //     wsizes._[2] = 100;
-        //     wsizes._[3] = 200;
-        //     wsizes._[4] = 2500;
+void print_score_tt(Score* score_train, Score* score_test) {
+    printf("%-15s\t", score_train->performance.name);
+    printf("%8.2f\n", score_train->th);
 
-        NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
-
-        Whitelisting whitelisting[] = {
-            { .rank = 0, .value = 0 },
-            // { .rank = 1000, .value = -50 },
-            // { .rank = 100000, .value = -50 },
-            // { .rank = 1000000, .value = -10 },  
-            // { .rank = 1000000, .value = -50 }
-        };
-
-        WindowingType windowing[] = {
-            WINDOWING_Q,
-            // WINDOWING_R,
-            // WINDOWING_QR
-        };
-
-        InfiniteValues infinitevalues[] = {
-            { .ninf = -20, .pinf = 20 }
-        };
-
-        psetgenerator.n_wsize = sizeof(wsizes) / sizeof(int32_t);
-        psetgenerator.wsize = wsizes;
-
-        psetgenerator.n_nn = sizeof(nn) / sizeof(NN);
-        psetgenerator.nn = nn;
-
-        psetgenerator.n_whitelisting = sizeof(whitelisting) / sizeof(Whitelisting);
-        psetgenerator.whitelisting = whitelisting;
-
-        psetgenerator.n_windowing = sizeof(windowing) / sizeof(WindowingType);
-        psetgenerator.windowing = windowing;
-
-        psetgenerator.n_infinitevalues = sizeof(infinitevalues) / sizeof(InfiniteValues);
-        psetgenerator.infinitevalues = infinitevalues;
+    printf("%5.4f", score_train->score);
+    DGAFOR(cl) {
+        printf("\t");
+        print_detection(&score_train->fulldetection[cl]);
     }
 
-    cache_setpath("/home/princio/Desktop/exps/refactor/exp_2");
+    printf("\n%5.4f", score_test->score);
+    DGAFOR(cl) {
+        printf("\t");
+        print_detection(&score_test->fulldetection[cl]);
+    }
 
-    testbed_init(&psetgenerator);
+    printf("\n");
+}
+
+void print_score_tt_falses(Score* score_train, Score* score_test) {
+    printf("%-15s\t", score_train->performance.name);
+    printf("%8.2f\t", score_train->th);
+
+    printf("(%8.4g/%-8.4g)", score_train->score, score_test->score);
+    DGAFOR(cl) {
+        printf("\t(%6d/%-6d)", score_train->fulldetection[cl].windows.falses, score_test->fulldetection[cl].windows.falses);
+    }
+
+    printf("\n");
+}
+
+void print_score_tt_relative(Score* score_train, Score* score_test) {
+    printf("%-15s\t", score_train->performance.name);
+    printf("%8.2f\t", score_train->th);
+
+    #define ROUND4(v) round(v * 10000) / 100
+
+    printf("(%8.4g/%-8.4g)", ROUND4(score_train->score), ROUND4(score_test->score));
+    DGAFOR(cl) {
+        const double train_pr = ((double) score_train->fulldetection[cl].windows.trues) / (score_train->fulldetection[cl].windows.trues + score_train->fulldetection[cl].windows.falses);
+        const double test_pr = ((double) score_test->fulldetection[cl].windows.trues) / (score_test->fulldetection[cl].windows.trues + score_test->fulldetection[cl].windows.falses);
+        printf("\t(%8.3g/%-8.3g)", ROUND4(train_pr), ROUND4(test_pr));
+    }
+    #undef ROUND4
+
+    printf("\n");
+}
+
+void print_tt(TT tt) {
+    printf("TT: ");
+    DGAFOR(cl) {
+        printf("(%d\t%6d|%-6d)\t", cl, tt[cl].train.number, tt[cl].test.number);
+    }
+    printf("\n");
+}
+
+void print_cm(Detection* d) {
+    printf("%6d/%-6d\t", d->windows.trues, d->windows.trues + d->windows.falses);
+}
+
+void print_fulldetection(Detection* d[N_DGACLASSES]) {
+    DGAFOR(cl) {
+        print_cm(d[cl]);
+    }
+}
+
+void train(TT tt, MANY(Performance) performances, Test tests[performances.number]) {
+    MANY(double) ths;
+    int8_t outputs_init[tt[DGACLASS_0].train.number];
+    double best_scores[performances.number];
+
+    ths = _rwindows_ths(&tt[DGACLASS_0].train);
+
+    memset(tests, 0, performances.number * sizeof(Test));
+    memset(outputs_init, 0, tt[DGACLASS_0].train.number * sizeof(int8_t));
+    memset(best_scores, 0, performances.number * sizeof(double));
+
+    for (int t = 0; t < ths.number; t++) {
+        Detection fulldetection[N_DGACLASSES];
+
+        DGAFOR(cl) {
+            detect_run(tt[cl].train, ths._[t], &fulldetection[cl]);
+        }
+
+        for (int32_t ev = 0; ev < performances.number; ev++) {
+            double current_score = detect_performance(fulldetection, &performances._[ev]);
+
+            int is_better = 0;
+            if (outputs_init[ev] == 1) {
+                is_better = detect_performance_compare(&performances._[ev], current_score, best_scores[ev]);
+            } else {
+                is_better = 1;
+            }
+
+            if (is_better) {
+                outputs_init[ev] = 1;
+                tests[ev].th = ths._[t];
+                tests[ev].thchooser = performances._[ev];
+                memcpy(tests[ev].fulldetections.train, fulldetection, sizeof(fulldetection));
+            }
+        }
+    }
+
+    free(ths._);
+}
+
+void exps_1() {
+    PSetGenerator* psetgenerator;
+    TestBed* tb;
+    KFoldConfig kconfig;
+    MANY(Performance) performances;
+    MANY(TT) tts;
+    
+    performances = gen_performance();
+    psetgenerator = gen_psetgenerator();
+
+    cache_setpath("/home/princio/Desktop/exps/refactor/exp_6");
+
+    testbed_init(psetgenerator);
+
+    free_psetgenerator(psetgenerator);
 
     stratosphere_run();
 
-    TestBed tb = testbed_run();
-
-    KFoldConfig kconfig = {
-        .balance_method = FOLDING_DSBM_NOT_INFECTED,
-        .kfolds = 10,
-        .shuffle = 0,
-        .split_method = FOLDING_DSM_IGNORE_1,
-        .test_folds = 2,
-    };
-
-    MANY(Performance) performances;
-    MANY(TT) tts;
-
-    performances = gen_performance();
-
-    tts = kfold_run(tb.applies[0].windows.multi, kconfig);
-
-    Score scores[kconfig.kfolds][performances.number];
-
-    for (int32_t k = 0; k < kconfig.kfolds; k++) {
-        Score train_scores[performances.number];
-
-        train(tts._[k], performances, train_scores);
-
-        for (int32_t s = 0; s < performances.number; s++) {
-            Detection* detection[N_DGACLASSES];
-            DGAFOR(cl) {
-                scores[k][s] = train_scores[s];
-                detection[cl] = detect_run(tts._[k][DGACLASS_2].test, scores[k][s].th);
-            }
-            scores[k][s].score = detect_performance(detection, &scores[k][s].performance);
-            DGAFOR(cl) {
-                free(detection[cl]);
-            }
-        }
+    tb = testbed_load("/tmp/testbed/");
+    if(tb == NULL) {
+        tb = testbed_run();
+        testbed_save(tb, "/tmp/testbed/");
     }
+
+    kconfig.balance_method = FOLDING_DSBM_NOT_INFECTED;
+    kconfig.kfolds = 10;
+    kconfig.shuffle = 0;
+    kconfig.split_method = FOLDING_DSM_IGNORE_1;
+    kconfig.test_folds = 5;
+
+    // Score worst[performances.number];
+    // Score better[performances.number];
+    // Score avg[performances.number];
     
-    testbed_free(&tb);
-    free(performances._);
+    // for (int32_t ev = 0; ev < performances.number; ev++) {
+    //     worst[ev].performance = performances._[ev];
+    //     better[ev].performance = performances._[ev];
+    //     avg[ev].performance = performances._[ev];
 
-    for (int32_t k = 0; k < kconfig.kfolds; k++) {
-        DGAFOR(cl) {
-            free(tts._[k][cl].train._);
-            free(tts._[k][cl].test._);
+    //     worst[ev].score = performances._[ev].greater_is_better ? 0 : 1;
+    //     better[ev].score = performances._[ev].greater_is_better ? 1 : 0;
+    //     avg[ev].score = 0;
+    // }
+
+    Test tests[tb->psets.number][kconfig.kfolds][performances.number]; // = calloc(tb->psets.number * performances.number * kconfig.kfolds, sizeof(Test));
+    memset(tests, 0, tb->psets.number * performances.number * kconfig.kfolds * sizeof(Test));
+
+    for (int32_t p = 0; p < tb->psets.number; p++) {
+        for (int32_t k = 0; k < kconfig.kfolds; k++) {
+            for (int32_t ev = 0; ev < performances.number; ev++) {
+                tests[p][k][ev].thchooser = performances._[ev];
+            }
+        }
+    }
+    for (int32_t p = 0; p < tb->psets.number; p++) {
+        tts = kfold_run(tb->applies[p].windows.multi, kconfig);
+
+        for (int32_t k = 0; k < kconfig.kfolds; k++) {
+            Test* tests_pk = tests[p][k];
+
+            train(tts._[k], performances, tests_pk);
+
+            for (int32_t ev = 0; ev < performances.number; ev++) {
+                DGAFOR(cl) {
+                    detect_run(tts._[k][cl].test, tests_pk[ev].th, &tests_pk[ev].fulldetections.test[cl]);
+                }
+            }
+        }
+
+        kfold_free(tts);
+    }
+
+    for (int32_t p = 0; p < tb->psets.number; p++) {
+        for (int32_t k = 0; k < kconfig.kfolds; k++) {
+            for (int32_t ev = 0; ev < performances.number; ev++) {
+                // tests[p][k][ev].fulldetections.test
+            }
         }
     }
 
-    free(tts._);
+    // for (int32_t ev = 0; ev < performances.number; ev++) {
+    //     printf("%-30s\t%8.4f\t%8.f\n", performances._[ev].name, worst[ev].score, better[ev].score);
+    // }
+
+    testbed_free(tb);
+    free(performances._);
 }
 
 int main (int argc, char* argv[]) {

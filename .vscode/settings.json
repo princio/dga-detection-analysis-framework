@@ -142,7 +142,9 @@
         "errno.h": "c",
         "io.h": "c",
         "testbed.h": "c",
-        "list.h": "c"
+        "list.h": "c",
+        "result.h": "c",
+        "cache.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

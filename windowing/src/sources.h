@@ -4,6 +4,7 @@
 
 #include "common.h"
 
+#include "io.h"
 #include "list.h"
 
 #define MAX_SOURCEs 100
@@ -26,9 +27,9 @@ typedef struct SourceIndex {
 struct Galaxy;
 
 typedef struct Source {
-    // Index index;
+    Index index;
 
-    // int32_t parent_galaxy_index;
+    char digest[64];
 
     char name[50];
     char galaxy[50];
@@ -70,8 +71,6 @@ MAKEMANY(Galaxy);
 MAKEDGA(List);
 MAKEDGA(Many);
 
-void sources_list_findbyid(DGA(List) lists, Source* source);
-
 void sources_list_insert(DGA(List) lists, Source* source);
 
 void sources_lists_to_arrays(DGA(List) lists, DGA(Many) arrays);
@@ -79,5 +78,8 @@ void sources_lists_to_arrays(DGA(List) lists, DGA(Many) arrays);
 void sources_lists_free(DGA(List) lists);
 
 void sources_arrays_free(DGA(Many) arrays);
+
+void sources_io(IOReadWrite, FILE*, void*);
+void sources_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);
 
 #endif

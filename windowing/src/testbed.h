@@ -34,8 +34,6 @@ typedef struct TestBedSources {
 typedef struct TestBed {
     MANY(PSet) psets;
 
-    MANY(Galaxy) galaxies; // UNUSED
-
     TestBedSources sources;
 
     TestBedPSetApply* applies; // composed by N_PSETs elements
@@ -45,8 +43,16 @@ void testbed_source_add(Source* source, int type, WindowingAPFunction fn);
 
 void testbed_init(TCPC(PSetGenerator) psetgen);
 
-TestBed testbed_run();
+TestBed* testbed_run();
 
 void testbed_free(TestBed* tb);
+
+void testbed_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]);
+
+void testbed_io(IOReadWrite rw, FILE* file, void* obj);
+
+int testbed_save(TestBed* tb, char *dirpath);
+
+TestBed* testbed_load(char* dirpath);
 
 #endif

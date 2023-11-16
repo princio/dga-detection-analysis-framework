@@ -101,3 +101,14 @@ MANY(TT) kfold_run(const Dataset ds, KFoldConfig config) {
 
     return tts;
 }
+
+void kfold_free(MANY(TT) tts) {
+    for (int32_t k = 0; k < tts.number; k++) {
+        DGAFOR(cl) {
+            free(tts._[k][cl].train._);
+            free(tts._[k][cl].test._);
+        }
+    }
+
+    free(tts._);
+}
