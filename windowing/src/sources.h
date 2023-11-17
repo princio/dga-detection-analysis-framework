@@ -29,8 +29,6 @@ struct Galaxy;
 typedef struct Source {
     Index index;
 
-    char digest[64];
-
     char name[50];
     char galaxy[50];
 

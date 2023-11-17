@@ -11,39 +11,6 @@
 #include <stdio.h>
 #include <string.h>
 
-void windowing_io(IOReadWrite rw, FILE* file, void* obj) {
-    Windowing* windowing = obj;
-
-    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
-
-    if (rw == IO_WRITE) {
-        FRW(windowing->windows.number);
-    } else {
-        int32_t nw = 0;
-        FRW(nw);
-        if (nw != windowing->windows.number) {
-            printf("Warning: nw_read != windows->number [%d != %d]\n", nw, windowing->windows.number);
-        }
-    }
-
-    for (int i = 0; i < windowing->windows.number; ++i) {
-        Window* window = &windowing->windows._[i];
-
-        FRW(window->pset_index);
-        
-        FRW(window->wnum);
-
-        FRW(window->dgaclass);
-        FRW(window->wcount);
-        FRW(window->logit);
-        FRW(window->whitelistened);
-        FRW(window->dn_bad_05);
-        FRW(window->dn_bad_09);
-        FRW(window->dn_bad_099);
-        FRW(window->dn_bad_0999);
-    }
-}
-
 void windowing_init(TCPC(Source) source, TCPC(PSet) pset, T_PC(Windowing) windowing) {
     windowing->source = source;
     windowing->pset = pset;
@@ -63,11 +30,11 @@ int windowing_load(T_PC(Windowing) windowing) {
     }
     char objid[IO_OBJECTID_LENGTH];
     windowing_io_objid(windowing, objid);
-    return io_load(objid, windowing_io, windowing);
+    return io_load(objid, 1, windowing_io, windowing);
 }
 
 int windowing_save(TCPC(Windowing) windowing) {
-    return io_save(windowing, windowing_io_objid, windowing_io);
+    return io_save(windowing, 1, windowing_io_objid, windowing_io);
 }
 
 MANY(Windowing) windowing_run_1source_manypsets(TCPC(Source) source, MANY(PSet) psets, WindowingAPFunction fn) {
@@ -154,6 +121,39 @@ void windowing_domainname(const DNSMessage message, TCPC(Windowing) windowing) {
 
     window->logit += logit;
     window->whitelistened += whitelistened;
+}
+
+void windowing_io(IOReadWrite rw, FILE* file, void* obj) {
+    Windowing* windowing = obj;
+
+    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    if (rw == IO_WRITE) {
+        FRW(windowing->windows.number);
+    } else {
+        int32_t nw = 0;
+        FRW(nw);
+        if (nw != windowing->windows.number) {
+            printf("Warning: nw_read != windows->number [%d != %d]\n", nw, windowing->windows.number);
+        }
+    }
+
+    for (int i = 0; i < windowing->windows.number; ++i) {
+        Window* window = &windowing->windows._[i];
+
+        FRW(window->pset_index);
+        
+        FRW(window->wnum);
+
+        FRW(window->dgaclass);
+        FRW(window->wcount);
+        FRW(window->logit);
+        FRW(window->whitelistened);
+        FRW(window->dn_bad_05);
+        FRW(window->dn_bad_09);
+        FRW(window->dn_bad_099);
+        FRW(window->dn_bad_0999);
+    }
 }
 
 void windowing_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]) {

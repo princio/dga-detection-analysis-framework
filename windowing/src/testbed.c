@@ -182,6 +182,10 @@ TestBed* testbed_run() {
 
     _testbed_fill(testbed);
 
+    char objid[IO_OBJECTID_LENGTH];
+    testbed_io_objid(testbed, objid);
+    cache_settestbed(objid);
+
     return testbed;
 }
 
@@ -193,7 +197,7 @@ void testbed_free(TestBed* tb) {
         free(tb->sources.multi[cl]._);
     }
 
-    for (int32_t p = 0; p < psets.number; p++) {
+    for (int32_t p = 0; p < tb->psets.number; p++) {
         for (int32_t bl = 0; bl < 2; bl++) {
             free(tb->applies[p].windowings.binary[bl]._);
             free(tb->applies[p].windows.binary[bl]._);
@@ -212,12 +216,19 @@ void testbed_free(TestBed* tb) {
     free(tb->applies);
 
     free(tb->psets._);
+    free(psets._);
     free(tb);
 }
 
 void testbed_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]) {
-    (void)(obj);
-    strcpy(objid, "testbed");
+    TCPC(TestBed) tb = obj;
+
+    memset(objid, 0, IO_OBJECTID_LENGTH);
+
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+
+    sprintf(objid, "testbed_%d_%d_%02d%02d%02d_%02d%02d%02d", tb->psets.number, tb->sources.all.number, (tm.tm_year + 1900) - 2000, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 void testbed_io(IOReadWrite rw, FILE* file, void* obj) {
@@ -240,9 +251,9 @@ void testbed_io(IOReadWrite rw, FILE* file, void* obj) {
         FRW(objid);
 
         if (rw == IO_WRITE) {
-            io_save(&tb->psets._[p], parameters_io_objid, parameters_io);
+            io_save(&tb->psets._[p], 1, parameters_io_objid, parameters_io);
         } else {
-            io_load(objid, parameters_io, &tb->psets._[p]);
+            io_load(objid, 1, parameters_io, &tb->psets._[p]);
         }
     }
     FRW(tb->sources.all.number);
@@ -260,9 +271,9 @@ void testbed_io(IOReadWrite rw, FILE* file, void* obj) {
         FRW(objid);
 
         if (rw == IO_WRITE) {
-            io_save(&tb->sources.all._[s], sources_io_objid, sources_io);
+            io_save(&tb->sources.all._[s], 1, sources_io_objid, sources_io);
         } else {
-            io_load(objid, sources_io, &tb->sources.all._[s]);
+            io_load(objid, 1, sources_io, &tb->sources.all._[s]);
         }
     }
 
@@ -288,58 +299,97 @@ void testbed_io(IOReadWrite rw, FILE* file, void* obj) {
             FRW(objid);
 
             if (rw == IO_WRITE) {
-                io_save(windowing, windowing_io_objid, windowing_io);
+                io_save(windowing, 1, windowing_io_objid, windowing_io);
             } else {
                 windowing_init(&tb->sources.all._[s], &tb->psets._[p], windowing);
-                io_load(objid, windowing_io, windowing);
+                io_load(objid, 1, windowing_io, windowing);
             }
         }
     }
 }
 
-int testbed_save(TestBed* tb, char *dirpath) {
-    if(io_direxists(dirpath)) {
-        fprintf(stderr, "Error directory %s already exists", dirpath);
-        return -1;
-    }
-
-    if(io_makedir(dirpath, 0)) {
-        fprintf(stderr, "Error in making directory to save TestBed at %s", dirpath);
-        return -1;
-    }
-
-    char cache_path_old[strlen(CACHE_PATH)];
-    strcpy(cache_path_old, CACHE_PATH);
-
-    cache_setpath(dirpath);
-
-    int error = io_save(tb, testbed_io_objid, testbed_io);
-
-    cache_setpath(cache_path_old);
-
-    return error;
+int testbed_save(TestBed* tb) {
+    return io_save(tb, 0, testbed_io_objid, testbed_io);
 }
 
-TestBed* testbed_load(char* dirpath) {
+TestBed* testbed_load(char* objid) {
+    char dirpath[500];
+    strcpy(dirpath, ROOT_PATH);
+    sprintf(dirpath + strlen(dirpath), "/%s", objid);
+
     if(!io_direxists(dirpath)) {
         fprintf(stderr, "Error directory %s not exists", dirpath);
         return NULL;
     }
 
-    char cache_path_old[strlen(CACHE_PATH)]; {
-        strcpy(cache_path_old, CACHE_PATH);
-        cache_setpath(dirpath);
-    }
+    cache_settestbed(objid);
 
     TestBed *tb = calloc(1, sizeof(TestBed));
 
-    if(io_load("testbed", testbed_io, tb)) {
+    if(io_load(objid, 0, testbed_io, tb)) {
         return NULL;
     }
 
     _testbed_fill(tb);
 
-    cache_setpath(cache_path_old);
-
     return tb;
+}
+
+void testbed_io_txt(TCPC(void) obj) {
+    char objid[IO_OBJECTID_LENGTH];
+    TCPC(TestBed) tb = obj;
+    char fname[700];
+    FILE* file;
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+
+    testbed_io_objid(obj, objid);
+
+    sprintf(fname, "%s/testbed.md", ROOT_PATH);
+
+    file = io_openfile(IO_WRITE, fname);
+
+    fprintf(file, "# TestBed %s\n\n", objid);
+
+    fprintf(file, "Run at: %04d/%02d/%02d %02d:%02d:%02d\n\n", (tm.tm_year + 1900), tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    fprintf(file, "## Parameters %d\n\n", tb->psets.number);
+
+    fprintf(file, "%8s    ", "nn");
+    fprintf(file, "%6s    ", "wsize");
+    fprintf(file, "%15s   ", "infinite values");
+    fprintf(file, "%13s\n", "whitelisting");
+
+    for (int32_t p = 0; p < tb->psets.number; p++) {
+        TCPC(PSet) pset = &tb->psets._[p];
+
+        fprintf(file, "%8s    ", NN_NAMES[pset->nn]);
+        fprintf(file, "%6d    ", pset->wsize);
+        fprintf(file, "%-6.2f %6.2f      ", pset->infinite_values.ninf, pset->infinite_values.pinf);
+        fprintf(file, "%-6d %6.2f\n", pset->whitelisting.rank, pset->whitelisting.value);
+    }
+
+
+    fprintf(file, "\n\n## Sources %d\n\n", tb->sources.all.number);
+
+    fprintf(file, "%8s    ", "bclass");
+    fprintf(file, "%8s    ", "mclass");
+    fprintf(file, "%10s    ", "qr");
+    fprintf(file, "%10s    ", "q");
+    fprintf(file, "%10s    ", "r");
+    fprintf(file, "%10s    ", "fnreq_max");
+    fprintf(file, "%s\n", "name");
+    
+    for (int32_t s = 0; s < tb->sources.all.number; s++) {
+        TCPC(Source) source = &tb->sources.all._[s];
+        fprintf(file, "%8d    ", source->binaryclass);
+        fprintf(file, "%8d    ", source->dgaclass);
+        fprintf(file, "%10ld    ", source->qr);
+        fprintf(file, "%10ld    ", source->q);
+        fprintf(file, "%10ld    ", source->r);
+        fprintf(file, "%10ld    ", source->fnreq_max);
+        fprintf(file, "%s\n", source->name);
+    }
+
+    fclose(file);
 }

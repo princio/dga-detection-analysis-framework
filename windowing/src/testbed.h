@@ -45,14 +45,16 @@ void testbed_init(TCPC(PSetGenerator) psetgen);
 
 TestBed* testbed_run();
 
-void testbed_free(TestBed* tb);
+void testbed_free(TestBed*);
 
-void testbed_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]);
+void testbed_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);
 
-void testbed_io(IOReadWrite rw, FILE* file, void* obj);
+void testbed_io(IOReadWrite, FILE*, void*);
 
-int testbed_save(TestBed* tb, char *dirpath);
+void testbed_io_txt(TCPC(void));
 
-TestBed* testbed_load(char* dirpath);
+int testbed_save(TestBed*);
+
+TestBed* testbed_load(char*);
 
 #endif

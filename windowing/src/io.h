@@ -10,7 +10,7 @@
 
 #define IO_DIGEST_LENGTH 64
 #define IO_SUBDIGEST_LENGTH 12
-#define IO_OBJECTID_LENGTH 64
+#define IO_OBJECTID_LENGTH 128
 
 #define FW32(A) fwrite32((void*) &A, file)
 #define FW64(A) fwrite64((void*) &A, file)
@@ -50,8 +50,9 @@ void io_fread64(void *v, FILE* file);
 void io_hash(void const * const, const size_t, char[IO_DIGEST_LENGTH]);
 void io_subdigest(void const * const, const size_t, char[IO_SUBDIGEST_LENGTH]);
 
-int io_save(TCPC(void), IOObjectID fnname, IOObjectFunction fn);
-int io_load(char objid[IO_OBJECTID_LENGTH], IOObjectFunction fn, void* obj);
+int io_save(TCPC(void), int cache, IOObjectID fnname, IOObjectFunction fn);
+int io_load(char objid[IO_OBJECTID_LENGTH], int cache, IOObjectFunction fn, void* obj);
 
+void io_appendtime(char *str, size_t size);
 
 #endif

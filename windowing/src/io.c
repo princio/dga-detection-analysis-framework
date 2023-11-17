@@ -151,6 +151,13 @@ void io_hash(void const * const object, const size_t object_size, char digest[IO
     }
 }
 
+void io_appendtime(char *str, size_t size) {
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+
+    snprintf(str + strlen(str), size, "%02d%02d%02d_%02d%02d%02d", (tm.tm_year + 1900), tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+}
+
 void io_subdigest(void const * const object, const size_t object_size, char subdigest[IO_SUBDIGEST_LENGTH]) {
     char digest[IO_DIGEST_LENGTH];
     io_hash(object, object_size, digest);
@@ -161,7 +168,7 @@ void io_subdigest(void const * const object, const size_t object_size, char subd
 int _io_run(IOReadWrite rw, char fname[700], IOObjectFunction fn, void* obj) {
     const int fileexists = io_fileexists(fname);
     if(fileexists && rw == IO_WRITE) {
-        fprintf(stderr, "Warning: file %s already exists.\n", fname);
+        return 0;
     } else
     if (!fileexists && rw == IO_READ) {
         // fprintf(stderr, "Error: file %s not exists.\n", fname);
@@ -185,18 +192,18 @@ int _io_run(IOReadWrite rw, char fname[700], IOObjectFunction fn, void* obj) {
     return 0;
 }
 
-int io_save(TCPC(void) obj, IOObjectID fnname, IOObjectFunction fn) {
+int io_save(TCPC(void) obj, int cache, IOObjectID fnname, IOObjectFunction fn) {
     char fname[700] = ""; {
         char objid[IO_OBJECTID_LENGTH];
         fnname(obj, objid);
-        sprintf(fname, "%s/%s.bin", CACHE_PATH, objid);
+        sprintf(fname, "%s/%s.bin", cache ? CACHE_PATH : ROOT_PATH, objid);
     }
     return _io_run(IO_WRITE, fname, fn, (void*) obj);
 }
 
-int io_load(char objid[IO_OBJECTID_LENGTH], IOObjectFunction fn, void* obj) {
+int io_load(char objid[IO_OBJECTID_LENGTH], int cache, IOObjectFunction fn, void* obj) {
     char fname[700] = ""; {
-        sprintf(fname, "%s/%s.bin", CACHE_PATH, objid);
+        sprintf(fname, "%s/%s.bin", cache ? CACHE_PATH : ROOT_PATH, objid);
     }
     return _io_run(IO_READ, fname, fn, obj);
 }

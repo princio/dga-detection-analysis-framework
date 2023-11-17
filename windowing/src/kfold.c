@@ -1,5 +1,7 @@
 #include "kfold.h"
 
+#include "cache.h"
+#include "io.h"
 #include "testbed.h"
 
 #include <assert.h>
@@ -72,16 +74,22 @@ void kfold_splits(MANY(RWindow) rwindows_src, MANY(TT) tts, DGAClass cl, KFoldCo
     }
 }
 
-MANY(TT) kfold_run(const Dataset ds, KFoldConfig config) {
+KFold kfold_run(const Dataset ds, KFoldConfig config, PSet* pset) {
     assert((config.balance_method != FOLDING_DSBM_EACH) || (config.split_method != FOLDING_DSM_IGNORE_1));
+
+    KFold kfold;
+    MANY(TT) tts;
 
     if (config.kfolds <= 1 || config.kfolds - 1 < config.test_folds) {
         fprintf(stderr, "Error within kfolds (%d) and test_folds (%d).", config.kfolds, config.test_folds);
         exit(1);
     }
 
-    MANY(TT) tts;
     INITMANY(tts, config.kfolds, TT);
+
+    kfold.config = config;
+    kfold.pset = pset;
+    kfold.ks = tts;
 
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
         MANY(RWindow) rwindows;
@@ -99,16 +107,109 @@ MANY(TT) kfold_run(const Dataset ds, KFoldConfig config) {
         free(rwindows._);
     }
 
-    return tts;
+    return kfold;
 }
 
-void kfold_free(MANY(TT) tts) {
-    for (int32_t k = 0; k < tts.number; k++) {
+void kfold_free(KFold* kfold) {
+    for (int32_t k = 0; k < kfold->config.kfolds; k++) {
         DGAFOR(cl) {
-            free(tts._[k][cl].train._);
-            free(tts._[k][cl].test._);
+            free(kfold->ks._[k][cl].train._);
+            free(kfold->ks._[k][cl].test._);
         }
     }
 
-    free(tts._);
+    free(kfold->ks._);
+}
+
+void kfold_io(IOReadWrite rw, FILE* file, void* obj) {
+    KFold* kfold = obj;
+
+    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    FRW(kfold->config.balance_method);
+    FRW(kfold->config.kfolds);
+    FRW(kfold->config.shuffle);
+    FRW(kfold->config.split_method);
+    FRW(kfold->config.test_folds);
+
+    if (rw == IO_READ) {
+        INITMANY(kfold->ks, kfold->config.kfolds, TT);
+    }
+
+    for (int k = 0; k < kfold->config.kfolds; ++k) {
+        for (int l = 0; l < 2; ++l) {
+            DGAFOR(cl) {
+                MANY(RWindow)* mrw;
+
+                if (l) {
+                    mrw = &kfold->ks._[k][cl].train;
+                } else {
+                    mrw = &kfold->ks._[k][cl].test;
+                }
+
+                FRW(mrw->number);
+
+                for (int i = 0; i < mrw->number; ++i) {
+                    RWindow window = mrw->_[i];
+
+                    FRW(window->source_index);
+                    FRW(window->pset_index);
+                    FRW(window->wnum);
+                    FRW(window->dgaclass);
+                    FRW(window->wcount);
+                    FRW(window->logit);
+                    FRW(window->whitelistened);
+                    FRW(window->dn_bad_05);
+                    FRW(window->dn_bad_09);
+                    FRW(window->dn_bad_099);
+                    FRW(window->dn_bad_0999);
+                }
+            }
+        }
+    }
+}
+
+void kfold_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]) {
+    char tb_objid[IO_OBJECTID_LENGTH];
+    char tb_objid_subdigest[IO_SUBDIGEST_LENGTH];
+
+    TCPC(KFold) kfold = obj;
+
+    memset(objid, 0, IO_OBJECTID_LENGTH);
+
+    testbed_io_objid(kfold->config.testbed, tb_objid);
+
+    io_subdigest(tb_objid, strlen(tb_objid), tb_objid_subdigest);
+
+    snprintf(objid, IO_OBJECTID_LENGTH, "kfold_%s_%d_%d_", tb_objid_subdigest, kfold->config.kfolds, kfold->pset->id);
+
+    io_appendtime(objid, IO_OBJECTID_LENGTH);
+}
+
+void kfold_io_txt(TCPC(void) obj) {
+    char testbed_objid[IO_OBJECTID_LENGTH];
+    char objid[IO_OBJECTID_LENGTH];
+    TCPC(KFold) kfold = obj;
+    char fname[800];
+    FILE* file;
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+
+    kfold_io_objid(kfold, objid);
+
+    testbed_io_objid(kfold->config.testbed, testbed_objid);
+    
+    sprintf(fname, "%s/%s.md", ROOT_PATH, objid);
+
+    file = io_openfile(IO_WRITE, fname);
+
+    fprintf(file, "# KFold %s\n\n", objid);
+
+    fprintf(file, "Run at: %04d/%02d/%02d %02d:%02d:%02d\n\n", (tm.tm_year + 1900), tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    fprintf(file, "KFolds: %d\n", kfold->config.kfolds);
+    fprintf(file, "KFolds reserved for test split: %d\n", kfold->config.test_folds);
+    fprintf(file, "Shuffle: %d\n", kfold->config.shuffle);
+
+    fclose(file);
 }

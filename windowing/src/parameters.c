@@ -79,7 +79,9 @@ void parameters_io(IOReadWrite rw, FILE* file, void* obj) {
 }
 
 void parameters_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]) {
+    char subdigest[IO_SUBDIGEST_LENGTH];
     memset(objid, 0, IO_OBJECTID_LENGTH);
-    io_subdigest(obj, sizeof(PSet), objid);
+    io_subdigest(obj, sizeof(PSet), subdigest);
+    sprintf(objid, "pset_%s", subdigest);
 }
 

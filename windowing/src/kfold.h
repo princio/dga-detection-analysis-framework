@@ -9,12 +9,12 @@
 char thcm_names[5][20];
 typedef enum FoldingTestConfigSplitBalanceMethod {
     FOLDING_DSBM_EACH,
-    FOLDING_DSBM_NOT_INFECTED
+    KFOLD_BM_NOT_INFECTED
 } FoldingTestConfigSplitBalanceMethod;
 
 typedef enum FoldingTestConfigSplitMethod {
     FOLDING_DSM_IGNORE_1,
-    FOLDING_DSM_MERGE_12
+    KFOLD_SM_MERGE_12
 } FoldingTestConfigSplitMethod;
 
 // typedef struct DatasetSplitConfig {
@@ -23,6 +23,8 @@ typedef enum FoldingTestConfigSplitMethod {
 // } DatasetSplitConfig;
 
 typedef struct KFoldConfig {
+    TestBed* testbed;
+    
     int32_t kfolds;
     
     int32_t test_folds; // usually kfold - 1
@@ -32,21 +34,20 @@ typedef struct KFoldConfig {
     FoldingTestConfigSplitMethod split_method;
 } KFoldConfig;
 
-typedef struct KFoldSet {
-    int32_t k;
-    TT tt;
-    MANY(TTEvaluation) evaluations;
-} KFoldSet;
-
-MAKEMANY(KFoldSet);
-
 typedef struct KFold {
     KFoldConfig config;
-    MANY(KFoldSet) ks;
+    PSet* pset;
+    MANY(TT) ks;
 } KFold;
 
-MANY(TT) kfold_run(const Dataset ds,  KFoldConfig config);
+KFold kfold_run(const Dataset ds,  KFoldConfig config, PSet* pset);
 
-void kfold_free(MANY(TT) tts);
+void kfold_free(KFold* kfold);
+
+void kfold_io(IOReadWrite rw, FILE* file, void* obj);
+
+void kfold_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]);
+
+void kfold_io_txt(TCPC(void) obj);
 
 #endif
