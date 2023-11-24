@@ -1,7 +1,7 @@
 #ifndef __CACHE_H__
 #define __CACHE_H__
 
-#include "testbed.h"
+#include "io.h"
 
 extern char ROOT_PATH[500];
 extern char CACHE_PATH[500];

@@ -30,7 +30,7 @@ void list_insert(List* lists, TCPC(void));
 
 Many list_to_array(List list);
 
-void list_free(List, int freeitem);
+void list_free(List*, int freeitem);
 void array_free(Many);
 
 #endif

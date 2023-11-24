@@ -13,13 +13,9 @@ typedef struct PSet {
     NN nn;
     Whitelisting whitelisting;
     WindowingType windowing;
-    int32_t wsize;
 } PSet;
 
 typedef struct PSetGenerator {
-    int32_t n_wsize;
-    int32_t* wsize;
-
     int32_t n_whitelisting;
     Whitelisting* whitelisting;
 
@@ -34,7 +30,6 @@ typedef struct PSetGenerator {
 } PSetGenerator;
 
 MAKEMANY(PSet);
-MAKEMANYCONST(PSet);
 
 void parameters_hash(PSet*);
 

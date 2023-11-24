@@ -10,7 +10,7 @@
 void detect_reset(Detection* det) {
     // det->th = -1 * DBL_MIN;
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        memset(det->sources, 0, MAX_SOURCEs * sizeof(CM));
+        memset(det->sources, 0, 100 * sizeof(CM));
         memset(&det->windows, 0, sizeof(CM));
     }
 }
@@ -20,22 +20,22 @@ void detect_copy(TCPC(Detection) src, Detection* dst) {
 }
 
 void detect_run(MANY(RWindow) ds, const double th, Detection* const detection) {
-    detect_reset(detection);
+    // detect_reset(detection);
 
-    for (int32_t i = 0; i < ds.number; i++) {
-        RWindow window = ds._[i];
+    // for (int32_t i = 0; i < ds.number; i++) {
+    //     RWindow window = ds._[i];
 
-        const int prediction = window->logit >= th;
-        const int infected = window->dgaclass > 0;
+    //     const int prediction = window->logit >= th;
+    //     const int infected = window->dgaclass > 0;
 
-        if (prediction == infected) {
-            detection->windows.trues++;
-            detection->sources[window->source_index.all].trues++;
-        } else {
-            detection->windows.falses++;
-            detection->sources[window->source_index.all].falses++;
-        }
-    }
+    //     if (prediction == infected) {
+    //         detection->windows.trues++;
+    //         detection->sources[window->source_index.all].trues++;
+    //     } else {
+    //         detection->windows.falses++;
+    //         detection->sources[window->source_index.all].falses++;
+    //     }
+    // }
 }
 
 double detect_performance(Detection detection[N_DGACLASSES], TCPC(Performance) performance) {

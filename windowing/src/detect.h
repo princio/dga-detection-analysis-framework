@@ -2,8 +2,6 @@
 #ifndef __DETECT_H__
 #define __DETECT_H__
 
-#include "dataset.h"
-#include "sources.h"
 #include "windows.h"
 
 typedef struct CM {
@@ -13,7 +11,7 @@ typedef struct CM {
 
 typedef struct Detection {
     CM windows;
-    CM sources[MAX_SOURCEs];
+    CM sources[100];
 } Detection;
 
 typedef Detection FullDetection[N_DGACLASSES];

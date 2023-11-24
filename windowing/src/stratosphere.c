@@ -2,7 +2,8 @@
 #include "stratosphere.h"
 
 #include "parameters.h"
-#include "testbed.h"
+#include "testbed2.h"
+#include "windows0.h"
 
 #include <libpq-fe.h>
 #include <15/server/catalog/pg_type_d.h>
@@ -147,7 +148,40 @@ int32_t get_fnreq_max(int32_t id) {
     return fnreq_max;
 }
 
-void fetch_source_messages(const Source* source, int32_t* nrows, PGresult** pgresult) {
+void fetch_window(const __Source* source, uint64_t fn_req_min, uint64_t fn_req_max, PGresult** pgresult, int32_t* nrows) {
+    char sql[1000];
+    int pgresult_binary = 1;
+
+    sprintf(sql,
+            "SELECT M.ID, FN_REQ, "
+                "DN_NN_7.VALUE, "
+                "DN_NN_8.VALUE, "
+                "DN_NN_9.VALUE, "
+                "DN_NN_10.VALUE, "
+                "IS_RESPONSE, TOP10M, DYNDNS, M.ID "
+            "FROM MESSAGES_%d AS M "
+                "JOIN (SELECT * FROM DN_NN WHERE DN_NN.NN_ID = 7) AS DN_NN_7 ON M.DN_ID=DN_NN_7.DN_ID "
+                "JOIN (SELECT * FROM DN_NN WHERE DN_NN.NN_ID = 8) AS DN_NN_8 ON M.DN_ID=DN_NN_8.DN_ID "
+                "JOIN (SELECT * FROM DN_NN WHERE DN_NN.NN_ID = 9) AS DN_NN_9 ON M.DN_ID=DN_NN_9.DN_ID "
+                "JOIN (SELECT * FROM DN_NN WHERE DN_NN.NN_ID = 10) AS DN_NN_10 ON M.DN_ID=DN_NN_10.DN_ID "
+                "JOIN DN AS DN ON M.DN_ID=DN.ID "
+                "WHERE FN_REQ BETWEEN %ld AND %ld "
+            "ORDER BY FN_REQ, M.ID",
+            source->id, fn_req_min, fn_req_max
+    );
+
+    *pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
+
+    if (PQresultStatus(*pgresult) != PGRES_TUPLES_OK) {
+        printf("[%s:%d] Select messages error for pcap %d: %s\n", __FILE__, __LINE__, source->id, PQerrorMessage(conn));
+        PQclear(*pgresult);
+        return;
+    }
+
+    *nrows = PQntuples(*pgresult);
+}
+
+void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pgresult) {
     char sql[1000];
     int pgresult_binary = 1;
 
@@ -180,7 +214,12 @@ void fetch_source_messages(const Source* source, int32_t* nrows, PGresult** pgre
     }
 }
 
-void perform_windowingap(RSource source, MANY(PSet) psets, int32_t loaded[], MANY(Windowing) windowingaps) {
+// void perform_windowingap(RSource source, MANY(PSet) psets, MANY(RWindow) windows_pset[psets.number], int32_t loaded[psets.number]) {
+void perform_windowing(MANY(RWindowing) windowing, MANY(PSet) psets, int32_t loaded[], MANY(RWindow) windows_pset[psets.number]) {
+    const WSize wsize = windowing._[0]->wsize;
+    const RSource source = windowing._[0]->source;
+    const MANY(RWindow0) windows0 = windowing._[0]->windows;
+    
     PGresult* pgresult = NULL;
     int nrows;
 
@@ -190,7 +229,7 @@ void perform_windowingap(RSource source, MANY(PSet) psets, int32_t loaded[], MAN
 
     fetch_source_messages(source, &nrows, &pgresult);
 
-    for(int r = 0; r < nrows; r++) {
+    for (int r = 0; r < nrows; r++) {
         DNSMessage message;
         parse_message(pgresult, r, &message);
 
@@ -198,8 +237,17 @@ void perform_windowingap(RSource source, MANY(PSet) psets, int32_t loaded[], MAN
             if (loaded[p]) {
                 continue;
             }
+
+            int wnum;
+            RWindow window;
+
+            TCPC(PSet) pset = &psets._[p];
+
+            wnum = (int) floor(message.fn_req / wsize);
+
+            window = windows_pset[p]._[wnum];
             
-            windowing_domainname(message, &windowingaps._[p]);
+            // windowing_domainname(message, &windows_pset[p]);
         }
     }
 
@@ -208,7 +256,36 @@ void perform_windowingap(RSource source, MANY(PSet) psets, int32_t loaded[], MAN
     _stratosphere_disconnect();
 }
 
-void run() {
+void stratosphere_run_windowfetch(RWindow0 window0, MANY(PSet) psets, RWindow windows[psets.number]) {
+    PGresult* pgresult = NULL;
+    int nrows;
+    memset(&windows, 0, psets.number * sizeof(RWindow));
+
+    if (_stratosphere_connect()) {
+        return;
+    }
+
+    fetch_window(window0->windowing->source, window0->fn_req_min, window0->fn_req_max, &pgresult, &nrows);
+
+    for (int32_t p = 0; p < psets.number; p++) {
+        windows[p]->w0 = window0;
+        windows[p]->pset_index = psets._[p].id;
+        windows[p]->wcount = nrows;
+    }
+
+    for(int r = 0; r < nrows; r++) {
+        DNSMessage message;
+        parse_message(pgresult, r, &message);
+
+        for (int32_t p = 0; p < psets.number; p++) {
+            windows_calc(message, &psets._[p], windows[p]);
+        }
+    }
+
+    PQclear(pgresult);
+}
+
+void _stratosphere_add(TestBed2* tb2) {
     PGresult* pgresult = NULL;
 
     pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr ASC");
@@ -238,31 +315,32 @@ void run() {
         r = atoi(PQgetvalue(pgresult, row, z++));
         fnreq_max = atoi(PQgetvalue(pgresult, row, z++));
 
-        Source* rsource = calloc(1, sizeof(Source));
+        RSource rsource = sources_alloc();
+
         rsource->id = id;
         sprintf(rsource->galaxy, "%s", GALAXY_NAME);
         sprintf(rsource->name, "%s_%d", GALAXY_NAME, id);
-        rsource->binaryclass = DGA2BINARY(dgaclass);
-        rsource->dgaclass = dgaclass;
+        rsource->wclass.bc = dgaclass > 0;
+        rsource->wclass.mc = dgaclass;
         rsource->qr = qr;
         rsource->q = q;
         rsource->r = r;
         rsource->fnreq_max = fnreq_max;
         rsource->capture_type = CAPTURETYPE_PCAP;
 
-        testbed_source_add(rsource, 0, perform_windowingap);
+        testbed2_source_add(tb2, rsource);
     }
 
     PQclear(pgresult);
 }
 
-void stratosphere_run() {
+void stratosphere_add(TestBed2* tb2) {
     if (_stratosphere_connect()) {
         printf("Stratosphere: cannot connect to database.");
         return;
     }
 
-    run();
+    _stratosphere_add(tb2);
 
     _stratosphere_disconnect();
 }

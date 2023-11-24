@@ -3,51 +3,77 @@
 
 #include "parameters.h"
 #include "sources.h"
-#include "windows.h"
+#include "windows0.h"
 
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
-typedef struct Windowing {
-    TCP_(Source) source;
+// typedef void (*ApplySourceFunction)(struct Source*, MANY(ApplyPSet) ap, struct MANY(RWindow) windows_pset[ap.number]);
+// typedef void (*ApplyWindowFunction)(TCPC(struct Source), struct MANY(PSet) psets, const int32_t fnreq_min, const int32_t fnreq_max, const int32_t wnum, struct Window* windows[psets.number]);
+
+/*
+typedef struct ApplyWindow {
+    TCPC(Source) source;
+    MANY(PSet) psets;
+    int32_t wnum;
+    uint64_t fnreq_min;
+    uint64_t fnreq_max;
+
+    ApplyWindowFunction fn;
+} ApplyWindow;
+
+typedef struct ApplyPSet {
+    WSize wsize;
+    PSet* pset;
+    int loaded;
+} ApplyPSet;
+
+MAKEMANY(ApplyPSet);
+
+typedef struct ApplySource {
+    TCPC(Source) source;
+
+    MANY(ApplyPSet) applies;
+
+    ApplySourceFunction fn;
+} ApplySource;
+
+typedef struct SourceApply {
+    Source* source;
+    PSet* pset;
+    WSize wsize;
     
-    TCP_(PSet) pset;
+    MANY(RWindow) windows;
+} SourceApply;
 
-    MANY(Window) windows;
-} Windowing;
+MAKEMANY(SourceApply);
+MAKEDGAMANY(SourceApply);
+*/
 
-typedef Windowing* RWindowing;
+typedef struct __Windowing {
+    int32_t index;
+    __Source* source;
+    WSize wsize;
+    MANY(RWindow0) windows;
+} __Windowing;
 
-MAKEMANY(Windowing);
+// typedef __Windowing* RWindowing; in common.h
+
 MAKEMANY(RWindowing);
-MAKEDGA(Windowing);
-MAKEDGA(RWindowing);
 
-MAKEDGAMANY(Windowing);
-MAKEDGAMANY(RWindowing);
+MAKETETRA(MANY(RWindowing));
 
-typedef void (*WindowingFunction)(TCPC(Source), MANY(RWindowing) const);
+int32_t windowings_add(MANY(RWindowing)* windowings, RWindowing windowing);
+RWindowing windowings_alloc(RSource rsource, WSize wsize);
+void windowings_finalize(MANY(RWindowing)* windowings);
+void windowings_free();
+void windowing_run(RWindowing windowing);
 
-typedef struct WindowingOrigin {
-    MANY(Galaxy) galaxies;
+// int windowing_load(T_PC(SourceApply) sourceapply);
+// int windowing_save(TCPC(SourceApply));
 
-    struct {
-        MANY(Source) all;
-        MANY(RSource) binary[2];
-        DGAMANY(RSource) multi;
-    } sources;
-} WindowingOrigin;
+// MANY(SourceApply) windowing_run_source(TCPC(ApplySource) as);
 
-typedef void (*WindowingAPFunction)(TCPC(Source), MANY(PSet), int32_t[], MANY(Windowing));
-
-void windowing_init(TCPC(Source), TCPC(PSet),T_PC(Windowing));
-
-void windowing_domainname(const DNSMessage, TCPC(Windowing));
-
-int windowing_load(T_PC(Windowing));
-
-MANY(Windowing) windowing_run_1source_manypsets(TCPC(Source), MANY(PSet), WindowingAPFunction);
-
-void windowing_io(IOReadWrite, FILE*, void*);
-void windowing_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);
+// void windowing_io(IOReadWrite, FILE*, void*);
+// void windowing_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);
 
 #endif

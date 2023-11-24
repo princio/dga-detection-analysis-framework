@@ -21,39 +21,25 @@
 #define TCPC(T) T const * const
 #define T_PC(T) T * const
 
-#define REF(A) R ## A
-#define DGA(A) A ## __dga
-#define MANY(T) T ## __s
-#define DGAMANY(T) T ## __dga__s
-#define MANYDGA(T) T ## __s__dga
-#define MANYCONST(T) c__ ## T ## __s
-#define MULTICLASS(T) T ## __mc
+#define __CONCATENATE(a,b) a ## b
+#define CONCATENATE(x,y) __CONCATENATE(x,y)
 
-#define MAKEMANY(T) typedef struct MANY(T){\
+#define REF(A) CONCATENATE(R, A)
+#define DGA(A) CONCATENATE(A, __dga)
+#define MANY(T) CONCATENATE(T, __s)
+#define TETRA(T) CONCATENATE(T, __tetra)
+
+#define MAKEMANY(T) typedef struct MANY(T) {\
     int32_t number; \
     T* _; \
 } MANY(T)
 
-#define MAKEDGA(A) typedef A DGA(A)[N_DGACLASSES]
-#define MAKEDGAMANY(A) typedef MANY(A) DGAMANY(A)[N_DGACLASSES]
-
-#define MAKEMANYDGA(T) typedef struct MANYDGA(T){\
-    int32_t number; \
-    DGA(T)* _; \
-} MANYDGA(T)
-
-#define MAKEMANYCONST(T) typedef struct MANYCONST(T){\
-    const int32_t number; \
-    const T* _; \
-} MANYCONST(T)
-
-#define MANY2CONST(a, b, T) MANYCONST(T) a = { .number = b.number, ._ = b._ };
-
-#define MAKEMULTICLASS(T) typedef struct MULTICLASS(T) {\
+#define MAKETETRA(T) typedef struct TETRA(T) {\
     T all;\
-    REF(T) binary[2];\
-    DGA(REF(T)) multi;\
-} MULTICLASS(a)
+    T binary[2];\
+    T multi[N_DGACLASSES];\
+} TETRA(T)
+
 
 #define INITMANY(A, N, T) { A.number = N;\
             A._ = calloc(A.number, sizeof(T)); }
@@ -61,7 +47,8 @@
 #define INITMANYREF(A, N, T) A->number = N;\
             A->_ = calloc(A->number, sizeof(T))
 
-typedef int32_t NSourcesID_DGA[N_DGACLASSES];
+#define INITMANYSIZE(A, N, T) { A.number = N;\
+            A._ = calloc(A.number, T); }
 
 typedef int32_t IDX;
 
@@ -71,12 +58,12 @@ typedef struct Index {
     int32_t multi[N_DGACLASSES];
 } Index;
 
-typedef struct __MANY_STRUCT {
+typedef struct __MANY {
     int32_t number;
-    void* _;
-} __MANY_STRUCT;
+    void** _;
+} __MANY;
 
-inline int32_t dgamany_number_sum(__MANY_STRUCT many[N_DGACLASSES]){
+inline int32_t dgamany_number_sum(__MANY many[N_DGACLASSES]){
     int32_t sum = 0;
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
         sum += many[cl].number;
@@ -95,7 +82,10 @@ typedef enum DGAClass {
     DGACLASS_2,
 } DGAClass;
 
-#define DGA2BINARY(D) D > 0
+typedef struct WClass {
+    BinaryClass bc;
+    DGAClass mc;
+} WClass;
 
 typedef struct DNSMessage {
     int64_t id;
@@ -109,15 +99,9 @@ typedef struct DNSMessage {
 
 //   P A R A M E T E R S
 
-typedef struct WSize {
-    int32_t id;
-    int32_t value;
-} WSize;
+typedef uint32_t WSize;
 
-typedef struct WSizes {
-    int32_t number;
-    WSize* _;
-} WSizes;
+MAKEMANY(WSize);
 
 typedef struct Whitelisting {
     int32_t rank;
@@ -162,5 +146,11 @@ extern char CLASSES[N_DGACLASSES][50];
 extern char WINDOWING_NAMES[3][10];
 
 extern char NN_NAMES[11][10];
+
+
+
+typedef struct __Windowing* RWindowing;
+typedef struct __Window0* RWindow0;
+typedef struct __Window* RWindow;
 
 #endif

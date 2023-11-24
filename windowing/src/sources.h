@@ -4,6 +4,8 @@
 
 #include "common.h"
 
+#include "parameters.h"
+
 #include "io.h"
 #include "list.h"
 
@@ -26,14 +28,13 @@ typedef struct SourceIndex {
 
 struct Galaxy;
 
-typedef struct Source {
-    Index index;
+typedef struct __Source {
+    int32_t index;
 
     char name[50];
     char galaxy[50];
 
-    BinaryClass binaryclass;
-    DGAClass dgaclass;
+    WClass wclass;
     
     CaptureType capture_type;
     SourceWindowingExecution windowing_type;
@@ -43,41 +44,22 @@ typedef struct Source {
     int64_t q;
     int64_t r;
     int64_t fnreq_max;
-} Source;
+} __Source;
 
-MAKEMANY(Source);
-MAKEDGA(Source);
-MAKEDGAMANY(Source);
-MAKEMANYDGA(Source);
+typedef __Source* RSource;
 
-typedef TCP_(Source) RSource;
 MAKEMANY(RSource);
-MAKEDGAMANY(RSource);
 
-typedef struct Galaxy {
-    char name[50];
+MAKETETRA(MANY(RSource));
 
-    struct {
-        MANY(Source) all;
-        MANY(RSource) binary[2];
-        DGAMANY(RSource) multi;
-    } sources;
-} Galaxy;
-
-MAKEMANY(Galaxy);
-
-MAKEDGA(List);
-MAKEDGA(Many);
-
-void sources_list_insert(DGA(List) lists, Source* source);
-
-void sources_lists_to_arrays(DGA(List) lists, DGA(Many) arrays);
-
-void sources_lists_free(DGA(List) lists);
-
-void sources_arrays_free(DGA(Many) arrays);
+void sources_tetra_add(TETRA(MANY(RSource))*, RSource);
+RSource sources_alloc();
+void sources_free();
+void sources_finalize(MANY(RSource)* sources);
 
 void sources_io(IOReadWrite, FILE*, void*);
 void sources_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);
+
+
 
 #endif

@@ -72,11 +72,13 @@ STACK := #-Wstack-protector # -fstack-protector-all
 # Specifies to GCC the required warnings
 WARNS := -Wall -Wextra -pedantic # -pedantic warns on language standards
 
+NOWARNS := -Wno-unused-parameter -Wno-unused-variable -Wno-unused-variable -Wno-unused-but-set-variable
+
 INCLUDES := -I/usr/include/postgresql/
 
 # Flags for compiling
 # CFLAGS := -O3 $(STD) $(STACK) $(WARNS) -I/usr/include/postgresql/
-CFLAGS := $(STD) $(STACK) $(WARNS) -I/usr/include/postgresql/
+CFLAGS := $(STD) $(STACK) $(WARNS) $(NOWARNS) -I/usr/include/postgresql/
 
 # Debug options
 DEBUG := -g3 -DDEBUG=1
@@ -144,13 +146,13 @@ $(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 
 
 # Rule for run valgrind tool
+# --leak-check=full --show-leak-kinds=all
 valgrind:
 	valgrind \
 		--track-origins=yes \
 		--leak-check=full \
 		--leak-resolution=high \
 		--log-file=$(LOGDIR)/$@.log \
-		# --leak-check=full --show-leak-kinds=all\
 		--main-stacksize=83886080\
 		$(BINDIR)/$(BINARY)
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"

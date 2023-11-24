@@ -65,8 +65,8 @@ Many list_to_array(List list) {
     return array;
 }
 
-void list_free(List list, int freeitem) {
-    ListItem* cursor = list.root;
+void list_free(List* list, int freeitem) {
+    ListItem* cursor = list->root;
 
     while (cursor) {
         ListItem* cursor2free = cursor;

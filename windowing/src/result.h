@@ -4,8 +4,6 @@
 #include "common.h"
 
 #include "detect.h"
-#include "kfold.h"
-
 
 typedef struct Test {
     Performance thchooser;

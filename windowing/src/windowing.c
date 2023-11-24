@@ -4,127 +4,187 @@
 #include "cache.h"
 #include "common.h"
 #include "io.h"
+#include "windows.h"
 
-#include <math.h>
+#include <assert.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-void windowing_init(TCPC(Source) source, TCPC(PSet) pset, T_PC(Windowing) windowing) {
-    windowing->source = source;
-    windowing->pset = pset;
+MANY(RWindowing) windowing_gatherer = {
+    .number = 0,
+    ._ = NULL
+};
 
-    const int32_t nw = N_WINDOWS(windowing->source->fnreq_max, windowing->pset->wsize);
-    INITMANY(windowing->windows, nw, Window);
-    for (int32_t w = 0; w < nw; w++) {
-        windowing->windows._[w].pset_index = windowing->pset->id;
-        windowing->windows._[w].wnum = w;
+void _windowings_realloc(MANY(RWindowing)* windowings, int32_t index) {
+    assert(index <= windowings->number);
+
+    if (windowing_gatherer.number == index) {
+        const int new_number = windowing_gatherer.number + 50;
+    
+        windowing_gatherer._ = realloc(windowing_gatherer._, (new_number) * sizeof(RWindowing));
+
+        for (int32_t s = index; s < new_number; s++) {
+            windowing_gatherer._[s] = NULL;
+        }
     }
 }
 
-int windowing_load(T_PC(Windowing) windowing) {
-    if (windowing->pset == NULL || windowing->pset == NULL || windowing->windows.number == 0) {
-        fprintf(stderr, "Windowing not initialized");
+int32_t _windowings_index(TCPC(MANY(RWindowing)) windowings) {
+    int32_t s;
+
+    for (s = 0; s < windowings->number; s++) {
+        if (windowings->_[s] == NULL) break;
+    }
+
+    return s;
+}
+
+int32_t windowings_add(MANY(RWindowing)* windowings, RWindowing windowing) {
+    const int32_t index = _windowings_index(windowings);
+
+    _windowings_realloc(windowings, index);
+
+    windowings->_[index] = windowing;
+    
+    return index;
+}
+
+RWindowing windowings_alloc(RSource rsource, WSize wsize) {
+    RWindowing windowing = calloc(1, sizeof(__Windowing));
+
+    const int32_t index = windowings_add(&windowing_gatherer, windowing);
+
+    windowing->index = index;
+    
+    windowing_gatherer._[index] = windowing;
+
+    return windowing;
+}
+
+void windowings_finalize(MANY(RWindowing)* windowings) {
+    const int32_t index = _windowings_index(windowings);
+    windowings->_ = realloc(windowings->_, (windowings->number) * sizeof(RWindowing));
+}
+
+void windowings_free() {
+    for (int32_t s = 0; s < windowing_gatherer.number; s++) {
+        if (windowing_gatherer._[s] == NULL) break;
+        free(windowing_gatherer._[s]);
+    }
+    free(windowing_gatherer._);
+}
+
+void windowing_run(RWindowing windowing) {
+    const WSize wsize = windowing->wsize;
+    const RSource source = windowing->source;
+    MANY(RWindow0)* windows = &windowing->windows;
+
+    const int32_t nw = N_WINDOWS(source->fnreq_max, wsize);
+    INITMANYREF(windows, nw, RWindow0);
+
+    uint32_t fnreq = 0;
+    for (int32_t w = 0; w < nw; w++) {
+        windows->_[w]->windowing = windowing;
+        windows->_[w]->wnum = w;
+        windows->_[w]->fn_req_min = fnreq;
+        fnreq += wsize;
+        windows->_[w]->fn_req_max = fnreq;
+    }
+}
+
+/*
+void windowing_init(TCPC(Windowing) windowing, TCPC(PSet) pset, T_PC(WindowingApply) windowingapply) {
+    windowingapply->windowing = windowing;
+    windowingapply->pset = pset;
+
+    const int32_t nw = N_WINDOWS(windowingapply->windowing->fnreq_max, windowingapply->pset->wsize);
+    windowingapply->windows = window_alloc(nw);
+    for (int32_t w = 0; w < nw; w++) {
+        windowingapply->windows._[w]->pset_index = windowingapply->pset->id;
+        windowingapply->windows._[w]->wnum = w;
+    }
+}
+
+int windowing_load(T_PC(WindowingApply) windowingapply) {
+    if (windowingapply->windowing == NULL || windowingapply->pset == NULL || windowingapply->windows.number == 0) {
+        fprintf(stderr, "WindowingApply not initialized");
         return -2;
     }
     char objid[IO_OBJECTID_LENGTH];
-    windowing_io_objid(windowing, objid);
-    return io_load(objid, 1, windowing_io, windowing);
+    windowing_io_objid(windowingapply, objid);
+    return io_load(objid, 1, windowing_io, windowingapply);
 }
 
-int windowing_save(TCPC(Windowing) windowing) {
-    return io_save(windowing, 1, windowing_io_objid, windowing_io);
+int windowing_save(TCPC(WindowingApply) windowingapply) {
+    return io_save(windowingapply, 1, windowing_io_objid, windowing_io);
 }
 
-MANY(Windowing) windowing_run_1source_manypsets(TCPC(Source) source, MANY(PSet) psets, WindowingAPFunction fn) {
-    MANY(Windowing) windowingaps;
-    INITMANY(windowingaps, psets.number, Windowing);
+MANY(WindowingApply) windowing_run_windowing(TCPC(ApplyWindowing) as) {
+    TCPC(Windowing) windowing = as->windowing;
+    MANY(WindowingApply) sa;
+    MANY(ApplyPSet) aps;
+
+    INITMANY(sa, as->applies.number, WindowingApply);
+    INITMANY(aps, as->applies.number, ApplyPSet);
 
     int32_t n_loaded = 0;
-    int32_t loaded[psets.number];
-    memset(loaded, 0, psets.number);
-    for (int32_t p = 0; p < psets.number; p++) {
-        windowing_init(source, &psets._[p], &windowingaps._[p]);
+    for (int32_t p = 0; p < as->applies.number; p++) {
+        ApplyPSet* ap = &as->applies._[p];
+        windowing_init(windowing, ap->pset, &sa._[p]);
 
-        int32_t is_loaded = 0 == windowing_load(&windowingaps._[p]);
-        loaded[p] = is_loaded;
-        n_loaded += is_loaded;
+        if(0 == windowing_load(&sa._[p])) {
+            ap->loaded = 1;
+            ++n_loaded;
+        }
+
+        aps._[p] = *ap;
     }
 
-    if (n_loaded < psets.number) {
-        fn(source, psets, loaded, windowingaps);
+    if (n_loaded < as->applies.number) {
+        (*as->fn)(windowing, aps, sa);
     }
 
-    for (int32_t p = 0; p < psets.number; p++) {
-        if (loaded[p]) {
+    for (int32_t p = 0; p < as->applies.number; p++) {
+        if (as->applies._[p].loaded) {
             continue;
         }
-        windowing_save(&windowingaps._[p]);
+        windowing_save(&sa._[p]);
+    }
+
+    return sa;
+}
+
+MANY(Windowing0) windowing0_run(TCPC(Windowing) windowing, MANY(WSize) wsizes) {
+    MANY(Windowing0) windowingaps;
+    INITMANY(windowingaps, wsizes.number, Windowing);
+
+    for (int32_t p = 0; p < wsizes.number; p++) {
+        const WSize wsize = wsizes._[p];
+        Windowing0* windowing0 = &windowingaps._[p];
+    
+        windowing0->windowing = windowing;
+        windowing0->wsize = wsize;
+
+        const int32_t nw = N_WINDOWS(windowing->fnreq_max, wsize);
+        INITMANY(windowing0->windows, nw, Window0);
+
+        uint32_t fnreq = 0;
+        for (int32_t w = 0; w < nw; w++) {
+            windowing0->windows._[w].windowing = (Windowing*) windowing0->windowing;
+            windowing0->windows._[w].wnum = w;
+            windowing0->windows._[w].fn_req_min = fnreq;
+            windowing0->windows._[w].fn_req_max = fnreq + wsize;
+            fnreq += wsize;
+        }
     }
 
     return windowingaps;
 }
 
-void windowing_domainname(const DNSMessage message, TCPC(Windowing) windowing) {
-    TCPC(PSet) pset = windowing->pset;
-    MANY(Window) const windows = windowing->windows;
-
-    int wnum;
-    Window *window;
-
-    wnum = (int) floor(message.fn_req / pset->wsize);
-
-    if (wnum >= windows.number) {
-        printf("ERROR\n");
-        printf("      wnum: %d\n", wnum);
-        printf("     wsize: %d\n", pset->wsize);
-        printf("  nwindows: %d\n", windows.number);
-    }
-
-    window = &windows._[wnum];
-
-    if (wnum != 0 && wnum != window->wnum) {
-        printf("Error[wnum != window->wnum]:\t%d\t%d\n", wnum, window->wnum);
-    }
-
-    int whitelistened = 0;
-    double value, logit;
-
-    if (pset->windowing == WINDOWING_Q && message.is_response) {
-        return;
-    } else
-    if (pset->windowing == WINDOWING_R && !message.is_response) {
-        return;
-    }
-
-    logit = message.logit;
-    value = message.value;
-
-    if (message.top10m > 0 && message.top10m < pset->whitelisting.rank) {
-        value = 0;
-        logit = pset->whitelisting.value;
-        whitelistened = 1;
-    }
-    if (logit == INFINITY) {
-        logit = pset->infinite_values.pinf;
-    } else
-        if (logit == (-1 * INFINITY)) {
-        logit = pset->infinite_values.ninf;
-    }
-
-    ++window->wcount;
-    window->dn_bad_05 += value >= 0.5;
-    window->dn_bad_09 += value >= 0.9;
-    window->dn_bad_099 += value >= 0.99;
-    window->dn_bad_0999 += value >= 0.999;
-
-    window->logit += logit;
-    window->whitelistened += whitelistened;
-}
-
 void windowing_io(IOReadWrite rw, FILE* file, void* obj) {
-    Windowing* windowing = obj;
+    WindowingApply* windowing = obj;
 
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
@@ -139,7 +199,7 @@ void windowing_io(IOReadWrite rw, FILE* file, void* obj) {
     }
 
     for (int i = 0; i < windowing->windows.number; ++i) {
-        Window* window = &windowing->windows._[i];
+        RWindow window = windowing->windows._[i];
 
         FRW(window->pset_index);
         
@@ -157,15 +217,16 @@ void windowing_io(IOReadWrite rw, FILE* file, void* obj) {
 }
 
 void windowing_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]) {
-    TCPC(Windowing) windowing = obj;
+    TCPC(WindowingApply) windowing = obj;
 
     memset(objid, 0, IO_OBJECTID_LENGTH);
 
-    char subdigest_source[IO_SUBDIGEST_LENGTH];
+    char subdigest_windowing[IO_SUBDIGEST_LENGTH];
     char subdigest_pset[IO_SUBDIGEST_LENGTH];
 
-    io_subdigest(windowing->pset, sizeof(PSet), subdigest_source);
-    io_subdigest(windowing->source, sizeof(Source), subdigest_pset);
+    io_subdigest(windowing->pset, sizeof(PSet), subdigest_windowing);
+    io_subdigest(windowing->windowing, sizeof(Windowing), subdigest_pset);
 
-    sprintf(objid, "windowing_%s_%s", subdigest_pset, subdigest_source);
+    sprintf(objid, "windowing_%s_%d_%s", subdigest_windowing, windowing->wsize, subdigest_pset);
 }
+*/
