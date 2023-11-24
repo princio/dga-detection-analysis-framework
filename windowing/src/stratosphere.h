@@ -7,5 +7,6 @@
 #include "windows.h"
 
 void stratosphere_add(TestBed2* testbed);
+void stratosphere_apply(MANY(RWindowing) windowings, MANY(PSet) psets, int32_t loaded[]);
 
 #endif

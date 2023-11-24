@@ -13,6 +13,7 @@ typedef struct PSet {
     NN nn;
     Whitelisting whitelisting;
     WindowingType windowing;
+    float nx_epsilon_increment;
 } PSet;
 
 typedef struct PSetGenerator {
@@ -27,6 +28,9 @@ typedef struct PSetGenerator {
 
     int32_t n_nn;
     NN* nn;
+
+    int32_t n_nx;
+    float* nx_epsilon_increment;
 } PSetGenerator;
 
 MAKEMANY(PSet);

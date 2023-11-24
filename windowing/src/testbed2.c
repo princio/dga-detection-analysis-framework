@@ -3,6 +3,7 @@
 
 #include "cache.h"
 #include "io.h"
+#include "stratosphere.h"
 #include "tetra.h"
 
 #include <math.h>
@@ -16,10 +17,10 @@
 TestBed2* testbed2_create(MANY(WSize) wsizes) {
     TestBed2* tb2 = calloc(1, sizeof(TestBed2));
 
-    INITMANY(tb2->wsizes, wsizes.number, MANY(WSize));
-    INITMANY(tb2->datasets, wsizes.number, MANY(Dataset0));
+    INITMANY(tb2->wsizes, wsizes.number, WSize);
+    INITMANY(tb2->datasets, wsizes.number, Dataset0);
 
-    for (int32_t i = 0; i < tb2->wsizes.number; i++) {
+    for (size_t i = 0; i < tb2->wsizes.number; i++) {
         tb2->datasets._[i].wsize = wsizes._[i];
         tb2->wsizes._[i] = wsizes._[i];
     }
@@ -27,8 +28,8 @@ TestBed2* testbed2_create(MANY(WSize) wsizes) {
     return tb2;
 }
 
-int32_t _testbed2_get_index(MANY(RSource) sources) {
-    int32_t index;
+size_t _testbed2_get_index(MANY(RSource) sources) {
+    size_t index;
     for (index = 0; index < sources.number; ++index) {
         if (sources._[index] == 0x0) break;
     }
@@ -36,83 +37,76 @@ int32_t _testbed2_get_index(MANY(RSource) sources) {
 }
 
 void testbed2_source_add(TestBed2* tb2, __Source* source) {
-    sources_tetra_add(&tb2->sources, source);
+    sources_add(&tb2->sources, source);
 }
 
-void testbed2_run(TestBed2* tb2) {
-    tetra_apply_all((Tetra*) &tb2->sources, (void(*)(void*)) sources_finalize);
+void testbed2_windowing(TestBed2* tb2) {
+    sources_finalize(&tb2->sources);
 
-    tetra_init_with_tetra((Tetra*) &tb2->windowingss, (Tetra*) &tb2->sources, sizeof(MANY(MANY(RWindowing))));
+    INITMANY(tb2->windowingss, tb2->sources.number, MANY(RWindowing));
 
-    TetraX counter[tb2->wsizes.number]; memset(counter, 0, tb2->wsizes.number * sizeof(Index));
-    TetraX sindex; memset(&sindex, 0, sizeof(TetraX));
-    for (int32_t s = 0; s < tb2->sources.all.number; s++) {
-        RSource source = tb2->sources.all._[s];
-        TetraItem titem;
+    int32_t count_windows[tb2->wsizes.number][N_DGACLASSES];
+    memset(&count_windows, 0, sizeof(int32_t) * tb2->wsizes.number * N_DGACLASSES);
+    for (size_t s = 0; s < tb2->sources.number; s++) {
+        RSource source = tb2->sources._[s];
+        MANY(RWindowing)* windowings = &tb2->windowingss._[s];
 
-        titem = tetra_get((Tetra*) &tb2->windowingss, sindex, source->wclass);
+        INITMANYREF(windowings, tb2->wsizes.number, RWindowing);
 
-        INITMANYREF(titem.all, tb2->wsizes.number, RWindowing);
-        INITMANYREF(titem.binary, tb2->wsizes.number, RWindowing);
-        INITMANYREF(titem.multi, tb2->wsizes.number, RWindowing);
-
-        for (int32_t u = 0; u < tb2->wsizes.number; u++) {
+        for (size_t u = 0; u < tb2->wsizes.number; u++) {
             const WSize wsize = tb2->wsizes._[u];
-            RWindowing windowing = windowings_alloc(source, wsize);
-    
-            titem.all->_[u] = windowing;
-            titem.binary->_[u] = windowing;
-            titem.multi->_[u] = windowing;
+            windowings->_[u] = windowings_create(source, wsize);
 
-            windowing_run(windowing);
-
-            tetra_increment(&sindex, source->wclass, 1);
-            tetra_increment(&counter[u], source->wclass, windowing->windows.number);
-            printf("%d\n", windowing->windows.number);
+            count_windows[u][source->wclass.mc] += windowings->_[u]->windows.number;
         }
     }
 
-    TetraX index; memset(&index, 0, sizeof(TetraX));
-    for (int32_t u = 0; u < tb2->wsizes.number; u++) {
-        TETRA(MANY(RWindow0))* dataset = &tb2->datasets._[u].windows;
+    int32_t windows_walker[tb2->wsizes.number][N_DGACLASSES];
+    memset(&windows_walker, 0, sizeof(int32_t) * tb2->wsizes.number * N_DGACLASSES);
+    for (size_t u = 0; u < tb2->wsizes.number; u++) {
+        Dataset0* dataset = &tb2->datasets._[u];
 
-        tetra_init((Tetra*) dataset, counter[u], sizeof(RWindow0));
+        DGAFOR(cl) INITMANY(dataset->windows[cl], count_windows[u][cl], RWindow0);
 
-        TetraX sindex; memset(&sindex, 0, sizeof(TetraX));
-        for (int32_t s = 0; s < tb2->sources.all.number; s++) {
-            RWindowing windowing = tb2->windowingss.all._[s]._[u];
-            RSource source = tb2->sources.all._[s];
+        for (size_t s = 0; s < tb2->sources.number; s++) {
+            RWindowing windowing = tb2->windowingss._[s]._[u];
+            RSource source = tb2->sources._[s];
+            const int32_t nw = windowing->windows.number;
 
-            TetraItem titem = tetra_get((Tetra*) dataset, sindex, source->wclass);
+            memcpy(&dataset->windows[source->wclass.mc]._[windows_walker[u][source->wclass.mc]], windowing->windows._, nw * sizeof(RWindow0));
 
-            memcpy(titem.all, windowing->windows._, windowing->windows.number * sizeof(RWindow0));
-            memcpy(titem.binary, windowing->windows._, windowing->windows.number * sizeof(RWindow0));
-            memcpy(titem.multi, windowing->windows._, windowing->windows.number * sizeof(RWindow0));
-
-            tetra_increment(&sindex, source->wclass, windowing->windows.number);
+            windows_walker[u][source->wclass.mc] += nw;
         }
     }
 }
 
-void testbed2_free(TestBed2* tb) {
-    tetra_free((Tetra*) &tb->sources);
-    TetraX sindex; memset(&sindex, 0, sizeof(TetraX));
-    for (int32_t s = 0; s < tb->sources.all.number; s++) {
-        const RSource source = tb->sources.all._[s];
-        for (int32_t u = 0; u < tb->wsizes.number; u++) {
-            TetraItem ti = tetra_get((Tetra*) &tb->windowingss, sindex, source->wclass);
-            free(ti.all->_);
-            free(ti.binary->_);
-            free(ti.multi->_);
-            tetra_increment(&sindex, source->wclass, 1);
+void testbed2_apply(TestBed2* tb2, const MANY(PSet) psets) {
+    for (size_t s = 0; s < tb2->sources.number; s++) {
+        const MANY(RWindowing) swindowings = tb2->windowingss._[s];
+        for (size_t i = 0; i < tb2->wsizes.number; i++) {
+            for (size_t w = 0; w < swindowings._[i]->windows.number; w++) {
+                INITMANY(swindowings._[i]->windows._[w]->applies, psets.number, WApply);
+            }
         }
+        stratosphere_apply(swindowings, psets, NULL);
+    }
+}
+
+void testbed2_free(TestBed2* tb2) {
+    for (size_t s = 0; s < tb2->sources.number; s++) {
+        const RSource source = tb2->sources._[s];
+        FREEMANY(tb2->windowingss._[s]);
     }
 
-    for (int32_t u = 0; u < tb->datasets.number; u++) {
-        tetra_free((Tetra*) &tb->datasets._[u]);
+    for (size_t u = 0; u < tb2->datasets.number; u++) {
+        dataset0_free(&tb2->datasets._[u]);
     }
-    
-    tetra_free((Tetra*) &tb->windowingss);
+
+    FREEMANY(tb2->sources);
+    FREEMANY(tb2->wsizes);
+    FREEMANY(tb2->windowingss);
+    FREEMANY(tb2->datasets);
+    free(tb2);
 }
 
 /*
@@ -136,7 +130,7 @@ void testbed2_io(IOReadWrite rw, FILE* file, void* obj) {
     if (rw == IO_READ) {
         INITMANY(tb->psets, tb->psets.number, PSet);
     }
-    for (int32_t p = 0; p < tb->psets.number; p++) {
+    for (size_t p = 0; p < tb->psets.number; p++) {
         char objid[IO_OBJECTID_LENGTH];
         memset(objid, 0, IO_OBJECTID_LENGTH);
 
@@ -156,7 +150,7 @@ void testbed2_io(IOReadWrite rw, FILE* file, void* obj) {
     if (rw == IO_READ) {
         INITMANY(tb->sources.all, tb->sources.all.number, Source);
     }
-    for (int32_t s = 0; s < tb->sources.all.number; s++) {
+    for (size_t s = 0; s < tb->sources.all.number; s++) {
         char objid[IO_OBJECTID_LENGTH];
         memset(objid, 0, IO_OBJECTID_LENGTH);
 
@@ -177,12 +171,12 @@ void testbed2_io(IOReadWrite rw, FILE* file, void* obj) {
         tb->applies = calloc(tb->psets.number, sizeof(TestBedPSetApply));
     }
 
-    for (int32_t p = 0; p < tb->psets.number; p++) {
+    for (size_t p = 0; p < tb->psets.number; p++) {
 
         if (rw == IO_READ) {
             INITMANY(tb->applies[p].windowings.all, tb->sources.all.number, TestBedSourceApplies);
         }
-        for (int32_t s = 0; s < tb->sources.all.number; s++) {
+        for (size_t s = 0; s < tb->sources.all.number; s++) {
             Windowing* windowing = &tb->applies[p].windowings.all._[s];
 
             char objid[IO_OBJECTID_LENGTH];
@@ -256,7 +250,7 @@ void testbed2_io_txt(TCPC(void) obj) {
     fprintf(file, "%15s   ", "infinite values");
     fprintf(file, "%13s\n", "whitelisting");
 
-    for (int32_t p = 0; p < tb->psets.number; p++) {
+    for (size_t p = 0; p < tb->psets.number; p++) {
         TCPC(PSet) pset = &tb->psets._[p];
 
         fprintf(file, "%8s    ", NN_NAMES[pset->nn]);
@@ -276,7 +270,7 @@ void testbed2_io_txt(TCPC(void) obj) {
     fprintf(file, "%10s    ", "fnreq_max");
     fprintf(file, "%s\n", "name");
     
-    for (int32_t s = 0; s < tb->sources.all.number; s++) {
+    for (size_t s = 0; s < tb->sources.all.number; s++) {
         TCPC(Source) source = &tb->sources.all._[s];
         fprintf(file, "%8d    ", source->binaryclass);
         fprintf(file, "%8d    ", source->dgaclass);

@@ -30,7 +30,7 @@
 #define TETRA(T) CONCATENATE(T, __tetra)
 
 #define MAKEMANY(T) typedef struct MANY(T) {\
-    int32_t number; \
+    size_t number; \
     T* _; \
 } MANY(T)
 
@@ -49,6 +49,8 @@
 
 #define INITMANYSIZE(A, N, T) { A.number = N;\
             A._ = calloc(A.number, T); }
+
+#define FREEMANY(A) free(A._)
 
 typedef int32_t IDX;
 
@@ -95,6 +97,7 @@ typedef struct DNSMessage {
     int32_t is_response;
     int32_t top10m;
     int32_t dyndns;
+    int32_t rcode;
 } DNSMessage;
 
 //   P A R A M E T E R S
@@ -152,5 +155,6 @@ extern char NN_NAMES[11][10];
 typedef struct __Windowing* RWindowing;
 typedef struct __Window0* RWindow0;
 typedef struct __Window* RWindow;
+MAKEMANY(RWindow0);
 
 #endif

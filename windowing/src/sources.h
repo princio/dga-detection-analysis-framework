@@ -52,7 +52,7 @@ MAKEMANY(RSource);
 
 MAKETETRA(MANY(RSource));
 
-void sources_tetra_add(TETRA(MANY(RSource))*, RSource);
+int32_t sources_add(MANY(RSource)* sources, RSource source);
 RSource sources_alloc();
 void sources_free();
 void sources_finalize(MANY(RSource)* sources);

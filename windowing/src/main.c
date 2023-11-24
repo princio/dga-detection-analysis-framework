@@ -100,8 +100,8 @@ MAKEMANY(double);
 //         FRW(tts.number);
 //         FRW(performances.number);
 
-//         for (int32_t k = 0; k < tts.number; k++) {
-//             for (int32_t ev = 0; ev < performances.number; ev++) {
+//         for (size_t k = 0; k < tts.number; k++) {
+//             for (size_t ev = 0; ev < performances.number; ev++) {
 //                 FRW(score[k][0][ev]);
 //                 FRW(score[k][1][ev]);
 //             }
@@ -117,21 +117,23 @@ MANY(PSet) make_parameters() {
 
         Whitelisting whitelisting[] = {
             { .rank = 0, .value = 0 },
-            // { .rank = 1000, .value = -50 },
-            // { .rank = 100000, .value = -50 },
+            { .rank = 1000, .value = -50 },
+            { .rank = 100000, .value = -50 },
             // { .rank = 1000000, .value = -10 },  
             // { .rank = 1000000, .value = -50 }
         };
 
         WindowingType windowing[] = {
             WINDOWING_Q,
-            // WINDOWING_R,
-            // WINDOWING_QR
+            WINDOWING_R,
+            WINDOWING_QR
         };
 
         InfiniteValues infinitevalues[] = {
             { .ninf = -20, .pinf = 20 }
         };
+
+        double nx_epsilon_increment[] = { 0.1 };
 
         #define _COPY(A) psetgenerator->A = calloc(1, sizeof(A)); \
         memcpy(psetgenerator->A, A, sizeof(A));
@@ -148,6 +150,9 @@ MANY(PSet) make_parameters() {
         psetgenerator->n_infinitevalues = sizeof(infinitevalues) / sizeof(InfiniteValues);
         _COPY(infinitevalues);
 
+        psetgenerator->n_nx = sizeof(nx_epsilon_increment) / sizeof(double);
+        _COPY(nx_epsilon_increment);
+
         #undef _COPY
     }
 
@@ -157,6 +162,7 @@ MANY(PSet) make_parameters() {
     free(psetgenerator->whitelisting);
     free(psetgenerator->windowing);
     free(psetgenerator->infinitevalues);
+    free(psetgenerator->nx_epsilon_increment);
     free(psetgenerator);
 
     return psets;
@@ -176,7 +182,7 @@ MANY(double) _rwindows_ths(const MANY(RWindow) dsrwindows[N_DGACLASSES]) {
 
     int n = 0;
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        for (int32_t w = 0; w < dsrwindows[cl].number; w++) {
+        for (size_t w = 0; w < dsrwindows[cl].number; w++) {
             int logit;
             int exists;
 
@@ -280,13 +286,13 @@ void print_score_tt_relative(Score* score_train, Score* score_test) {
     printf("\n");
 }
 
-void print_tt(TT tt) {
-    printf("TT: ");
-    DGAFOR(cl) {
-        printf("(%d\t%6d|%-6d)\t", cl, tt[cl].train.number, tt[cl].test.number);
-    }
-    printf("\n");
-}
+// void print_tt(TT tt) {
+//     printf("TT: ");
+//     DGAFOR(cl) {
+//         printf("(%d\t%6ld|%-6ld)\t", cl, tt[cl].train.number, tt[cl].test.number);
+//     }
+//     printf("\n");
+// }
 
 void print_cm(Detection* d) {
     printf("%6d/%-6d\t", d->windows.trues, d->windows.trues + d->windows.falses);
@@ -316,7 +322,7 @@ void print_fulldetection(Detection* d[N_DGACLASSES]) {
 //             detect_run(tt[cl].train, ths._[t], &fulldetection[cl]);
 //         }
 
-//         for (int32_t ev = 0; ev < performances.number; ev++) {
+//         for (size_t ev = 0; ev < performances.number; ev++) {
 //             double current_score = detect_performance(fulldetection, &performances._[ev]);
 
 //             int is_better = 0;
@@ -349,7 +355,9 @@ void make_testbed(TestBed2** tb2) {
 
     stratosphere_add(*tb2);
 
-    testbed2_run(*tb2);
+    testbed2_windowing(*tb2);
+
+    free(wsizes._);
 }
 
 // void runtraintest(KFold kfold, MANY(Performance) performances) {
@@ -359,7 +367,7 @@ void make_testbed(TestBed2** tb2) {
 //     memset(tests, 0, performances.number * kfold.config.kfolds * sizeof(Test));
 
 //     for (int32_t k = 0; k < kfold.config.kfolds; k++) {
-//         for (int32_t ev = 0; ev < performances.number; ev++) {
+//         for (size_t ev = 0; ev < performances.number; ev++) {
 //             tests[k][ev].thchooser = performances._[ev];
 //         }
 //     }
@@ -371,7 +379,7 @@ void make_testbed(TestBed2** tb2) {
 
 //         train(tts._[k], performances, tests_k);
 
-//         for (int32_t ev = 0; ev < performances.number; ev++) {
+//         for (size_t ev = 0; ev < performances.number; ev++) {
 //             DGAFOR(cl) {
 //                 detect_run(tts._[k][cl].test, tests_k[ev].th, &tests_k[ev].fulldetections.test[cl]);
 //             }
@@ -404,29 +412,52 @@ int main (int argc, char* argv[]) {
 
     make_testbed(&tb2);
 
-    {
-        KFoldConfig0  kconfig0;
-        kconfig0.testbed = tb2;
-        kconfig0.balance_method = KFOLD_BM_NOT_INFECTED;
-        kconfig0.kfolds = 20;
-        kconfig0.test_folds = 5;
-        kconfig0.split_method = KFOLD_SM_MERGE_12;
-        kconfig0.shuffle = 1;
 
-        KFold0 kfold0[tb2->wsizes.number];
+    MANY(RWindow0) windows0 = tb2->datasets._[0].windows[0];
+    for (size_t w = 0; w < windows0.number; w++) {
+        printf("%d\t%ld\t%ld\n", windows0._[w]->windowing->source->index, windows0._[w]->fn_req_min, windows0._[w]->fn_req_max);
+    }
 
-        for (int32_t ww = 0; ww < tb2->wsizes.number; ww++) {
-            kfold0[ww] = kfold0_run(tb2->datasets._[ww], kconfig0);
+    KFoldConfig0  kconfig0;
+    kconfig0.testbed = tb2;
+    kconfig0.balance_method = KFOLD_BM_NOT_INFECTED;
+    kconfig0.kfolds = 5;
+    kconfig0.test_folds = 1;
+    kconfig0.split_method = KFOLD_SM_MERGE_12;
+    kconfig0.shuffle = 1;
+
+    KFold0 kfold0[tb2->wsizes.number];
+
+    for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
+        kfold0[ww] = kfold0_run(tb2->datasets._[ww], kconfig0);
+    }
+
+    MANY(PSet) psets = make_parameters();
+
+    testbed2_apply(tb2, psets);
+
+
+    for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
+        MANY(RWindow0) windows0 = kfold0[ww].ks0._[0][0].train;
+        for (size_t w = 0; w < windows0.number; w++) {
+            RWindow0 window0 = kfold0[ww].ks0._[0][0].train._[w];
+            printf("%d\t%ld\t%ld\n", window0->windowing->source->index, window0->fn_req_min, window0->fn_req_max);
+            for (size_t p = 0; p < psets.number; p++) {
+                printf("\t%d) %5d\t%5d\t%5d\n", p, (int) window0->applies._[p].logit, window0->applies._[p].wcount, window0->applies._[p].whitelistened);
+            }
         }
     }
 
-    {
-        MANY(PSet) psets = make_parameters();
 
+    for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
+        kfold0_free(&kfold0[ww]);
     }
 
+    FREEMANY(psets);
     windows_free();
     windows0_free();
+    windowings_free();
+    sources_free();
     testbed2_free(tb2);
     
     return 0;

@@ -50,6 +50,7 @@ void parse_message(PGresult* res, int row, DNSMessage* message) {
     message->top10m = atoi(PQgetvalue(res, row, 4));
     message->dyndns = PQgetvalue(res, row, 5)[0] == 't';
     message->id = atol(PQgetvalue(res, row, 6));
+    message->rcode = atoi(PQgetvalue(res, row, 7));
 }
 
 void printdatastring(PGresult* res) {
@@ -188,7 +189,7 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
     printf("id: %d\n", source->id);
     
     sprintf(sql,
-            "SELECT FN_REQ, VALUE, LOGIT, IS_RESPONSE, TOP10M, DYNDNS, M.ID FROM MESSAGES_%d AS M "
+            "SELECT FN_REQ, VALUE, LOGIT, IS_RESPONSE, TOP10M, DYNDNS, M.ID, RCODE FROM MESSAGES_%d AS M "
             "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
             "JOIN DN AS DN ON M.DN_ID=DN.ID "
             "ORDER BY FN_REQ, ID",
@@ -215,10 +216,8 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
 }
 
 // void perform_windowingap(RSource source, MANY(PSet) psets, MANY(RWindow) windows_pset[psets.number], int32_t loaded[psets.number]) {
-void perform_windowing(MANY(RWindowing) windowing, MANY(PSet) psets, int32_t loaded[], MANY(RWindow) windows_pset[psets.number]) {
-    const WSize wsize = windowing._[0]->wsize;
-    const RSource source = windowing._[0]->source;
-    const MANY(RWindow0) windows0 = windowing._[0]->windows;
+void stratosphere_apply(MANY(RWindowing) windowings, MANY(PSet) psets, int32_t loaded[]) {
+    const RSource source = windowings._[0]->source;
     
     PGresult* pgresult = NULL;
     int nrows;
@@ -233,21 +232,12 @@ void perform_windowing(MANY(RWindowing) windowing, MANY(PSet) psets, int32_t loa
         DNSMessage message;
         parse_message(pgresult, r, &message);
 
-        for (int32_t p = 0; p < psets.number; p++) {
-            if (loaded[p]) {
-                continue;
-            }
+        for (size_t i = 0; i < windowings.number; i++) {
+            RWindowing windowing = windowings._[i];
 
-            int wnum;
-            RWindow window;
+                const int wnum = (int64_t) floor(message.fn_req / windowing->wsize);
 
-            TCPC(PSet) pset = &psets._[p];
-
-            wnum = (int) floor(message.fn_req / wsize);
-
-            window = windows_pset[p]._[wnum];
-            
-            // windowing_domainname(message, &windows_pset[p]);
+                wapply_run_many(&windowing->windows._[wnum]->applies, &message, &psets);
         }
     }
 
@@ -256,10 +246,9 @@ void perform_windowing(MANY(RWindowing) windowing, MANY(PSet) psets, int32_t loa
     _stratosphere_disconnect();
 }
 
-void stratosphere_run_windowfetch(RWindow0 window0, MANY(PSet) psets, RWindow windows[psets.number]) {
+void stratosphere_run_windowfetch(RWindow0 window0, MANY(PSet) psets) {
     PGresult* pgresult = NULL;
     int nrows;
-    memset(&windows, 0, psets.number * sizeof(RWindow));
 
     if (_stratosphere_connect()) {
         return;
@@ -267,19 +256,10 @@ void stratosphere_run_windowfetch(RWindow0 window0, MANY(PSet) psets, RWindow wi
 
     fetch_window(window0->windowing->source, window0->fn_req_min, window0->fn_req_max, &pgresult, &nrows);
 
-    for (int32_t p = 0; p < psets.number; p++) {
-        windows[p]->w0 = window0;
-        windows[p]->pset_index = psets._[p].id;
-        windows[p]->wcount = nrows;
-    }
-
-    for(int r = 0; r < nrows; r++) {
+    for (int r = 0; r < nrows; r++) {
         DNSMessage message;
         parse_message(pgresult, r, &message);
-
-        for (int32_t p = 0; p < psets.number; p++) {
-            windows_calc(message, &psets._[p], windows[p]);
-        }
+        wapply_run_many(&window0->applies, &message, &psets);
     }
 
     PQclear(pgresult);
@@ -297,7 +277,7 @@ void _stratosphere_add(TestBed2* tb2) {
 
     int nrows = PQntuples(pgresult);
 
-    nrows = 5;
+    nrows = 5; // DEBUG DEVELOP
 
     for(int row = 0; row < nrows; row++) {
         int32_t id;

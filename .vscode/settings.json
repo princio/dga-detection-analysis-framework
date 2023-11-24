@@ -147,7 +147,8 @@
         "cache.h": "c",
         "kfold0.h": "c",
         "testbed2.h": "c",
-        "windows0.h": "c"
+        "windows0.h": "c",
+        "wapply.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

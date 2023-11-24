@@ -13,8 +13,9 @@ MANY(PSet) parameters_generate(TCPC(PSetGenerator) psetgenerator) {
     size_t count_wl = psetgenerator->n_whitelisting;
     size_t count_wt = psetgenerator->n_windowing;
     size_t count_iv = psetgenerator->n_infinitevalues;
+    size_t count_nx = psetgenerator->n_nx;
 
-    const int n_psets = count_nn * count_wl * count_wt * count_iv;
+    const int n_psets = count_nn * count_wl * count_wt * count_iv * count_nx;
 
     MANY(PSet) psets = {
         .number = n_psets,
@@ -26,16 +27,19 @@ MANY(PSet) parameters_generate(TCPC(PSetGenerator) psetgenerator) {
         for (size_t i1 = 0; i1 < count_wl; ++i1) {
             for (size_t i2 = 0; i2 < count_wt; ++i2) {
                 for (size_t i4 = 0; i4 < count_iv; ++i4) {
-                    PSet* pset = &psets._[i];
+                    for (size_t i5 = 0; i5 < count_iv; ++i5) {
+                        PSet* pset = &psets._[i];
 
-                    pset->id = i;
-                    
-                    pset->infinite_values = psetgenerator->infinitevalues[i4];
-                    pset->nn = psetgenerator->nn[i0];
-                    pset->whitelisting = psetgenerator->whitelisting[i1];
-                    pset->windowing = psetgenerator->windowing[i2];
+                        pset->id = i;
+                        
+                        pset->infinite_values = psetgenerator->infinitevalues[i4];
+                        pset->nn = psetgenerator->nn[i0];
+                        pset->whitelisting = psetgenerator->whitelisting[i1];
+                        pset->windowing = psetgenerator->windowing[i2];
+                        pset->nx_epsilon_increment = psetgenerator->nx_epsilon_increment[i5];
 
-                    ++i;
+                        ++i;
+                    }
                 }
             }
         }

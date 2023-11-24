@@ -15,23 +15,23 @@ MANY(RSource) sources_gatherer = {
     ._ = NULL
 };
 
-void _sources_realloc(MANY(RSource)* sources, int32_t index) {
+void _sources_realloc(MANY(RSource)* sources, size_t index) {
     assert(index <= sources->number);
 
     if (sources->number == index) {
-        const int new_number = sources->number + 50;
+        const size_t new_number = sources->number + 50;
     
         sources->_ = realloc(sources->_, (new_number) * sizeof(RSource));
         sources->number = new_number;
 
-        for (int32_t s = index; s < new_number; s++) {
+        for (size_t s = index; s < new_number; s++) {
             sources->_[s] = NULL;
         }
     }
 }
 
-int32_t _sources_index(TCPC(MANY(RSource)) sources) {
-    int32_t s;
+int32_t _sources_emptyslot_index(TCPC(MANY(RSource)) sources) {
+    size_t s;
 
     for (s = 0; s < sources->number; s++) {
         if (sources->_[s] == NULL) break;
@@ -41,38 +41,29 @@ int32_t _sources_index(TCPC(MANY(RSource)) sources) {
 }
 
 int32_t sources_add(MANY(RSource)* sources, RSource source) {
-    const int32_t index = _sources_index(sources);
+    const int32_t index = _sources_emptyslot_index(sources);
     _sources_realloc(sources, index);
     sources->_[index] = source;
+    source->index = index;
     return index;
-}
-
-void sources_tetra_add(TETRA(MANY(RSource))* sources, RSource source) {
-    sources_add(&sources->all, source);
-    sources_add(&sources->binary[source->wclass.bc], source);
-    sources_add(&sources->multi[source->wclass.mc], source);
 }
 
 RSource sources_alloc() {
     RSource source = calloc(1, sizeof(__Source));
 
-    const int32_t index = sources_add(&sources_gatherer, source);
-
-    source->index = index;
-    
-    sources_gatherer._[index] = source;
+    sources_add(&sources_gatherer, source);
 
     return source;
 }
 
 void sources_finalize(MANY(RSource)* sources) {
-    const int32_t index = _sources_index(sources);
-    sources->number = index + 1;
+    const int32_t index = _sources_emptyslot_index(sources);
+    sources->number = index;
     sources->_ = realloc(sources->_, (sources->number) * sizeof(RSource));
 }
 
 void sources_free() {
-    for (int32_t s = 0; s < sources_gatherer.number; s++) {
+    for (size_t s = 0; s < sources_gatherer.number; s++) {
         if (sources_gatherer._[s] == NULL) break;
         free(sources_gatherer._[s]);
     }

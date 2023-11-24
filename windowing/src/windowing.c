@@ -17,22 +17,46 @@ MANY(RWindowing) windowing_gatherer = {
     ._ = NULL
 };
 
-void _windowings_realloc(MANY(RWindowing)* windowings, int32_t index) {
+void _windowing_init(RWindowing windowing) {
+    const WSize wsize = windowing->wsize;
+    const RSource source = windowing->source;
+    const int32_t nw = N_WINDOWS(source->fnreq_max, wsize);
+
+    MANY(RWindow0) windows = windows0_alloc(nw);
+
+    windowing->windows = windows;
+
+    uint32_t fnreq = 0;
+    for (int32_t w = 0; w < nw; w++) {
+        windows._[w]->windowing = windowing;
+        windows._[w]->fn_req_min = fnreq;
+        windows._[w]->fn_req_max = fnreq + wsize;
+        fnreq += wsize;
+    }
+}
+
+void _windowings_realloc(MANY(RWindowing)* windowings, size_t index) {
     assert(index <= windowings->number);
 
-    if (windowing_gatherer.number == index) {
-        const int new_number = windowing_gatherer.number + 50;
+    if (windowings->number == index) {
+        const int new_number = windowings->number + 50;
     
-        windowing_gatherer._ = realloc(windowing_gatherer._, (new_number) * sizeof(RWindowing));
+        if (windowings->number == 0) {
+            windowings->_ = calloc(new_number, sizeof(RWindowing));
+        } else {
+            windowings->_ = realloc(windowings->_, (new_number) * sizeof(RWindowing));
+        }
+
+        windowings->number = new_number;
 
         for (int32_t s = index; s < new_number; s++) {
-            windowing_gatherer._[s] = NULL;
+            windowings->_[s] = NULL;
         }
     }
 }
 
 int32_t _windowings_index(TCPC(MANY(RWindowing)) windowings) {
-    int32_t s;
+    size_t s;
 
     for (s = 0; s < windowings->number; s++) {
         if (windowings->_[s] == NULL) break;
@@ -41,24 +65,24 @@ int32_t _windowings_index(TCPC(MANY(RWindowing)) windowings) {
     return s;
 }
 
-int32_t windowings_add(MANY(RWindowing)* windowings, RWindowing windowing) {
+void windowings_add(MANY(RWindowing)* windowings, RWindowing windowing) {
     const int32_t index = _windowings_index(windowings);
 
     _windowings_realloc(windowings, index);
-
-    windowings->_[index] = windowing;
     
-    return index;
+    windowings->_[index] = windowing;
+    windowing->index = index;
 }
 
-RWindowing windowings_alloc(RSource rsource, WSize wsize) {
+RWindowing windowings_create(RSource source, WSize wsize) {
     RWindowing windowing = calloc(1, sizeof(__Windowing));
 
-    const int32_t index = windowings_add(&windowing_gatherer, windowing);
+    windowings_add(&windowing_gatherer, windowing);
 
-    windowing->index = index;
+    windowing->source = source;
+    windowing->wsize = wsize;
     
-    windowing_gatherer._[index] = windowing;
+    _windowing_init(windowing);
 
     return windowing;
 }
@@ -69,29 +93,12 @@ void windowings_finalize(MANY(RWindowing)* windowings) {
 }
 
 void windowings_free() {
-    for (int32_t s = 0; s < windowing_gatherer.number; s++) {
+    for (size_t s = 0; s < windowing_gatherer.number; s++) {
         if (windowing_gatherer._[s] == NULL) break;
+        FREEMANY(windowing_gatherer._[s]->windows);
         free(windowing_gatherer._[s]);
     }
     free(windowing_gatherer._);
-}
-
-void windowing_run(RWindowing windowing) {
-    const WSize wsize = windowing->wsize;
-    const RSource source = windowing->source;
-    MANY(RWindow0)* windows = &windowing->windows;
-
-    const int32_t nw = N_WINDOWS(source->fnreq_max, wsize);
-    INITMANYREF(windows, nw, RWindow0);
-
-    uint32_t fnreq = 0;
-    for (int32_t w = 0; w < nw; w++) {
-        windows->_[w]->windowing = windowing;
-        windows->_[w]->wnum = w;
-        windows->_[w]->fn_req_min = fnreq;
-        fnreq += wsize;
-        windows->_[w]->fn_req_max = fnreq;
-    }
 }
 
 /*
@@ -130,7 +137,7 @@ MANY(WindowingApply) windowing_run_windowing(TCPC(ApplyWindowing) as) {
     INITMANY(aps, as->applies.number, ApplyPSet);
 
     int32_t n_loaded = 0;
-    for (int32_t p = 0; p < as->applies.number; p++) {
+    for (size_t p = 0; p < as->applies.number; p++) {
         ApplyPSet* ap = &as->applies._[p];
         windowing_init(windowing, ap->pset, &sa._[p]);
 
@@ -146,7 +153,7 @@ MANY(WindowingApply) windowing_run_windowing(TCPC(ApplyWindowing) as) {
         (*as->fn)(windowing, aps, sa);
     }
 
-    for (int32_t p = 0; p < as->applies.number; p++) {
+    for (size_t p = 0; p < as->applies.number; p++) {
         if (as->applies._[p].loaded) {
             continue;
         }
@@ -160,7 +167,7 @@ MANY(Windowing0) windowing0_run(TCPC(Windowing) windowing, MANY(WSize) wsizes) {
     MANY(Windowing0) windowingaps;
     INITMANY(windowingaps, wsizes.number, Windowing);
 
-    for (int32_t p = 0; p < wsizes.number; p++) {
+    for (size_t p = 0; p < wsizes.number; p++) {
         const WSize wsize = wsizes._[p];
         Windowing0* windowing0 = &windowingaps._[p];
     

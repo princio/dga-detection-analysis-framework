@@ -2,7 +2,7 @@
 #ifndef __DETECT_H__
 #define __DETECT_H__
 
-#include "windows.h"
+#include "windows0.h"
 
 typedef struct CM {
     int32_t falses;
@@ -52,7 +52,7 @@ MAKEMANY(Performance);
 void detect_reset(Detection*);
 void detect_copy(TCPC(Detection) src, Detection* dst);
 
-void detect_run(MANY(RWindow), const double, Detection* const);
+void detect_run(MANY(RWindow0), const double, Detection* const);
 
 double detect_performance(Detection[N_DGACLASSES], TCPC(Performance));
 

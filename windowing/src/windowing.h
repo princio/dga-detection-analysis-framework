@@ -62,11 +62,12 @@ MAKEMANY(RWindowing);
 
 MAKETETRA(MANY(RWindowing));
 
-int32_t windowings_add(MANY(RWindowing)* windowings, RWindowing windowing);
-RWindowing windowings_alloc(RSource rsource, WSize wsize);
+void windowings_add(MANY(RWindowing)* windowings, RWindowing windowing);
+
+RWindowing windowings_create(RSource rsource, WSize wsize);
+
 void windowings_finalize(MANY(RWindowing)* windowings);
 void windowings_free();
-void windowing_run(RWindowing windowing);
 
 // int windowing_load(T_PC(SourceApply) sourceapply);
 // int windowing_save(TCPC(SourceApply));

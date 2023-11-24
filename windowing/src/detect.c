@@ -19,10 +19,10 @@ void detect_copy(TCPC(Detection) src, Detection* dst) {
     memcpy(dst, src, sizeof(Detection));
 }
 
-void detect_run(MANY(RWindow) ds, const double th, Detection* const detection) {
+void detect_run(MANY(RWindow0) ds, const double th, Detection* const detection) {
     // detect_reset(detection);
 
-    // for (int32_t i = 0; i < ds.number; i++) {
+    // for (size_t i = 0; i < ds.number; i++) {
     //     RWindow window = ds._[i];
 
     //     const int prediction = window->logit >= th;
