@@ -304,10 +304,10 @@ void print_fulldetection(Detection* d[N_DGACLASSES]) {
 
 void make_testbed(TestBed2** tb2) {
     MANY(WSize) wsizes;
-    INITMANY(wsizes, 1, sizeof(WSize));
+    INITMANY(wsizes, 2, sizeof(WSize));
 
     wsizes._[0] = 100;
-    // wsizes._[1] = 500;
+    wsizes._[1] = 500;
     
     *tb2 = testbed2_create(wsizes);
 
@@ -390,7 +390,43 @@ int main (int argc, char* argv[]) {
     kconfig0.split_method = KFOLD_SM_MERGE_12;
     kconfig0.shuffle = 1;
 
+    #define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
+
     Results results = trainer_run(tb2, performances, kconfig0);
+    for (size_t w = 0; w < results.wsizes.number; w++) {
+        for (size_t a = 0; a < results.applies.number; a++) {
+            for (size_t k = 0; k < results.kfolds.number; k++) {
+                for (size_t t = 0; t < results.thchoosers.number; t++) {
+
+                    Result* result = &RESULT_IDX(results, w, a, t, k);
+
+                    {
+                        char headers[4][50];
+                        char header[210];
+                        size_t h_idx = 0;
+
+                        sprintf(headers[h_idx++], "%5ld", results.wsizes._[w]);
+                        sprintf(headers[h_idx++], "%3ld", a);
+                        sprintf(headers[h_idx++], "%3ld", k);
+                        sprintf(headers[h_idx++], "%12s", results.thchoosers._[t].name);
+                        sprintf(header, "%s,%s,%s,%s,", headers[0], headers[1], headers[2], headers[3]);
+                        printf("%-30s ", header);
+                    }
+
+                    DGAFOR(cl) {
+                        if (cl == 1) continue;
+                        printf("%1.4f\t", TR(result->best_train.windows, cl));
+                    }
+                    printf("|\t");
+                    DGAFOR(cl) {
+                        if (cl == 1) continue;
+                        printf("%1.4f\t", TR(result->best_test.windows, cl));
+                    }
+                    printf("\n");
+                }
+            }
+        }
+    }
 
     FREEMANY(performances);
     FREEMANY(psets);

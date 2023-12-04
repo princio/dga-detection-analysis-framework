@@ -66,6 +66,11 @@ void _trainer_ths_free(MANY(ThsDataset) ths) {
 Results trainer_run(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0 config) {
     Results results;
 
+    results.wsizes = tb2->wsizes;
+    results.applies = tb2->psets;
+    results.thchoosers = thchoosers;
+    INITMANY(results.kfolds, tb2->datasets.wsize.number, KFold0);
+
     INITMANY(results.wsize, tb2->wsizes.number, ResultsWSize);
     for (size_t w = 0; w < tb2->wsizes.number; w++) {
         INITMANY(results.wsize._[w].apply, tb2->psets.number, ResultsApply);
@@ -77,8 +82,6 @@ Results trainer_run(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0 co
         }
     }
 
-    INITMANY(results.kfolds, tb2->datasets.wsize.number, KFold0);
-
     int r = 0;
     for (size_t i = 0; i < tb2->datasets.wsize.number; i++) {
         KFold0 kfold = kfold0_run(tb2->datasets.wsize._[i], config);
@@ -86,7 +89,7 @@ Results trainer_run(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0 co
         results.kfolds._[i] = kfold;
 
         if (!kfold0_ok(&kfold)) {
-            printf("Warning: skipping folding for wsize=%u\n", tb2->wsizes._[i]);
+            printf("Warning: skipping folding for wsize=%ld\n", tb2->wsizes._[i]);
             continue;
         }
 
@@ -112,7 +115,7 @@ Results trainer_run(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0 co
                         const int is_true = prediction == infected;
                         detections[a]._[t].th = th;
                         detections[a]._[t].windows[source->wclass.mc][is_true]++;
-                        detections[a]._[t].sources[source->wclass.mc][source->index][is_true]++;
+                        detections[a]._[t].sources[source->wclass.mc][source->index.multi][is_true]++;
                     }
                 }
             }
@@ -162,7 +165,7 @@ Results trainer_run(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0 co
 
                         detection->th = th;
                         detection->windows[source->wclass.mc][is_true]++;
-                        detection->sources[source->wclass.mc][source->index][is_true]++;
+                        detection->sources[source->wclass.mc][source->index.multi][is_true]++;
                     }
                 }
                 

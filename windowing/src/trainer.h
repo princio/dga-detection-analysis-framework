@@ -8,8 +8,7 @@
 #include "window0s.h"
 
 typedef struct Result {
-    double th;
-    void* threshold_chooser;
+    Performance* threshold_chooser;
     Detection best_train;
     Detection train_test;
     Detection best_test;
@@ -36,7 +35,11 @@ typedef struct ResultsWSize {
 MAKEMANY(ResultsWSize);
 
 typedef struct Results {
+    MANY(WSize) wsizes;
+    MANY(PSet) applies;
+    MANY(Performance) thchoosers;
     MANY(KFold0) kfolds;
+
     MANY(ResultsWSize) wsize;
 } Results;
 

@@ -30,7 +30,7 @@ void _sources_realloc(MANY(RSource)* sources, size_t index) {
     }
 }
 
-int32_t _sources_emptyslot_index(TCPC(MANY(RSource)) sources) {
+size_t _sources_emptyslot_index(TCPC(MANY(RSource)) sources) {
     size_t s;
 
     for (s = 0; s < sources->number; s++) {
@@ -40,11 +40,24 @@ int32_t _sources_emptyslot_index(TCPC(MANY(RSource)) sources) {
     return s;
 }
 
-int32_t sources_add(MANY(RSource)* sources, RSource source) {
-    const int32_t index = _sources_emptyslot_index(sources);
+size_t sources_add(MANY(RSource)* sources, RSource source) {
+    const size_t index = _sources_emptyslot_index(sources);
     _sources_realloc(sources, index);
     sources->_[index] = source;
-    source->index = index;
+    
+    memset(&source->index, 0, sizeof(Index));
+
+    source->index.all = index;
+
+    for (size_t i = 0; i < index; i++) {
+        if (sources->_[i]->wclass.bc == source->wclass.bc) {
+            source->index.binary++;
+        }
+        if (sources->_[i]->wclass.mc == source->wclass.mc) {
+            source->index.multi++;
+        }
+    }
+
     return index;
 }
 

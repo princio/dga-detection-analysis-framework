@@ -18,18 +18,15 @@ typedef enum SourceWindowingExecution {
 } SourceWindowingExecution;
 
 typedef struct SourceIndex {
-    int32_t galaxy;
-    int32_t source_galaxy;
-    
-    int32_t all;
-    int32_t binary;
-    int32_t multi;
+    size_t all;
+    size_t binary;
+    size_t multi;
 } SourceIndex;
 
 struct Galaxy;
 
 typedef struct __Source {
-    int32_t index;
+    SourceIndex index;
 
     char name[50];
     char galaxy[50];
@@ -50,7 +47,7 @@ MAKEMANY(RSource);
 
 MAKETETRA(MANY(RSource));
 
-int32_t sources_add(MANY(RSource)* sources, RSource source);
+size_t sources_add(MANY(RSource)* sources, RSource source);
 RSource sources_alloc();
 void sources_free();
 void sources_finalize(MANY(RSource)* sources);

@@ -106,7 +106,7 @@ typedef struct DNSMessage {
 
 //   P A R A M E T E R S
 
-typedef uint32_t WSize;
+typedef size_t WSize;
 
 MAKEMANY(WSize);
 
