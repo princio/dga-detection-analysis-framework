@@ -18,7 +18,7 @@ typedef struct Result {
 MAKEMANY(Result);
 
 typedef struct ResultsThChooser {
-    MANY(Result) split;
+    MANY(Result) kfold;
 } ResultsThChooser;
 
 MAKEMANY(ResultsThChooser);
@@ -36,11 +36,14 @@ typedef struct ResultsWSize {
 MAKEMANY(ResultsWSize);
 
 typedef struct Results {
+    MANY(KFold0) kfolds;
     MANY(ResultsWSize) wsize;
 } Results;
 
-#define RESULT_IDX(R, WSIZE, APPLY, THCHOOSER, SPLIT) R.wsize._[WSIZE].apply._[APPLY].thchooser._[THCHOOSER].split._[SPLIT].threshold_chooser
+#define RESULT_IDX(R, WSIZE, APPLY, THCHOOSER, SPLIT) R.wsize._[WSIZE].apply._[APPLY].thchooser._[THCHOOSER].kfold._[SPLIT]
 
-Results trainer_create(TestBed2*tb2, MANY(Performance) thchoosers, KFoldConfig0);
+Results trainer_run(TestBed2*tb2, MANY(Performance) thchoosers, KFoldConfig0);
+
+void trainer_free(Results* results);
 
 #endif

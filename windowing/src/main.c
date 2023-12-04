@@ -27,6 +27,7 @@
 #include "parameters.h"
 #include "stratosphere.h"
 #include "testbed2.h"
+#include "trainer.h"
 #include "windowing.h"
 
 #include <assert.h>
@@ -114,16 +115,16 @@ MANY(PSet) make_parameters() {
 
         Whitelisting whitelisting[] = {
             { .rank = 0, .value = 0 },
-            { .rank = 1000, .value = -50 },
-            { .rank = 100000, .value = -50 },
+            // { .rank = 1000, .value = -50 },
+            // { .rank = 100000, .value = -50 },
             // { .rank = 1000000, .value = -10 },  
             // { .rank = 1000000, .value = -50 }
         };
 
         WindowingType windowing[] = {
             WINDOWING_Q,
-            WINDOWING_R,
-            WINDOWING_QR
+            // WINDOWING_R,
+            // WINDOWING_QR
         };
 
         InfiniteValues infinitevalues[] = {
@@ -303,10 +304,10 @@ void print_fulldetection(Detection* d[N_DGACLASSES]) {
 
 void make_testbed(TestBed2** tb2) {
     MANY(WSize) wsizes;
-    INITMANY(wsizes, 2, sizeof(WSize));
+    INITMANY(wsizes, 1, sizeof(WSize));
 
     wsizes._[0] = 100;
-    wsizes._[1] = 500;
+    // wsizes._[1] = 500;
     
     *tb2 = testbed2_create(wsizes);
 
@@ -375,6 +376,12 @@ int main (int argc, char* argv[]) {
     //     printf("%d\t%ld\t%ld\n", window0s._[w]->windowing->source->index, window0s._[w]->fn_req_min, window0s._[w]->fn_req_max);
     // }
 
+    MANY(PSet) psets = make_parameters();
+
+    testbed2_apply(tb2, psets);
+
+    MANY(Performance) performances = gen_performance();
+
     KFoldConfig0  kconfig0;
     kconfig0.testbed = tb2;
     kconfig0.balance_method = KFOLD_BM_NOT_INFECTED;
@@ -383,32 +390,9 @@ int main (int argc, char* argv[]) {
     kconfig0.split_method = KFOLD_SM_MERGE_12;
     kconfig0.shuffle = 1;
 
-    KFold0 kfold0[tb2->wsizes.number];
+    Results results = trainer_run(tb2, performances, kconfig0);
 
-    for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
-        kfold0[ww] = kfold0_run(tb2->datasets.wsize._[ww], kconfig0);
-    }
-
-    MANY(PSet) psets = make_parameters();
-
-    testbed2_apply(tb2, psets);
-
-    // for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
-    //     if (kfold0_ok(&kfold0[ww]) == 0) continue;
-    //     RDataset0 ds = kfold0[ww].splits._[0].train;
-    //     for (size_t w = 0; w < ds->windows.all.number; w++) {
-    //         RWindow0 window0 = ds->windows.all._[w];
-    //         printf("%d\t%ld\t%ld\n", window0->windowing->source->index, window0->fn_req_min, window0->fn_req_max);
-    //         for (size_t p = 0; p < psets.number; p++) {
-    //             printf("\t%ld) %5d\t%5d\t%5d\n", p, (int) window0->applies._[p].logit, window0->applies._[p].wcount, window0->applies._[p].whitelistened);
-    //         }
-    //     }
-    // }
-
-    for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
-        kfold0_free(&kfold0[ww]);
-    }
-
+    FREEMANY(performances);
     FREEMANY(psets);
     windows_free();
     window0s_free();
@@ -416,6 +400,7 @@ int main (int argc, char* argv[]) {
     sources_free();
     datasets0_free();
     testbed2_free(tb2);
-    
+    trainer_free(&results);
+
     return 0;
 }

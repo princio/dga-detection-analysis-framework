@@ -39,16 +39,11 @@ KFold0 kfold0_run(const RDataset0 ds, KFoldConfig0 config) {
 }
 
 int kfold0_ok(KFold0* kfold) {
-    return !(kfold->splits.number == 0 || kfold->splits._ == 0x0);
+    return (kfold->splits.number == 0 && kfold->splits._ == 0x0) == 0;
 }
 
 void kfold0_free(KFold0* kfold) {
     if (kfold0_ok(kfold)) {
-        for (size_t k = 0; k < kfold->config.kfolds; k++) {
-            dataset0_free(kfold->splits._[k].train);
-            dataset0_free(kfold->splits._[k].test);
-        }
+        FREEMANY(kfold->splits);
     }
-
-    FREEMANY(kfold->splits);
 }

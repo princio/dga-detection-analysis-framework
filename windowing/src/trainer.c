@@ -28,7 +28,7 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset) {
     }
 
     for (size_t a = 0; a < dataset->applies_number; a++) {
-        int n = 0;
+        size_t n = 0;
 
         for (size_t w = 0; w < dataset->windows.all.number; w++) {
             int logit;
@@ -37,7 +37,7 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset) {
             logit = floor(dataset->windows.all._[w]->applies._[a].logit);
             exists = 0;
 
-            for (int32_t i = 0; i < n; i++) {
+            for (size_t i = 0; i < n; i++) {
                 if (ths._[a]._[i] == logit) {
                     exists = 1;
                     break;
@@ -50,12 +50,20 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset) {
         }
 
         ths._[a]._ = realloc(ths._[a]._, n * sizeof(double));
+        ths._[a].number = n;
     }
 
     return ths;
 }
 
-Results trainer_create(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0 config) {
+void _trainer_ths_free(MANY(ThsDataset) ths) {
+    for (size_t i = 0; i < ths.number; i++) {
+        FREEMANY(ths._[i]);
+    }
+    FREEMANY(ths);
+}
+
+Results trainer_run(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0 config) {
     Results results;
 
     INITMANY(results.wsize, tb2->wsizes.number, ResultsWSize);
@@ -64,14 +72,23 @@ Results trainer_create(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0
         for (size_t a = 0; a < tb2->psets.number; a++) {
             INITMANY(results.wsize._[w].apply._[a].thchooser, thchoosers.number, ResultsThChooser);
             for (size_t t = 0; t < thchoosers.number; t++) {
-                INITMANY(results.wsize._[w].apply._[a].thchooser._[t].split, config.kfolds, Result);
+                INITMANY(results.wsize._[w].apply._[a].thchooser._[t].kfold, config.kfolds, Result);
             }
         }
     }
-    
+
+    INITMANY(results.kfolds, tb2->datasets.wsize.number, KFold0);
+
     int r = 0;
     for (size_t i = 0; i < tb2->datasets.wsize.number; i++) {
         KFold0 kfold = kfold0_run(tb2->datasets.wsize._[i], config);
+
+        results.kfolds._[i] = kfold;
+
+        if (!kfold0_ok(&kfold)) {
+            printf("Warning: skipping folding for wsize=%u\n", tb2->wsizes._[i]);
+            continue;
+        }
 
         for (size_t k = 0; k < kfold.splits.number; k++) {
             DatasetSplit0 split = kfold.splits._[k];
@@ -137,7 +154,7 @@ Results trainer_create(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0
                     for (size_t ev = 0; ev < thchoosers.number; ev++) {
                         double th = best_detections[a]._[ev].th;
 
-                        Detection* detection = &results.wsize._[i].apply._[a].thchooser._[ev].split._[k].best_test;
+                        Detection* detection = &results.wsize._[i].apply._[a].thchooser._[ev].kfold._[k].best_test;
 
                         const int prediction = window0->applies._[a].logit >= th;
                         const int infected = window0->windowing->source->wclass.mc > 0;
@@ -151,16 +168,43 @@ Results trainer_create(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig0
                 
                 for (size_t a = 0; a < tb2->psets.number; a++) {
                     for (size_t ev = 0; ev < thchoosers.number; ev++) {
-                        Result* result = RESULT_IDX(results, i, a, ev, k);
+                        Result* result = &RESULT_IDX(results, i, a, ev, k);
 
                         result->threshold_chooser = &thchoosers._[ev];
 
-                        memcpy(&results.wsize._[i].apply._[a].thchooser._[ev].split._[k].best_train, &best_detections[a]._[ev], sizeof(Detection));
+                        memcpy(&results.wsize._[i].apply._[a].thchooser._[ev].kfold._[k].best_train, &best_detections[a]._[ev], sizeof(Detection));
                     }
                 }
             }
+
+            for (size_t a = 0; a < tb2->psets.number; a++) {
+                FREEMANY(best_detections[a]);
+            }
+
+            for (size_t a = 0; a < tb2->psets.number; a++) {
+                FREEMANY(detections[a]);
+            }
+
+            _trainer_ths_free(ths);
         }
     }
 
     return results;
+}
+
+void trainer_free(Results* results) {
+    for (size_t w = 0; w < results->wsize.number; w++) {
+        for (size_t a = 0; a < results->wsize._[w].apply.number; a++) {
+            for (size_t t = 0; t < results->wsize._[w].apply._[a].thchooser.number; t++) {
+                FREEMANY(results->wsize._[w].apply._[a].thchooser._[t].kfold);
+            }
+            FREEMANY(results->wsize._[w].apply._[a].thchooser);
+        }
+        FREEMANY(results->wsize._[w].apply);
+    }
+    FREEMANY(results->wsize);
+    for (size_t i = 0; i < results->kfolds.number; i++) {
+        kfold0_free(&results->kfolds._[i]);
+    }
+    FREEMANY(results->kfolds);
 }

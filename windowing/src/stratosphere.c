@@ -235,11 +235,11 @@ void stratosphere_apply(MANY(RWindowing) windowings, MANY(PSet) psets, int32_t l
         for (size_t i = 0; i < windowings.number; i++) {
             RWindowing windowing = windowings._[i];
 
-                const int wnum = (int64_t) floor(message.fn_req / windowing->wsize);
+            const int wnum = (int64_t) floor(message.fn_req / windowing->wsize);
 
-                windowing->windows._[wnum]->applies_number = psets.number;
+            windowing->windows._[wnum]->applies_number = psets.number;
 
-                wapply_run_many(&windowing->windows._[wnum]->applies, &message, &psets);
+            wapply_run_many(&windowing->windows._[wnum]->applies, &message, &psets);
         }
     }
 

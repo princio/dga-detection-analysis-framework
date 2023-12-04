@@ -76,7 +76,6 @@ void list_free(List* list) {
         ListItem* cursor2free = cursor;
         cursor = cursor->next;
         free(cursor2free->item);
-        printf("%p\n", cursor2free->item);
         free(cursor2free);
     }
 }

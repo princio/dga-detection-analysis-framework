@@ -42,11 +42,13 @@
 } TETRA(T)
 
 
-#define INITMANY(A, N, T) { A.number = N;\
+#define INITMANY(A, N, T) { if (N == 0) printf("Warning: initializing empty block.\n"); \
+            A.number = N; \
             A._ = calloc(A.number, sizeof(T)); }
 
-#define INITMANYREF(A, N, T) A->number = N;\
-            A->_ = calloc(A->number, sizeof(T))
+#define INITMANYREF(A, N, T) { if (N == 0) printf("Warning: initializing empty block.\n");\
+            (A)->number = N; \
+            (A)->_ = calloc((A)->number, sizeof(T)); }
 
 #define INITMANYSIZE(A, N, T) { A.number = N;\
             A._ = calloc(A.number, T); }

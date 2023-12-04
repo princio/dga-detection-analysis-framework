@@ -37,6 +37,8 @@ typedef struct KFold0 {
 
 typedef KFold0* RKFold0;
 
+MAKEMANY(KFold0);
+
 KFold0 kfold0_run(RDataset0 ds,  KFoldConfig0 config);
 
 int kfold0_ok(KFold0* kfold);

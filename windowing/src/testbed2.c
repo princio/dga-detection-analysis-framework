@@ -79,6 +79,10 @@ void testbed2_windowing(TestBed2* tb2) {
 }
 
 void testbed2_apply(TestBed2* tb2, const MANY(PSet) psets) {
+    for (size_t w = 0; w < tb2->datasets.wsize.number; w++) {
+        tb2->datasets.wsize._[w]->applies_number = psets.number;
+    }
+    
     for (size_t s = 0; s < tb2->sources.number; s++) {
         TB2WindowingsSource swindowings = tb2->windowings.source._[s];
         for (size_t i = 0; i < tb2->wsizes.number; i++) {

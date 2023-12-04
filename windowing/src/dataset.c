@@ -41,25 +41,25 @@ RDataset0 dataset0_alloc(const Dataset0Init init) {
     return rds;
 }
 
-MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t k, const size_t k_test) {
+MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t _k, const size_t _k_test) {
     MANY(DatasetSplit0) splits;
     memset(&splits, 0, sizeof(MANY(DatasetSplit0)));
 
     DGAFOR(cl) {
         const size_t windows_cl_number = dataset0->windows.multi[cl].number;
-        const size_t kfold_size = windows_cl_number / k;
-        if (kfold_size == 0) {
-            printf("Error: impossible to split the dataset with k=%ld.\n", k);
+        const size_t kfold_size = windows_cl_number / _k;
+        printf("kfold_size: %ld\n", kfold_size);
+        if (cl != 1 && kfold_size == 0) {
+            printf("Error: impossible to split the dataset with k=%ld (wn[%d]=%ld, ksize=%ld).\n", _k, cl, windows_cl_number, kfold_size);
+            return splits;
         }
-        return splits;
     }
 
-    
-    const size_t KFOLDs = k;
-    const size_t TRAIN_KFOLDs = k - k_test;
-    const size_t TEST_KFOLDs = k_test;
+    const size_t KFOLDs = _k;
+    const size_t TRAIN_KFOLDs = _k - _k_test;
+    const size_t TEST_KFOLDs = _k_test;
 
-    INITMANY(splits, k, DatasetSplit0);
+    INITMANY(splits, KFOLDs, DatasetSplit0);
 
     {
         Index counter;
@@ -75,6 +75,11 @@ MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t k, const s
         }
     }
 
+
+    Index train_counter[KFOLDs];
+    Index test_counter[KFOLDs];
+    memset(&train_counter, 0, KFOLDs * sizeof(Index));
+    memset(&test_counter, 0, KFOLDs * sizeof(Index));
     DGAFOR(cl) {
         MANY(RWindow0) window0s = dataset0->windows.multi[cl];
 
@@ -96,7 +101,7 @@ MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t k, const s
                 }
             }
         }
-
+    
         for (size_t k = 0; k < KFOLDs; k++) {
             
             size_t train_index;
@@ -105,11 +110,15 @@ MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t k, const s
             const size_t train_size = kfold_size * TRAIN_KFOLDs + (!kindexes[k][KFOLDs - 1] ? kfold_size_rest : 0);
             const size_t test_size = kfold_size * TEST_KFOLDs + (kindexes[k][KFOLDs - 1] ? kfold_size_rest : 0);
 
+            train_counter[k].all += train_size;
+            train_counter[k].binary[cl > 0] += train_size;
+
+            test_counter[k].all += test_size;
+            test_counter[k].binary[cl > 0] += test_size;
+
             MANY(RWindow0)* train = &splits._[k].train->windows.multi[cl];
             MANY(RWindow0)* test = &splits._[k].test->windows.multi[cl];
 
-            printf("--- %ld\t%ld\t%ld\t", kfold_size, TRAIN_KFOLDs, TEST_KFOLDs);
-            printf("--- %ld\t%ld\n", train_size, test_size);
             INITMANYREF(train, train_size, RWindow0);
             INITMANYREF(test, test_size, RWindow0);
 
@@ -131,6 +140,42 @@ MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t k, const s
         }
     }
 
+    for (size_t k = 0; k < KFOLDs; k++) {
+        RDataset0 train = splits._[k].train;
+        RDataset0 test = splits._[k].test;
+
+        INITMANYREF(&train->windows.all, train_counter[k].all, RWindow0);
+        INITMANYREF(&train->windows.binary[0], train_counter[k].binary[0], RWindow0);
+        INITMANYREF(&train->windows.binary[1], train_counter[k].binary[1], RWindow0);
+
+        INITMANYREF(&test->windows.all, test_counter[k].all, RWindow0);
+        INITMANYREF(&test->windows.binary[0], test_counter[k].binary[0], RWindow0);
+        INITMANYREF(&test->windows.binary[1], test_counter[k].binary[1], RWindow0);
+    }
+
+    Index train_counter_2[KFOLDs];
+    Index test_counter_2[KFOLDs];
+    memset(&train_counter_2, 0, KFOLDs * sizeof(Index));
+    memset(&test_counter_2, 0, KFOLDs * sizeof(Index));
+    DGAFOR(cl) {
+        for (size_t k = 0; k < KFOLDs; k++) {
+            RDataset0 train = splits._[k].train;
+            RDataset0 test = splits._[k].test;
+
+            memcpy(&train->windows.all._[train_counter_2[k].all], train->windows.multi[cl]._, sizeof(RWindow0) * train->windows.multi[cl].number);
+            memcpy(&train->windows.binary[cl > 0]._[train_counter_2[k].binary[cl > 0]], train->windows.multi[cl]._, sizeof(RWindow0) * train->windows.multi[cl].number);
+
+            memcpy(&test->windows.all._[test_counter_2[k].all], test->windows.multi[cl]._, sizeof(RWindow0) * test->windows.multi[cl].number);
+            memcpy(&test->windows.binary[cl > 0]._[test_counter_2[k].binary[cl > 0]], test->windows.multi[cl]._, sizeof(RWindow0) * test->windows.multi[cl].number);
+
+            train_counter_2[k].all += train->windows.multi[cl].number;
+            test_counter_2[k].all += test->windows.multi[cl].number;
+
+            train_counter_2[k].binary[cl > 0] += train->windows.multi[cl].number;
+            test_counter_2[k].binary[cl > 0] += test->windows.multi[cl].number;
+        }
+    }
+
     return splits;
 }
 
@@ -141,6 +186,7 @@ void dataset0_free(RDataset0 dataset) {
     FREEMANY(dataset->windows.binary[0]);
     FREEMANY(dataset->windows.binary[1]);
     FREEMANY(dataset->windows.all);
+
 }
 
 RDataset0 dataset0_from_windowing(MANY(RWindowing) windowings, const size_t applies_number) {
