@@ -46,8 +46,6 @@ typedef struct __Source {
     int64_t fnreq_max;
 } __Source;
 
-typedef __Source* RSource;
-
 MAKEMANY(RSource);
 
 MAKETETRA(MANY(RSource));

@@ -16,6 +16,8 @@ typedef struct PSet {
     float nx_epsilon_increment;
 } PSet;
 
+typedef PSet* RPSet;
+
 typedef struct PSetGenerator {
     int32_t n_whitelisting;
     Whitelisting* whitelisting;

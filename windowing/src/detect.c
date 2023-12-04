@@ -1,5 +1,7 @@
 #include "detect.h"
 
+#include "windowing.h"
+
 #include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -10,32 +12,13 @@
 void detect_reset(Detection* det) {
     // det->th = -1 * DBL_MIN;
     for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        memset(det->sources, 0, 100 * sizeof(CM));
-        memset(&det->windows, 0, sizeof(CM));
+        memset(det->sources, 0, 100 * sizeof(uint16_t));
+        memset(&det->windows, 0, sizeof(uint16_t));
     }
 }
 
 void detect_copy(TCPC(Detection) src, Detection* dst) {
     memcpy(dst, src, sizeof(Detection));
-}
-
-void detect_run(MANY(RWindow0) ds, const double th, Detection* const detection) {
-    // detect_reset(detection);
-
-    // for (size_t i = 0; i < ds.number; i++) {
-    //     RWindow window = ds._[i];
-
-    //     const int prediction = window->logit >= th;
-    //     const int infected = window->dgaclass > 0;
-
-    //     if (prediction == infected) {
-    //         detection->windows.trues++;
-    //         detection->sources[window->source_index.all].trues++;
-    //     } else {
-    //         detection->windows.falses++;
-    //         detection->sources[window->source_index.all].falses++;
-    //     }
-    // }
 }
 
 double detect_performance(Detection detection[N_DGACLASSES], TCPC(Performance) performance) {

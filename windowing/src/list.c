@@ -37,18 +37,22 @@ ListItem* list_get(const List* list, const int32_t index) {
     return cursor;
 }
 
-void list_insert(List* list, TCPC(void) item) {
+ListItem* list_insert_copy(List* list, TCPC(void) item) {
     ListItem** cursor = &list->root;
 
     while (*cursor) {
         cursor = &(*cursor)->next;
     }
 
-    (*cursor) = calloc(1, list->element_size);
+    ListItem* newlistitem = calloc(1, sizeof(ListItem));
+    newlistitem->item = calloc(1, list->element_size);
+    memcpy(newlistitem->item, item, list->element_size);
 
-    (*cursor)->item = (void*) item;
-    (*cursor)->next = NULL;
     list->size++;
+
+    (*cursor) = newlistitem;
+
+    return newlistitem;
 }
 
 Many list_to_array(List list) {
@@ -65,15 +69,14 @@ Many list_to_array(List list) {
     return array;
 }
 
-void list_free(List* list, int freeitem) {
+void list_free(List* list) {
     ListItem* cursor = list->root;
 
     while (cursor) {
         ListItem* cursor2free = cursor;
         cursor = cursor->next;
-        if(freeitem) {
-            free(cursor2free->item);
-        }
+        free(cursor2free->item);
+        printf("%p\n", cursor2free->item);
         free(cursor2free);
     }
 }

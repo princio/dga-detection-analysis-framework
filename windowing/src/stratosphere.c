@@ -3,7 +3,7 @@
 
 #include "parameters.h"
 #include "testbed2.h"
-#include "windows0.h"
+#include "window0s.h"
 
 #include <libpq-fe.h>
 #include <15/server/catalog/pg_type_d.h>
@@ -236,6 +236,8 @@ void stratosphere_apply(MANY(RWindowing) windowings, MANY(PSet) psets, int32_t l
             RWindowing windowing = windowings._[i];
 
                 const int wnum = (int64_t) floor(message.fn_req / windowing->wsize);
+
+                windowing->windows._[wnum]->applies_number = psets.number;
 
                 wapply_run_many(&windowing->windows._[wnum]->applies, &message, &psets);
         }

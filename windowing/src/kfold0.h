@@ -1,8 +1,8 @@
 #ifndef __KFOLD0_H__
 #define __KFOLD0_H__
 
+#include "dataset.h"
 #include "detect.h"
-#include "tt.h"
 #include "testbed2.h"
 
 
@@ -21,9 +21,9 @@ typedef enum FoldingTestConfigSplitMethod {
 typedef struct KFoldConfig0 {
     TestBed2* testbed;
     
-    int32_t kfolds;
-    
-    int32_t test_folds; // usually kfold - 1
+    size_t kfolds;
+    size_t test_folds; // usually kfold - 1
+
     int32_t shuffle;
     
     FoldingTestConfigSplitBalanceMethod balance_method;
@@ -32,11 +32,14 @@ typedef struct KFoldConfig0 {
 
 typedef struct KFold0 {
     KFoldConfig0 config;
-    PSet* pset;
-    MANY(TT0) ks0;
+    MANY(DatasetSplit0) splits;
 } KFold0;
 
-KFold0 kfold0_run(const Dataset0 ds,  KFoldConfig0 config);
+typedef KFold0* RKFold0;
+
+KFold0 kfold0_run(RDataset0 ds,  KFoldConfig0 config);
+
+int kfold0_ok(KFold0* kfold);
 
 void kfold0_free(KFold0* kfold);
 

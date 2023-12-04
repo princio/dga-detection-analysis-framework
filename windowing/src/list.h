@@ -26,11 +26,11 @@ void list_init(List* list, const int32_t element_size);
 
 ListItem* list_get(const List* list, const int32_t index);
 
-void list_insert(List* lists, TCPC(void));
+ListItem* list_insert_copy(List* lists, TCPC(void));
 
 Many list_to_array(List list);
 
-void list_free(List*, int freeitem);
+void list_free(List*);
 void array_free(Many);
 
 #endif

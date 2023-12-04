@@ -146,7 +146,7 @@ $(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 
 
 # Rule for run valgrind tool
-# --leak-check=full --show-leak-kinds=all
+# --show-leak-kinds=all
 valgrind:
 	valgrind \
 		--track-origins=yes \

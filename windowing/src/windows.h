@@ -5,7 +5,7 @@
 #include "common.h"
 
 #include "parameters.h"
-#include "windows0.h"
+#include "window0s.h"
 
 typedef struct __Window {
     RWindow0 w0;
@@ -22,6 +22,8 @@ typedef struct __Window {
 } __Window;
 
 MAKEMANY(RWindow);
+
+MANY(double) windows_ths(const MANY(RWindow0) windows[N_DGACLASSES], const size_t pset_index);
 
 MANY(RWindow) rwindows_from(MANY(RWindow) rwindows_src);
 

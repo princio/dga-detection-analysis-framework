@@ -2,6 +2,7 @@
 #include "testbed2.h"
 
 #include "cache.h"
+#include "dataset.h"
 #include "io.h"
 #include "stratosphere.h"
 #include "tetra.h"
@@ -18,10 +19,9 @@ TestBed2* testbed2_create(MANY(WSize) wsizes) {
     TestBed2* tb2 = calloc(1, sizeof(TestBed2));
 
     INITMANY(tb2->wsizes, wsizes.number, WSize);
-    INITMANY(tb2->datasets, wsizes.number, Dataset0);
+    INITMANY(tb2->datasets.wsize, wsizes.number, RDataset0);
 
     for (size_t i = 0; i < tb2->wsizes.number; i++) {
-        tb2->datasets._[i].wsize = wsizes._[i];
         tb2->wsizes._[i] = wsizes._[i];
     }
 
@@ -43,13 +43,13 @@ void testbed2_source_add(TestBed2* tb2, __Source* source) {
 void testbed2_windowing(TestBed2* tb2) {
     sources_finalize(&tb2->sources);
 
-    INITMANY(tb2->windowingss, tb2->sources.number, MANY(RWindowing));
+    INITMANY(tb2->windowings.source, tb2->sources.number, TB2WindowingsSource);
 
     int32_t count_windows[tb2->wsizes.number][N_DGACLASSES];
     memset(&count_windows, 0, sizeof(int32_t) * tb2->wsizes.number * N_DGACLASSES);
     for (size_t s = 0; s < tb2->sources.number; s++) {
         RSource source = tb2->sources._[s];
-        MANY(RWindowing)* windowings = &tb2->windowingss._[s];
+        MANY(RWindowing)* windowings = &tb2->windowings.source._[s].wsize;
 
         INITMANYREF(windowings, tb2->wsizes.number, RWindowing);
 
@@ -61,51 +61,46 @@ void testbed2_windowing(TestBed2* tb2) {
         }
     }
 
-    int32_t windows_walker[tb2->wsizes.number][N_DGACLASSES];
-    memset(&windows_walker, 0, sizeof(int32_t) * tb2->wsizes.number * N_DGACLASSES);
     for (size_t u = 0; u < tb2->wsizes.number; u++) {
-        Dataset0* dataset = &tb2->datasets._[u];
+        RDataset0* dataset = &tb2->datasets.wsize._[u];
 
-        DGAFOR(cl) INITMANY(dataset->windows[cl], count_windows[u][cl], RWindow0);
+        MANY(RWindowing) tmp;
+
+        INITMANY(tmp, tb2->sources.number, RWindowing);
 
         for (size_t s = 0; s < tb2->sources.number; s++) {
-            RWindowing windowing = tb2->windowingss._[s]._[u];
-            RSource source = tb2->sources._[s];
-            const int32_t nw = windowing->windows.number;
-
-            memcpy(&dataset->windows[source->wclass.mc]._[windows_walker[u][source->wclass.mc]], windowing->windows._, nw * sizeof(RWindow0));
-
-            windows_walker[u][source->wclass.mc] += nw;
+            tmp._[s] = tb2->windowings.source._[s].wsize._[u];
         }
+
+        tb2->datasets.wsize._[u] = dataset0_from_windowing(tmp, tb2->psets.number);
+
+        FREEMANY(tmp);
     }
 }
 
 void testbed2_apply(TestBed2* tb2, const MANY(PSet) psets) {
     for (size_t s = 0; s < tb2->sources.number; s++) {
-        const MANY(RWindowing) swindowings = tb2->windowingss._[s];
+        TB2WindowingsSource swindowings = tb2->windowings.source._[s];
         for (size_t i = 0; i < tb2->wsizes.number; i++) {
-            for (size_t w = 0; w < swindowings._[i]->windows.number; w++) {
-                INITMANY(swindowings._[i]->windows._[w]->applies, psets.number, WApply);
+            for (size_t w = 0; w < swindowings.wsize._[i]->windows.number; w++) {
+                INITMANY(swindowings.wsize._[i]->windows._[w]->applies, psets.number, WApply);
             }
         }
-        stratosphere_apply(swindowings, psets, NULL);
+        stratosphere_apply(swindowings.wsize, psets, NULL);
     }
+
+    tb2->applied = 1;
+    tb2->psets = psets;
 }
 
 void testbed2_free(TestBed2* tb2) {
     for (size_t s = 0; s < tb2->sources.number; s++) {
-        const RSource source = tb2->sources._[s];
-        FREEMANY(tb2->windowingss._[s]);
+        FREEMANY(tb2->windowings.source._[s].wsize);
     }
-
-    for (size_t u = 0; u < tb2->datasets.number; u++) {
-        dataset0_free(&tb2->datasets._[u]);
-    }
-
+    FREEMANY(tb2->windowings.source);
+    FREEMANY(tb2->datasets.wsize);
     FREEMANY(tb2->sources);
     FREEMANY(tb2->wsizes);
-    FREEMANY(tb2->windowingss);
-    FREEMANY(tb2->datasets);
     free(tb2);
 }
 

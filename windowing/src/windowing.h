@@ -3,7 +3,7 @@
 
 #include "parameters.h"
 #include "sources.h"
-#include "windows0.h"
+#include "window0s.h"
 
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
@@ -51,16 +51,10 @@ MAKEDGAMANY(SourceApply);
 
 typedef struct __Windowing {
     int32_t index;
-    __Source* source;
+    RSource source;
     WSize wsize;
     MANY(RWindow0) windows;
 } __Windowing;
-
-// typedef __Windowing* RWindowing; in common.h
-
-MAKEMANY(RWindowing);
-
-MAKETETRA(MANY(RWindowing));
 
 void windowings_add(MANY(RWindowing)* windowings, RWindowing windowing);
 

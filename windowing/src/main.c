@@ -26,7 +26,6 @@
 #include "io.h"
 #include "parameters.h"
 #include "stratosphere.h"
-#include "tt.h"
 #include "testbed2.h"
 #include "windowing.h"
 
@@ -75,8 +74,6 @@ typedef struct Score {
 } Score;
 
 MANY(Performance) performances;
-
-MAKEMANY(double);
 
 // void result_save(PSet* pset, MANY(TT) tts, MANY(Performance) performances, Score score[tts.number][2][performances.number]) {
 //     FILE* file;
@@ -168,48 +165,6 @@ MANY(PSet) make_parameters() {
     return psets;
 }
 
-MANY(double) _rwindows_ths(const MANY(RWindow) dsrwindows[N_DGACLASSES]) {
-    MANY(double) ths;
-    int max;
-    double* ths_tmp;
-
-    max = 0;
-    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        max += dsrwindows[cl].number;
-    }
-
-    ths_tmp = calloc(max, sizeof(double));
-
-    int n = 0;
-    for (int32_t cl = 0; cl < N_DGACLASSES; cl++) {
-        for (size_t w = 0; w < dsrwindows[cl].number; w++) {
-            int logit;
-            int exists;
-
-            logit = floor(dsrwindows[cl]._[w]->logit);
-            exists = 0;
-            for (int32_t i = 0; i < n; i++) {
-                if (ths_tmp[i] == logit) {
-                    exists = 1;
-                    break;
-                }
-            }
-
-            if(!exists) {
-                ths_tmp[n++] = logit;
-            }
-        }
-    }
-
-    ths.number = n;
-    ths._ = calloc(n, sizeof(double));
-    memcpy(ths._, ths_tmp, sizeof(double) * n);
-
-    free(ths_tmp);
-
-    return ths;
-}
-
 MANY(Performance) gen_performance() {
     MANY(Performance) performances;
 
@@ -225,66 +180,66 @@ MANY(Performance) gen_performance() {
     return performances;
 }
 
-void print_score(Score* score) {
-    printf("%10s\t%8.2f\t%5.4f\t", score->performance.name, score->th, score->score);
-    DGAFOR(cl) {
-        Detection d = score->fulldetection[cl];
-        printf("%6d/%-6d\t", d.windows.trues, d.windows.trues + d.windows.falses);
-    }
-}
+// void print_score(Score* score) {
+//     printf("%10s\t%8.2f\t%5.4f\t", score->performance.name, score->th, score->score);
+//     DGAFOR(cl) {
+//         Detection d = score->fulldetection[cl];
+//         printf("%6d/%-6d\t", d.windows.trues, d.windows.trues + d.windows.falses);
+//     }
+// }
 
-void print_detection(Detection* d) {
-    const int32_t tot_test = d->windows.trues + d->windows.falses;
-    printf("(%8d/%-8d)", d->windows.trues, tot_test);
-}
+// void print_detection(Detection* d) {
+//     const int32_t tot_test = d->windows.trues + d->windows.falses;
+//     printf("(%8d/%-8d)", d->windows.trues, tot_test);
+// }
 
-void print_score_tt(Score* score_train, Score* score_test) {
-    printf("%-15s\t", score_train->performance.name);
-    printf("%8.2f\n", score_train->th);
+// void print_score_tt(Score* score_train, Score* score_test) {
+//     printf("%-15s\t", score_train->performance.name);
+//     printf("%8.2f\n", score_train->th);
 
-    printf("%5.4f", score_train->score);
-    DGAFOR(cl) {
-        printf("\t");
-        print_detection(&score_train->fulldetection[cl]);
-    }
+//     printf("%5.4f", score_train->score);
+//     DGAFOR(cl) {
+//         printf("\t");
+//         print_detection(&score_train->fulldetection[cl]);
+//     }
 
-    printf("\n%5.4f", score_test->score);
-    DGAFOR(cl) {
-        printf("\t");
-        print_detection(&score_test->fulldetection[cl]);
-    }
+//     printf("\n%5.4f", score_test->score);
+//     DGAFOR(cl) {
+//         printf("\t");
+//         print_detection(&score_test->fulldetection[cl]);
+//     }
 
-    printf("\n");
-}
+//     printf("\n");
+// }
 
-void print_score_tt_falses(Score* score_train, Score* score_test) {
-    printf("%-15s\t", score_train->performance.name);
-    printf("%8.2f\t", score_train->th);
+// void print_score_tt_falses(Score* score_train, Score* score_test) {
+//     printf("%-15s\t", score_train->performance.name);
+//     printf("%8.2f\t", score_train->th);
 
-    printf("(%8.4g/%-8.4g)", score_train->score, score_test->score);
-    DGAFOR(cl) {
-        printf("\t(%6d/%-6d)", score_train->fulldetection[cl].windows.falses, score_test->fulldetection[cl].windows.falses);
-    }
+//     printf("(%8.4g/%-8.4g)", score_train->score, score_test->score);
+//     DGAFOR(cl) {
+//         printf("\t(%6d/%-6d)", score_train->fulldetection[cl].windows.falses, score_test->fulldetection[cl].windows.falses);
+//     }
 
-    printf("\n");
-}
+//     printf("\n");
+// }
 
-void print_score_tt_relative(Score* score_train, Score* score_test) {
-    printf("%-15s\t", score_train->performance.name);
-    printf("%8.2f\t", score_train->th);
+// void print_score_tt_relative(Score* score_train, Score* score_test) {
+//     printf("%-15s\t", score_train->performance.name);
+//     printf("%8.2f\t", score_train->th);
 
-    #define ROUND4(v) round(v * 10000) / 100
+//     #define ROUND4(v) round(v * 10000) / 100
 
-    printf("(%8.4g/%-8.4g)", ROUND4(score_train->score), ROUND4(score_test->score));
-    DGAFOR(cl) {
-        const double train_pr = ((double) score_train->fulldetection[cl].windows.trues) / (score_train->fulldetection[cl].windows.trues + score_train->fulldetection[cl].windows.falses);
-        const double test_pr = ((double) score_test->fulldetection[cl].windows.trues) / (score_test->fulldetection[cl].windows.trues + score_test->fulldetection[cl].windows.falses);
-        printf("\t(%8.3g/%-8.3g)", ROUND4(train_pr), ROUND4(test_pr));
-    }
-    #undef ROUND4
+//     printf("(%8.4g/%-8.4g)", ROUND4(score_train->score), ROUND4(score_test->score));
+//     DGAFOR(cl) {
+//         const double train_pr = ((double) score_train->fulldetection[cl].windows.trues) / (score_train->fulldetection[cl].windows.trues + score_train->fulldetection[cl].windows.falses);
+//         const double test_pr = ((double) score_test->fulldetection[cl].windows.trues) / (score_test->fulldetection[cl].windows.trues + score_test->fulldetection[cl].windows.falses);
+//         printf("\t(%8.3g/%-8.3g)", ROUND4(train_pr), ROUND4(test_pr));
+//     }
+//     #undef ROUND4
 
-    printf("\n");
-}
+//     printf("\n");
+// }
 
 // void print_tt(TT tt) {
 //     printf("TT: ");
@@ -295,7 +250,9 @@ void print_score_tt_relative(Score* score_train, Score* score_test) {
 // }
 
 void print_cm(Detection* d) {
-    printf("%6d/%-6d\t", d->windows.trues, d->windows.trues + d->windows.falses);
+    DGAFOR(cl) {
+        printf("%6d/%-6d\t", d->windows[cl][1], d->windows[cl][1] + d->windows[cl][0]);
+    }
 }
 
 void print_fulldetection(Detection* d[N_DGACLASSES]) {
@@ -413,10 +370,10 @@ int main (int argc, char* argv[]) {
     make_testbed(&tb2);
 
 
-    MANY(RWindow0) windows0 = tb2->datasets._[0].windows[0];
-    for (size_t w = 0; w < windows0.number; w++) {
-        printf("%d\t%ld\t%ld\n", windows0._[w]->windowing->source->index, windows0._[w]->fn_req_min, windows0._[w]->fn_req_max);
-    }
+    // MANY(RWindow0) window0s = tb2->datasets.wsize._[0]->windows.all;
+    // for (size_t w = 0; w < window0s.number; w++) {
+    //     printf("%d\t%ld\t%ld\n", window0s._[w]->windowing->source->index, window0s._[w]->fn_req_min, window0s._[w]->fn_req_max);
+    // }
 
     KFoldConfig0  kconfig0;
     kconfig0.testbed = tb2;
@@ -429,25 +386,24 @@ int main (int argc, char* argv[]) {
     KFold0 kfold0[tb2->wsizes.number];
 
     for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
-        kfold0[ww] = kfold0_run(tb2->datasets._[ww], kconfig0);
+        kfold0[ww] = kfold0_run(tb2->datasets.wsize._[ww], kconfig0);
     }
 
     MANY(PSet) psets = make_parameters();
 
     testbed2_apply(tb2, psets);
 
-
-    for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
-        MANY(RWindow0) windows0 = kfold0[ww].ks0._[0][0].train;
-        for (size_t w = 0; w < windows0.number; w++) {
-            RWindow0 window0 = kfold0[ww].ks0._[0][0].train._[w];
-            printf("%d\t%ld\t%ld\n", window0->windowing->source->index, window0->fn_req_min, window0->fn_req_max);
-            for (size_t p = 0; p < psets.number; p++) {
-                printf("\t%d) %5d\t%5d\t%5d\n", p, (int) window0->applies._[p].logit, window0->applies._[p].wcount, window0->applies._[p].whitelistened);
-            }
-        }
-    }
-
+    // for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
+    //     if (kfold0_ok(&kfold0[ww]) == 0) continue;
+    //     RDataset0 ds = kfold0[ww].splits._[0].train;
+    //     for (size_t w = 0; w < ds->windows.all.number; w++) {
+    //         RWindow0 window0 = ds->windows.all._[w];
+    //         printf("%d\t%ld\t%ld\n", window0->windowing->source->index, window0->fn_req_min, window0->fn_req_max);
+    //         for (size_t p = 0; p < psets.number; p++) {
+    //             printf("\t%ld) %5d\t%5d\t%5d\n", p, (int) window0->applies._[p].logit, window0->applies._[p].wcount, window0->applies._[p].whitelistened);
+    //         }
+    //     }
+    // }
 
     for (size_t ww = 0; ww < tb2->wsizes.number; ww++) {
         kfold0_free(&kfold0[ww]);
@@ -455,9 +411,10 @@ int main (int argc, char* argv[]) {
 
     FREEMANY(psets);
     windows_free();
-    windows0_free();
+    window0s_free();
     windowings_free();
     sources_free();
+    datasets0_free();
     testbed2_free(tb2);
     
     return 0;

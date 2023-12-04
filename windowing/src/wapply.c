@@ -17,9 +17,9 @@ void wapply_init(RWindow0 window0, MANY(WSize) wsizes, MANY(PSet) psets) {
     INITMANY(window0->applies, psets.number, WApply);
 }
 
-void wapply_init_many(MANY(RWindow0) windows0, MANY(WSize) wsizes, MANY(PSet) psets) {
+void wapply_init_many(MANY(RWindow0) window0s, MANY(WSize) wsizes, MANY(PSet) psets) {
     for (size_t i = 0; i < wsizes.number; i++) {
-        wapply_init(windows0._[i], wsizes, psets);
+        wapply_init(window0s._[i], wsizes, psets);
     }
 }
 
@@ -74,5 +74,4 @@ void wapply_run_many(MANY(WApply)* applies, TCPC(DNSMessage) message, TCPC(MANY(
     for (size_t p = 0; p < psets->number; p++) {
         wapply_run(&applies->_[p], message, &psets->_[p]);
     }
-    
 }

@@ -11,16 +11,31 @@ MAKEMANY(MANY(RWindowing));
 
 MAKETETRA(MANY(MANY(RWindowing)));
 
+typedef struct TB2WindowingsSource {
+    MANY(RWindowing) wsize;
+} TB2WindowingsSource;
+MAKEMANY(TB2WindowingsSource);
+
+typedef struct TestBed2Windowings {
+    MANY(TB2WindowingsSource) source;
+} TestBed2Windowings;
+
+typedef struct TestBed2Datasets {
+    MANY(RDataset0) wsize;
+} TestBed2Datasets;
+
 typedef struct TestBed2 {
     MANY(RSource) sources;
 
     MANY(WSize) wsizes;
 
-    MANY(MANY(RWindowing)) windowingss;
-    
-//  | sources | wsize
-    MANY(Dataset0) datasets;
+    TestBed2Windowings windowings;
+
+    TestBed2Datasets datasets;
 // |wsize|
+
+    int32_t applied;
+    MANY(PSet) psets;
 } TestBed2;
 
 TestBed2* testbed2_create(MANY(WSize) wsizes);

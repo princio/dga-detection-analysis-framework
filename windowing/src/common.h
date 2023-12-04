@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <time.h>
 #include <openssl/sha.h>
+#include <stdlib.h>
 
 
 #define MAX_WSIZES 20
@@ -50,14 +51,15 @@
 #define INITMANYSIZE(A, N, T) { A.number = N;\
             A._ = calloc(A.number, T); }
 
-#define FREEMANY(A) free(A._)
+#define FREEMANY(A) { if (A.number) free(A._); }
+#define FREEMANYREF(A) { if (A->number) free(A->_); }
 
 typedef int32_t IDX;
 
 typedef struct Index {
-    int32_t all;
-    int32_t binary[2];
-    int32_t multi[N_DGACLASSES];
+    size_t all;
+    size_t binary[2];
+    size_t multi[N_DGACLASSES];
 } Index;
 
 typedef struct __MANY {
@@ -150,11 +152,16 @@ extern char WINDOWING_NAMES[3][10];
 
 extern char NN_NAMES[11][10];
 
-
-
 typedef struct __Windowing* RWindowing;
 typedef struct __Window0* RWindow0;
 typedef struct __Window* RWindow;
+typedef struct __Source* RSource;
+typedef struct __Dataset0* RDataset0;
+
 MAKEMANY(RWindow0);
+MAKEMANY(RDataset0);
+MAKEMANY(RWindowing);
+MAKEMANY(double);
+MAKEMANY(MANY(double));
 
 #endif

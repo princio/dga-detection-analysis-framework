@@ -22,7 +22,7 @@ void _windowing_init(RWindowing windowing) {
     const RSource source = windowing->source;
     const int32_t nw = N_WINDOWS(source->fnreq_max, wsize);
 
-    MANY(RWindow0) windows = windows0_alloc(nw);
+    MANY(RWindow0) windows = window0s_alloc(nw);
 
     windowing->windows = windows;
 
@@ -72,6 +72,17 @@ void windowings_add(MANY(RWindowing)* windowings, RWindowing windowing) {
     
     windowings->_[index] = windowing;
     windowing->index = index;
+}
+
+Index windowing_windowscount(MANY(RWindowing) windowings) {
+    Index counter;
+    memset(&counter, 0, sizeof(Index));
+    for (size_t w = 0; w < windowings.number; w++) {
+        counter.all += windowings._[w]->windows.number;
+        counter.binary[windowings._[w]->source->wclass.bc] += windowings._[w]->windows.number;
+        counter.multi[windowings._[w]->source->wclass.mc] += windowings._[w]->windows.number;
+    }
+    return counter;
 }
 
 RWindowing windowings_create(RSource source, WSize wsize) {

@@ -2,21 +2,16 @@
 #ifndef __DETECT_H__
 #define __DETECT_H__
 
-#include "windows0.h"
-
-typedef struct CM {
-    int32_t falses;
-    int32_t trues;
-} CM;
+#include "window0s.h"
 
 typedef struct Detection {
-    CM windows;
-    CM sources[100];
+    double th;
+
+    uint16_t windows[N_DGACLASSES][2];
+    uint16_t sources[N_DGACLASSES][100][2];
 } Detection;
 
-typedef Detection FullDetection[N_DGACLASSES];
-
-MAKEMANY(FullDetection);
+MAKEMANY(Detection);
 
 #define N_PERFORMANCE_DGAHANDLINGs 2
 
@@ -47,12 +42,10 @@ typedef struct Performance {
 
 MAKEMANY(Performance);
 
-
-
 void detect_reset(Detection*);
 void detect_copy(TCPC(Detection) src, Detection* dst);
 
-void detect_run(MANY(RWindow0), const double, Detection* const);
+void detect_run(MANY(RWindow0) ds, const double th, MANY(Detection)* detections_);
 
 double detect_performance(Detection[N_DGACLASSES], TCPC(Performance));
 
