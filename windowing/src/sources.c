@@ -14,11 +14,12 @@ MANY(RSource) sources_gatherer = {
     .number = 0,
     ._ = NULL
 };
+int sources_gatherer_initialized = 0;
 
 void _sources_realloc(MANY(RSource)* sources, size_t index) {
     assert(index <= sources->number);
 
-    if (sources->number == index) {
+    if (sources->number <= index) {
         const size_t new_number = sources->number + 50;
     
         sources->_ = realloc(sources->_, (new_number) * sizeof(RSource));
@@ -64,6 +65,11 @@ size_t sources_add(MANY(RSource)* sources, RSource source) {
 RSource sources_alloc() {
     RSource source = calloc(1, sizeof(__Source));
 
+    if (sources_gatherer_initialized == 0) {
+        INITMANY(sources_gatherer, 50, RSource);
+        sources_gatherer_initialized = 1;
+    }
+
     sources_add(&sources_gatherer, source);
 
     return source;
@@ -80,7 +86,8 @@ void sources_free() {
         if (sources_gatherer._[s] == NULL) break;
         free(sources_gatherer._[s]);
     }
-    free(sources_gatherer._);
+    FREEMANY(sources_gatherer);
+    sources_gatherer_initialized = 0;
 }
 
 void sources_io(IOReadWrite rw, FILE* file, void*obj) {

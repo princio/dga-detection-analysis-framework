@@ -70,9 +70,12 @@ Results* trainer_create(TestBed2* tb2, MANY(Performance) thchoosers, KFoldConfig
     results = calloc(1, sizeof(Results));
 
     results->tb2 = tb2;
+    results->kconfig = config;
     results->thchoosers = thchoosers;
+
+    CLONEMANY(results->thchoosers, thchoosers, Performance);
     
-    INITMANY(results->kfolds.wsize, tb2->datasets.wsize.number, KFold0);
+    INITMANY(results->kfolds.wsize, tb2->wsizes.number, KFold0);
 
     INITMANY(results->wsize, tb2->wsizes.number, ResultsWSize);
     for (size_t w = 0; w < tb2->wsizes.number; w++) {
@@ -219,13 +222,12 @@ void trainer_free(Results* results) {
         kfold0_free(&results->kfolds.wsize._[i]);
     }
     FREEMANY(results->kfolds.wsize);
+    FREEMANY(results->thchoosers);
     free(results);
 }
 
-void results_io_thchoosers(IOReadWrite rw, FILE* file, Results* results) {
+void results_io_thchoosers(IOReadWrite rw, FILE* file, MANY(Performance)* thchoosers) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
-
-    MANY(Performance)* thchoosers = &results->thchoosers;
 
     FRW(thchoosers->number);
 
@@ -234,9 +236,9 @@ void results_io_thchoosers(IOReadWrite rw, FILE* file, Results* results) {
     }
 
     for (size_t t = 0; t < thchoosers->number; t++) {
-        // FRW(thchoosers->_[t].dgadet);
-        // FRW(thchoosers->_[t].name);
-        // FRW(thchoosers->_[t].greater_is_better);
+        FRW(thchoosers->_[t].dgadet);
+        FRW(thchoosers->_[t].name);
+        FRW(thchoosers->_[t].greater_is_better);
     }
 }
 
@@ -245,18 +247,10 @@ void results_io_kfolds(IOReadWrite rw, FILE* file, Results* results) {
 
     FRW(results->kfolds.wsize.number);
 
-    if (rw == IO_READ) {
-        INITMANY(results->kfolds.wsize, results->kfolds.wsize.number, KFold0);
-    }
-
     for (size_t i = 0; i < results->kfolds.wsize.number; i++) {
         KFold0* kfold0 = &results->kfolds.wsize._[i];
 
-        FRW(kfold0->config.balance_method);
-        FRW(kfold0->config.kfolds);
-        FRW(kfold0->config.shuffle);
-        FRW(kfold0->config.split_method);
-        FRW(kfold0->config.test_folds);
+        kfold0->config = results->kconfig;
 
         if (rw == IO_READ) {
             INITMANY(kfold0->splits, kfold0->config.kfolds, DatasetSplit0);
@@ -308,19 +302,43 @@ void results_io_results(IOReadWrite rw, FILE* file, Results* results) {
     }
 }
 
-void results_io(IOReadWrite rw, char dirname[200], Results* results) {
-    testbed2_io(rw, dirname, results->tb2);
-
-    char fpath[210];
-    sprintf(fpath, "%s/results.bin", dirname);
-
-    FILE* file = io_openfile(rw, fpath);
-
+void results_io(IOReadWrite rw, char dirname[200], TestBed2* tb2, Results** results) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    results_io_thchoosers(rw, file, results);
-    results_io_kfolds(rw, file, results);
-    results_io_results(rw, file, results);
+    char fpath[210];
+    FILE* file;
+    KFoldConfig0 kconfig;
+    MANY(Performance) thchoosers;
+
+    if (rw == IO_WRITE) {
+        kconfig = (*results)->kconfig;
+        thchoosers = (*results)->thchoosers;
+    }
+
+    sprintf(fpath, "%s/results.bin", dirname);
+
+    file = io_openfile(rw, fpath);
+
+    FRW(kconfig.balance_method);
+    FRW(kconfig.kfolds);
+    FRW(kconfig.shuffle);
+    FRW(kconfig.split_method);
+    FRW(kconfig.test_folds);
+
+    results_io_thchoosers(rw, file, &thchoosers);
+
+    if (rw == IO_READ) {
+        *results = trainer_create(tb2, thchoosers, kconfig);
+        FREEMANY(thchoosers);
+    }
+
+    results_io_kfolds(rw, file, *results);
+
+    results_io_results(rw, file, *results);
 
     fclose(file);
+
+    if (rw == IO_WRITE) {
+        printf("Results saved in: <%s>\n", fpath);
+    }
 }

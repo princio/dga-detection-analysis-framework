@@ -53,6 +53,8 @@
 #define INITMANYSIZE(A, N, T) { A.number = N;\
             A._ = calloc(A.number, T); }
 
+#define CLONEMANY(A, B, T) INITMANY((A), (B).number, T); memcpy((A)._, (B)._, sizeof(T) * (B).number);
+
 #define FREEMANY(A) { if (A.number) free(A._); }
 #define FREEMANYREF(A) { if (A->number) free(A->_); }
 

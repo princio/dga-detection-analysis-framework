@@ -19,13 +19,8 @@ TestBed2* testbed2_create(MANY(WSize) wsizes) {
     TestBed2* tb2 = calloc(1, sizeof(TestBed2));
     memset(tb2, 0, sizeof(TestBed2));
 
-    INITMANY(tb2->wsizes, wsizes.number, WSize);
+    CLONEMANY(tb2->wsizes, wsizes, WSize);
     INITMANY(tb2->datasets.wsize, wsizes.number, RDataset0);
-
-    for (size_t i = 0; i < tb2->wsizes.number; i++) {
-        tb2->wsizes._[i].index = wsizes._[i].index;
-        tb2->wsizes._[i].value = wsizes._[i].value;
-    }
 
     return tb2;
 }
@@ -80,24 +75,24 @@ void testbed2_windowing(TestBed2* tb2) {
     }
 }
 
-void testbed2_apply(TestBed2* tb2, TCPC(MANY(PSet)) psets) {
+void testbed2_apply(TestBed2* tb2, MANY(PSet) psets) {
     for (size_t w = 0; w < tb2->datasets.wsize.number; w++) {
-        tb2->datasets.wsize._[w]->applies_number = psets->number;
+        tb2->datasets.wsize._[w]->applies_number = psets.number;
     }
     
     for (size_t s = 0; s < tb2->sources.number; s++) {
         TB2WindowingsSource swindowings = tb2->windowings.source._[s];
         for (size_t i = 0; i < tb2->wsizes.number; i++) {
             for (size_t w = 0; w < swindowings.wsize._[i]->windows.number; w++) {
-                wapply_init(swindowings.wsize._[i]->windows._[w], psets->number);
+                wapply_init(swindowings.wsize._[i]->windows._[w], psets.number);
             }
         }
-        stratosphere_apply(swindowings.wsize, psets, NULL);
+        stratosphere_apply(swindowings.wsize, &psets, NULL);
     }
 
     tb2->applied = 1;
-    tb2->psets.number = psets->number;
-    tb2->psets._ = psets->_;
+
+    CLONEMANY(tb2->psets, psets, PSet);
 }
 
 void testbed2_free(TestBed2* tb2) {
@@ -108,6 +103,7 @@ void testbed2_free(TestBed2* tb2) {
     FREEMANY(tb2->datasets.wsize);
     FREEMANY(tb2->sources);
     FREEMANY(tb2->wsizes);
+    FREEMANY(tb2->psets);
     free(tb2);
 }
 
@@ -167,10 +163,20 @@ void testbed2_io_sources(IOReadWrite rw, FILE* file, TestBed2* tb2) {
             source = sources->_[t];
         }
 
-        FRW(sources->_[t]);
+        FRW(source->index);
+        FRW(source->name);
+        FRW(source->galaxy);
+        FRW(source->wclass);
+        FRW(source->capture_type);
+        FRW(source->windowing_type);
+        FRW(source->id);
+        FRW(source->qr);
+        FRW(source->q);
+        FRW(source->r);
+        FRW(source->fnreq_max);
 
         if (rw == IO_READ) {
-            sources_add(sources, source);
+            sources->_[t] = source;
         }
     }
 }
@@ -180,9 +186,6 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, TestBed2* tb2, RW
 
     FRW(windowing->windows.number);
 
-    if (rw == IO_READ) {
-        windowing->windows = window0s_alloc(windowing->windows.number);
-    }
     for (size_t w = 0; w < windowing->windows.number; w++) {
         RWindow0 window0 = windowing->windows._[w];
         FRW(window0->applies_number);
@@ -196,13 +199,13 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, TestBed2* tb2, RW
         for (size_t p = 0; p < tb2->psets.number; p++) {
             WApply* wapply = &window0->applies._[p];
             FRW(wapply->dn_bad_05);
-            // FRW(wapply->dn_bad_0999);
-            // FRW(wapply->dn_bad_099);
-            // FRW(wapply->dn_bad_09);
+            FRW(wapply->dn_bad_0999);
+            FRW(wapply->dn_bad_099);
+            FRW(wapply->dn_bad_09);
             FRW(wapply->logit);
             FRW(wapply->pset_index);
             FRW(wapply->wcount);
-            // FRW(wapply->whitelistened);
+            FRW(wapply->whitelistened);
         }
     }
 }
@@ -210,22 +213,19 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, TestBed2* tb2, RW
 void testbed2_io_windowing(IOReadWrite rw, FILE* file, TestBed2* tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    FRW(tb2->windowings.source.number);
-
     if (rw == IO_READ) {
-        INITMANY(tb2->windowings.source, tb2->windowings.source.number, TB2WindowingsSource);
+        INITMANY(tb2->windowings.source, tb2->sources.number, TB2WindowingsSource);
     }
 
     for (size_t i = 0; i < tb2->windowings.source.number; i++) {
         if (rw == IO_READ) {
-            INITMANY(tb2->windowings.source._[i].wsize, tb2->windowings.source._[i].wsize.number, RWindowing);
+            INITMANY(tb2->windowings.source._[i].wsize, tb2->wsizes.number, RWindowing);
         }
-        MANY(RWindowing)* windowings = &tb2->windowings.source._[i].wsize;
-        for (size_t w = 0; w < windowings->number; w++) {
-            RWindowing* windowing_ref = &windowings->_[w];
+        for (size_t w = 0; w < tb2->wsizes.number; w++) {
+            RWindowing* windowing_ref = &tb2->windowings.source._[i].wsize._[w];
 
             if (rw == IO_READ) {
-                Index source_index;
+                SourceIndex source_index;
                 RSource source;
                 WSize wsize;
 
@@ -265,32 +265,42 @@ void testbed2_io_dataset(IOReadWrite rw, FILE* file, TestBed2* tb2, const size_t
         (*ds_ref) = dataset0_alloc(init);
     }
 
-    MANY(TB2WindowingsSource)* swindowings = &tb2->windowings.source;
-    for (size_t s = 0; s < swindowings->number; s++) {
-        RWindowing* windowing_ref = &swindowings->_[s].wsize._[wsize_index];
+    Index walker;
+    memset(&walker, 0, sizeof(Index));
+    for (size_t i = 0; i < init.windows_counter.all; i++) {
+        RWindow0* window_ref = &(*ds_ref)->windows.all._[i];
+        RWindow0* window_bin_ref;
+        RWindow0* window_mul_ref;
+        RSource source;
 
-        if (rw == IO_READ) {
-            Index source_index;
-            RSource source;
-            WSize wsize;
+        size_t window_index;
+        size_t source_index;
+        size_t wsize_index;
 
-            FRW(source_index);
-            FRW(wsize);
-
-            source = tb2->sources._[source_index.all];
-
-            (*windowing_ref) = windowings_alloc(source, wsize);
-        } else {
-            FRW((*windowing_ref)->source->index);
-            FRW((*windowing_ref)->wsize.index);
-            FRW((*windowing_ref)->wsize.value);
+        if (rw == IO_WRITE) {
+            window_index = (*window_ref)->index;
+            source_index = (*window_ref)->windowing->source->index.all;
+            wsize_index = (*window_ref)->windowing->wsize.index;
         }
 
-        testbed2_io_windowing_windows(rw, file, tb2, *windowing_ref);
+        FRW(window_index);
+        FRW(source_index);
+        FRW(wsize_index);
+
+        source = tb2->sources._[source_index];
+
+        window_bin_ref = &(*ds_ref)->windows.binary[source->wclass.bc]._[walker.binary[source->wclass.bc]++];
+        window_mul_ref = &(*ds_ref)->windows.multi[source->wclass.mc]._[walker.multi[source->wclass.mc]++];
+
+        if (rw == IO_READ) {
+            (*window_ref) = tb2->windowings.source._[source_index].wsize._[wsize_index]->windows._[window_index];
+            (*window_bin_ref) = (*window_ref);
+            (*window_mul_ref) = (*window_ref);
+        }
     }
 }
 
-void testbed2_io(IOReadWrite rw, char dirname[200], TestBed2* tb2) {
+void testbed2_io(IOReadWrite rw, char dirname[200], TestBed2** tb2) {
     char fpath[210];
     sprintf(fpath, "%s/tb2.bin", dirname);
 
@@ -301,21 +311,23 @@ void testbed2_io(IOReadWrite rw, char dirname[200], TestBed2* tb2) {
         return;
     }
 
-
     if (rw == IO_READ) {
         MANY(WSize) wsizes;
         testbed2_io_wsizes(rw, file, &wsizes);
-        tb2 = testbed2_create(wsizes);
+        *tb2 = testbed2_create(wsizes);
+        FREEMANY(wsizes);
     } else {
-        testbed2_io_wsizes(rw, file, &tb2->wsizes);
+        testbed2_io_wsizes(rw, file, &(*tb2)->wsizes);
     }
 
-    testbed2_io_parameters(rw, file, tb2);
+    testbed2_io_parameters(rw, file, (*tb2));
 
-    testbed2_io_sources(rw, file, tb2);
+    testbed2_io_sources(rw, file, (*tb2));
+
+    testbed2_io_windowing(rw, file, (*tb2));
     
-    for (size_t i = 0; i < tb2->datasets.wsize.number; i++) {
-        testbed2_io_dataset(rw, file, tb2, i, &tb2->datasets.wsize._[i]);
+    for (size_t i = 0; i < (*tb2)->datasets.wsize.number; i++) {
+        testbed2_io_dataset(rw, file, (*tb2), i, &(*tb2)->datasets.wsize._[i]);
     }
 
     fclose(file);

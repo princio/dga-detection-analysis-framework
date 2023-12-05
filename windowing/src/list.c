@@ -78,6 +78,8 @@ void list_free(List* list) {
         free(cursor2free->item);
         free(cursor2free);
     }
+
+    list->root = NULL;
 }
 
 void array_free(Many array) {

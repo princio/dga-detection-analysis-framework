@@ -185,8 +185,6 @@ void fetch_window(const __Source* source, uint64_t fn_req_min, uint64_t fn_req_m
 void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pgresult) {
     char sql[1000];
     int pgresult_binary = 1;
-
-    printf("id: %d\n", source->id);
     
     sprintf(sql,
             "SELECT FN_REQ, VALUE, LOGIT, IS_RESPONSE, TOP10M, DYNDNS, M.ID, RCODE FROM MESSAGES_%d AS M "
@@ -205,6 +203,8 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
     }
 
     *nrows = PQntuples(*pgresult);
+
+    printf("stratosphere source: id=%d\tnrows=%d\n", source->id, *nrows);
 
     if ((*nrows) != source->qr) {
         printf("[%s:%d] nrows != source->qr:\t%d != %ld\n", __FILE__, __LINE__, *nrows, source->qr);

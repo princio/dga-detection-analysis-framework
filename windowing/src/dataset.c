@@ -48,7 +48,6 @@ MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t _k, const 
     DGAFOR(cl) {
         const size_t windows_cl_number = dataset0->windows.multi[cl].number;
         const size_t kfold_size = windows_cl_number / _k;
-        printf("kfold_size: %ld\n", kfold_size);
         if (cl != 1 && kfold_size == 0) {
             printf("Error: impossible to split the dataset with k=%ld (wn[%d]=%ld, ksize=%ld).\n", _k, cl, windows_cl_number, kfold_size);
             return splits;

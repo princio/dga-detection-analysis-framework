@@ -8,10 +8,8 @@
 
 #include <openssl/sha.h>
 
-MANY(PSet)* parameters_generate(TCPC(PSetGenerator) psetgenerator) {
-    MANY(PSet)* psets;
-
-    psets = calloc(1, sizeof(MANY(PSet)));
+MANY(PSet) parameters_generate(TCPC(PSetGenerator) psetgenerator) {
+    MANY(PSet) psets;
 
     size_t count_nn = psetgenerator->n_nn;
     size_t count_wl = psetgenerator->n_whitelisting;
@@ -21,7 +19,7 @@ MANY(PSet)* parameters_generate(TCPC(PSetGenerator) psetgenerator) {
 
     const size_t n_psets = count_nn * count_wl * count_wt * count_iv * count_nx;
 
-    INITMANYREF(psets, n_psets, PSet);
+    INITMANY(psets, n_psets, PSet);
 
     size_t i = 0;
     for (size_t i0 = 0; i0 < count_nn; ++i0) {
@@ -29,7 +27,7 @@ MANY(PSet)* parameters_generate(TCPC(PSetGenerator) psetgenerator) {
             for (size_t i2 = 0; i2 < count_wt; ++i2) {
                 for (size_t i4 = 0; i4 < count_iv; ++i4) {
                     for (size_t i5 = 0; i5 < count_iv; ++i5) {
-                        PSet* pset = &psets->_[i];
+                        PSet* pset = &psets._[i];
 
                         memset(pset, 0, sizeof(PSet));
 
@@ -51,16 +49,13 @@ MANY(PSet)* parameters_generate(TCPC(PSetGenerator) psetgenerator) {
     return psets;
 }
 
-void parameters_io(IOReadWrite rw, FILE* file, void* obj) {
-    PSet *pset = obj;
-
-    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
-
-    FRW(pset->id);
-    FRW(pset->infinite_values);
-    FRW(pset->nn);
-    FRW(pset->whitelisting);
-    FRW(pset->windowing);
+void parameters_generate_free(PSetGenerator* psetgenerator) {
+    free(psetgenerator->nn);
+    free(psetgenerator->whitelisting);
+    free(psetgenerator->windowing);
+    free(psetgenerator->infinitevalues);
+    free(psetgenerator->nx_epsilon_increment);
+    free(psetgenerator);
 }
 
 void parameters_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]) {

@@ -16,6 +16,7 @@ MANY(RWindowing) windowing_gatherer = {
     .number = 0,
     ._ = NULL
 };
+int windowing_gatherer_initialized = 0;
 
 void _windowing_init(RWindowing windowing) {
     const WSize wsize = windowing->wsize;
@@ -88,6 +89,11 @@ Index windowing_windowscount(MANY(RWindowing) windowings) {
 RWindowing windowings_alloc(RSource source, WSize wsize) {
     RWindowing windowing = calloc(1, sizeof(__Windowing));
 
+    if (windowing_gatherer_initialized == 0) {
+        INITMANY(windowing_gatherer, 50, RWindowing);
+        windowing_gatherer_initialized = 1;
+    }
+
     windowings_add(&windowing_gatherer, windowing);
 
     windowing->source = source;
@@ -109,7 +115,8 @@ void windowings_free() {
         FREEMANY(windowing_gatherer._[s]->windows);
         free(windowing_gatherer._[s]);
     }
-    free(windowing_gatherer._);
+    FREEMANY(windowing_gatherer);
+    windowing_gatherer_initialized = 0;
 }
 
 /*

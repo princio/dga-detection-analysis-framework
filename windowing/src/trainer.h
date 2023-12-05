@@ -40,6 +40,7 @@ typedef struct ResultsKFold0s {
 typedef struct Results {
     TestBed2* tb2;
 
+    KFoldConfig0 kconfig;
     MANY(Performance) thchoosers;
     ResultsKFold0s kfolds;
     MANY(ResultsWSize) wsize;
@@ -51,6 +52,6 @@ Results* trainer_run(TestBed2*tb2, MANY(Performance) thchoosers, KFoldConfig0);
 
 void trainer_free(Results* results);
 
-void results_io(IOReadWrite rw, char dirname[200], Results* results);
+void results_io(IOReadWrite rw, char dirname[200], TestBed2* tb2, Results** results);
 
 #endif
