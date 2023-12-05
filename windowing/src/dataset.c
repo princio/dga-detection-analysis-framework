@@ -189,7 +189,20 @@ void dataset0_free(RDataset0 dataset) {
 
 }
 
-RDataset0 dataset0_from_windowing(MANY(RWindowing) windowings, const size_t applies_number) {
+Index dataset_counter(RDataset0 ds) {
+    Index counter;
+    
+    counter.all = ds->windows.all.number;
+    counter.binary[0] = ds->windows.binary[0].number;
+    counter.binary[1] = ds->windows.binary[1].number;
+    counter.multi[0] = ds->windows.multi[0].number;
+    counter.multi[1] = ds->windows.multi[1].number;
+    counter.multi[2] = ds->windows.multi[2].number;
+    
+    return counter;
+}
+
+RDataset0 dataset0_from_windowings(MANY(RWindowing) windowings) {
     Index counter;
     memset(&counter, 0, sizeof(Index));
     for (size_t w = 0; w < windowings.number; w++) {
@@ -200,7 +213,7 @@ RDataset0 dataset0_from_windowing(MANY(RWindowing) windowings, const size_t appl
     }
 
     Dataset0Init init = {
-        .applies_number = applies_number,
+        .applies_number = 0,
         .wsize = windowings._[0]->wsize,
         .windows_counter = counter
     };

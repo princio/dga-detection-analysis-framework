@@ -146,14 +146,24 @@ $(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 
 
 # Rule for run valgrind tool
-# --show-leak-kinds=all
 valgrind:
 	valgrind \
 		--track-origins=yes \
 		--leak-check=full \
 		--leak-resolution=high \
 		--log-file=$(LOGDIR)/$@.log \
-		--main-stacksize=83886080\
+		--main-stacksize=838860800\
+		$(BINDIR)/$(BINARY)
+	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
+
+valgrind2:
+	valgrind \
+		--track-origins=yes \
+		--leak-check=full \
+		--leak-resolution=high \
+		--show-leak-kinds=all \
+		--log-file=$(LOGDIR)/$@.log \
+		--main-stacksize=838860800\
 		$(BINDIR)/$(BINARY)
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 
@@ -181,3 +191,5 @@ cab: clean all
 	clear; bin/binary
 
 cav: clean all valgrind
+
+cav2: clean all valgrind2

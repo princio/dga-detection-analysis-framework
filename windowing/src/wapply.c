@@ -13,13 +13,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-void wapply_init(RWindow0 window0, MANY(WSize) wsizes, MANY(PSet) psets) {
-    INITMANY(window0->applies, psets.number, WApply);
+void wapply_init(RWindow0 window0, const size_t psets_number) {
+    INITMANY(window0->applies, psets_number, WApply);
+    memset(window0->applies._, 0, psets_number * sizeof(WApply));
 }
 
 void wapply_init_many(MANY(RWindow0) window0s, MANY(WSize) wsizes, MANY(PSet) psets) {
     for (size_t i = 0; i < wsizes.number; i++) {
-        wapply_init(window0s._[i], wsizes, psets);
+        wapply_init(window0s._[i], psets.number);
     }
 }
 
@@ -48,7 +49,7 @@ void wapply_run(WApply* wapply, TCPC(DNSMessage) message, TCPC(PSet) pset) {
     //     logit = log(value / (1 - value)); // message->logit;
     // }
     
-    if (message->top10m > 0 && message->top10m < pset->whitelisting.rank) {
+    if (message->top10m > 0 && ((size_t) message->top10m) < pset->whitelisting.rank) {
         value = 0;
         logit = pset->whitelisting.value;
         whitelistened = 1;

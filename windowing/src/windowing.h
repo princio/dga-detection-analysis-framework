@@ -50,7 +50,7 @@ MAKEDGAMANY(SourceApply);
 */
 
 typedef struct __Windowing {
-    int32_t index;
+    size_t index;
     RSource source;
     WSize wsize;
     MANY(RWindow0) windows;
@@ -58,7 +58,7 @@ typedef struct __Windowing {
 
 void windowings_add(MANY(RWindowing)* windowings, RWindowing windowing);
 
-RWindowing windowings_create(RSource rsource, WSize wsize);
+RWindowing windowings_alloc(RSource rsource, WSize wsize);
 
 void windowings_finalize(MANY(RWindowing)* windowings);
 void windowings_free();

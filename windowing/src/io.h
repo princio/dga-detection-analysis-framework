@@ -37,7 +37,7 @@ FILE* io_openfile(IOReadWrite read, char fname[500]);
 int io_direxists(char* dir);
 int io_fileexists(char* dir);
 
-int io_makedir(char* dir, int append_time);
+int io_makedir(char* dir, size_t dirsize, int append_time);
 
 void io_dumphex(const void* data, size_t size);
 void io_fwrite32(uint32_t* n, FILE* file);

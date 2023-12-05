@@ -20,7 +20,7 @@ MANY(RWindowing) windowing_gatherer = {
 void _windowing_init(RWindowing windowing) {
     const WSize wsize = windowing->wsize;
     const RSource source = windowing->source;
-    const int32_t nw = N_WINDOWS(source->fnreq_max, wsize);
+    const int32_t nw = N_WINDOWS(source->fnreq_max, wsize.value);
 
     MANY(RWindow0) windows = window0s_alloc(nw);
 
@@ -30,8 +30,8 @@ void _windowing_init(RWindowing windowing) {
     for (int32_t w = 0; w < nw; w++) {
         windows._[w]->windowing = windowing;
         windows._[w]->fn_req_min = fnreq;
-        windows._[w]->fn_req_max = fnreq + wsize;
-        fnreq += wsize;
+        windows._[w]->fn_req_max = fnreq + wsize.value;
+        fnreq += wsize.value;
     }
 }
 
@@ -85,7 +85,7 @@ Index windowing_windowscount(MANY(RWindowing) windowings) {
     return counter;
 }
 
-RWindowing windowings_create(RSource source, WSize wsize) {
+RWindowing windowings_alloc(RSource source, WSize wsize) {
     RWindowing windowing = calloc(1, sizeof(__Windowing));
 
     windowings_add(&windowing_gatherer, windowing);

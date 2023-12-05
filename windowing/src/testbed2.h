@@ -42,11 +42,16 @@ TestBed2* testbed2_create(MANY(WSize) wsizes);
 
 void testbed2_source_add(TestBed2* tb2, __Source* source);
 
-void testbed2_apply(TestBed2* tb2, const MANY(PSet) pset);
-void testbed2_apply_free(TestBed2* tb2, const MANY(PSet) psets);
+void testbed2_apply(TestBed2* tb2, TCPC(MANY(PSet)) pset);
 
 void testbed2_windowing(TestBed2*);
 
 void testbed2_free(TestBed2*);
+
+void testbed2_io_wsizes(IOReadWrite rw, FILE* file, MANY(WSize)* wsizes);
+
+void testbed2_io_dataset(IOReadWrite rw, FILE* file, TestBed2* tb2, const size_t wsize_index, RDataset0* ds_ref);
+
+void testbed2_io(IOReadWrite rw, char dirname[200], TestBed2* tb2);
 
 #endif

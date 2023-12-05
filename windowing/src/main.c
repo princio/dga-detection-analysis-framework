@@ -107,14 +107,14 @@ MANY(Performance) performances;
 //     }
 // }
 
-MANY(PSet) make_parameters() {
+MANY(PSet)* make_parameters() {
     PSetGenerator* psetgenerator = calloc(1, sizeof(PSetGenerator));
 
     {
         NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
 
         Whitelisting whitelisting[] = {
-            { .rank = 0, .value = 0 },
+            { .rank = 100, .value = 10 }
             // { .rank = 1000, .value = -50 },
             // { .rank = 100000, .value = -50 },
             // { .rank = 1000000, .value = -10 },  
@@ -122,7 +122,7 @@ MANY(PSet) make_parameters() {
         };
 
         WindowingType windowing[] = {
-            WINDOWING_Q,
+            WINDOWING_Q
             // WINDOWING_R,
             // WINDOWING_QR
         };
@@ -154,7 +154,7 @@ MANY(PSet) make_parameters() {
         #undef _COPY
     }
 
-    MANY(PSet) psets = parameters_generate(psetgenerator);
+    MANY(PSet)* psets = parameters_generate(psetgenerator);
 
     free(psetgenerator->nn);
     free(psetgenerator->whitelisting);
@@ -250,17 +250,17 @@ MANY(Performance) gen_performance() {
 //     printf("\n");
 // }
 
-void print_cm(Detection* d) {
-    DGAFOR(cl) {
-        printf("%6d/%-6d\t", d->windows[cl][1], d->windows[cl][1] + d->windows[cl][0]);
-    }
-}
+// void print_cm(Detection* d) {
+//     DGAFOR(cl) {
+//         printf("%6d/%-6d\t", d->windows[cl][1], d->windows[cl][1] + d->windows[cl][0]);
+//     }
+// }
 
-void print_fulldetection(Detection* d[N_DGACLASSES]) {
-    DGAFOR(cl) {
-        print_cm(d[cl]);
-    }
-}
+// void print_fulldetection(Detection* d[N_DGACLASSES]) {
+//     DGAFOR(cl) {
+//         print_cm(d[cl]);
+//     }
+// }
 
 // void train(TT tt, MANY(Performance) performances, Test tests[performances.number]) {
 //     MANY(double) ths;
@@ -303,12 +303,20 @@ void print_fulldetection(Detection* d[N_DGACLASSES]) {
 // }
 
 void make_testbed(TestBed2** tb2) {
-    MANY(WSize) wsizes;
-    INITMANY(wsizes, 2, sizeof(WSize));
+    size_t index = 0;
 
-    wsizes._[0] = 100;
-    wsizes._[1] = 500;
-    
+    WSize wsizes_arr[] = {
+        {.index = index++, .value = 100},
+        {.index = index++, .value = 500},
+    };
+
+    const size_t n = sizeof(wsizes_arr)/sizeof(WSize);
+
+    MANY(WSize) wsizes;
+    INITMANY(wsizes, n, WSize);
+
+    memcpy(wsizes._, wsizes_arr, n * sizeof(WSize));
+
     *tb2 = testbed2_create(wsizes);
 
     stratosphere_add(*tb2);
@@ -376,14 +384,13 @@ int main (int argc, char* argv[]) {
     //     printf("%d\t%ld\t%ld\n", window0s._[w]->windowing->source->index, window0s._[w]->fn_req_min, window0s._[w]->fn_req_max);
     // }
 
-    MANY(PSet) psets = make_parameters();
+    MANY(PSet)* psets = make_parameters();
 
     testbed2_apply(tb2, psets);
 
     MANY(Performance) performances = gen_performance();
 
     KFoldConfig0  kconfig0;
-    kconfig0.testbed = tb2;
     kconfig0.balance_method = KFOLD_BM_NOT_INFECTED;
     kconfig0.kfolds = 5;
     kconfig0.test_folds = 1;
@@ -392,23 +399,23 @@ int main (int argc, char* argv[]) {
 
     #define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
 
-    Results results = trainer_run(tb2, performances, kconfig0);
-    for (size_t w = 0; w < results.wsizes.number; w++) {
-        for (size_t a = 0; a < results.applies.number; a++) {
-            for (size_t k = 0; k < results.kfolds.number; k++) {
-                for (size_t t = 0; t < results.thchoosers.number; t++) {
+    Results* results = trainer_run(tb2, performances, kconfig0);
+    for (size_t w = 0; w < tb2->wsizes.number; w++) {
+        for (size_t a = 0; a < tb2->psets.number; a++) {
+            for (size_t k = 0; k < results->kfolds.wsize.number; k++) {
+                for (size_t t = 0; t < results->thchoosers.number; t++) {
 
-                    Result* result = &RESULT_IDX(results, w, a, t, k);
+                    Result* result = &RESULT_IDX((*results), w, a, t, k);
 
                     {
                         char headers[4][50];
                         char header[210];
                         size_t h_idx = 0;
 
-                        sprintf(headers[h_idx++], "%5ld", results.wsizes._[w]);
+                        sprintf(headers[h_idx++], "%5ld", tb2->wsizes._[w].value);
                         sprintf(headers[h_idx++], "%3ld", a);
                         sprintf(headers[h_idx++], "%3ld", k);
-                        sprintf(headers[h_idx++], "%12s", results.thchoosers._[t].name);
+                        sprintf(headers[h_idx++], "%12s", results->thchoosers._[t].name);
                         sprintf(header, "%s,%s,%s,%s,", headers[0], headers[1], headers[2], headers[3]);
                         printf("%-30s ", header);
                     }
@@ -428,15 +435,21 @@ int main (int argc, char* argv[]) {
         }
     }
 
+
+    char dirname[200] = "/home/princio/Desktop/results/test";
+    io_makedir(dirname, 200, 1);
+    results_io(IO_WRITE, dirname, results);
+
     FREEMANY(performances);
-    FREEMANY(psets);
+    FREEMANYREF(psets);
+    free(psets);
     windows_free();
     window0s_free();
     windowings_free();
     sources_free();
     datasets0_free();
     testbed2_free(tb2);
-    trainer_free(&results);
+    trainer_free(results);
 
     return 0;
 }

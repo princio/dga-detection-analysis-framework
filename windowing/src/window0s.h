@@ -7,11 +7,15 @@
 #include "wapply.h"
 
 typedef struct __Window0 {
+    size_t index;
     RWindowing windowing;
-    int64_t fn_req_min;
-    int64_t fn_req_max;
+    
     double duration;
+
+    size_t fn_req_min;
+    size_t fn_req_max;
     size_t applies_number;
+    
     MANY(WApply) applies;
 } __Window0;
 

@@ -8,27 +8,30 @@
 
 #include <openssl/sha.h>
 
-MANY(PSet) parameters_generate(TCPC(PSetGenerator) psetgenerator) {
+MANY(PSet)* parameters_generate(TCPC(PSetGenerator) psetgenerator) {
+    MANY(PSet)* psets;
+
+    psets = calloc(1, sizeof(MANY(PSet)));
+
     size_t count_nn = psetgenerator->n_nn;
     size_t count_wl = psetgenerator->n_whitelisting;
     size_t count_wt = psetgenerator->n_windowing;
     size_t count_iv = psetgenerator->n_infinitevalues;
     size_t count_nx = psetgenerator->n_nx;
 
-    const int n_psets = count_nn * count_wl * count_wt * count_iv * count_nx;
+    const size_t n_psets = count_nn * count_wl * count_wt * count_iv * count_nx;
 
-    MANY(PSet) psets = {
-        .number = n_psets,
-        ._ = calloc(n_psets, sizeof(PSet))
-    };
+    INITMANYREF(psets, n_psets, PSet);
 
-    int i = 0;
+    size_t i = 0;
     for (size_t i0 = 0; i0 < count_nn; ++i0) {
         for (size_t i1 = 0; i1 < count_wl; ++i1) {
             for (size_t i2 = 0; i2 < count_wt; ++i2) {
                 for (size_t i4 = 0; i4 < count_iv; ++i4) {
                     for (size_t i5 = 0; i5 < count_iv; ++i5) {
-                        PSet* pset = &psets._[i];
+                        PSet* pset = &psets->_[i];
+
+                        memset(pset, 0, sizeof(PSet));
 
                         pset->id = i;
                         

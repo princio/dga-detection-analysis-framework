@@ -23,7 +23,7 @@ typedef struct WApply {
 
 MAKEMANY(WApply);
 
-void wapply_init(RWindow0, MANY(WSize), MANY(PSet));
+void wapply_init(RWindow0, const size_t psets_number);
 void wapply_init_many(MANY(RWindow0), MANY(WSize), MANY(PSet));
 void wapply_run(WApply* wapply, TCPC(DNSMessage) message, TCPC(PSet) pset);
 void wapply_run_many(MANY(WApply)* applies, TCPC(DNSMessage) message, TCPC(MANY(PSet)) psets);

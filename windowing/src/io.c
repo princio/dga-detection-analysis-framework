@@ -22,19 +22,18 @@ int io_fileexists(char* dir) {
     return stat(dir, &st) == 0 && S_ISREG(st.st_mode);
 }
 
-int io_makedir(char* dir, int append_time) {
-    char dir2[strlen(dir) + 50];
-
+int io_makedir(char* dir, size_t dirsize, int append_time) {
     if (append_time) {
+        if (strlen(dir) + 50 > dirsize) {
+            printf("Warning: dirlen + 50 > dirlen");
+        }
         time_t t = time(NULL);
         struct tm tm = *localtime(&t);
-        sprintf(dir2, "%s_%d%02d%02d_%02d%02d%02d", dir, tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
-    } else {
-        strcpy(dir2, dir);
+        sprintf(dir + strlen(dir), "_%d%02d%02d_%02d%02d%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
     }
 
-    if (!io_direxists(dir2)) {
-        if(mkdir(dir2, 0700) == -1) return -1;
+    if (!io_direxists(dir)) {
+        if(mkdir(dir, 0700) == -1) return -1;
     }
 
     return 0;
@@ -83,6 +82,10 @@ void io_fwrite32(uint32_t* n, FILE* file) {
     fwrite(&be, sizeof(uint32_t), 1, file);
 }
 
+
+/// @brief If v is the pointer to a struct of size `s` but the
+///        sum of its fields is different from `s` then 
+///        valgrind will give Sysbuffer uninitialized error
 void io_fwriteN(void* v, size_t s, FILE* file) {
     const int block64_2write = s / 8 + (s % 8 > 0);
     

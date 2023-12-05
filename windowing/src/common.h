@@ -106,12 +106,15 @@ typedef struct DNSMessage {
 
 //   P A R A M E T E R S
 
-typedef size_t WSize;
+typedef struct WSize {
+    size_t index;
+    size_t value;
+} WSize;
 
 MAKEMANY(WSize);
 
 typedef struct Whitelisting {
-    int32_t rank;
+    size_t rank;
     double value;
 } Whitelisting;
 

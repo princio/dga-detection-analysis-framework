@@ -41,7 +41,7 @@ void parameters_hash(PSet*);
 
 void parameters_print(PSet* pset);
 
-MANY(PSet) parameters_generate(TCPC(PSetGenerator));
+MANY(PSet)* parameters_generate(TCPC(PSetGenerator));
 
 void parameters_io(IOReadWrite, FILE*, void*);
 void parameters_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);

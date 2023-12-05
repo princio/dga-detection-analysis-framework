@@ -19,8 +19,6 @@ typedef enum FoldingTestConfigSplitMethod {
 } FoldingTestConfigSplitMethod;
 
 typedef struct KFoldConfig0 {
-    TestBed2* testbed;
-    
     size_t kfolds;
     size_t test_folds; // usually kfold - 1
 

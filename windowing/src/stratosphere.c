@@ -216,7 +216,7 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
 }
 
 // void perform_windowingap(RSource source, MANY(PSet) psets, MANY(RWindow) windows_pset[psets.number], int32_t loaded[psets.number]) {
-void stratosphere_apply(MANY(RWindowing) windowings, MANY(PSet) psets, int32_t loaded[]) {
+void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets, int32_t loaded[]) {
     const RSource source = windowings._[0]->source;
     
     PGresult* pgresult = NULL;
@@ -235,11 +235,11 @@ void stratosphere_apply(MANY(RWindowing) windowings, MANY(PSet) psets, int32_t l
         for (size_t i = 0; i < windowings.number; i++) {
             RWindowing windowing = windowings._[i];
 
-            const int wnum = (int64_t) floor(message.fn_req / windowing->wsize);
+            const int wnum = (int64_t) floor(message.fn_req / windowing->wsize.value);
 
-            windowing->windows._[wnum]->applies_number = psets.number;
+            windowing->windows._[wnum]->applies_number = psets->number;
 
-            wapply_run_many(&windowing->windows._[wnum]->applies, &message, &psets);
+            wapply_run_many(&windowing->windows._[wnum]->applies, &message, psets);
         }
     }
 
@@ -279,7 +279,7 @@ void _stratosphere_add(TestBed2* tb2) {
 
     int nrows = PQntuples(pgresult);
 
-    nrows = 25; // DEBUG DEVELOP
+    nrows = 5; // DEBUG DEVELOP
 
     for(int row = 0; row < nrows; row++) {
         int32_t id;

@@ -36,7 +36,9 @@ RDataset0 dataset0_alloc(const Dataset0Init init);
 
 MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t k, const size_t k_test);
 
-RDataset0 dataset0_from_windowing(MANY(RWindowing) windowings, const size_t);
+Index dataset_counter(RDataset0 ds);
+
+RDataset0 dataset0_from_windowings(MANY(RWindowing) windowings);
 
 void dataset0_free(RDataset0 dataset);
 
