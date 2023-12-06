@@ -124,11 +124,13 @@ void testbed2_io_parameters(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
         PSet* pset = &psets->_[p];
 
         FRW(pset->id);
-        FRW(pset->infinite_values.ninf);
-        FRW(pset->infinite_values.pinf);
+        FRW(pset->ninf);
+        FRW(pset->pinf);
         FRW(pset->nn);
-        FRW(pset->whitelisting);
+        FRW(pset->wl_rank);
+        FRW(pset->wl_value);
         FRW(pset->windowing);
+        FRW(pset->nx_epsilon_increment);
     }
 }
 
@@ -428,13 +430,13 @@ void testbed2_md(char dirname[200], const RTestBed2 tb2) {
         for (size_t i = 0; i < tb2->psets.number; i++) {
             TCPC(PSet) pset = &tb2->psets._[i];
             FP("|%*ld", len_header, pset->id);
-            FP("|%*f", len_header,  pset->infinite_values.ninf);
-            FP("|%*f", len_header,  pset->infinite_values.pinf);
+            FP("|%*f", len_header,  pset->ninf);
+            FP("|%*f", len_header,  pset->pinf);
             FP("|%*s", len_header,  NN_NAMES[pset->nn]);
             FP("|%*s", len_header,  WINDOWING_NAMES[pset->windowing]);
             FP("|%*f", len_header,  pset->nx_epsilon_increment);
-            FP("|%*ld", len_header, pset->whitelisting.rank);
-            FPNL(1, "|%*f|", len_header, pset->whitelisting.value);
+            FP("|%*ld", len_header, pset->wl_rank);
+            FPNL(1, "|%*f|", len_header, pset->wl_value);
         }
     }
 

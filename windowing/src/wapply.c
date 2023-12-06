@@ -49,16 +49,16 @@ void wapply_run(WApply* wapply, TCPC(DNSMessage) message, TCPC(PSet) pset) {
     //     logit = log(value / (1 - value)); // message->logit;
     // }
     
-    if (message->top10m > 0 && ((size_t) message->top10m) < pset->whitelisting.rank) {
+    if (message->top10m > 0 && ((size_t) message->top10m) < pset->wl_rank) {
         value = 0;
-        logit = pset->whitelisting.value;
+        logit = pset->wl_value;
         whitelistened = 1;
     }
     if (logit == INFINITY) {
-        logit = pset->infinite_values.pinf;
+        logit = pset->pinf;
     } else
         if (logit == (-1 * INFINITY)) {
-        logit = pset->infinite_values.ninf;
+        logit = pset->ninf;
     }
 
     ++wapply->wcount;

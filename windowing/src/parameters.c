@@ -11,35 +11,43 @@
 MANY(PSet) parameters_generate(TCPC(PSetGenerator) psetgenerator) {
     MANY(PSet) psets;
 
+    size_t count_ninf = psetgenerator->n_ninf;
+    size_t count_pinf = psetgenerator->n_pinf;
     size_t count_nn = psetgenerator->n_nn;
-    size_t count_wl = psetgenerator->n_whitelisting;
-    size_t count_wt = psetgenerator->n_windowing;
-    size_t count_iv = psetgenerator->n_infinitevalues;
-    size_t count_nx = psetgenerator->n_nx;
+    size_t count_wl_rank = psetgenerator->n_wl_rank;
+    size_t count_wl_value = psetgenerator->n_wl_value;
+    size_t count_windowing = psetgenerator->n_windowing;
+    size_t count_nx_epsilon_increment = psetgenerator->n_nx_epsilon_increment;
 
-    const size_t n_psets = count_nn * count_wl * count_wt * count_iv * count_nx;
+    const size_t n_psets = count_ninf * count_pinf * count_nn * count_wl_rank * count_wl_value * count_windowing * count_nx_epsilon_increment;
 
     INITMANY(psets, n_psets, PSet);
 
     size_t i = 0;
-    for (size_t i0 = 0; i0 < count_nn; ++i0) {
-        for (size_t i1 = 0; i1 < count_wl; ++i1) {
-            for (size_t i2 = 0; i2 < count_wt; ++i2) {
-                for (size_t i4 = 0; i4 < count_iv; ++i4) {
-                    for (size_t i5 = 0; i5 < count_iv; ++i5) {
-                        PSet* pset = &psets._[i];
+    for (size_t i_ninf = 0; i_ninf < count_ninf; ++i_ninf) {
+        for (size_t i_pinf = 0; i_pinf < count_pinf; ++i_pinf) {
+            for (size_t i_nn = 0; i_nn < count_nn; ++i_nn) {
+                for (size_t i_wl_rank = 0; i_wl_rank < count_wl_rank; ++i_wl_rank) {
+                    for (size_t i_wl_value = 0; i_wl_value < count_wl_value; ++i_wl_value) {
+                        for (size_t i_windowing = 0; i_windowing < count_windowing; ++i_windowing) {
+                            for (size_t i_nx_epsilon_increment = 0; i_nx_epsilon_increment < count_nx_epsilon_increment; ++i_nx_epsilon_increment) {
+                                PSet* pset = &psets._[i];
 
-                        memset(pset, 0, sizeof(PSet));
+                                memset(pset, 0, sizeof(PSet));
 
-                        pset->id = i;
-                        
-                        pset->infinite_values = psetgenerator->infinitevalues[i4];
-                        pset->nn = psetgenerator->nn[i0];
-                        pset->whitelisting = psetgenerator->whitelisting[i1];
-                        pset->windowing = psetgenerator->windowing[i2];
-                        pset->nx_epsilon_increment = psetgenerator->nx_epsilon_increment[i5];
+                                pset->id = i;
+                                
+                                pset->ninf = psetgenerator->ninf[i_ninf];
+                                pset->pinf = psetgenerator->pinf[i_pinf];
+                                pset->nn = psetgenerator->nn[i_nn];
+                                pset->wl_rank = psetgenerator->wl_rank[i_wl_rank];
+                                pset->wl_value = psetgenerator->wl_value[i_wl_value];
+                                pset->windowing = psetgenerator->windowing[i_windowing];
+                                pset->nx_epsilon_increment = psetgenerator->nx_epsilon_increment[i_nx_epsilon_increment];
 
-                        ++i;
+                                ++i;
+                            }
+                        }
                     }
                 }
             }
@@ -50,18 +58,12 @@ MANY(PSet) parameters_generate(TCPC(PSetGenerator) psetgenerator) {
 }
 
 void parameters_generate_free(PSetGenerator* psetgenerator) {
+    free(psetgenerator->ninf);
+    free(psetgenerator->pinf);
     free(psetgenerator->nn);
-    free(psetgenerator->whitelisting);
+    free(psetgenerator->wl_rank);
+    free(psetgenerator->wl_value);
     free(psetgenerator->windowing);
-    free(psetgenerator->infinitevalues);
     free(psetgenerator->nx_epsilon_increment);
     free(psetgenerator);
 }
-
-void parameters_io_objid(TCPC(void) obj, char objid[IO_OBJECTID_LENGTH]) {
-    char subdigest[IO_SUBDIGEST_LENGTH];
-    memset(objid, 0, IO_OBJECTID_LENGTH);
-    io_subdigest(obj, sizeof(PSet), subdigest);
-    sprintf(objid, "pset_%s", subdigest);
-}
-

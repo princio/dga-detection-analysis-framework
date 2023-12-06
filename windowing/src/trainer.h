@@ -15,14 +15,14 @@ typedef struct Result {
 
 MAKEMANY(Result);
 
-typedef struct ResultsThChooser {
-    MANY(Result) kfold;
-} ResultsThChooser;
+typedef struct ResultsSplits {
+    MANY(Result) thchooser;
+} ResultsSplits;
 
-MAKEMANY(ResultsThChooser);
+MAKEMANY(ResultsSplits);
 
 typedef struct ResultsApply {
-    MANY(ResultsThChooser) thchooser;
+    MANY(ResultsSplits) fold_splits;
 } ResultsApply;
 
 MAKEMANY(ResultsApply);
@@ -46,7 +46,7 @@ typedef struct __Trainer {
 
 typedef struct __Trainer* RTrainer;
 
-#define RESULT_IDX(R, WSIZE, APPLY, THCHOOSER, SPLIT) R.wsize._[WSIZE].apply._[APPLY].thchooser._[THCHOOSER].kfold._[SPLIT]
+#define RESULT_IDX(R, WSIZE, APPLY, SPLIT, THCHOOSER) R.wsize._[WSIZE].apply._[APPLY].fold_splits._[SPLIT].thchooser._[THCHOOSER]
 
 RTrainer trainer_run(RKFold0, MANY(Performance));
 

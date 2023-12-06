@@ -9,29 +9,41 @@
 typedef struct PSet {
     size_t id;
     
-    InfiniteValues infinite_values;
+    double ninf;
+    double pinf;
+
     NN nn;
-    Whitelisting whitelisting;
+    
+    size_t wl_rank;
+    double wl_value;
+
     WindowingType windowing;
+
     float nx_epsilon_increment;
 } PSet;
 
 typedef PSet* RPSet;
 
 typedef struct PSetGenerator {
-    int32_t n_whitelisting;
-    Whitelisting* whitelisting;
+    size_t n_ninf;
+    double* ninf;
 
-    int32_t n_windowing;
+    size_t n_pinf;
+    double* pinf;
+
+    size_t n_wl_rank;
+    size_t* wl_rank;
+
+    size_t n_wl_value;
+    double* wl_value;
+
+    size_t n_windowing;
     WindowingType* windowing;
-
-    int32_t n_infinitevalues;
-    InfiniteValues* infinitevalues;
 
     int32_t n_nn;
     NN* nn;
 
-    int32_t n_nx;
+    size_t n_nx_epsilon_increment;
     float* nx_epsilon_increment;
 } PSetGenerator;
 
@@ -43,8 +55,5 @@ void parameters_print(PSet* pset);
 
 MANY(PSet) parameters_generate(TCPC(PSetGenerator));
 void parameters_generate_free(PSetGenerator*);
-
-void parameters_io(IOReadWrite, FILE*, void*);
-void parameters_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);
 
 #endif

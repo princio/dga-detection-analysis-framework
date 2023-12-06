@@ -15,6 +15,8 @@
 #include <string.h>
 #include <time.h>
 
+void trainer_md(char dirname[200], RTrainer trainer);
+
 typedef MANY(double) ThsDataset;
 typedef MANY(Detection) DetectionDataset[3];
 MAKEMANY(ThsDataset);
@@ -80,9 +82,9 @@ RTrainer trainer_create(RKFold0 kfold0, MANY(Performance) thchoosers) {
     for (size_t w = 0; w < kfold0->testbed2->wsizes.number; w++) {
         INITMANY(results->wsize._[w].apply, kfold0->testbed2->psets.number, ResultsApply);
         for (size_t a = 0; a < kfold0->testbed2->psets.number; a++) {
-            INITMANY(results->wsize._[w].apply._[a].thchooser, thchoosers.number, ResultsThChooser);
-            for (size_t t = 0; t < thchoosers.number; t++) {
-                INITMANY(results->wsize._[w].apply._[a].thchooser._[t].kfold, kfold0->config.kfolds, Result);
+            INITMANY(results->wsize._[w].apply._[a].fold_splits, kfold0->config.kfolds, ResultsSplits);
+            for (size_t k = 0; k < kfold0->config.kfolds; k++) {
+                INITMANY(results->wsize._[w].apply._[a].fold_splits._[k].thchooser, thchoosers.number, Result);
             }
         }
     }
@@ -167,7 +169,7 @@ RTrainer trainer_run(RKFold0 kfold0, MANY(Performance) thchoosers) {
                     for (size_t ev = 0; ev < thchoosers.number; ev++) {
                         double th = best_detections[a]._[ev].th;
 
-                        Detection* detection = &results->wsize._[i].apply._[a].thchooser._[ev].kfold._[k].best_test;
+                        Detection* detection = &results->wsize._[i].apply._[a].fold_splits._[k].thchooser._[ev].best_test;
 
                         const int prediction = window0->applies._[a].logit >= th;
                         const int infected = window0->windowing->source->wclass.mc > 0;
@@ -181,11 +183,11 @@ RTrainer trainer_run(RKFold0 kfold0, MANY(Performance) thchoosers) {
                 
                 for (size_t a = 0; a < kfold0->testbed2->psets.number; a++) {
                     for (size_t ev = 0; ev < thchoosers.number; ev++) {
-                        Result* result = &RESULT_IDX((*results), i, a, ev, k);
+                        Result* result = &RESULT_IDX((*results), i, a, k, ev);
 
                         result->threshold_chooser = &thchoosers._[ev];
 
-                        memcpy(&results->wsize._[i].apply._[a].thchooser._[ev].kfold._[k].best_train, &best_detections[a]._[ev], sizeof(Detection));
+                        memcpy(&results->wsize._[i].apply._[a].fold_splits._[k].thchooser._[ev].best_train, &best_detections[a]._[ev], sizeof(Detection));
                     }
                 }
             }
@@ -209,10 +211,10 @@ void trainer_free(RTrainer trainer) {
     TrainerResults* results = &trainer->results;
     for (size_t w = 0; w < results->wsize.number; w++) {
         for (size_t a = 0; a < results->wsize._[w].apply.number; a++) {
-            for (size_t t = 0; t < results->wsize._[w].apply._[a].thchooser.number; t++) {
-                FREEMANY(results->wsize._[w].apply._[a].thchooser._[t].kfold);
+            for (size_t s = 0; s < results->wsize._[w].apply._[a].fold_splits.number; s++) {
+                FREEMANY(results->wsize._[w].apply._[a].fold_splits._[s].thchooser);
             }
-            FREEMANY(results->wsize._[w].apply._[a].thchooser);
+            FREEMANY(results->wsize._[w].apply._[a].fold_splits);
         }
         FREEMANY(results->wsize._[w].apply);
     }
@@ -252,15 +254,15 @@ void trainer_io_results(IOReadWrite rw, FILE* file, RTrainer trainer) {
 
     for (size_t i = 0; i < results->wsize.number; i++) {
         for (size_t a = 0; a < results->wsize._[i].apply.number; a++) {
-            for (size_t t = 0; t < results->wsize._[i].apply._[a].thchooser.number; t++) {
-                for (size_t k = 0; k < results->wsize._[i].apply._[a].thchooser._[t].kfold.number; k++) {
-                    Result* result = &results->wsize._[i].apply._[a].thchooser._[t].kfold._[k];
+            for (size_t s = 0; s < results->wsize._[i].apply._[a].fold_splits.number; s++) {
+                for (size_t t = 0; t < results->wsize._[i].apply._[a].fold_splits._[s].thchooser.number; t++) {
+                    Result* result = &results->wsize._[i].apply._[a].fold_splits._[s].thchooser._[t];
 
                     trainer_io_detection(rw, file, &result->best_train);
                     trainer_io_detection(rw, file, &result->best_test);
 
                     if (IO_READ) {
-                        result->threshold_chooser = &trainer->thchoosers._[t];
+                        result->threshold_chooser = &trainer->thchoosers._[s];
                     }
                 }
             }
@@ -268,7 +270,7 @@ void trainer_io_results(IOReadWrite rw, FILE* file, RTrainer trainer) {
     }
 }
 
-void trainer_io(IOReadWrite rw, char dirname[200], RKFold0 kfold0, RTrainer* results) {
+void trainer_io(IOReadWrite rw, char dirname[200], RKFold0 kfold0, RTrainer* trainer) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     char fpath[210];
@@ -276,7 +278,7 @@ void trainer_io(IOReadWrite rw, char dirname[200], RKFold0 kfold0, RTrainer* res
     MANY(Performance) thchoosers;
 
     if (rw == IO_WRITE) {
-        CLONEMANY(thchoosers, (*results)->thchoosers, Performance);
+        CLONEMANY(thchoosers, (*trainer)->thchoosers, Performance);
     }
 
     sprintf(fpath, "%s/trainer.bin", dirname);
@@ -286,16 +288,101 @@ void trainer_io(IOReadWrite rw, char dirname[200], RKFold0 kfold0, RTrainer* res
     trainer_io_thchoosers(rw, file, &thchoosers);
 
     if (rw == IO_READ) {
-        *results = trainer_create(kfold0, thchoosers);
+        *trainer = trainer_create(kfold0, thchoosers);
     }
 
     FREEMANY(thchoosers);
 
-    trainer_io_results(rw, file, *results);
+    trainer_io_results(rw, file, *trainer);
 
     fclose(file);
 
     if (rw == IO_WRITE) {
         printf("Results saved in: <%s>\n", fpath);
+        trainer_md(dirname, *trainer);
     }
+}
+
+void trainer_md(char dirname[200], RTrainer trainer) {
+    char fpath[210];
+    time_t t;
+    struct tm tm;
+    TrainerResults* results;
+    RTestBed2 tb2;
+    RKFold0 kfold0;
+    FILE* file;
+
+    sprintf(fpath, "%s/trainer.md", dirname);
+    file = fopen(fpath, "w");
+
+    t = time(NULL);
+    tm = *localtime(&t);
+
+    results = &trainer->results;
+    tb2 = trainer->kfold0->testbed2;
+    kfold0 = trainer->kfold0;
+
+    #define FP(...) fprintf(file, __VA_ARGS__);
+    #define FPNL(N, ...) fprintf(file, __VA_ARGS__); for (size_t i = 0; i < N; i++) fprintf(file, "\n");
+    #define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
+
+    FPNL(2, "# Trainer");
+
+    FPNL(3, "Saved on date: %d/%02d/%02d %02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    FPNL(2, "## Results");
+
+    {
+        const int len_header = 15;
+        const char* headers[] = {
+            "wsize",
+            "pset",
+            "k",
+            "thchooser",
+            "train TR(0)",
+            "train TR(1)",
+            "train TR(2)",
+            "test TR(0)",
+            "test TR(1)",
+            "test TR(2)"
+        };
+        const size_t n_headers = sizeof (headers) / sizeof (const char *);
+        for (size_t i = 0; i < n_headers; i++) {
+            FP("|%*s", len_header, headers[i]);
+        }
+        FPNL(1, "|");
+        for (size_t i = 0; i < n_headers; i++) {
+            FP("|");
+            for (int t = 0; t < len_header; t++) {
+                FP("-");
+            }
+        }
+        FPNL(1, "|");
+
+        for (size_t w = 0; w < tb2->wsizes.number; w++) {
+            for (size_t a = 0; a < tb2->psets.number; a++) {
+                for (size_t k = 0; k < trainer->kfold0->config.kfolds; k++) {
+                    for (size_t t = 0; t < trainer->thchoosers.number; t++) {
+                        Result* result = &RESULT_IDX((*results), w, a, k, t);
+
+                        FP("|%*ld",  len_header, trainer->kfold0->testbed2->wsizes._[w].value);
+                        FP("|%*ld",  len_header, a);
+                        FP("|%*ld",  len_header, k);
+                        FP("|%*s",  len_header, trainer->thchoosers._[t].name);
+                        DGAFOR(cl) {
+                            FP("|%*.4f",  len_header, TR(result->best_train.windows, cl));
+                        }
+                        DGAFOR(cl) {
+                            FP("|%*.4f",  len_header, TR(result->best_test.windows, cl));
+                        }
+                        FPNL(1, "|");
+                    }
+                }
+            }
+        }
+    }
+
+    #undef FP
+    #undef FPNL
+    #undef TP
 }

@@ -46,9 +46,6 @@
 
 #include <endian.h>
 
-
-#define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
-
 char WINDOWING_NAMES[3][10] = {
     "QUERY",
     "RESPONSE",
@@ -79,6 +76,8 @@ typedef struct Score {
 MANY(Performance) performances;
 
 
+
+#define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
 void print_trainer(RTrainer trainer) {
     TrainerResults* results = &trainer->results;
 
@@ -90,7 +89,7 @@ void print_trainer(RTrainer trainer) {
             for (size_t k = 0; k < trainer->kfold0->config.kfolds; k++) {
                 for (size_t t = 0; t < trainer->thchoosers.number; t++) {
 
-                    Result* result = &RESULT_IDX((*results), w, a, t, k);
+                    Result* result = &RESULT_IDX((*results), w, a, k, t);
 
                     {
                         char headers[4][50];
@@ -120,6 +119,7 @@ void print_trainer(RTrainer trainer) {
         }
     }
 }
+#undef TR
 
 MANY(WSize) make_wsizes() {
     MANY(WSize) wsizes;
@@ -146,43 +146,42 @@ MANY(PSet) make_parameters() {
     {
         NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
 
-        Whitelisting whitelisting[] = {
-            { .rank = 100, .value = 10 }
-            // { .rank = 1000, .value = -50 },
-            // { .rank = 100000, .value = -50 },
-            // { .rank = 1000000, .value = -10 },  
-            // { .rank = 1000000, .value = -50 }
-        };
-
         WindowingType windowing[] = {
             WINDOWING_Q
             // WINDOWING_R,
             // WINDOWING_QR
         };
 
-        InfiniteValues infinitevalues[] = {
-            { .ninf = -20, .pinf = 20 }
+        double ninf[] = {
+            -20
+        };
+
+        double pinf[] = {
+            20
+        };
+
+        size_t wl_rank[] = {
+            100,
+            // 1000,
+            // 100000,
+        };
+
+        size_t wl_value[] = {
+            -50,
+            // -10
         };
 
         double nx_epsilon_increment[] = { 0.1 };
 
-        #define _COPY(A) psetgenerator->A = calloc(1, sizeof(A)); \
-        memcpy(psetgenerator->A, A, sizeof(A));
-    
-        psetgenerator->n_nn = sizeof(nn) / sizeof(NN);
-        _COPY(nn);
+        #define _COPY(A, T) psetgenerator->n_## A = sizeof(A) / sizeof(T); psetgenerator->A = calloc(1, sizeof(A)); memcpy(psetgenerator->A, A, sizeof(A));
 
-        psetgenerator->n_whitelisting = sizeof(whitelisting) / sizeof(Whitelisting);
-        _COPY(whitelisting);
-
-        psetgenerator->n_windowing = sizeof(windowing) / sizeof(WindowingType);
-        _COPY(windowing);
-
-        psetgenerator->n_infinitevalues = sizeof(infinitevalues) / sizeof(InfiniteValues);
-        _COPY(infinitevalues);
-
-        psetgenerator->n_nx = sizeof(nx_epsilon_increment) / sizeof(double);
-        _COPY(nx_epsilon_increment);
+        _COPY(ninf, double);
+        _COPY(pinf, double);
+        _COPY(nn, NN);
+        _COPY(windowing, WindowingType);
+        _COPY(wl_rank, size_t);
+        _COPY(wl_value, double);
+        _COPY(nx_epsilon_increment, float);
 
         #undef _COPY
     }
