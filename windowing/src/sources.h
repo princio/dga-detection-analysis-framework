@@ -11,12 +11,6 @@
 
 #define MAX_SOURCEs 100
 
-typedef enum SourceWindowingExecution {
-    SOURCE_WINDOWING_TYPE_SINGLE,
-    SOURCE_WINDOWING_TYPE_MANYPSETs,
-    SOURCE_WINDOWING_TYPE_MANYSOURCEs
-} SourceWindowingExecution;
-
 typedef struct SourceIndex {
     size_t all;
     size_t binary;
@@ -33,9 +27,6 @@ typedef struct __Source {
 
     WClass wclass;
     
-    CaptureType capture_type;
-    SourceWindowingExecution windowing_type;
-
     int32_t id;
     int64_t qr;
     int64_t q;

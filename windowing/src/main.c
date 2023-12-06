@@ -306,7 +306,7 @@ int main (int argc, char* argv[]) {
 
     IOReadWrite rws[2] = { IO_WRITE, IO_READ };
 
-    for (size_t rw = 1; rw < 2; rw++) {
+    for (size_t rw = 0; rw < 2; rw++) {
         RTestBed2 tb2;
         RKFold0 kfold0;
         RTrainer trainer;

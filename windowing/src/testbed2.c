@@ -15,6 +15,8 @@
 
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
+void testbed2_md(char dirname[200], const RTestBed2 tb2);
+
 RTestBed2 testbed2_create(MANY(WSize) wsizes) {
     RTestBed2 tb2 = calloc(1, sizeof(__TestBed2));
     memset(tb2, 0, sizeof(__TestBed2));
@@ -167,8 +169,6 @@ void testbed2_io_sources(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
         FRW(source->name);
         FRW(source->galaxy);
         FRW(source->wclass);
-        FRW(source->capture_type);
-        FRW(source->windowing_type);
         FRW(source->id);
         FRW(source->qr);
         FRW(source->q);
@@ -331,4 +331,123 @@ void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2) {
     }
 
     fclose(file);
+
+    if (rw == IO_WRITE) {
+        testbed2_md(dirname, *tb2);
+    }
+}
+
+void testbed2_md(char dirname[200], const RTestBed2 tb2) {
+    char fpath[210];
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    FILE* file;
+    sprintf(fpath, "%s/tb2.md", dirname);
+    file = fopen(fpath, "w");
+
+    t = time(NULL);
+    tm = *localtime(&t);
+
+    #define FP(...) fprintf(file, __VA_ARGS__);
+    #define FPNL(N, ...) fprintf(file, __VA_ARGS__); for (size_t i = 0; i < N; i++) fprintf(file, "\n");
+
+    FPNL(2, "# TestBed");
+
+    FPNL(3, "Saved on date: %d/%02d/%02d %02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    FPNL(2, "## WSizes");
+    for (size_t i = 0; i < tb2->wsizes.number; i++) {
+        FPNL(1, "- %ld", tb2->wsizes._[i].value);
+    }
+
+    FPNL(2, "## Sources");
+    {
+        const int len_header = 15;
+        const char* headers[] = {
+            "name",
+            "galaxy",
+            "wclass",
+            "id",
+            "qr",
+            "q",
+            "r",
+            "fnreq_max"
+        };
+        const size_t n_headers = sizeof (headers) / sizeof (const char *);
+        for (size_t i = 0; i < n_headers; i++) {
+            FP("|%*s", len_header, headers[i]);
+        }
+        FPNL(1, "|");
+        for (size_t i = 0; i < n_headers; i++) {
+            FP("|");
+            for (int t = 0; t < len_header; t++) {
+                FP("-");
+            }
+        }
+        FPNL(1, "|");
+        for (size_t i = 0; i < tb2->sources.number; i++) {
+            RSource source = tb2->sources._[i];
+            FP("|%*s", len_header, source->name);
+            FP("|%*s", len_header, source->galaxy);
+            FP("|%*d", len_header, source->wclass.mc);
+            FP("|%*d", len_header, source->id);
+            FP("|%*ld", len_header, source->qr);
+            FP("|%*ld", len_header, source->q);
+            FP("|%*ld", len_header, source->r);
+            FPNL(1, "|%*ld|", len_header, source->fnreq_max);
+        }
+    }
+
+    FP("\n\n");
+
+    FPNL(2, "## Parameters");
+    {
+        const int len_header = 18;
+        const char* headers[] = {
+            "id",
+            "ninf",
+            "pinf",
+            "nn",
+            "windowing",
+            "nx eps increment",
+            "rank",
+            "value"
+        };
+        const size_t n_headers = sizeof (headers) / sizeof (const char *);
+        for (size_t i = 0; i < n_headers; i++) {
+            FP("|%*s", len_header, headers[i]);
+        }
+        FPNL(1, "|");
+        for (size_t i = 0; i < n_headers; i++) {
+            FP("|");
+            for (int t = 0; t < len_header; t++) {
+                FP("-");
+            }
+        }
+        FPNL(1, "|");
+        for (size_t i = 0; i < tb2->psets.number; i++) {
+            TCPC(PSet) pset = &tb2->psets._[i];
+            FP("|%*ld", len_header, pset->id);
+            FP("|%*f", len_header,  pset->infinite_values.ninf);
+            FP("|%*f", len_header,  pset->infinite_values.pinf);
+            FP("|%*s", len_header,  NN_NAMES[pset->nn]);
+            FP("|%*s", len_header,  WINDOWING_NAMES[pset->windowing]);
+            FP("|%*f", len_header,  pset->nx_epsilon_increment);
+            FP("|%*ld", len_header, pset->whitelisting.rank);
+            FPNL(1, "|%*f|", len_header, pset->whitelisting.value);
+        }
+    }
+
+    FP("\n\n");
+
+    FPNL(2, "## Applied");
+
+    if (tb2->applied == 0) {
+        FPNL(2, "> This TestBed has not been applied.");
+    } else {
+        FPNL(2, "> This TestBed has been applied.");
+    }
+
+    #undef FP
+    #undef FPNL
 }

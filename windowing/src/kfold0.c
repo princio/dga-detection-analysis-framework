@@ -15,6 +15,8 @@
 #include <time.h>
 
 
+void kfold0_md(char dirname[200], const RKFold0 kfold0);
+
 #define FALSERATIO(tf) (((double) (tf).falses) / ((tf).falses + (tf).trues))
 #define TRUERATIO(tf) (((double) (tf).trues) / ((tf).falses + (tf).trues))
 
@@ -128,4 +130,82 @@ void kfold0_io(IOReadWrite rw, char dirname[200], RTestBed2 tb2, RKFold0* kfold0
             testbed2_io_dataset(rw, file, tb2, i, &ds_splits->_[k].test);
         }
     }
+
+    fclose(file);
+
+    if (rw == IO_WRITE) {
+        kfold0_md(dirname, *kfold0);
+    }
+}
+
+
+void kfold0_md(char dirname[200], const RKFold0 kfold0) {
+    char fpath[210];
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    FILE* file;
+    sprintf(fpath, "%s/kfold0.md", dirname);
+    file = fopen(fpath, "w");
+
+    t = time(NULL);
+    tm = *localtime(&t);
+
+    #define FP(...) fprintf(file, __VA_ARGS__);
+    #define FPNL(N, ...) fprintf(file, __VA_ARGS__); for (size_t i = 0; i < N; i++) fprintf(file, "\n");
+
+    FPNL(2, "# KFold0");
+
+    FPNL(3, "Saved on date: %d/%02d/%02d %02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    FPNL(2, "## Configuration");
+
+    FPNL(1, "- K=%ld", kfold0->config.kfolds);
+    FPNL(1, "- K for testing: %ld", kfold0->config.test_folds);
+
+    {
+        const int len_header = 15;
+        const char* headers[] = {
+            "wsize",
+            "folded",
+            "0 train avg",
+            "0 test avg",
+            "1 train avg",
+            "1 test avg",
+            "2 train avg",
+            "2 test avg",
+        };
+        const size_t n_headers = sizeof (headers) / sizeof (const char *);
+        for (size_t i = 0; i < n_headers; i++) {
+            FP("|%*s", len_header, headers[i]);
+        }
+        FPNL(1, "|");
+        for (size_t i = 0; i < n_headers; i++) {
+            FP("|");
+            for (int t = 0; t < len_header; t++) {
+                FP("-");
+            }
+        }
+        FPNL(1, "|");
+        for (size_t i = 0; i < kfold0->datasets.wsize.number; i++) {
+            MANY(DatasetSplit0) splits = kfold0->datasets.wsize._[i].splits;
+            FP("|%*ld", len_header, kfold0->testbed2->wsizes._[i].value);
+            FP("|%*d", len_header, dataset0_splits_ok(splits));
+            DGAFOR(cl) {
+                float train_size = 0;
+                float test_size = 0;
+                float train_logit_avg = 0;
+                float test_logit_avg = 0;
+                for (size_t k = 0; k < splits.number; k++) {
+                    train_size += splits._[k].train->windows.multi[cl].number;
+                    test_size += splits._[k].test->windows.multi[cl].number;
+                }
+                FP("|%*.2f", len_header, train_size / splits.number);
+                FP("|%*.2f", len_header, test_size / splits.number);
+            }
+            FPNL(1, "|");
+        }
+    }
+
+    #undef FP
+    #undef FPNL
 }

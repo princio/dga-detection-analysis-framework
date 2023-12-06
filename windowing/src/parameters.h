@@ -7,7 +7,7 @@
 #include "io.h"
 
 typedef struct PSet {
-    int32_t id;
+    size_t id;
     
     InfiniteValues infinite_values;
     NN nn;

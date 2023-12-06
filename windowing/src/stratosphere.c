@@ -279,7 +279,7 @@ void _stratosphere_add(RTestBed2 tb2) {
 
     int nrows = PQntuples(pgresult);
 
-    // nrows = 5; // DEBUG DEVELOP
+    nrows = 25; // DEBUG DEVELOP
 
     for(int row = 0; row < nrows; row++) {
         int32_t id;
@@ -308,7 +308,6 @@ void _stratosphere_add(RTestBed2 tb2) {
         rsource->q = q;
         rsource->r = r;
         rsource->fnreq_max = fnreq_max;
-        rsource->capture_type = CAPTURETYPE_PCAP;
 
         testbed2_source_add(tb2, rsource);
     }
