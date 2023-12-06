@@ -34,7 +34,9 @@ void dataset0_init(RDataset0 dataset, Index counter);
 
 RDataset0 dataset0_alloc(const Dataset0Init init);
 
-MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t k, const size_t k_test);
+int dataset0_splits_ok(MANY(DatasetSplit0) splits);
+
+MANY(DatasetSplit0) dataset0_splits(RDataset0 dataset0, const size_t k, const size_t k_test);
 
 Index dataset_counter(RDataset0 ds);
 

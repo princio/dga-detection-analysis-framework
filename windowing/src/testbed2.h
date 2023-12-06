@@ -24,7 +24,7 @@ typedef struct TestBed2Datasets {
     MANY(RDataset0) wsize;
 } TestBed2Datasets;
 
-typedef struct TestBed2 {
+typedef struct __TestBed2 {
     MANY(RSource) sources;
 
     MANY(WSize) wsizes;
@@ -36,22 +36,24 @@ typedef struct TestBed2 {
 
     int32_t applied;
     MANY(PSet) psets;
-} TestBed2;
+} __TestBed2;
 
-TestBed2* testbed2_create(MANY(WSize) wsizes);
+typedef __TestBed2* RTestBed2;
 
-void testbed2_source_add(TestBed2* tb2, __Source* source);
+RTestBed2 testbed2_create(MANY(WSize) wsizes);
 
-void testbed2_apply(TestBed2* tb2, MANY(PSet) pset);
+void testbed2_source_add(RTestBed2 tb2, __Source* source);
 
-void testbed2_windowing(TestBed2*);
+void testbed2_apply(RTestBed2 tb2, MANY(PSet) pset);
 
-void testbed2_free(TestBed2*);
+void testbed2_windowing(RTestBed2);
+
+void testbed2_free(RTestBed2);
 
 void testbed2_io_wsizes(IOReadWrite rw, FILE* file, MANY(WSize)* wsizes);
 
-void testbed2_io_dataset(IOReadWrite rw, FILE* file, TestBed2* tb2, const size_t wsize_index, RDataset0* ds_ref);
+void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const size_t wsize_index, RDataset0* ds_ref);
 
-void testbed2_io(IOReadWrite rw, char dirname[200], TestBed2** tb2);
+void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2);
 
 #endif

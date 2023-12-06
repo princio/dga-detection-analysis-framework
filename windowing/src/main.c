@@ -79,11 +79,16 @@ typedef struct Score {
 MANY(Performance) performances;
 
 
-void print_results(Results* results) {
-    for (size_t w = 0; w < results->tb2->wsizes.number; w++) {
-        for (size_t a = 0; a < results->tb2->psets.number; a++) {
-            for (size_t k = 0; k < results->kfolds.wsize.number; k++) {
-                for (size_t t = 0; t < results->thchoosers.number; t++) {
+void print_trainer(RTrainer trainer) {
+    TrainerResults* results = &trainer->results;
+
+    RTestBed2 tb2 = trainer->kfold0->testbed2;
+    RKFold0 kfold0 = trainer->kfold0;
+
+    for (size_t w = 0; w < tb2->wsizes.number; w++) {
+        for (size_t a = 0; a < tb2->psets.number; a++) {
+            for (size_t k = 0; k < trainer->kfold0->config.kfolds; k++) {
+                for (size_t t = 0; t < trainer->thchoosers.number; t++) {
 
                     Result* result = &RESULT_IDX((*results), w, a, t, k);
 
@@ -92,10 +97,10 @@ void print_results(Results* results) {
                         char header[210];
                         size_t h_idx = 0;
 
-                        sprintf(headers[h_idx++], "%5ld", results->tb2->wsizes._[w].value);
+                        sprintf(headers[h_idx++], "%5ld", tb2->wsizes._[w].value);
                         sprintf(headers[h_idx++], "%3ld", a);
                         sprintf(headers[h_idx++], "%3ld", k);
-                        sprintf(headers[h_idx++], "%12s", results->thchoosers._[t].name);
+                        sprintf(headers[h_idx++], "%12s", trainer->thchoosers._[t].name);
                         sprintf(header, "%s,%s,%s,%s,", headers[0], headers[1], headers[2], headers[3]);
                         printf("%-30s ", header);
                     }
@@ -204,8 +209,8 @@ MANY(Performance) make_performance() {
     return performances;
 }
 
-TestBed2* make_testbed() {
-    TestBed2* tb2;
+RTestBed2 make_testbed() {
+    RTestBed2 tb2;
 
     MANY(WSize) wsizes = make_wsizes();
 
@@ -220,71 +225,62 @@ TestBed2* make_testbed() {
     return tb2;
 }
 
-TestBed2* run_testbed(char dirname[200]) {
-    TestBed2* tb2;
-    MANY(PSet) psets;
+RTestBed2 run_testbed(IOReadWrite rw, char dirname[200]) {
+    RTestBed2 tb2;
 
-    tb2 = make_testbed();
+    if (rw == IO_WRITE) {
+        MANY(PSet) psets;
 
-    psets = make_parameters();
+        tb2 = make_testbed();
 
-    testbed2_apply(tb2, psets);
+        psets = make_parameters();
 
-    FREEMANY(psets);
+        testbed2_apply(tb2, psets);
 
-    testbed2_io(IO_WRITE, dirname, &tb2);
+        FREEMANY(psets);
+    }
+
+    testbed2_io(rw, dirname, &tb2);
 
     return tb2;
 }
 
-Results* run_testbed_results(char dirname[200], TestBed2* tb2) {
-    Results* results;
-    KFoldConfig0  kconfig0;
-    MANY(Performance) performances;
+RKFold0 run_kfold0(IOReadWrite rw, char dirname[200], RTestBed2 tb2) {
+    RKFold0 kfold0;
 
-    {
-        performances = make_performance();
+    if (rw == IO_WRITE) {
+        KFoldConfig0  kconfig0;
 
         kconfig0.balance_method = KFOLD_BM_NOT_INFECTED;
         kconfig0.kfolds = 5;
         kconfig0.test_folds = 1;
         kconfig0.split_method = KFOLD_SM_MERGE_12;
         kconfig0.shuffle = 1;
+    
+        kfold0 = kfold0_run(tb2, kconfig0);
+    }
 
-        results = trainer_run(tb2, performances, kconfig0);
+    kfold0_io(rw, dirname, tb2, &kfold0);
+
+    return kfold0;
+}
+
+RTrainer run_trainer(IOReadWrite rw, char dirname[200], RKFold0 kfold0) {
+    RTrainer trainer;
+
+    if (rw == IO_WRITE) {
+        MANY(Performance) performances;
+
+        performances = make_performance();
+
+        trainer = trainer_run(kfold0, performances);
 
         FREEMANY(performances);
     }
 
-    print_results(results);
+    trainer_io(rw, dirname, kfold0, &trainer);
 
-    results_io(IO_WRITE, dirname, tb2, &results);
-
-    return results;
-}
-
-void free_all() {
-    windows_free();
-    window0s_free();
-    windowings_free();
-    sources_free();
-    datasets0_free();
-}
-
-TestBed2* load_tb2(char dirname[200]) {
-    TestBed2* tb2;
-
-    testbed2_io(IO_READ, dirname, &tb2);
-
-    return tb2;
-}
-
-Results* load_results(char dirname[200], TestBed2* tb2) {
-    Results* results;
-
-    results_io(IO_READ, dirname, tb2, &results);
-
-    return results;
+    return trainer;
 }
 
 int main (int argc, char* argv[]) {
@@ -304,30 +300,31 @@ int main (int argc, char* argv[]) {
 
     /* Do your magic here :) */
 
-
-
     char dirname[200];
     sprintf(dirname, "/home/princio/Desktop/results/test_2");
     io_makedir(dirname, 200, 0);
 
-    for (size_t rw = 0; rw < 2; rw++) {
-        TestBed2* tb2;
-        Results* results;
+    IOReadWrite rws[2] = { IO_WRITE, IO_READ };
 
-        if (rw == 0) {
-            tb2 = run_testbed(dirname);
-            results = run_testbed_results(dirname, tb2);
-            print_results(results);
-        }
-        if (rw == 1) {
-            tb2 = load_tb2(dirname);
-            results = load_results(dirname, tb2);
-            print_results(results);
-        }
+    for (size_t rw = 1; rw < 2; rw++) {
+        RTestBed2 tb2;
+        RKFold0 kfold0;
+        RTrainer trainer;
 
-        free_all();
+        tb2 = run_testbed(rws[rw], dirname);
+        kfold0 = run_kfold0(rws[rw], dirname, tb2);
+        trainer = run_trainer(rws[rw], dirname, kfold0);
+
+        print_trainer(trainer);
+
+        windows_free();
+        window0s_free();
+        windowings_free();
+        sources_free();
+        datasets0_free();
         testbed2_free(tb2);
-        trainer_free(results);
+        kfold0_free(kfold0);
+        trainer_free(trainer);
     }
 
     return 0;

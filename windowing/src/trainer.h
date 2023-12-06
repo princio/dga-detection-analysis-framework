@@ -33,25 +33,25 @@ typedef struct ResultsWSize {
 
 MAKEMANY(ResultsWSize);
 
-typedef struct ResultsKFold0s {
-    MANY(KFold0) wsize;
-} ResultsKFold0s;
-
-typedef struct Results {
-    TestBed2* tb2;
-
-    KFoldConfig0 kconfig;
-    MANY(Performance) thchoosers;
-    ResultsKFold0s kfolds;
+typedef struct TrainerResults {
     MANY(ResultsWSize) wsize;
-} Results;
+} TrainerResults;
+
+typedef struct __Trainer {
+    RKFold0 kfold0;
+    MANY(Performance) thchoosers;
+
+    TrainerResults results;
+} __Trainer;
+
+typedef struct __Trainer* RTrainer;
 
 #define RESULT_IDX(R, WSIZE, APPLY, THCHOOSER, SPLIT) R.wsize._[WSIZE].apply._[APPLY].thchooser._[THCHOOSER].kfold._[SPLIT]
 
-Results* trainer_run(TestBed2*tb2, MANY(Performance) thchoosers, KFoldConfig0);
+RTrainer trainer_run(RKFold0, MANY(Performance));
 
-void trainer_free(Results* results);
+void trainer_free(RTrainer results);
 
-void results_io(IOReadWrite rw, char dirname[200], TestBed2* tb2, Results** results);
+void trainer_io(IOReadWrite rw, char dirname[200], RKFold0 kfold0, RTrainer* results);
 
 #endif

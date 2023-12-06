@@ -41,15 +41,19 @@ RDataset0 dataset0_alloc(const Dataset0Init init) {
     return rds;
 }
 
-MANY(DatasetSplit0) dataset0_split_k(RDataset0 dataset0, const size_t _k, const size_t _k_test) {
+int dataset0_splits_ok(MANY(DatasetSplit0) splits) {
+    return (splits.number == 0 && splits._ == 0x0) == 0;
+}
+
+MANY(DatasetSplit0) dataset0_splits(RDataset0 dataset0, const size_t _k, const size_t _k_test) {
     MANY(DatasetSplit0) splits;
-    memset(&splits, 0, sizeof(MANY(DatasetSplit0)));
 
     DGAFOR(cl) {
         const size_t windows_cl_number = dataset0->windows.multi[cl].number;
         const size_t kfold_size = windows_cl_number / _k;
         if (cl != 1 && kfold_size == 0) {
             printf("Error: impossible to split the dataset with k=%ld (wn[%d]=%ld, ksize=%ld).\n", _k, cl, windows_cl_number, kfold_size);
+            memset(&splits, 0, sizeof(MANY(DatasetSplit0)));
             return splits;
         }
     }

@@ -15,9 +15,9 @@
 
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
-TestBed2* testbed2_create(MANY(WSize) wsizes) {
-    TestBed2* tb2 = calloc(1, sizeof(TestBed2));
-    memset(tb2, 0, sizeof(TestBed2));
+RTestBed2 testbed2_create(MANY(WSize) wsizes) {
+    RTestBed2 tb2 = calloc(1, sizeof(__TestBed2));
+    memset(tb2, 0, sizeof(__TestBed2));
 
     CLONEMANY(tb2->wsizes, wsizes, WSize);
     INITMANY(tb2->datasets.wsize, wsizes.number, RDataset0);
@@ -33,11 +33,11 @@ size_t _testbed2_get_index(MANY(RSource) sources) {
     return index;
 }
 
-void testbed2_source_add(TestBed2* tb2, __Source* source) {
+void testbed2_source_add(RTestBed2 tb2, __Source* source) {
     sources_add(&tb2->sources, source);
 }
 
-void testbed2_windowing(TestBed2* tb2) {
+void testbed2_windowing(RTestBed2 tb2) {
     sources_finalize(&tb2->sources);
 
     INITMANY(tb2->windowings.source, tb2->sources.number, TB2WindowingsSource);
@@ -75,7 +75,7 @@ void testbed2_windowing(TestBed2* tb2) {
     }
 }
 
-void testbed2_apply(TestBed2* tb2, MANY(PSet) psets) {
+void testbed2_apply(RTestBed2 tb2, MANY(PSet) psets) {
     for (size_t w = 0; w < tb2->datasets.wsize.number; w++) {
         tb2->datasets.wsize._[w]->applies_number = psets.number;
     }
@@ -95,7 +95,7 @@ void testbed2_apply(TestBed2* tb2, MANY(PSet) psets) {
     CLONEMANY(tb2->psets, psets, PSet);
 }
 
-void testbed2_free(TestBed2* tb2) {
+void testbed2_free(RTestBed2 tb2) {
     for (size_t s = 0; s < tb2->sources.number; s++) {
         FREEMANY(tb2->windowings.source._[s].wsize);
     }
@@ -107,7 +107,7 @@ void testbed2_free(TestBed2* tb2) {
     free(tb2);
 }
 
-void testbed2_io_parameters(IOReadWrite rw, FILE* file, TestBed2* tb2) {
+void testbed2_io_parameters(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     MANY(PSet)* psets = &tb2->psets;
@@ -144,7 +144,7 @@ void testbed2_io_wsizes(IOReadWrite rw, FILE* file, MANY(WSize)* wsizes) {
     }
 }
 
-void testbed2_io_sources(IOReadWrite rw, FILE* file, TestBed2* tb2) {
+void testbed2_io_sources(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     MANY(RSource)* sources = &tb2->sources;
@@ -181,7 +181,7 @@ void testbed2_io_sources(IOReadWrite rw, FILE* file, TestBed2* tb2) {
     }
 }
 
-void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, TestBed2* tb2, RWindowing windowing) {
+void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, RTestBed2 tb2, RWindowing windowing) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     FRW(windowing->windows.number);
@@ -210,7 +210,7 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, TestBed2* tb2, RW
     }
 }
 
-void testbed2_io_windowing(IOReadWrite rw, FILE* file, TestBed2* tb2) {
+void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     if (rw == IO_READ) {
@@ -245,7 +245,7 @@ void testbed2_io_windowing(IOReadWrite rw, FILE* file, TestBed2* tb2) {
     }
 }
 
-void testbed2_io_dataset(IOReadWrite rw, FILE* file, TestBed2* tb2, const size_t wsize_index, RDataset0* ds_ref) {
+void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const size_t wsize_index, RDataset0* ds_ref) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     Dataset0Init init;
@@ -300,7 +300,7 @@ void testbed2_io_dataset(IOReadWrite rw, FILE* file, TestBed2* tb2, const size_t
     }
 }
 
-void testbed2_io(IOReadWrite rw, char dirname[200], TestBed2** tb2) {
+void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2) {
     char fpath[210];
     sprintf(fpath, "%s/tb2.bin", dirname);
 
