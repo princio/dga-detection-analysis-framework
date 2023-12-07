@@ -19,16 +19,8 @@ typedef struct __Window0 {
     MANY(WApply) applies;
 } __Window0;
 
-MAKETETRA(MANY(RWindow0));
-
-MANY(double) window0s_ths(const MANY(RWindow0) windows[N_DGACLASSES], const size_t pset_index);
-
-MANY(RWindow0) rwindow0s_from(MANY(RWindow0) rwindows_src);
-
 void window0s_shuffle(MANY(RWindow0) rwindows);
 
-MANY(RWindow0) window0s_alloc(const int32_t num);
-
-void window0s_free();
+MANY(RWindow0) window0s_alloc(size_t window0s_number);
 
 #endif

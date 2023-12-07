@@ -9,15 +9,11 @@
 #include "io.h"
 #include "list.h"
 
-#define MAX_SOURCEs 100
-
 typedef struct SourceIndex {
     size_t all;
     size_t binary;
     size_t multi;
 } SourceIndex;
-
-struct Galaxy;
 
 typedef struct __Source {
     SourceIndex index;
@@ -36,16 +32,6 @@ typedef struct __Source {
 
 MAKEMANY(RSource);
 
-MAKETETRA(MANY(RSource));
-
-size_t sources_add(MANY(RSource)* sources, RSource source);
 RSource sources_alloc();
-void sources_free();
-void sources_finalize(MANY(RSource)* sources);
-
-void sources_io(IOReadWrite, FILE*, void*);
-void sources_io_objid(TCPC(void), char[IO_OBJECTID_LENGTH]);
-
-
 
 #endif

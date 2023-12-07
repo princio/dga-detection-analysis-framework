@@ -215,7 +215,6 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
     }
 }
 
-// void perform_windowingap(RSource source, MANY(PSet) psets, MANY(RWindow) windows_pset[psets.number], int32_t loaded[psets.number]) {
 void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets, int32_t loaded[]) {
     const RSource source = windowings._[0]->source;
     

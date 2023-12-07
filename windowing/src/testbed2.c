@@ -1,11 +1,10 @@
 
 #include "testbed2.h"
 
-#include "cache.h"
 #include "dataset.h"
+#include "gatherer.h"
 #include "io.h"
 #include "stratosphere.h"
-#include "tetra.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -13,16 +12,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
-
 void testbed2_md(char dirname[200], const RTestBed2 tb2);
 
 RTestBed2 testbed2_create(MANY(WSize) wsizes) {
     RTestBed2 tb2 = calloc(1, sizeof(__TestBed2));
     memset(tb2, 0, sizeof(__TestBed2));
 
-    CLONEMANY(tb2->wsizes, wsizes, WSize);
-    INITMANY(tb2->datasets.wsize, wsizes.number, RDataset0);
+    CLONEMANY(tb2->wsizes, wsizes);
+    INITMANY(tb2->datasets.bywsize, wsizes.number, RDataset0);
 
     return tb2;
 }
@@ -35,74 +32,83 @@ size_t _testbed2_get_index(MANY(RSource) sources) {
     return index;
 }
 
-void testbed2_source_add(RTestBed2 tb2, __Source* source) {
-    sources_add(&tb2->sources, source);
+void testbed2_source_add(RTestBed2 tb2, RSource source) {
+    gatherer_many_add((__MANY*) &tb2->sources, sizeof(RSource), 5, source);
+
+    SourceIndex walker;
+    memset(&walker, 0, sizeof(SourceIndex));
+    for (size_t i = 0; i < tb2->sources.number - 1; i++) {
+        walker.all++;
+        walker.binary += tb2->sources._[i]->wclass.bc == source->wclass.bc;
+        walker.multi += tb2->sources._[i]->wclass.mc == source->wclass.mc;
+    }
+
+    source->index = walker;
 }
 
 void testbed2_windowing(RTestBed2 tb2) {
-    sources_finalize(&tb2->sources);
+    gatherer_many_finalize((__MANY*) &tb2->sources, sizeof(RSource));
 
-    INITMANY(tb2->windowings.source, tb2->sources.number, TB2WindowingsSource);
+    INITMANY(tb2->windowings.bysource, tb2->sources.number, TB2WindowingsSource);
 
     int32_t count_windows[tb2->wsizes.number][N_DGACLASSES];
     memset(&count_windows, 0, sizeof(int32_t) * tb2->wsizes.number * N_DGACLASSES);
     for (size_t s = 0; s < tb2->sources.number; s++) {
         RSource source = tb2->sources._[s];
-        MANY(RWindowing)* windowings = &tb2->windowings.source._[s].wsize;
+        MANY(RWindowing)* windowings = &tb2->windowings.bysource._[s].bywsize;
 
         INITMANYREF(windowings, tb2->wsizes.number, RWindowing);
 
         for (size_t u = 0; u < tb2->wsizes.number; u++) {
             const WSize wsize = tb2->wsizes._[u];
-            windowings->_[u] = windowings_alloc(source, wsize);
+            windowings->_[u] = windowings_create(wsize, source);
 
             count_windows[u][source->wclass.mc] += windowings->_[u]->windows.number;
         }
     }
 
     for (size_t u = 0; u < tb2->wsizes.number; u++) {
-        RDataset0* dataset = &tb2->datasets.wsize._[u];
-
         MANY(RWindowing) tmp;
 
         INITMANY(tmp, tb2->sources.number, RWindowing);
 
         for (size_t s = 0; s < tb2->sources.number; s++) {
-            tmp._[s] = tb2->windowings.source._[s].wsize._[u];
+            tmp._[s] = tb2->windowings.bysource._[s].bywsize._[u];
         }
 
-        tb2->datasets.wsize._[u] = dataset0_from_windowings(tmp);
+        tb2->datasets.bywsize._[u] = dataset0_from_windowings(tmp);
 
         FREEMANY(tmp);
     }
 }
 
 void testbed2_apply(RTestBed2 tb2, MANY(PSet) psets) {
-    for (size_t w = 0; w < tb2->datasets.wsize.number; w++) {
-        tb2->datasets.wsize._[w]->applies_number = psets.number;
+    for (size_t w = 0; w < tb2->datasets.bywsize.number; w++) {
+        tb2->datasets.bywsize._[w]->applies_number = psets.number;
     }
     
     for (size_t s = 0; s < tb2->sources.number; s++) {
-        TB2WindowingsSource swindowings = tb2->windowings.source._[s];
+        TB2WindowingsSource swindowings = tb2->windowings.bysource._[s];
         for (size_t i = 0; i < tb2->wsizes.number; i++) {
-            for (size_t w = 0; w < swindowings.wsize._[i]->windows.number; w++) {
-                wapply_init(swindowings.wsize._[i]->windows._[w], psets.number);
+            for (size_t w = 0; w < swindowings.bywsize._[i]->windows.number; w++) {
+                wapply_init(swindowings.bywsize._[i]->windows._[w], psets.number);
             }
         }
-        stratosphere_apply(swindowings.wsize, &psets, NULL);
+        stratosphere_apply(swindowings.bywsize, &psets, NULL);
     }
 
     tb2->applied = 1;
 
-    CLONEMANY(tb2->psets, psets, PSet);
+    CLONEMANY(tb2->psets, psets);
 }
 
 void testbed2_free(RTestBed2 tb2) {
     for (size_t s = 0; s < tb2->sources.number; s++) {
-        FREEMANY(tb2->windowings.source._[s].wsize);
+        FREEMANY(tb2->windowings.bysource._[s].bywsize);
     }
-    FREEMANY(tb2->windowings.source);
-    FREEMANY(tb2->datasets.wsize);
+    FREEMANY(tb2->folds);
+    FREEMANY(tb2->windowings.bysource);
+    FREEMANY(tb2->datasets.bywsize);
     FREEMANY(tb2->sources);
     FREEMANY(tb2->wsizes);
     FREEMANY(tb2->psets);
@@ -186,28 +192,31 @@ void testbed2_io_sources(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
 void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, RTestBed2 tb2, RWindowing windowing) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    FRW(windowing->windows.number);
-
     for (size_t w = 0; w < windowing->windows.number; w++) {
         RWindow0 window0 = windowing->windows._[w];
+
+        window0->windowing = windowing;
+
         FRW(window0->applies_number);
         FRW(window0->duration);
         FRW(window0->fn_req_min);
         FRW(window0->fn_req_max);
-        window0->windowing = windowing;
-        if (rw == IO_READ) {
-            wapply_init(window0, tb2->psets.number);
-        }
-        for (size_t p = 0; p < tb2->psets.number; p++) {
-            WApply* wapply = &window0->applies._[p];
-            FRW(wapply->dn_bad_05);
-            FRW(wapply->dn_bad_0999);
-            FRW(wapply->dn_bad_099);
-            FRW(wapply->dn_bad_09);
-            FRW(wapply->logit);
-            FRW(wapply->pset_index);
-            FRW(wapply->wcount);
-            FRW(wapply->whitelistened);
+
+        if (tb2->psets.number > 0 && tb2->applied) {
+            if (rw == IO_READ) {
+                wapply_init(window0, tb2->psets.number);
+            }
+            for (size_t p = 0; p < tb2->psets.number; p++) {
+                WApply* wapply = &window0->applies._[p];
+                FRW(wapply->dn_bad_05);
+                FRW(wapply->dn_bad_0999);
+                FRW(wapply->dn_bad_099);
+                FRW(wapply->dn_bad_09);
+                FRW(wapply->logit);
+                FRW(wapply->pset_index);
+                FRW(wapply->wcount);
+                FRW(wapply->whitelistened);
+            }
         }
     }
 }
@@ -216,60 +225,70 @@ void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     if (rw == IO_READ) {
-        INITMANY(tb2->windowings.source, tb2->sources.number, TB2WindowingsSource);
+        INITMANY(tb2->windowings.bysource, tb2->sources.number, TB2WindowingsSource);
     }
 
-    for (size_t i = 0; i < tb2->windowings.source.number; i++) {
+    for (size_t i = 0; i < tb2->windowings.bysource.number; i++) {
         if (rw == IO_READ) {
-            INITMANY(tb2->windowings.source._[i].wsize, tb2->wsizes.number, RWindowing);
+            INITMANY(tb2->windowings.bysource._[i].bywsize, tb2->wsizes.number, RWindowing);
         }
+    
         for (size_t w = 0; w < tb2->wsizes.number; w++) {
-            RWindowing* windowing_ref = &tb2->windowings.source._[i].wsize._[w];
+            RWindowing* windowing_ref;
+            SourceIndex source_index;
+            WSize wsize;
+
+            windowing_ref = &tb2->windowings.bysource._[i].bywsize._[w];
+
+            if (rw == IO_WRITE) {
+                source_index = (*windowing_ref)->source->index;
+                wsize = (*windowing_ref)->wsize;
+            }
+
+            FRW(source_index);
+            FRW(wsize);
 
             if (rw == IO_READ) {
-                SourceIndex source_index;
-                RSource source;
-                WSize wsize;
-
-                FRW(source_index);
-                FRW(wsize);
-
-                source = tb2->sources._[source_index.all];
-
-                (*windowing_ref) = windowings_alloc(source, wsize);
-            } else {
-                FRW((*windowing_ref)->source->index);
-                FRW((*windowing_ref)->wsize);
+                (*windowing_ref) = windowings_create(wsize, tb2->sources._[source_index.all]);
             }
+
+            FRW((*windowing_ref)->windows.number);
+
+            // printf("%ld) %s]\twsize=%ld\tsource=%ld\twall=%ld\tfnreqmax=%ld\n", i, rw == IO_WRITE ? "write" : " read", wsize.value, source_index.all, (*windowing_ref)->windows.number, (*windowing_ref)->source->fnreq_max);
 
             testbed2_io_windowing_windows(rw, file, tb2, *windowing_ref);
         }
     }
 }
 
-void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const size_t wsize_index, RDataset0* ds_ref) {
+void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const WSize wsize, RDataset0* ds_ref) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    Dataset0Init init;
+    WSize wsize2;
+    size_t applies_number;
+    Index windows_counter;
 
     if (rw == IO_WRITE) {
-        init.applies_number = (*ds_ref)->applies_number;
-        init.wsize = (*ds_ref)->wsize;
-        init.windows_counter = dataset_counter(*ds_ref);
+        wsize2 = wsize;
+        applies_number = (*ds_ref)->applies_number;
+        windows_counter = dataset_counter(*ds_ref);
     }
 
-    FRW(init);
+    FRW(wsize2);
+    FRW(applies_number);
+    FRW(windows_counter);
+
+    if (wsize2.index != wsize.index && wsize2.value != wsize.value) {
+        printf("[io:%d] Error wsize index not match\n", __LINE__);
+    }
 
     if (rw == IO_READ) {
-        if (init.wsize.index != wsize_index) {
-            printf("[io:%d] Error wsize index not match\n", __LINE__);
-        }
-        (*ds_ref) = dataset0_alloc(init);
+        (*ds_ref) = dataset0_create(wsize, applies_number, windows_counter);
     }
 
     Index walker;
     memset(&walker, 0, sizeof(Index));
-    for (size_t i = 0; i < init.windows_counter.all; i++) {
+    for (size_t i = 0; i < windows_counter.all; i++) {
         RWindow0* window_ref = &(*ds_ref)->windows.all._[i];
         RWindow0* window_bin_ref;
         RWindow0* window_mul_ref;
@@ -295,18 +314,38 @@ void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const size_t
         window_mul_ref = &(*ds_ref)->windows.multi[source->wclass.mc]._[walker.multi[source->wclass.mc]++];
 
         if (rw == IO_READ) {
-            (*window_ref) = tb2->windowings.source._[source_index].wsize._[wsize_index]->windows._[window_index];
+            (*window_ref) = tb2->windowings.bysource._[source_index].bywsize._[wsize_index]->windows._[window_index];
             (*window_bin_ref) = (*window_ref);
             (*window_mul_ref) = (*window_ref);
         }
     }
 }
 
-void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2) {
-    char fpath[210];
-    sprintf(fpath, "%s/tb2.bin", dirname);
+void testbed2_io_folds(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
+    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    FILE* file = io_openfile(rw, fpath);
+    FRW(tb2->folds.number);
+
+    if (rw == IO_READ) {
+        INITMANY(tb2->folds, tb2->folds.number, RFold);
+    }
+
+    for (size_t f = 0; f < tb2->folds.number; f++) {
+        fold_io(rw, file, tb2, &tb2->folds._[f]);
+    }
+}
+
+void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied) {
+    char fpath[210];
+    FILE* file;
+
+    if (rw == IO_WRITE) {
+        applied = (*tb2)->applied;
+    }
+
+    sprintf(fpath, "%s/tb2%s.bin", dirname, applied ? "_applied" : "_raw");
+
+    file = io_openfile(rw, fpath);
 
     if (file == NULL) {
         printf("Error: file <%s> not opened.\n", fpath);
@@ -322,15 +361,19 @@ void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2) {
         testbed2_io_wsizes(rw, file, &(*tb2)->wsizes);
     }
 
-    testbed2_io_parameters(rw, file, (*tb2));
+    if (applied) {
+        testbed2_io_parameters(rw, file, (*tb2));
+    }
 
     testbed2_io_sources(rw, file, (*tb2));
 
     testbed2_io_windowing(rw, file, (*tb2));
-    
-    for (size_t i = 0; i < (*tb2)->datasets.wsize.number; i++) {
-        testbed2_io_dataset(rw, file, (*tb2), i, &(*tb2)->datasets.wsize._[i]);
+
+    for (size_t i = 0; i < (*tb2)->datasets.bywsize.number; i++) {
+        testbed2_io_dataset(rw, file, (*tb2), (*tb2)->wsizes._[i], &(*tb2)->datasets.bywsize._[i]);
     }
+
+    testbed2_io_folds(rw, file, (*tb2));
 
     fclose(file);
 
@@ -448,6 +491,15 @@ void testbed2_md(char dirname[200], const RTestBed2 tb2) {
         FPNL(2, "> This TestBed has not been applied.");
     } else {
         FPNL(2, "> This TestBed has been applied.");
+    }
+
+    FPNL(2, "## Foldings");
+
+    for (size_t f = 0; f < tb2->folds.number; f++) {
+
+        FPNL(2, "## Fold %ld", f);
+        
+        fold_md(file, tb2->folds._[f]);
     }
 
     #undef FP

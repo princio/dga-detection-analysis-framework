@@ -21,10 +21,11 @@
 #include "colors.h"
 #include "cache.h"
 #include "common.h"
-#include "performance_defaults.h"
-#include "kfold0.h"
+#include "fold.h"
+#include "gatherer.h"
 #include "io.h"
 #include "parameters.h"
+#include "performance_defaults.h"
 #include "stratosphere.h"
 #include "testbed2.h"
 #include "trainer.h"
@@ -81,39 +82,42 @@ MANY(Performance) performances;
 void print_trainer(RTrainer trainer) {
     TrainerResults* results = &trainer->results;
 
-    RTestBed2 tb2 = trainer->kfold0->testbed2;
-    RKFold0 kfold0 = trainer->kfold0;
+    RTestBed2 tb2 = trainer->tb2;
 
-    for (size_t w = 0; w < tb2->wsizes.number; w++) {
-        for (size_t a = 0; a < tb2->psets.number; a++) {
-            for (size_t k = 0; k < trainer->kfold0->config.kfolds; k++) {
-                for (size_t t = 0; t < trainer->thchoosers.number; t++) {
+    for (size_t w = 0; w < results->bywsize.number; w++) {
+        for (size_t a = 0; a < results->bywsize._[w].byapply.number; a++) {
+            for (size_t f = 0; f < results->bywsize._[w].byapply._[a].byfold.number; f++) {
+                for (size_t try = 0; try < results->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
+                    for (size_t k = 0; k < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
+                        for (size_t ev = 0; ev < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits._[k].bythchooser.number; ev++) {
 
-                    Result* result = &RESULT_IDX((*results), w, a, k, t);
+                            Result* result = &RESULT_IDX((*results), w, a, f, try, k, ev);
 
-                    {
-                        char headers[4][50];
-                        char header[210];
-                        size_t h_idx = 0;
+                            {
+                                char headers[4][50];
+                                char header[210];
+                                size_t h_idx = 0;
 
-                        sprintf(headers[h_idx++], "%5ld", tb2->wsizes._[w].value);
-                        sprintf(headers[h_idx++], "%3ld", a);
-                        sprintf(headers[h_idx++], "%3ld", k);
-                        sprintf(headers[h_idx++], "%12s", trainer->thchoosers._[t].name);
-                        sprintf(header, "%s,%s,%s,%s,", headers[0], headers[1], headers[2], headers[3]);
-                        printf("%-30s ", header);
+                                sprintf(headers[h_idx++], "%5ld", tb2->wsizes._[w].value);
+                                sprintf(headers[h_idx++], "%3ld", a);
+                                sprintf(headers[h_idx++], "%3ld", k);
+                                sprintf(headers[h_idx++], "%12s", trainer->thchoosers._[ev].name);
+                                sprintf(header, "%s,%s,%s,%s,", headers[0], headers[1], headers[2], headers[3]);
+                                printf("%-30s ", header);
+                            }
+
+                            DGAFOR(cl) {
+                                if (cl == 1) continue;
+                                printf("%1.4f\t", TR(result->best_train.windows, cl));
+                            }
+                            printf("|\t");
+                            DGAFOR(cl) {
+                                if (cl == 1) continue;
+                                printf("%1.4f\t", TR(result->best_test.windows, cl));
+                            }
+                            printf("\n");
+                        }
                     }
-
-                    DGAFOR(cl) {
-                        if (cl == 1) continue;
-                        printf("%1.4f\t", TR(result->best_train.windows, cl));
-                    }
-                    printf("|\t");
-                    DGAFOR(cl) {
-                        if (cl == 1) continue;
-                        printf("%1.4f\t", TR(result->best_test.windows, cl));
-                    }
-                    printf("\n");
                 }
             }
         }
@@ -208,63 +212,7 @@ MANY(Performance) make_performance() {
     return performances;
 }
 
-RTestBed2 make_testbed() {
-    RTestBed2 tb2;
-
-    MANY(WSize) wsizes = make_wsizes();
-
-    tb2 = testbed2_create(wsizes);
-
-    stratosphere_add(tb2);
-
-    testbed2_windowing(tb2);
-
-    FREEMANY(wsizes);
-
-    return tb2;
-}
-
-RTestBed2 run_testbed(IOReadWrite rw, char dirname[200]) {
-    RTestBed2 tb2;
-
-    if (rw == IO_WRITE) {
-        MANY(PSet) psets;
-
-        tb2 = make_testbed();
-
-        psets = make_parameters();
-
-        testbed2_apply(tb2, psets);
-
-        FREEMANY(psets);
-    }
-
-    testbed2_io(rw, dirname, &tb2);
-
-    return tb2;
-}
-
-RKFold0 run_kfold0(IOReadWrite rw, char dirname[200], RTestBed2 tb2) {
-    RKFold0 kfold0;
-
-    if (rw == IO_WRITE) {
-        KFoldConfig0  kconfig0;
-
-        kconfig0.balance_method = KFOLD_BM_NOT_INFECTED;
-        kconfig0.kfolds = 5;
-        kconfig0.test_folds = 1;
-        kconfig0.split_method = KFOLD_SM_MERGE_12;
-        kconfig0.shuffle = 1;
-    
-        kfold0 = kfold0_run(tb2, kconfig0);
-    }
-
-    kfold0_io(rw, dirname, tb2, &kfold0);
-
-    return kfold0;
-}
-
-RTrainer run_trainer(IOReadWrite rw, char dirname[200], RKFold0 kfold0) {
+RTrainer run_trainer(IOReadWrite rw, char dirname[200], RTestBed2 tb2) {
     RTrainer trainer;
 
     if (rw == IO_WRITE) {
@@ -272,12 +220,12 @@ RTrainer run_trainer(IOReadWrite rw, char dirname[200], RKFold0 kfold0) {
 
         performances = make_performance();
 
-        trainer = trainer_run(kfold0, performances);
+        trainer = trainer_run(tb2, performances);
 
         FREEMANY(performances);
     }
 
-    trainer_io(rw, dirname, kfold0, &trainer);
+    trainer_io(rw, dirname, tb2, &trainer);
 
     return trainer;
 }
@@ -303,27 +251,52 @@ int main (int argc, char* argv[]) {
     sprintf(dirname, "/home/princio/Desktop/results/test_2");
     io_makedir(dirname, 200, 0);
 
-    IOReadWrite rws[2] = { IO_WRITE, IO_READ };
+    IOReadWrite rws[] = { IO_WRITE, IO_READ };
 
-    for (size_t rw = 0; rw < 2; rw++) {
+    for (size_t rw = 1; rw < 2; rw++) {
         RTestBed2 tb2;
-        RKFold0 kfold0;
         RTrainer trainer;
 
-        tb2 = run_testbed(rws[rw], dirname);
-        kfold0 = run_kfold0(rws[rw], dirname, tb2);
-        trainer = run_trainer(rws[rw], dirname, kfold0);
+        tb2 = NULL;
+        trainer = NULL;
 
-        print_trainer(trainer);
+        if (rws[rw] == IO_WRITE) {
+            {
+                MANY(WSize) wsizes;
+                wsizes = make_wsizes();
+                tb2 = testbed2_create(wsizes);
+                stratosphere_add(tb2);
+                testbed2_windowing(tb2);
+                FREEMANY(wsizes);
+            }
+            {
+                FoldConfig foldconfig;
+                foldconfig.tries = 5; foldconfig.k = 2; foldconfig.k_test = 1;
+                fold_add(tb2, foldconfig);
+                // foldconfig.tries = 5; foldconfig.k = 20; foldconfig.k_test = 15;
+                // fold_add(tb2, foldconfig);
+                // foldconfig.tries = 5; foldconfig.k = 10; foldconfig.k_test = 8;
+                // fold_add(tb2, foldconfig);
+            }
+        }
 
-        windows_free();
-        window0s_free();
-        windowings_free();
-        sources_free();
-        datasets0_free();
+        testbed2_io(rws[rw], dirname, &tb2, 0);
+
+        // if (rws[rw] == IO_WRITE) {
+
+        //     {
+        //         MANY(PSet) psets;
+        //         psets = make_parameters();
+        //         testbed2_apply(tb2, psets);
+        //         FREEMANY(psets);
+        //     }
+        // }
+
+        // trainer = run_trainer(rws[rw], dirname, tb2);
+        // print_trainer(trainer);
         testbed2_free(tb2);
-        kfold0_free(kfold0);
-        trainer_free(trainer);
+        gatherer_free_all();
+        // trainer_free(trainer);
     }
 
     return 0;

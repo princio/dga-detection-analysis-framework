@@ -5,8 +5,6 @@
 
 #include "parameters.h"
 
-#define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
-
 #define WAPPLY_GET(APPLY, WSIZE_INDEX, PSET_INDEX)
 
 typedef struct WApply {

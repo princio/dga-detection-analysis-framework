@@ -6,6 +6,7 @@
 #include <openssl/sha.h>
 #include <stdlib.h>
 
+#define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
 #define MAX_WSIZES 20
 #define MAX_Sources 100
@@ -31,7 +32,9 @@
 #define TETRA(T) CONCATENATE(T, __tetra)
 
 #define MAKEMANY(T) typedef struct MANY(T) {\
+    size_t size; \
     size_t number; \
+    size_t element_size; \
     T* _; \
 } MANY(T)
 
@@ -42,21 +45,28 @@
 } TETRA(T)
 
 
-#define INITMANY(A, N, T) { if (N == 0) printf("Warning: initializing empty block.\n"); \
-            A.number = N; \
-            A._ = calloc(A.number, sizeof(T)); }
+#define INITMANY(A, N, T) { if ((N) == 0) printf("Warning[%s::%d]: initializing empty block.\n", __FILE__, __LINE__); \
+            (A).size = (N); \
+            (A).number = (N); \
+            (A).element_size = sizeof(T); \
+            (A)._ = calloc(A.number, sizeof(T)); }
 
-#define INITMANYREF(A, N, T) { if (N == 0) printf("Warning: initializing empty block.\n");\
-            (A)->number = N; \
+#define INITMANYREF(A, N, T) { if ((N) == 0) printf("Warning[%s::%d]: initializing empty block.\n", __FILE__, __LINE__);\
+            (A)->size = (N); \
+            (A)->number = (N); \
+            (A)->element_size = sizeof(T); \
             (A)->_ = calloc((A)->number, sizeof(T)); }
 
-#define INITMANYSIZE(A, N, T) { A.number = N;\
-            A._ = calloc(A.number, T); }
+#define INITMANYSIZE(A, N, S) { if ((N) == 0) printf("Warning[%s::%d]: initializing empty block.\n", __FILE__, __LINE__); \
+            (A).size = (N); \
+            (A).number = (N); \
+            (A).element_size = (S); \
+            (A)._ = calloc(A.number, (S)); }
 
-#define CLONEMANY(A, B, T) INITMANY((A), (B).number, T); memcpy((A)._, (B)._, sizeof(T) * (B).number);
+#define CLONEMANY(A, B) INITMANYSIZE((A), (B).number, (B).element_size); memcpy((A)._, (B)._, (B).element_size * (B).number);
 
-#define FREEMANY(A) { if (A.number) free(A._); }
-#define FREEMANYREF(A) { if (A->number) free(A->_); }
+#define FREEMANY(A) { if (A.number) free(A._); A.number = 0; A.size = 0; }
+#define FREEMANYREF(A) { if (A->number) free(A->_); A->number = 0; A->size = 0; }
 
 typedef int32_t IDX;
 
@@ -67,8 +77,10 @@ typedef struct Index {
 } Index;
 
 typedef struct __MANY {
-    int32_t number;
-    void** _;
+    size_t size;
+    size_t number;
+    size_t element_size;
+    uint8_t* _;
 } __MANY;
 
 inline int32_t dgamany_number_sum(__MANY many[N_DGACLASSES]){
@@ -161,13 +173,15 @@ extern char NN_NAMES[11][10];
 
 typedef struct __Windowing* RWindowing;
 typedef struct __Window0* RWindow0;
-typedef struct __Window* RWindow;
 typedef struct __Source* RSource;
 typedef struct __Dataset0* RDataset0;
+typedef struct __Fold* RFold0;
+typedef struct __TestBed2* RTestBed2;
 
 MAKEMANY(RWindow0);
 MAKEMANY(RDataset0);
 MAKEMANY(RWindowing);
+MAKEMANY(RFold0);
 MAKEMANY(double);
 MAKEMANY(MANY(double));
 

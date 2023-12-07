@@ -17,12 +17,6 @@ typedef struct __Dataset0 {
     DatasetRWindow0 windows;
 } __Dataset0;
 
-typedef struct Dataset0Init {
-    WSize wsize;
-    size_t applies_number;
-    Index windows_counter;
-} Dataset0Init;
-
 typedef struct DatasetSplit0 {
     RDataset0 train;
     RDataset0 test;
@@ -30,20 +24,16 @@ typedef struct DatasetSplit0 {
 
 MAKEMANY(DatasetSplit0);
 
-void dataset0_init(RDataset0 dataset, Index counter);
+typedef struct DatasetSplits {
+    int isok;
+    MANY(DatasetSplit0) splits;
+} DatasetSplits;
 
-RDataset0 dataset0_alloc(const Dataset0Init init);
-
+RDataset0 dataset0_alloc();
+RDataset0 dataset0_create(WSize wsize, size_t applies_number, Index counter);
 int dataset0_splits_ok(MANY(DatasetSplit0) splits);
-
-MANY(DatasetSplit0) dataset0_splits(RDataset0 dataset0, const size_t k, const size_t k_test);
-
+DatasetSplits dataset0_splits(RDataset0 dataset0, const size_t k, const size_t k_test);
 Index dataset_counter(RDataset0 ds);
-
 RDataset0 dataset0_from_windowings(MANY(RWindowing) windowings);
-
-void dataset0_free(RDataset0 dataset);
-
-void datasets0_free();
 
 #endif

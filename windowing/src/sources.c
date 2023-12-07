@@ -1,6 +1,6 @@
 #include "sources.h"
 
-#include "cache.h"
+#include "gatherer.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -8,84 +8,12 @@
 #include <stdio.h>
 #include <string.h>
 
-MAKEMANY(__Source);
-
-MANY(RSource) sources_gatherer = {
-    .number = 0,
-    ._ = NULL
-};
-int sources_gatherer_initialized = 0;
-
-void _sources_realloc(MANY(RSource)* sources, size_t index) {
-    assert(index <= sources->number);
-
-    if (sources->number <= index) {
-        const size_t new_number = sources->number + 50;
-    
-        sources->_ = realloc(sources->_, (new_number) * sizeof(RSource));
-        sources->number = new_number;
-
-        for (size_t s = index; s < new_number; s++) {
-            sources->_[s] = NULL;
-        }
-    }
-}
-
-size_t _sources_emptyslot_index(TCPC(MANY(RSource)) sources) {
-    size_t s;
-
-    for (s = 0; s < sources->number; s++) {
-        if (sources->_[s] == NULL) break;
-    }
-
-    return s;
-}
-
-size_t sources_add(MANY(RSource)* sources, RSource source) {
-    const size_t index = _sources_emptyslot_index(sources);
-    _sources_realloc(sources, index);
-    sources->_[index] = source;
-    
-    memset(&source->index, 0, sizeof(Index));
-
-    source->index.all = index;
-
-    for (size_t i = 0; i < index; i++) {
-        if (sources->_[i]->wclass.bc == source->wclass.bc) {
-            source->index.binary++;
-        }
-        if (sources->_[i]->wclass.mc == source->wclass.mc) {
-            source->index.multi++;
-        }
-    }
-
-    return index;
-}
+RGatherer sources_gatherer = NULL;
 
 RSource sources_alloc() {
-    RSource source = calloc(1, sizeof(__Source));
-
-    if (sources_gatherer_initialized == 0) {
-        INITMANY(sources_gatherer, 50, RSource);
-        sources_gatherer_initialized = 1;
+    if (sources_gatherer == NULL) {
+        sources_gatherer = gatherer_create("sources", NULL, 50, sizeof(__Source), 10);
     }
 
-    sources_add(&sources_gatherer, source);
-
-    return source;
-}
-
-void sources_finalize(MANY(RSource)* sources) {
-    const int32_t index = _sources_emptyslot_index(sources);
-    sources->number = index;
-    sources->_ = realloc(sources->_, (sources->number) * sizeof(RSource));
-}
-
-void sources_free() {
-    for (size_t s = 0; s < sources_gatherer.number; s++) {
-        if (sources_gatherer._[s] == NULL) break;
-        free(sources_gatherer._[s]);
-    }
-    FREEMANY(sources_gatherer);
-    sources_gatherer_initialized = 0;
+    return (RSource) gatherer_alloc(sources_gatherer);
 }

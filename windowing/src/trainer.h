@@ -4,8 +4,8 @@
 
 #include "common.h"
 
-#include "kfold0.h"
 #include "window0s.h"
+#include "testbed2.h"
 
 typedef struct Result {
     Performance* threshold_chooser;
@@ -15,30 +15,42 @@ typedef struct Result {
 
 MAKEMANY(Result);
 
-typedef struct ResultsSplits {
-    MANY(Result) thchooser;
-} ResultsSplits;
+typedef struct ResultsFoldTriesSplits {
+    MANY(Result) bythchooser;
+} ResultsFoldTriesSplits;
 
-MAKEMANY(ResultsSplits);
+MAKEMANY(ResultsFoldTriesSplits);
+
+typedef struct ResultsFoldTries {
+    MANY(ResultsFoldTriesSplits) bysplits;
+} ResultsFoldTries;
+
+MAKEMANY(ResultsFoldTries);
+
+typedef struct ResultsFold {
+    MANY(ResultsFoldTries) bytry;
+} ResultsFold;
+
+MAKEMANY(ResultsFold);
 
 typedef struct ResultsApply {
-    MANY(ResultsSplits) fold_splits;
+    MANY(ResultsFold) byfold;
 } ResultsApply;
 
 MAKEMANY(ResultsApply);
 
 typedef struct ResultsWSize {
-    MANY(ResultsApply) apply;
+    MANY(ResultsApply) byapply;
 } ResultsWSize;
 
 MAKEMANY(ResultsWSize);
 
 typedef struct TrainerResults {
-    MANY(ResultsWSize) wsize;
+    MANY(ResultsWSize) bywsize;
 } TrainerResults;
 
 typedef struct __Trainer {
-    RKFold0 kfold0;
+    RTestBed2 tb2;
     MANY(Performance) thchoosers;
 
     TrainerResults results;
@@ -46,12 +58,12 @@ typedef struct __Trainer {
 
 typedef struct __Trainer* RTrainer;
 
-#define RESULT_IDX(R, WSIZE, APPLY, SPLIT, THCHOOSER) R.wsize._[WSIZE].apply._[APPLY].fold_splits._[SPLIT].thchooser._[THCHOOSER]
+#define RESULT_IDX(R, WSIZE, APPLY, FOLD, TRY, SPLIT, THCHOOSER) R.bywsize._[WSIZE].byapply._[APPLY].byfold._[FOLD].bytry._[TRY].bysplits._[SPLIT].bythchooser._[THCHOOSER]
 
-RTrainer trainer_run(RKFold0, MANY(Performance));
+RTrainer trainer_run(RTestBed2, MANY(Performance));
 
 void trainer_free(RTrainer results);
 
-void trainer_io(IOReadWrite rw, char dirname[200], RKFold0 kfold0, RTrainer* results);
+void trainer_io(IOReadWrite rw, char dirname[200], RTestBed2, RTrainer* results);
 
 #endif
