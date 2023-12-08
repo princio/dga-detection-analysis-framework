@@ -13,15 +13,16 @@
 
 RGatherer windowings_gatherer = NULL;
 
-void _windowing_free(RWindowing windowing) {
+void _windowing_free(void* item) {
+    RWindowing windowing = item;
     FREEMANY(windowing->windows);
 }
 
 RWindowing windowings_alloc() {
     if (windowings_gatherer == NULL) {
-        windowings_gatherer = gatherer_create("windowings", _windowing_free, 50, sizeof(__Windowing), 10);
+        gatherer_alloc(&windowings_gatherer, "windowings", _windowing_free, 100, sizeof(__Windowing), 10);
     }
-    return (RWindowing) gatherer_alloc(windowings_gatherer);
+    return (RWindowing) gatherer_alloc_item(windowings_gatherer);
 }
 
 RWindowing windowings_create(WSize wsize, RSource source) {

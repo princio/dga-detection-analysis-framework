@@ -20,9 +20,9 @@ void dataset0_free(void* item) {
 
 RDataset0 dataset0_alloc() {
     if (datasets_gatherer == NULL) {
-        datasets_gatherer = gatherer_create("datasets", dataset0_free, 10000, sizeof(__Dataset0), 10);
+        gatherer_alloc(&datasets_gatherer, "datasets", dataset0_free, 10000, sizeof(__Dataset0), 10);
     }
-    return (RDataset0) gatherer_alloc(datasets_gatherer);;
+    return (RDataset0) gatherer_alloc_item(datasets_gatherer);;
 }
 
 RDataset0 dataset0_create(WSize wsize, size_t applies_number, Index counter) {

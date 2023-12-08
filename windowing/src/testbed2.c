@@ -122,7 +122,7 @@ void testbed2_io_parameters(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
 
     FRW(psets->number);
 
-    if (rw == IO_READ) {
+    if (rw == IO_READ && psets->number > 0) {
         INITMANYREF(psets, psets->number, PSet);
     }
 
@@ -254,8 +254,6 @@ void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
 
             FRW((*windowing_ref)->windows.number);
 
-            // printf("%ld) %s]\twsize=%ld\tsource=%ld\twall=%ld\tfnreqmax=%ld\n", i, rw == IO_WRITE ? "write" : " read", wsize.value, source_index.all, (*windowing_ref)->windows.number, (*windowing_ref)->source->fnreq_max);
-
             testbed2_io_windowing_windows(rw, file, tb2, *windowing_ref);
         }
     }
@@ -335,21 +333,26 @@ void testbed2_io_folds(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     }
 }
 
-void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied) {
+int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied) {
     char fpath[210];
     FILE* file;
 
-    if (rw == IO_WRITE) {
-        applied = (*tb2)->applied;
+    if (io_makedir(dirname, 200, 0)) {
+        printf("Error: impossible to create directory <%s>\n", dirname);
+        return -1;
     }
 
-    sprintf(fpath, "%s/tb2%s.bin", dirname, applied ? "_applied" : "_raw");
+    if (IO_WRITE && applied == 1 && (*tb2)->applied == 0) {
+        printf("Error: impossible to save tb2 in applied version because tb2 has not been applied.\n");
+        return -1;
+    }
 
+    sprintf(fpath, "%s/tb2%s.bin", dirname, applied ? "_applied" : "_folds");
     file = io_openfile(rw, fpath);
 
     if (file == NULL) {
         printf("Error: file <%s> not opened.\n", fpath);
-        return;
+        return -1;
     }
 
     if (rw == IO_READ) {
@@ -361,11 +364,11 @@ void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied)
         testbed2_io_wsizes(rw, file, &(*tb2)->wsizes);
     }
 
-    if (applied) {
-        testbed2_io_parameters(rw, file, (*tb2));
-    }
+    (*tb2)->applied = applied;
 
     testbed2_io_sources(rw, file, (*tb2));
+
+    testbed2_io_parameters(rw, file, (*tb2));
 
     testbed2_io_windowing(rw, file, (*tb2));
 
@@ -380,6 +383,8 @@ void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied)
     if (rw == IO_WRITE) {
         testbed2_md(dirname, *tb2);
     }
+
+    return 0;
 }
 
 void testbed2_md(char dirname[200], const RTestBed2 tb2) {
@@ -501,6 +506,8 @@ void testbed2_md(char dirname[200], const RTestBed2 tb2) {
         
         fold_md(file, tb2->folds._[f]);
     }
+
+    fclose(file);
 
     #undef FP
     #undef FPNL

@@ -11,7 +11,7 @@
 
 MAKEMANY(__Gatherer);
 
-MANY(__Gatherer) gatherers = {
+MANY(__Gatherer) gatherer_of_gatherers = {
     .size = 0,
     .number = 0,
     ._ = NULL
@@ -40,32 +40,32 @@ void gatherer_many_finalize(__MANY* many, size_t element_size) {
     }
 }
 
-RGatherer gatherer_create(char name[50], GathererFreeFn freefn, size_t initial_size, size_t element_size, size_t size_realloc_increment) {
+void gatherer_alloc(RGatherer* gatherer_ref, char name[50], GathererFreeFn freefn, size_t initial_size, size_t element_size, size_t size_realloc_increment) {
     RGatherer gatherer;
     {
-        if (gatherers.size == 0) {
-            INITMANY(gatherers, 10, __Gatherer);
-            gatherers.number = 0;
+        if (gatherer_of_gatherers.size == 0) {
+            INITMANY(gatherer_of_gatherers, 10, __Gatherer);
+            gatherer_of_gatherers.number = 0;
         }
-        gatherer_many_realloc((__MANY*) &gatherers, sizeof(__Gatherer), 5);
+        gatherer_many_realloc((__MANY*) &gatherer_of_gatherers, sizeof(__Gatherer), 5);
     }
-    gatherer = &gatherers._[gatherers.number];
-    gatherers.number++;
+    gatherer = &gatherer_of_gatherers._[gatherer_of_gatherers.number];
+    gatherer_of_gatherers.number++;
     
     strcpy(gatherer->name, name);
 
+    gatherer->ref = gatherer_ref;
     gatherer->freefn = freefn;
     gatherer->element_size = element_size;
     gatherer->size_realloc_increment = size_realloc_increment;
 
     INITMANYSIZE(gatherer->many, initial_size, element_size);
-
     gatherer->many.number = 0;
     
-    return gatherer;
+    *gatherer_ref = gatherer;
 }
 
-void* gatherer_alloc(RGatherer gat) {
+void* gatherer_alloc_item(RGatherer gat) {
     void* allocated = NULL;
 
     gatherer_many_realloc((__MANY*) &gat->many, gat->element_size, gat->size_realloc_increment);
@@ -78,13 +78,14 @@ void* gatherer_alloc(RGatherer gat) {
 }
 
 void gatherer_free_all() {
-    for (size_t s = 0; s < gatherers.number; s++) {
-        for (size_t i = 0; i < gatherers._[s].many.number; i++) {
-            if (gatherers._[s].freefn) {
-                gatherers._[s].freefn((void*) &MANY_GET(gatherers._[s].many, i));
+    for (size_t s = 0; s < gatherer_of_gatherers.number; s++) {
+        for (size_t i = 0; i < gatherer_of_gatherers._[s].many.number; i++) {
+            if (gatherer_of_gatherers._[s].freefn) {
+                gatherer_of_gatherers._[s].freefn((void*) &MANY_GET(gatherer_of_gatherers._[s].many, i));
             }
+            *gatherer_of_gatherers._[s].ref = NULL;
         }
-        FREEMANY(gatherers._[s].many);
+        FREEMANY(gatherer_of_gatherers._[s].many);
     }
-    FREEMANY(gatherers);
+    FREEMANY(gatherer_of_gatherers);
 }

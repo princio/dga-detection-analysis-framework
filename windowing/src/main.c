@@ -248,19 +248,17 @@ int main (int argc, char* argv[]) {
     /* Do your magic here :) */
 
     char dirname[200];
-    sprintf(dirname, "/home/princio/Desktop/results/test_2");
-    io_makedir(dirname, 200, 0);
 
-    IOReadWrite rws[] = { IO_WRITE, IO_READ };
-
-    for (size_t rw = 1; rw < 2; rw++) {
+    for (size_t rw = 0; rw < 4; rw++) {
         RTestBed2 tb2;
         RTrainer trainer;
 
         tb2 = NULL;
         trainer = NULL;
 
-        if (rws[rw] == IO_WRITE) {
+        if (rw == 0) {
+            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_writefold_writeapply");
+
             {
                 MANY(WSize) wsizes;
                 wsizes = make_wsizes();
@@ -278,19 +276,41 @@ int main (int argc, char* argv[]) {
                 // foldconfig.tries = 5; foldconfig.k = 10; foldconfig.k_test = 8;
                 // fold_add(tb2, foldconfig);
             }
+
+            testbed2_io(IO_WRITE, dirname, &tb2, 0);
+            
+            {
+                MANY(PSet) psets;
+                psets = make_parameters();
+                testbed2_apply(tb2, psets);
+                FREEMANY(psets);
+            }
+
+            testbed2_io(IO_WRITE, dirname, &tb2, 1);
         }
 
-        testbed2_io(rws[rw], dirname, &tb2, 0);
-
-        // if (rws[rw] == IO_WRITE) {
-
-        //     {
-        //         MANY(PSet) psets;
-        //         psets = make_parameters();
-        //         testbed2_apply(tb2, psets);
-        //         FREEMANY(psets);
-        //     }
-        // }
+        if (rw == 1) {
+            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_writefold_writeapply");
+            testbed2_io(IO_READ, dirname, &tb2, 0);
+    
+            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_loadfold_writefold_writeapply");
+            testbed2_io(IO_WRITE, dirname, &tb2, 0);
+            {
+                MANY(PSet) psets;
+                psets = make_parameters();
+                testbed2_apply(tb2, psets);
+                FREEMANY(psets);
+            }
+            testbed2_io(IO_WRITE, dirname, &tb2, 1);
+        } else
+        if (rw == 2) {
+            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_loadfold_writefold_writeapply");
+            testbed2_io(IO_READ, dirname, &tb2, 0);
+        } else
+        if (rw == 3) {
+            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_loadfold_writefold_writeapply");
+            testbed2_io(IO_READ, dirname, &tb2, 1);
+        }
 
         // trainer = run_trainer(rws[rw], dirname, tb2);
         // print_trainer(trainer);

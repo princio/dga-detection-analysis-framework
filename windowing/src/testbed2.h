@@ -48,6 +48,6 @@ void testbed2_fold_add(RTestBed2, FoldConfig);
 void testbed2_free(RTestBed2);
 
 void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const WSize wsize, RDataset0* ds_ref);
-void testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied);
+int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied);
 
 #endif

@@ -42,10 +42,10 @@ MANY(RWindow0) window0s_alloc(size_t window0s_number) {
     MANY(RWindow0) rwindows;
 
     if (window0s_gatherer == NULL) {
-        window0s_gatherer = gatherer_create("window0s", window0s_free, 100, sizeof(MANY(__Window0)), 10);
+        gatherer_alloc(&window0s_gatherer, "window0s", window0s_free, 100, sizeof(MANY(__Window0)), 10);
     }
 
-    windows = gatherer_alloc(window0s_gatherer);
+    windows = gatherer_alloc_item(window0s_gatherer);
 
     INITMANYREF(windows,  window0s_number, __Window0);
     INITMANY(rwindows, window0s_number, RWindow0);
