@@ -28,10 +28,17 @@ typedef struct TestBed2Datasets {
     MANY(RDataset0) bywsize;
 } TestBed2Datasets;
 
+typedef struct TestBed2Apply {
+    int applied;
+    PSet pset;
+} TestBed2Apply;
+
+MAKEMANY(TestBed2Apply);
+
 typedef struct __TestBed2 {
-    int32_t applied;
+    MANY(TestBed2Apply) applies;
+
     MANY(WSize) wsizes;
-    MANY(PSet) psets;
 
     MANY(RSource) sources;
     TestBed2Windowings windowings;
@@ -42,12 +49,13 @@ typedef struct __TestBed2 {
 
 RTestBed2 testbed2_create(MANY(WSize) wsizes);
 void testbed2_source_add(RTestBed2 tb2, RSource source);
-void testbed2_apply(RTestBed2 tb2, MANY(PSet) pset);
+void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets);
+void testbed2_apply(RTestBed2 tb2);
 void testbed2_windowing(RTestBed2);
 void testbed2_fold_add(RTestBed2, FoldConfig);
 void testbed2_free(RTestBed2);
 
 void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const WSize wsize, RDataset0* ds_ref);
-int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied);
+int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2);
 
 #endif

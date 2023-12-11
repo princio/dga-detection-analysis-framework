@@ -25,12 +25,11 @@ RDataset0 dataset0_alloc() {
     return (RDataset0) gatherer_alloc_item(datasets_gatherer);;
 }
 
-RDataset0 dataset0_create(WSize wsize, size_t applies_number, Index counter) {
+RDataset0 dataset0_create(WSize wsize, Index counter) {
     RDataset0 dataset;
 
     dataset = dataset0_alloc();
 
-    dataset->applies_number = applies_number;
     dataset->wsize = wsize;
     
     if (counter.all)
@@ -84,8 +83,8 @@ DatasetSplits dataset0_splits(RDataset0 dataset0, const size_t _k, const size_t 
         Index counter;
         memset(&counter, 0, sizeof(Index));
         for (size_t k = 0; k < KFOLDs; k++) {
-            splits.splits._[k].train = dataset0_create(dataset0->wsize, dataset0->applies_number, counter);
-            splits.splits._[k].test = dataset0_create(dataset0->wsize, dataset0->applies_number, counter);
+            splits.splits._[k].train = dataset0_create(dataset0->wsize, counter);
+            splits.splits._[k].test = dataset0_create(dataset0->wsize, counter);
         }
     }
 
@@ -217,7 +216,7 @@ RDataset0 dataset0_from_windowings(MANY(RWindowing) windowings) {
         counter.multi[windowing->source->wclass.mc] += windowing->windows.number;
     }
 
-    ds = dataset0_create(windowings._[0]->wsize, 0, counter);
+    ds = dataset0_create(windowings._[0]->wsize, counter);
 
     memset(&counter, 0, sizeof(Index));
     for (size_t w = 0; w < windowings.number; w++) {

@@ -204,7 +204,7 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
 
     *nrows = PQntuples(*pgresult);
 
-    printf("stratosphere source: id=%d\tnrows=%d\n", source->id, *nrows);
+    // printf("stratosphere source: id=%d\tnrows=%d\n", source->id, *nrows);
 
     if ((*nrows) != source->qr) {
         printf("[%s:%d] nrows != source->qr:\t%d != %ld\n", __FILE__, __LINE__, *nrows, source->qr);
@@ -215,7 +215,7 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
     }
 }
 
-void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets, int32_t loaded[]) {
+void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets) {
     const RSource source = windowings._[0]->source;
     
     PGresult* pgresult = NULL;

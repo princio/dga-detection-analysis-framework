@@ -35,7 +35,7 @@ MANY(PSet) parameters_generate(TCPC(PSetGenerator) psetgenerator) {
 
                                 memset(pset, 0, sizeof(PSet));
 
-                                pset->id = i;
+                                pset->index = i;
                                 
                                 pset->ninf = psetgenerator->ninf[i_ninf];
                                 pset->pinf = psetgenerator->pinf[i_pinf];

@@ -14,8 +14,12 @@
 #include <string.h>
 
 void wapply_init(RWindow0 window0, const size_t psets_number) {
-    INITMANY(window0->applies, psets_number, WApply);
-    memset(window0->applies._, 0, psets_number * sizeof(WApply));
+    const size_t old_applies = window0->applies.number;
+    
+    window0->applies.number = psets_number;
+    window0->applies._ = realloc(window0->applies._, psets_number * sizeof(WApply));
+
+    memset(&window0->applies._[old_applies], 0, (psets_number - old_applies) * sizeof(WApply));
 }
 
 void wapply_init_many(MANY(RWindow0) window0s, MANY(WSize) wsizes, MANY(PSet) psets) {
@@ -73,6 +77,6 @@ void wapply_run(WApply* wapply, TCPC(DNSMessage) message, TCPC(PSet) pset) {
 
 void wapply_run_many(MANY(WApply)* applies, TCPC(DNSMessage) message, TCPC(MANY(PSet)) psets) {
     for (size_t p = 0; p < psets->number; p++) {
-        wapply_run(&applies->_[p], message, &psets->_[p]);
+        wapply_run(&applies->_[psets->_[p].index], message, &psets->_[p]);
     }
 }

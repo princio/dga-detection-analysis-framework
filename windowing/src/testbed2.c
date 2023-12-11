@@ -82,24 +82,95 @@ void testbed2_windowing(RTestBed2 tb2) {
     }
 }
 
-void testbed2_apply(RTestBed2 tb2, MANY(PSet) psets) {
-    for (size_t w = 0; w < tb2->datasets.bywsize.number; w++) {
-        tb2->datasets.bywsize._[w]->applies_number = psets.number;
+void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets) {
+    size_t new_applies_count;
+    size_t new_psets_index;
+    int new_psets[psets.number];
+
+    const size_t old_applies_count = tb2->applies.number;
+
+    {
+        memset(new_psets, 0, sizeof(int) * psets.number);
+        new_applies_count = 0;
+        for (size_t new = 0; new < psets.number; new++) {
+            int is_new = 1;
+            for (size_t old = 0; old < tb2->applies.number; old++) {
+                int cmp = memcmp(&psets._[new], &tb2->applies._[old].pset, sizeof(PSet));
+                if (cmp == 0) {
+                    is_new = 0;
+                    break;
+                }
+            }
+            new_psets[new] = is_new;
+            new_applies_count += is_new;
+        }
     }
-    
+
+    tb2->applies.number = tb2->applies.number + new_applies_count;
+    tb2->applies._ = realloc(tb2->applies._, sizeof(TestBed2Apply) * tb2->applies.number);
+
+    new_psets_index = old_applies_count;
+    for (size_t a = 0; a < psets.number; a++) {
+        if (new_psets[a]) {
+            tb2->applies._[new_psets_index].pset = psets._[a];
+            tb2->applies._[new_psets_index].applied = 0;
+            new_psets_index++;
+        }
+    }
+
     for (size_t s = 0; s < tb2->sources.number; s++) {
         TB2WindowingsSource swindowings = tb2->windowings.bysource._[s];
         for (size_t i = 0; i < tb2->wsizes.number; i++) {
             for (size_t w = 0; w < swindowings.bywsize._[i]->windows.number; w++) {
-                wapply_init(swindowings.bywsize._[i]->windows._[w], psets.number);
+                wapply_init(swindowings.bywsize._[i]->windows._[w], tb2->applies.number);
             }
         }
-        stratosphere_apply(swindowings.bywsize, &psets, NULL);
     }
 
-    tb2->applied = 1;
+    printf("New psets added over %ld: %ld\n", old_applies_count, new_applies_count);
+}
 
-    CLONEMANY(tb2->psets, psets);
+void testbed2_apply(RTestBed2 tb2) {
+    MANY(PSet) to_apply_psets;
+
+    if (tb2->applies.number == 0) {
+        printf("Error: impossible to apply, no parameters added.\n");
+        return;
+    }
+    {
+        size_t applied = 0;
+        for (size_t a = 0; a < tb2->applies.number; a++) {
+            applied += tb2->applies._[a].applied;
+        }
+        if (applied == tb2->applies.number) {
+            printf("Notice: all applies already applied, skipping apply.\n");
+            return;
+        }
+    }
+
+    {
+        int idx = 0;
+        INITMANY(to_apply_psets, tb2->applies.number, PSet);
+        for (size_t p = 0; p < tb2->applies.number; p++) {
+            if (tb2->applies._[p].applied == 0) {
+                to_apply_psets._[idx] = tb2->applies._[p].pset;
+                ++idx;
+            }
+        }
+        to_apply_psets.number = idx;
+    }
+
+
+    for (size_t s = 0; s < tb2->sources.number; s++) {
+        TB2WindowingsSource swindowings = tb2->windowings.bysource._[s];
+        stratosphere_apply(swindowings.bywsize, &to_apply_psets);
+    }
+
+    for (size_t p = 0; p < tb2->applies.number; p++) {
+        tb2->applies._[p].applied = 1;
+    }
+
+    FREEMANY(to_apply_psets);
 }
 
 void testbed2_free(RTestBed2 tb2) {
@@ -111,32 +182,34 @@ void testbed2_free(RTestBed2 tb2) {
     FREEMANY(tb2->datasets.bywsize);
     FREEMANY(tb2->sources);
     FREEMANY(tb2->wsizes);
-    FREEMANY(tb2->psets);
+    FREEMANY(tb2->applies);
     free(tb2);
 }
 
 void testbed2_io_parameters(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    MANY(PSet)* psets = &tb2->psets;
+    MANY(TestBed2Apply)* applies = &tb2->applies;
 
-    FRW(psets->number);
+    FRW(applies->number);
 
-    if (rw == IO_READ && psets->number > 0) {
-        INITMANYREF(psets, psets->number, PSet);
+    if (rw == IO_READ && applies->number > 0) {
+        INITMANYREF(applies, applies->number, TestBed2Apply);
     }
 
-    for (size_t p = 0; p < psets->number; p++) {
-        PSet* pset = &psets->_[p];
+    for (size_t p = 0; p < applies->number; p++) {
+        TestBed2Apply* apply = &applies->_[p];
 
-        FRW(pset->id);
-        FRW(pset->ninf);
-        FRW(pset->pinf);
-        FRW(pset->nn);
-        FRW(pset->wl_rank);
-        FRW(pset->wl_value);
-        FRW(pset->windowing);
-        FRW(pset->nx_epsilon_increment);
+        FRW(apply->applied);
+
+        FRW(apply->pset.index);
+        FRW(apply->pset.ninf);
+        FRW(apply->pset.pinf);
+        FRW(apply->pset.nn);
+        FRW(apply->pset.wl_rank);
+        FRW(apply->pset.wl_value);
+        FRW(apply->pset.windowing);
+        FRW(apply->pset.nx_epsilon_increment);
     }
 }
 
@@ -202,21 +275,19 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, RTestBed2 tb2, RW
         FRW(window0->fn_req_min);
         FRW(window0->fn_req_max);
 
-        if (tb2->psets.number > 0 && tb2->applied) {
-            if (rw == IO_READ) {
-                wapply_init(window0, tb2->psets.number);
-            }
-            for (size_t p = 0; p < tb2->psets.number; p++) {
-                WApply* wapply = &window0->applies._[p];
-                FRW(wapply->dn_bad_05);
-                FRW(wapply->dn_bad_0999);
-                FRW(wapply->dn_bad_099);
-                FRW(wapply->dn_bad_09);
-                FRW(wapply->logit);
-                FRW(wapply->pset_index);
-                FRW(wapply->wcount);
-                FRW(wapply->whitelistened);
-            }
+        if (rw == IO_READ) {
+            wapply_init(window0, tb2->applies.number);
+        }
+        for (size_t p = 0; p < tb2->applies.number; p++) {
+            WApply* wapply = &window0->applies._[p];
+            FRW(wapply->dn_bad_05);
+            FRW(wapply->dn_bad_0999);
+            FRW(wapply->dn_bad_099);
+            FRW(wapply->dn_bad_09);
+            FRW(wapply->logit);
+            FRW(wapply->pset_index);
+            FRW(wapply->wcount);
+            FRW(wapply->whitelistened);
         }
     }
 }
@@ -263,17 +334,14 @@ void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const WSize 
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     WSize wsize2;
-    size_t applies_number;
     Index windows_counter;
 
     if (rw == IO_WRITE) {
         wsize2 = wsize;
-        applies_number = (*ds_ref)->applies_number;
         windows_counter = dataset_counter(*ds_ref);
     }
 
     FRW(wsize2);
-    FRW(applies_number);
     FRW(windows_counter);
 
     if (wsize2.index != wsize.index && wsize2.value != wsize.value) {
@@ -281,7 +349,7 @@ void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const WSize 
     }
 
     if (rw == IO_READ) {
-        (*ds_ref) = dataset0_create(wsize, applies_number, windows_counter);
+        (*ds_ref) = dataset0_create(wsize, windows_counter);
     }
 
     Index walker;
@@ -333,7 +401,7 @@ void testbed2_io_folds(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     }
 }
 
-int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied) {
+int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2) {
     char fpath[210];
     FILE* file;
 
@@ -342,12 +410,7 @@ int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied) 
         return -1;
     }
 
-    if (IO_WRITE && applied == 1 && (*tb2)->applied == 0) {
-        printf("Error: impossible to save tb2 in applied version because tb2 has not been applied.\n");
-        return -1;
-    }
-
-    sprintf(fpath, "%s/tb2%s.bin", dirname, applied ? "_applied" : "_folds");
+    sprintf(fpath, "%s/tb2.bin", dirname);
     file = io_openfile(rw, fpath);
 
     if (file == NULL) {
@@ -363,8 +426,6 @@ int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2, int applied) 
     } else {
         testbed2_io_wsizes(rw, file, &(*tb2)->wsizes);
     }
-
-    (*tb2)->applied = applied;
 
     testbed2_io_sources(rw, file, (*tb2));
 
@@ -451,10 +512,12 @@ void testbed2_md(char dirname[200], const RTestBed2 tb2) {
     FP("\n\n");
 
     FPNL(2, "## Parameters");
+    size_t applies_applied_count = 0;
     {
         const int len_header = 18;
         const char* headers[] = {
             "id",
+            "applied",
             "ninf",
             "pinf",
             "nn",
@@ -475,9 +538,11 @@ void testbed2_md(char dirname[200], const RTestBed2 tb2) {
             }
         }
         FPNL(1, "|");
-        for (size_t i = 0; i < tb2->psets.number; i++) {
-            TCPC(PSet) pset = &tb2->psets._[i];
-            FP("|%*ld", len_header, pset->id);
+        for (size_t i = 0; i < tb2->applies.number; i++) {
+            TCPC(PSet) pset = &tb2->applies._[i].pset;
+            applies_applied_count += tb2->applies._[i].applied;
+            FP("|%*ld", len_header, i);
+            FP("|%*d", len_header,  tb2->applies._[i].applied);
             FP("|%*f", len_header,  pset->ninf);
             FP("|%*f", len_header,  pset->pinf);
             FP("|%*s", len_header,  NN_NAMES[pset->nn]);
@@ -492,11 +557,7 @@ void testbed2_md(char dirname[200], const RTestBed2 tb2) {
 
     FPNL(2, "## Applied");
 
-    if (tb2->applied == 0) {
-        FPNL(2, "> This TestBed has not been applied.");
-    } else {
-        FPNL(2, "> This TestBed has been applied.");
-    }
+    FPNL(2, "> This TestBed has applied for %ld over %ld applies.", applies_applied_count, tb2->applies.number);
 
     FPNL(2, "## Foldings");
 

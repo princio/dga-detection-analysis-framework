@@ -5,6 +5,6 @@
 #include "testbed2.h"
 
 void stratosphere_add(RTestBed2 testbed);
-void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets, int32_t loaded[]);
+void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets);
 
 #endif

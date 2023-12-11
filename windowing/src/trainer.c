@@ -21,16 +21,16 @@ typedef MANY(double) ThsDataset;
 typedef MANY(Detection) DetectionDataset[3];
 MAKEMANY(ThsDataset);
 
-MANY(ThsDataset) _trainer_ths(RDataset0 dataset) {
+MANY(ThsDataset) _trainer_ths(RDataset0 dataset, const size_t applies_number) {
     MANY(ThsDataset) ths;
 
-    INITMANY(ths, dataset->applies_number, MANY(ThsDataset));
+    INITMANY(ths, applies_number, MANY(ThsDataset));
 
-    for (size_t a = 0; a < dataset->applies_number; a++) {
+    for (size_t a = 0; a < applies_number; a++) {
         INITMANY(ths._[a], dataset->windows.all.number, ThsDataset);
     }
 
-    for (size_t a = 0; a < dataset->applies_number; a++) {
+    for (size_t a = 0; a < applies_number; a++) {
         size_t n = 0;
 
         for (size_t w = 0; w < dataset->windows.all.number; w++) {
@@ -73,19 +73,20 @@ RTrainer trainer_create(RTestBed2 tb2, MANY(Performance) thchoosers) {
 
     TrainerResults* results = &trainer->results;
 
+    trainer->tb2 = tb2;
     trainer->thchoosers = thchoosers;
 
     CLONEMANY(trainer->thchoosers, thchoosers);
     
     INITMANY(results->bywsize, tb2->wsizes.number, ResultsWSize);
     for (size_t w = 0; w < tb2->wsizes.number; w++) {
-        INITMANY(results->bywsize._[w].byapply, tb2->psets.number, ResultsApply);
-        for (size_t a = 0; a < tb2->psets.number; a++) {
+        INITMANY(results->bywsize._[w].byapply, tb2->applies.number, ResultsApply);
+        for (size_t a = 0; a < tb2->applies.number; a++) {
             INITMANY(results->bywsize._[w].byapply._[a].byfold, tb2->folds.number, ResultsFold);
             for (size_t f = 0; f < tb2->folds.number; f++) {
                 INITMANY(results->bywsize._[w].byapply._[a].byfold._[f].bytry, tb2->folds._[f]->config.tries, ResultsFoldTries);
                 for (size_t try = 0; try < tb2->folds._[f]->config.tries; try++) {
-                    INITMANY(results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits, tb2->folds._[f]->config.tries, ResultsFoldTriesSplits);
+                    INITMANY(results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits, tb2->folds._[f]->config.k, ResultsFoldTriesSplits);
                     for (size_t k = 0; k < tb2->folds._[f]->config.k; k++) {
                         INITMANY(results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits._[k].bythchooser, thchoosers.number, Result);
                     }
@@ -101,6 +102,8 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers) {
     RTrainer trainer = trainer_create(tb2, thchoosers);
     TrainerResults* results = &trainer->results;
 
+    testbed2_apply(tb2);
+
     int r = 0;
     for (size_t idxfold = 0; idxfold < tb2->folds.number; idxfold++) {
         for (size_t try = 0; try < tb2->folds._[idxfold]->config.tries; try++) {
@@ -115,10 +118,10 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers) {
                 for (size_t idxsplit = 0; idxsplit < splits->splits.number; idxsplit++) {
                     DatasetSplit0 split = splits->splits._[idxsplit];
 
-                    MANY(ThsDataset) ths = _trainer_ths(split.train);
-                    MANY(Detection) detections[tb2->psets.number];
+                    MANY(ThsDataset) ths = _trainer_ths(split.train, tb2->applies.number);
+                    MANY(Detection) detections[tb2->applies.number];
 
-                    for (size_t a = 0; a < tb2->psets.number; a++) {
+                    for (size_t a = 0; a < tb2->applies.number; a++) {
                         INITMANY(detections[a], ths._[a].number, Detection);
                     }
 
@@ -126,28 +129,28 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers) {
                         RWindow0 window0 = split.train->windows.all._[w];
                         RSource source = window0->windowing->source;
 
-                        for (size_t a = 0; a < tb2->psets.number; a++) {
-                            for (size_t t = 0; t < ths._[a].number; t++) {
-                                double th = ths._[a]._[t];
+                        for (size_t a = 0; a < tb2->applies.number; a++) {
+                            for (size_t ev = 0; ev < ths._[a].number; ev++) {
+                                double th = ths._[a]._[ev];
                                 const int prediction = window0->applies._[a].logit >= th;
                                 const int infected = window0->windowing->source->wclass.mc > 0;
                                 const int is_true = prediction == infected;
-                                detections[a]._[t].th = th;
-                                detections[a]._[t].windows[source->wclass.mc][is_true]++;
-                                detections[a]._[t].sources[source->wclass.mc][source->index.multi][is_true]++;
+                                detections[a]._[ev].th = th;
+                                detections[a]._[ev].windows[source->wclass.mc][is_true]++;
+                                detections[a]._[ev].sources[source->wclass.mc][source->index.multi][is_true]++;
                             }
                         }
                     }
                 
-                    MANY(Detection) best_detections[tb2->psets.number];
-                    int best_detections_init[tb2->psets.number][thchoosers.number];
-                    memset(best_detections_init, 0, sizeof(int) * tb2->psets.number * thchoosers.number);
+                    MANY(Detection) best_detections[tb2->applies.number];
+                    int best_detections_init[tb2->applies.number][thchoosers.number];
+                    memset(best_detections_init, 0, sizeof(int) * tb2->applies.number * thchoosers.number);
 
-                    for (size_t a = 0; a < tb2->psets.number; a++) {
+                    for (size_t a = 0; a < tb2->applies.number; a++) {
                         INITMANY(best_detections[a], thchoosers.number, Detection);
                     }
 
-                    for (size_t idxapply = 0; idxapply < tb2->psets.number; idxapply++) {
+                    for (size_t idxapply = 0; idxapply < tb2->applies.number; idxapply++) {
                         for (size_t idxth = 0; idxth < ths._[idxapply].number; idxth++) {
                             for (size_t idxthchooser = 0; idxthchooser < thchoosers.number; idxthchooser++) {
                                 double current_score = detect_performance(&detections[idxapply]._[idxth], &thchoosers._[idxthchooser]);
@@ -172,11 +175,11 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers) {
                         RWindow0 window0 = split.test->windows.all._[w];
                         RSource source = window0->windowing->source;
 
-                        for (size_t a = 0; a < tb2->psets.number; a++) {
+                        for (size_t a = 0; a < tb2->applies.number; a++) {
                             for (size_t ev = 0; ev < thchoosers.number; ev++) {
                                 double th = best_detections[a]._[ev].th;
 
-                                Detection* detection = &results->bywsize._[idxwsize].byapply._[a].byfold._[idxsplit].bytry._[try].bysplits._[idxsplit].bythchooser._[ev].best_test;
+                                Detection* detection = &results->bywsize._[idxwsize].byapply._[a].byfold._[idxfold].bytry._[try].bysplits._[idxsplit].bythchooser._[ev].best_test;
 
                                 const int prediction = window0->applies._[a].logit >= th;
                                 const int infected = window0->windowing->source->wclass.mc > 0;
@@ -188,7 +191,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers) {
                             }
                         }
                         
-                        for (size_t a = 0; a < tb2->psets.number; a++) {
+                        for (size_t a = 0; a < tb2->applies.number; a++) {
                             for (size_t ev = 0; ev < thchoosers.number; ev++) {
                                 Result* result = &RESULT_IDX((*results), idxwsize, a, idxfold, try, idxsplit, ev);
 
@@ -199,11 +202,11 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers) {
                         }
                     }
 
-                    for (size_t a = 0; a < tb2->psets.number; a++) {
+                    for (size_t a = 0; a < tb2->applies.number; a++) {
                         FREEMANY(best_detections[a]);
                     }
 
-                    for (size_t a = 0; a < tb2->psets.number; a++) {
+                    for (size_t a = 0; a < tb2->applies.number; a++) {
                         FREEMANY(detections[a]);
                     }
 
@@ -247,10 +250,10 @@ void trainer_io_thchoosers(IOReadWrite rw, FILE* file, MANY(Performance)* thchoo
         INITMANYREF(thchoosers, thchoosers->number, Performance);
     }
 
-    for (size_t t = 0; t < thchoosers->number; t++) {
-        FRW(thchoosers->_[t].dgadet);
-        FRW(thchoosers->_[t].name);
-        FRW(thchoosers->_[t].greater_is_better);
+    for (size_t ev = 0; ev < thchoosers->number; ev++) {
+        FRW(thchoosers->_[ev].dgadet);
+        FRW(thchoosers->_[ev].name);
+        FRW(thchoosers->_[ev].greater_is_better);
     }
 }
 
@@ -324,8 +327,6 @@ void trainer_io(IOReadWrite rw, char dirname[200], RTestBed2 tb2, RTrainer* trai
 
 void trainer_md(char dirname[200], RTrainer trainer) {
     char fpath[210];
-    time_t t;
-    struct tm tm;
     TrainerResults* results;
     RTestBed2 tb2;
     RFold fold;
@@ -333,9 +334,6 @@ void trainer_md(char dirname[200], RTrainer trainer) {
 
     sprintf(fpath, "%s/trainer.md", dirname);
     file = fopen(fpath, "w");
-
-    t = time(NULL);
-    tm = *localtime(&t);
 
     results = &trainer->results;
     tb2 = trainer->tb2;
@@ -346,7 +344,13 @@ void trainer_md(char dirname[200], RTrainer trainer) {
 
     FPNL(2, "# Trainer");
 
-    FPNL(3, "Saved on date: %d/%02d/%02d %02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    {
+        time_t time_now;
+        struct tm tm;
+        time_now = time(NULL);
+        tm = *localtime(&time_now);
+        FPNL(3, "Saved on date: %d/%02d/%02d %02d:%02d:%02d", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    }
 
     FPNL(2, "## Results");
 
@@ -388,7 +392,7 @@ void trainer_md(char dirname[200], RTrainer trainer) {
                                 FP("|%*ld",  len_header, trainer->tb2->wsizes._[w].value);
                                 FP("|%*ld",  len_header, a);
                                 FP("|%*ld",  len_header, k);
-                                FP("|%*s",  len_header, trainer->thchoosers._[t].name);
+                                FP("|%*s",  len_header, trainer->thchoosers._[ev].name);
                                 DGAFOR(cl) {
                                     FP("|%*.4f",  len_header, TR(result->best_train.windows, cl));
                                 }
@@ -407,4 +411,6 @@ void trainer_md(char dirname[200], RTrainer trainer) {
     #undef FP
     #undef FPNL
     #undef TP
+
+    fclose(file);
 }

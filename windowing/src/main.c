@@ -86,9 +86,15 @@ void print_trainer(RTrainer trainer) {
 
     for (size_t w = 0; w < results->bywsize.number; w++) {
         for (size_t a = 0; a < results->bywsize._[w].byapply.number; a++) {
-            for (size_t f = 0; f < results->bywsize._[w].byapply._[a].byfold.number; f++) {
-                for (size_t try = 0; try < results->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
-                    for (size_t k = 0; k < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
+            {
+                size_t f = 0;
+            // for (size_t f = 0; f < results->bywsize._[w].byapply._[a].byfold.number; f++) {
+                {
+                // for (size_t try = 0; try < results->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
+                    size_t try = 0;
+                    {
+                        size_t k = 0;
+                    // for (size_t k = 0; k < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
                         for (size_t ev = 0; ev < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits._[k].bythchooser.number; ev++) {
 
                             Result* result = &RESULT_IDX((*results), w, a, f, try, k, ev);
@@ -134,7 +140,7 @@ MANY(WSize) make_wsizes() {
 
     WSize wsizes_arr[] = {
         {.index = index++, .value = 100},
-        {.index = index++, .value = 500},
+        // {.index = index++, .value = 500},
     };
 
     n = sizeof(wsizes_arr)/sizeof(WSize);
@@ -144,35 +150,47 @@ MANY(WSize) make_wsizes() {
     return wsizes;
 }
 
-MANY(PSet) make_parameters() {
+MANY(PSet) make_parameters(const size_t subset) {
     PSetGenerator* psetgenerator = calloc(1, sizeof(PSetGenerator));
 
     {
-        NN nn[] = { NN_NONE };//, NN_TLD, NN_ICANN, NN_PRIVATE };
+        NN nn[] = {
+            NN_NONE,
+            NN_TLD,
+            NN_ICANN,
+            NN_PRIVATE
+        };
 
         WindowingType windowing[] = {
-            WINDOWING_Q
-            // WINDOWING_R,
-            // WINDOWING_QR
+            WINDOWING_Q,
+            WINDOWING_R,
+            WINDOWING_QR
         };
 
         double ninf[] = {
-            -20
+            -50,
+            -20,
+            0
         };
 
         double pinf[] = {
-            20
+            50,
+            20,
+            0
         };
 
         size_t wl_rank[] = {
             100,
-            // 1000,
-            // 100000,
+            1000,
+            10000,
+            100000
         };
 
         size_t wl_value[] = {
+            0,
+            -20,
             -50,
-            // -10
+            -100
         };
 
         double nx_epsilon_increment[] = { 0.1 };
@@ -194,20 +212,26 @@ MANY(PSet) make_parameters() {
 
     parameters_generate_free(psetgenerator);
 
+    if (subset && subset < psets.number) {
+        psets.number = subset;
+    }
+
     return psets;
 }
 
 MANY(Performance) make_performance() {
     MANY(Performance) performances;
 
-    INITMANY(performances, 3, Performance);
+    INITMANY(performances, 10, Performance);
 
     int i = 0;
     performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_1];
     // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_05];
     // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_01];
-    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_TPR];
+    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_TPR];
     performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_FPR];
+
+    performances.number = i;
 
     return performances;
 }
@@ -230,6 +254,129 @@ RTrainer run_trainer(IOReadWrite rw, char dirname[200], RTestBed2 tb2) {
     return trainer;
 }
 
+void test_loadANDsave() {
+    char dirname[200];
+
+    for (size_t rw = 0; rw < 3; rw++) {
+        RTestBed2 tb2;
+        RTrainer trainer;
+
+        tb2 = NULL;
+        trainer = NULL;
+
+        printf("------ RW %ld\n\n\n", rw);
+
+        if (rw == 0) {
+            {
+                MANY(WSize) wsizes;
+                wsizes = make_wsizes();
+                tb2 = testbed2_create(wsizes);
+                stratosphere_add(tb2);
+                testbed2_windowing(tb2);
+                FREEMANY(wsizes);
+            }
+            {
+                FoldConfig foldconfig;
+                foldconfig.tries = 1; foldconfig.k = 10; foldconfig.k_test = 8;
+                fold_add(tb2, foldconfig);
+                // foldconfig.tries = 5; foldconfig.k = 20; foldconfig.k_test = 15;
+                // fold_add(tb2, foldconfig);
+                // foldconfig.tries = 5; foldconfig.k = 10; foldconfig.k_test = 8;
+                // fold_add(tb2, foldconfig);
+            }
+
+            sprintf(dirname, "/home/princio/Desktop/results/test/not_loaded/not_applied/");
+            testbed2_io(IO_WRITE, dirname, &tb2);
+
+            {
+                MANY(PSet) psets;
+                psets = make_parameters(2);
+                testbed2_addpsets(tb2, psets);
+                testbed2_apply(tb2);
+                FREEMANY(psets);
+            }
+
+            sprintf(dirname, "/home/princio/Desktop/results/test/not_loaded/applied/");
+            testbed2_io(IO_WRITE, dirname, &tb2);
+        }
+
+        if (rw == 1) {
+            sprintf(dirname, "/home/princio/Desktop/results/test/not_loaded/not_applied/");
+            testbed2_io(IO_READ, dirname, &tb2);
+            sprintf(dirname, "/home/princio/Desktop/results/test/loaded/not_applied/");
+            testbed2_io(IO_WRITE, dirname, &tb2);
+            {
+                MANY(PSet) psets;
+                psets = make_parameters(2);
+                testbed2_addpsets(tb2, psets);
+                testbed2_apply(tb2);
+                FREEMANY(psets);
+            }
+            sprintf(dirname, "/home/princio/Desktop/results/test/loaded/applied");
+            testbed2_io(IO_WRITE, dirname, &tb2);
+        } else
+        if (rw == 2) {
+            MANY(Performance) performances;
+
+            sprintf(dirname, "/home/princio/Desktop/results/test/loaded/applied");
+            testbed2_io(IO_READ, dirname, &tb2);
+            performances = make_performance();
+            trainer = trainer_run(tb2, performances);
+            FREEMANY(performances);
+
+            trainer_io(IO_WRITE, dirname, tb2, &trainer);
+            print_trainer(trainer);
+            trainer_free(trainer);
+        }
+
+        testbed2_free(tb2);
+        gatherer_free_all();
+    }
+}
+
+void test_addpsets() {
+    char dirname[200];
+
+    RTestBed2 tb2;
+    MANY(Performance) performances;
+
+    tb2 = NULL;
+    performances = make_performance();
+
+    sprintf(dirname, "/home/princio/Desktop/results/test/loaded/applied");
+    testbed2_io(IO_READ, dirname, &tb2);
+
+    {
+        RTrainer trainer;
+        trainer = trainer_run(tb2, performances);
+        print_trainer(trainer);
+        trainer_free(trainer);
+    }
+
+    {
+        MANY(PSet) psets;
+        psets = make_parameters(4);
+        testbed2_addpsets(tb2, psets);
+        FREEMANY(psets);
+    }
+
+    printf("--------\n");
+
+    {
+        RTrainer trainer;
+        trainer = trainer_run(tb2, performances);
+        print_trainer(trainer);
+        trainer_free(trainer);
+    }
+
+    sprintf(dirname, "/home/princio/Desktop/results/test/loaded/addpsets");
+    testbed2_io(IO_WRITE, dirname, &tb2);
+
+    testbed2_free(tb2);
+    gatherer_free_all();
+    FREEMANY(performances);
+}
+
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
 
@@ -247,77 +394,8 @@ int main (int argc, char* argv[]) {
 
     /* Do your magic here :) */
 
-    char dirname[200];
-
-    for (size_t rw = 0; rw < 4; rw++) {
-        RTestBed2 tb2;
-        RTrainer trainer;
-
-        tb2 = NULL;
-        trainer = NULL;
-
-        if (rw == 0) {
-            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_writefold_writeapply");
-
-            {
-                MANY(WSize) wsizes;
-                wsizes = make_wsizes();
-                tb2 = testbed2_create(wsizes);
-                stratosphere_add(tb2);
-                testbed2_windowing(tb2);
-                FREEMANY(wsizes);
-            }
-            {
-                FoldConfig foldconfig;
-                foldconfig.tries = 5; foldconfig.k = 2; foldconfig.k_test = 1;
-                fold_add(tb2, foldconfig);
-                // foldconfig.tries = 5; foldconfig.k = 20; foldconfig.k_test = 15;
-                // fold_add(tb2, foldconfig);
-                // foldconfig.tries = 5; foldconfig.k = 10; foldconfig.k_test = 8;
-                // fold_add(tb2, foldconfig);
-            }
-
-            testbed2_io(IO_WRITE, dirname, &tb2, 0);
-            
-            {
-                MANY(PSet) psets;
-                psets = make_parameters();
-                testbed2_apply(tb2, psets);
-                FREEMANY(psets);
-            }
-
-            testbed2_io(IO_WRITE, dirname, &tb2, 1);
-        }
-
-        if (rw == 1) {
-            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_writefold_writeapply");
-            testbed2_io(IO_READ, dirname, &tb2, 0);
-    
-            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_loadfold_writefold_writeapply");
-            testbed2_io(IO_WRITE, dirname, &tb2, 0);
-            {
-                MANY(PSet) psets;
-                psets = make_parameters();
-                testbed2_apply(tb2, psets);
-                FREEMANY(psets);
-            }
-            testbed2_io(IO_WRITE, dirname, &tb2, 1);
-        } else
-        if (rw == 2) {
-            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_loadfold_writefold_writeapply");
-            testbed2_io(IO_READ, dirname, &tb2, 0);
-        } else
-        if (rw == 3) {
-            sprintf(dirname, "/home/princio/Desktop/results/test_2/rw_loadfold_writefold_writeapply");
-            testbed2_io(IO_READ, dirname, &tb2, 1);
-        }
-
-        // trainer = run_trainer(rws[rw], dirname, tb2);
-        // print_trainer(trainer);
-        testbed2_free(tb2);
-        gatherer_free_all();
-        // trainer_free(trainer);
-    }
+    test_loadANDsave();
+    test_addpsets();
 
     return 0;
 }

@@ -7,7 +7,7 @@
 #include "io.h"
 
 typedef struct PSet {
-    size_t id;
+    size_t index;
     
     double ninf;
     double pinf;
