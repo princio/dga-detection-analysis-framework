@@ -1,7 +1,5 @@
 #include "io.h"
 
-#include "cache.h"
-
 #include <assert.h>
 #include <endian.h>
 #include <errno.h>
@@ -22,9 +20,9 @@ int io_fileexists(char* dir) {
     return stat(dir, &st) == 0 && S_ISREG(st.st_mode);
 }
 
-int io_makedir(char* dir, size_t dirsize, int append_time) {
+int io_makedir(char dir[PATH_MAX], int append_time) {
     if (append_time) {
-        if (strlen(dir) + 50 > dirsize) {
+        if (strlen(dir) + 50 > PATH_MAX) {
             printf("Warning: dirlen + 50 > dirlen");
         }
         time_t t = time(NULL);
@@ -37,6 +35,35 @@ int io_makedir(char* dir, size_t dirsize, int append_time) {
     }
 
     return 0;
+}
+
+int io_makedirs(char dir[PATH_MAX]) {
+    char tmp[PATH_MAX];
+    char *p = NULL;
+    size_t len;
+    int error;
+
+    error = 0;
+
+    snprintf(tmp, PATH_MAX, "%s", dir);
+    len = strlen(tmp);
+    for (p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = 0;
+            if (io_direxists(tmp) == 0) {
+                printf("Creating %s:\t", tmp);
+                if (mkdir(tmp, S_IRWXU)) {
+                    error++;
+                    printf("error\n");
+                } else {
+                    printf("success\n");
+                }
+            }
+            *p = '/';
+        }
+    }
+
+    return error;
 }
 
 FILE* io_openfile(IOReadWrite read, char fname[500]) {

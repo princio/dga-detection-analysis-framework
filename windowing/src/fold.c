@@ -1,6 +1,5 @@
 #include "fold.h"
 
-#include "cache.h"
 #include "dataset.h"
 #include "gatherer.h"
 #include "io.h"

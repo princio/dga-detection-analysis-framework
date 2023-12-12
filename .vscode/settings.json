@@ -152,7 +152,8 @@
         "window0s.h": "c",
         "trainer.h": "c",
         "tetra.h": "c",
-        "fold.h": "c"
+        "fold.h": "c",
+        "limits.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

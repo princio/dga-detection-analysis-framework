@@ -19,7 +19,6 @@
 
 #include "args.h"
 #include "colors.h"
-#include "cache.h"
 #include "common.h"
 #include "fold.h"
 #include "gatherer.h"
@@ -33,6 +32,7 @@
 
 #include <assert.h>
 #include <float.h>
+#include <limits.h>
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
@@ -134,11 +134,11 @@ void print_trainer(RTrainer trainer) {
 
 
 #define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
-void csv_trainer(char dirname[200], RTrainer trainer) {
-    char fpath[210];
+void csv_trainer(char dirname[PATH_MAX], RTrainer trainer) {
+    char fpath[PATH_MAX];
     FILE* file_csv;
 
-    if (io_makedir(dirname, 200, 0)) {
+    if (io_makedir(dirname, 0)) {
         printf("Error: impossible to create directory <%s>\n", dirname);
         return;
     }
@@ -441,7 +441,7 @@ void test_addpsets() {
     FREEMANY(performances);
 }
 
-void tb2_make(char dirname[200], MANY(WSize) wsizes, MANY(PSet) psets) {
+void tb2_make(char fpath[PATH_MAX], MANY(WSize) wsizes, MANY(PSet) psets) {
     RTestBed2 tb2;
     RTrainer trainer;
 
@@ -473,7 +473,7 @@ void tb2_make(char dirname[200], MANY(WSize) wsizes, MANY(PSet) psets) {
         testbed2_apply(tb2);
     }
 
-    testbed2_io(IO_WRITE, dirname, &tb2);
+    testbed2_io(IO_WRITE, fpath, &tb2);
 
     testbed2_free(tb2);
     gatherer_free_all();
@@ -499,8 +499,22 @@ int main (int argc, char* argv[]) {
     // test_loadANDsave();
     // test_addpsets();
 
-    char fpathtb2[200];
-    char fpathcsv[200];
+    
+    char rootdir[PATH_MAX - 100];
+
+    if (argc == 2) {
+        sprintf(rootdir, "%s", argv[1]);
+    } else {
+        sprintf(rootdir, "/home/princio/Desktop/results/0_tests/");
+    }
+
+    if (io_makedirs(rootdir)) {
+        printf("Impossible to create directories: %s\n", rootdir);
+        exit(1);
+    }
+
+    char fpathtb2[PATH_MAX];
+    char fpathcsv[PATH_MAX];
 
     RTestBed2 tb2;
     MANY(Performance) performances;
@@ -512,9 +526,8 @@ int main (int argc, char* argv[]) {
     wsizes = make_wsizes();
     psets = make_parameters(0);
     performances = make_performance();
-
-    sprintf(fpathtb2, "/home/princio/Desktop/results/tests/wsize_1000/tb2_%ld_%ld.bin", wsizes._[0].value, psets.number);
-    sprintf(fpathcsv, "/home/princio/Desktop/results/tests/wsize_1000/tb2_%ld_%ld.csv", wsizes._[0].value, psets.number);
+    snprintf(fpathtb2, PATH_MAX, "%s/tb2_%ld_%ld.bin", rootdir, wsizes._[0].value, psets.number);
+    snprintf(fpathcsv, PATH_MAX, "%s/tb2_%ld_%ld.csv", rootdir, wsizes._[0].value, psets.number);
 
     // if (1) {
     if (testbed2_io(IO_READ, fpathtb2, &tb2)) {

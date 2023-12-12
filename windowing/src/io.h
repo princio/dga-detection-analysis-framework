@@ -3,6 +3,7 @@
 
 #include "common.h"
 
+#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
@@ -37,7 +38,8 @@ FILE* io_openfile(IOReadWrite read, char fname[500]);
 int io_direxists(char* dir);
 int io_fileexists(char* dir);
 
-int io_makedir(char* dir, size_t dirsize, int append_time);
+int io_makedir(char dir[PATH_MAX], int append_time);
+int io_makedirs(char dir[PATH_MAX]);
 
 void io_dumphex(const void* data, size_t size);
 void io_fwrite32(uint32_t* n, FILE* file);

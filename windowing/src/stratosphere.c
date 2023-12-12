@@ -276,7 +276,7 @@ void _stratosphere_add(RTestBed2 tb2) {
 
     int nrows = PQntuples(pgresult);
 
-    nrows = 45; // DEBUG DEVELOP
+    nrows = 10; // DEBUG DEVELOP
 
     for(int row = 0; row < nrows; row++) {
         int32_t id;

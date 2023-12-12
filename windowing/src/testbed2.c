@@ -446,25 +446,11 @@ void testbed2_io_folds(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     }
 }
 
-int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2) {
-    char fpath[210];
+int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
     FILE* file;
-
-    if (rw == IO_READ && io_direxists(dirname) == 0) {
-        printf("Error: impossible to read: not existing directory <%s>\n", dirname);
-        return -1;
-    }
-
-    if (rw == IO_WRITE && io_makedir(dirname, 200, 0)) {
-        printf("Error: impossible to create directory <%s>\n", dirname);
-        return -1;
-    }
-
-    sprintf(fpath, "%s/tb2.bin", dirname);
     file = io_openfile(rw, fpath);
-
     if (file == NULL) {
-        printf("Error: file <%s> impossible to open.\n", fpath);
+        printf("Error[%s]: file <%s> impossible to open.\n", rw == IO_WRITE ? "w" : "r", fpath);
         return -1;
     }
 
@@ -492,19 +478,24 @@ int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2) {
     fclose(file);
 
     if (rw == IO_WRITE) {
-        testbed2_md(dirname, *tb2);
+        char fpath2[PATH_MAX];
+        sprintf(fpath2, "%s.md", fpath);
+        testbed2_md(fpath2, *tb2);
     }
 
     return 0;
 }
 
-void testbed2_md(char dirname[200], const RTestBed2 tb2) {
-    char fpath[210];
+void testbed2_md(char fpath[PATH_MAX], const RTestBed2 tb2) {
     time_t t = time(NULL);
     struct tm tm = *localtime(&t);
     FILE* file;
-    sprintf(fpath, "%s/tb2.md", dirname);
+
     file = fopen(fpath, "w");
+    if (file == NULL) {
+        printf("Error[%s]: file-md <%s> impossible to open.\n", fpath);
+        return -1;
+    }
 
     t = time(NULL);
     tm = *localtime(&t);

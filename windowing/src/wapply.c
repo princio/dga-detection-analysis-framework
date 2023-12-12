@@ -1,7 +1,6 @@
 
 #include "wapply.h"
 
-#include "cache.h"
 #include "common.h"
 #include "io.h"
 #include "window0s.h"
