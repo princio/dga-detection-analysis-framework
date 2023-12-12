@@ -67,9 +67,6 @@ void fold_add(RTestBed2 tb2, FoldConfig config) {
 
     gatherer_many_add((__MANY*) &tb2->folds, sizeof(RFold), 5, fold);
 
-    gatherer_many_realloc((__MANY*) &tb2->folds, sizeof(RFold), 5);
-    tb2->folds._[tb2->folds.number++] = fold;
-
     for (size_t try = 0; try < config.tries; try++) {
         for (size_t idxwsize = 0; idxwsize < TB2_WSIZES_N(tb2); idxwsize++) {
             fold->tries._[try].bywsize._[idxwsize].splits = dataset0_splits(tb2->datasets.bywsize._[idxwsize], config.k, config.k_test);

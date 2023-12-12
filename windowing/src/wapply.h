@@ -8,15 +8,15 @@
 #define WAPPLY_GET(APPLY, WSIZE_INDEX, PSET_INDEX)
 
 typedef struct WApply {
-    size_t pset_index;
+    uint32_t pset_index;
 
-    int32_t wcount;
+    uint16_t wcount;
     double  logit;
-    int32_t whitelistened;
-    int32_t dn_bad_05;
-    int32_t dn_bad_09;
-    int32_t dn_bad_099;
-    int32_t dn_bad_0999;
+    uint16_t whitelistened;
+    uint16_t dn_bad_05;
+    uint16_t dn_bad_09;
+    uint16_t dn_bad_099;
+    uint16_t dn_bad_0999;
 } WApply;
 
 MAKEMANY(WApply);

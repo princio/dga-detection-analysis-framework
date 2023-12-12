@@ -163,6 +163,7 @@ void testbed2_apply(RTestBed2 tb2) {
 
     for (size_t s = 0; s < tb2->sources.number; s++) {
         TB2WindowingsSource swindowings = tb2->windowings.bysource._[s];
+        printf("Performing apply for source %ld having fnreqmax=%ld.\n", s, tb2->sources._[s]->fnreq_max);
         stratosphere_apply(swindowings.bywsize, &to_apply_psets);
     }
 
@@ -202,7 +203,10 @@ void testbed2_io_parameters(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
 
         FRW(apply->applied);
 
-        FRW(apply->pset.index);
+        if (rw == IO_READ) {
+            apply->pset.index = p;
+        }
+
         FRW(apply->pset.ninf);
         FRW(apply->pset.pinf);
         FRW(apply->pset.nn);
@@ -270,20 +274,54 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, RTestBed2 tb2, RW
 
         window0->windowing = windowing;
 
-        FRW(window0->applies_number);
+        // FRW(window0->applies_number);
         FRW(window0->duration);
-        FRW(window0->fn_req_min);
-        FRW(window0->fn_req_max);
+
+        struct {
+            uint32_t min;
+            uint32_t max;
+        } fnreq;
+        memset(&fnreq, 0, sizeof(fnreq));
+
+        if (rw == IO_WRITE) {
+            fnreq.min = window0->fn_req_min;
+            fnreq.max = window0->fn_req_max;
+        }
+
+        FRW(fnreq.min);
+        FRW(fnreq.max);
 
         if (rw == IO_READ) {
+            window0->fn_req_min = fnreq.min;
+            window0->fn_req_max = fnreq.max;
             wapply_init(window0, tb2->applies.number);
         }
         for (size_t p = 0; p < tb2->applies.number; p++) {
             WApply* wapply = &window0->applies._[p];
-            FRW(wapply->dn_bad_05);
-            FRW(wapply->dn_bad_0999);
-            FRW(wapply->dn_bad_099);
-            FRW(wapply->dn_bad_09);
+            struct {
+             uint16_t _05;
+             uint16_t _0999;
+             uint16_t _099;
+             uint16_t _09;
+            } dn_bad;
+            memset(&dn_bad, 0, sizeof(dn_bad));
+
+            if (rw == IO_WRITE) {
+                dn_bad._05 = wapply->dn_bad_05;
+                dn_bad._0999 = wapply->dn_bad_0999;
+                dn_bad._099 = wapply->dn_bad_099;
+                dn_bad._09 = wapply->dn_bad_09;
+            }
+
+            FRW(dn_bad);
+
+            if (rw == IO_READ) {
+                wapply->dn_bad_05 = dn_bad._05;
+                wapply->dn_bad_0999 = dn_bad._0999;
+                wapply->dn_bad_099 = dn_bad._099;
+                wapply->dn_bad_09 = dn_bad._09;
+            }
+        
             FRW(wapply->logit);
             FRW(wapply->pset_index);
             FRW(wapply->wcount);
@@ -326,6 +364,8 @@ void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
             FRW((*windowing_ref)->windows.number);
 
             testbed2_io_windowing_windows(rw, file, tb2, *windowing_ref);
+
+            fflush(file);
         }
     }
 }
@@ -360,30 +400,35 @@ void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const WSize 
         RWindow0* window_mul_ref;
         RSource source;
 
-        size_t window_index;
-        size_t source_index;
-        size_t wsize_index;
+        struct {
+            uint32_t window_index;
+            uint8_t wsize_index;
+            uint16_t source_index;
+            uint8_t _void;
+        } windex;
+        memset(&windex, 0, sizeof(windex));
 
         if (rw == IO_WRITE) {
-            window_index = (*window_ref)->index;
-            source_index = (*window_ref)->windowing->source->index.all;
-            wsize_index = (*window_ref)->windowing->wsize.index;
+            windex.window_index = (*window_ref)->index;
+            windex.source_index = (*window_ref)->windowing->source->index.all;
+            windex.wsize_index = (*window_ref)->windowing->wsize.index;
+            windex._void = 0;
         }
 
-        FRW(window_index);
-        FRW(source_index);
-        FRW(wsize_index);
+        FRW(windex);
 
-        source = tb2->sources._[source_index];
+        source = tb2->sources._[windex.source_index];
 
         window_bin_ref = &(*ds_ref)->windows.binary[source->wclass.bc]._[walker.binary[source->wclass.bc]++];
         window_mul_ref = &(*ds_ref)->windows.multi[source->wclass.mc]._[walker.multi[source->wclass.mc]++];
 
         if (rw == IO_READ) {
-            (*window_ref) = tb2->windowings.bysource._[source_index].bywsize._[wsize_index]->windows._[window_index];
+            (*window_ref) = tb2->windowings.bysource._[windex.source_index].bywsize._[windex.wsize_index]->windows._[windex.window_index];
             (*window_bin_ref) = (*window_ref);
             (*window_mul_ref) = (*window_ref);
         }
+
+        // fflush(file);
     }
 }
 
@@ -405,7 +450,12 @@ int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2) {
     char fpath[210];
     FILE* file;
 
-    if (io_makedir(dirname, 200, 0)) {
+    if (rw == IO_READ && io_direxists(dirname) == 0) {
+        printf("Error: impossible to read: not existing directory <%s>\n", dirname);
+        return -1;
+    }
+
+    if (rw == IO_WRITE && io_makedir(dirname, 200, 0)) {
         printf("Error: impossible to create directory <%s>\n", dirname);
         return -1;
     }
@@ -414,7 +464,7 @@ int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2) {
     file = io_openfile(rw, fpath);
 
     if (file == NULL) {
-        printf("Error: file <%s> not opened.\n", fpath);
+        printf("Error: file <%s> impossible to open.\n", fpath);
         return -1;
     }
 

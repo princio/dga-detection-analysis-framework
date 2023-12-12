@@ -83,8 +83,8 @@ void gatherer_free_all() {
             if (gatherer_of_gatherers._[s].freefn) {
                 gatherer_of_gatherers._[s].freefn((void*) &MANY_GET(gatherer_of_gatherers._[s].many, i));
             }
-            *gatherer_of_gatherers._[s].ref = NULL;
         }
+        *gatherer_of_gatherers._[s].ref = NULL;
         FREEMANY(gatherer_of_gatherers._[s].many);
     }
     FREEMANY(gatherer_of_gatherers);

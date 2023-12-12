@@ -14,20 +14,30 @@
 RGatherer windowings_gatherer = NULL;
 
 void _windowing_free(void* item) {
-    RWindowing windowing = item;
-    FREEMANY(windowing->windows);
+    RWindowing* rwindowing_ref = item;
+    FREEMANY((*rwindowing_ref)->windows);
+    free(*rwindowing_ref);
 }
 
 RWindowing windowings_alloc() {
     if (windowings_gatherer == NULL) {
-        gatherer_alloc(&windowings_gatherer, "windowings", _windowing_free, 100, sizeof(__Windowing), 10);
+        gatherer_alloc(&windowings_gatherer, "windowings", _windowing_free, 100, sizeof(RWindowing*), 10);
     }
-    return (RWindowing) gatherer_alloc_item(windowings_gatherer);
+
+    RWindowing rwindowing = calloc(1, sizeof(__Windowing));
+
+    RWindowing* rwindowing_ref = (RWindowing*) gatherer_alloc_item(windowings_gatherer);
+
+    *rwindowing_ref  = rwindowing;
+    
+    return rwindowing;
 }
 
 RWindowing windowings_create(WSize wsize, RSource source) {
-    RWindowing windowing = windowings_alloc();
+    RWindowing windowing;
     const size_t nw = N_WINDOWS(source->fnreq_max, wsize.value);
+
+    windowing = windowings_alloc();
 
     windowing->wsize = wsize;
     windowing->source = source;

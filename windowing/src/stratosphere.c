@@ -236,8 +236,6 @@ void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets) {
 
             const int wnum = (int64_t) floor(message.fn_req / windowing->wsize.value);
 
-            windowing->windows._[wnum]->applies_number = psets->number;
-
             wapply_run_many(&windowing->windows._[wnum]->applies, &message, psets);
         }
     }
@@ -278,7 +276,7 @@ void _stratosphere_add(RTestBed2 tb2) {
 
     int nrows = PQntuples(pgresult);
 
-    nrows = 25; // DEBUG DEVELOP
+    nrows = 45; // DEBUG DEVELOP
 
     for(int row = 0; row < nrows; row++) {
         int32_t id;

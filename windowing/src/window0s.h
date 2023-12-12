@@ -10,11 +10,10 @@ typedef struct __Window0 {
     size_t index;
     RWindowing windowing;
     
-    double duration;
+    float duration;
 
-    size_t fn_req_min;
-    size_t fn_req_max;
-    size_t applies_number;
+    uint32_t fn_req_min;
+    uint32_t fn_req_max;
     
     MANY(WApply) applies;
 } __Window0;

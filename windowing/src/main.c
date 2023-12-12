@@ -80,21 +80,22 @@ MANY(Performance) performances;
 
 #define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
 void print_trainer(RTrainer trainer) {
+
+    FILE* file_csv = fopen("results.csv", "w");
+
     TrainerResults* results = &trainer->results;
 
     RTestBed2 tb2 = trainer->tb2;
 
+
+    fprintf(file_csv, ",,,,,,train,train,train,test,test,test");
+    fprintf(file_csv, "fold,try,k,wsize,apply,thchooser,0,1,2,0,1,2");
+
     for (size_t w = 0; w < results->bywsize.number; w++) {
         for (size_t a = 0; a < results->bywsize._[w].byapply.number; a++) {
-            {
-                size_t f = 0;
-            // for (size_t f = 0; f < results->bywsize._[w].byapply._[a].byfold.number; f++) {
-                {
-                // for (size_t try = 0; try < results->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
-                    size_t try = 0;
-                    {
-                        size_t k = 0;
-                    // for (size_t k = 0; k < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
+            for (size_t f = 0; f < results->bywsize._[w].byapply._[a].byfold.number; f++) {
+                for (size_t try = 0; try < results->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
+                    for (size_t k = 0; k < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
                         for (size_t ev = 0; ev < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits._[k].bythchooser.number; ev++) {
 
                             Result* result = &RESULT_IDX((*results), w, a, f, try, k, ev);
@@ -104,24 +105,82 @@ void print_trainer(RTrainer trainer) {
                                 char header[210];
                                 size_t h_idx = 0;
 
+                                sprintf(headers[h_idx++], "%3ld", f);
+                                sprintf(headers[h_idx++], "%3ld", try);
+                                sprintf(headers[h_idx++], "%3ld", k);
                                 sprintf(headers[h_idx++], "%5ld", tb2->wsizes._[w].value);
                                 sprintf(headers[h_idx++], "%3ld", a);
-                                sprintf(headers[h_idx++], "%3ld", k);
                                 sprintf(headers[h_idx++], "%12s", trainer->thchoosers._[ev].name);
                                 sprintf(header, "%s,%s,%s,%s,", headers[0], headers[1], headers[2], headers[3]);
                                 printf("%-30s ", header);
                             }
 
                             DGAFOR(cl) {
-                                if (cl == 1) continue;
                                 printf("%1.4f\t", TR(result->best_train.windows, cl));
                             }
                             printf("|\t");
                             DGAFOR(cl) {
-                                if (cl == 1) continue;
                                 printf("%1.4f\t", TR(result->best_test.windows, cl));
                             }
                             printf("\n");
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+#undef TR
+
+
+#define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
+void csv_trainer(char dirname[200], RTrainer trainer) {
+    char fpath[210];
+    FILE* file_csv;
+
+    if (io_makedir(dirname, 200, 0)) {
+        printf("Error: impossible to create directory <%s>\n", dirname);
+        return;
+    }
+
+    sprintf(fpath, "%s/results.csv", dirname);
+    file_csv = fopen(fpath, "w");
+
+    TrainerResults* results = &trainer->results;
+
+    RTestBed2 tb2 = trainer->tb2;
+
+    fprintf(file_csv, "caos,caos,caos,wsize,pset,pset,pset,pset,pset,pset,pset,pset,train,train,train,test,test,test\n");
+    fprintf(file_csv, "fold,try,k,wsize,ninf,pinf,nn,windowing,wl_rank,wl_value,nx_eps_incr,thchooser,0,1,2,0,1,2\n");
+
+    for (size_t w = 0; w < results->bywsize.number; w++) {
+        for (size_t a = 0; a < results->bywsize._[w].byapply.number; a++) {
+            for (size_t f = 0; f < results->bywsize._[w].byapply._[a].byfold.number; f++) {
+                for (size_t try = 0; try < results->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
+                    for (size_t k = 0; k < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
+                        for (size_t ev = 0; ev < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits._[k].bythchooser.number; ev++) {
+                            Result* result = &RESULT_IDX((*results), w, a, f, try, k, ev);
+
+                            fprintf(file_csv, "%ld,", f);
+                            fprintf(file_csv, "%ld,", try);
+                            fprintf(file_csv, "%ld,", k);
+                            fprintf(file_csv, "%ld,", tb2->wsizes._[w].value);
+                            fprintf(file_csv, "%f,", tb2->applies._[a].pset.ninf);
+                            fprintf(file_csv, "%f,", tb2->applies._[a].pset.pinf);
+                            fprintf(file_csv, "%s,", NN_NAMES[tb2->applies._[a].pset.nn]);
+                            fprintf(file_csv, "%s,", WINDOWING_NAMES[tb2->applies._[a].pset.windowing]);
+                            fprintf(file_csv, "%ld,", tb2->applies._[a].pset.wl_rank);
+                            fprintf(file_csv, "%f,", tb2->applies._[a].pset.wl_value);
+                            fprintf(file_csv, "%f,", tb2->applies._[a].pset.nx_epsilon_increment);
+                            fprintf(file_csv, "%s", trainer->thchoosers._[ev].name);
+
+                            DGAFOR(cl) {
+                                fprintf(file_csv, ",%1.4f", TR(result->best_train.windows, cl));
+                            }
+                            DGAFOR(cl) {
+                                fprintf(file_csv, ",%1.4f", TR(result->best_test.windows, cl));
+                            }
+                            fprintf(file_csv, "\n");
                         }
                     }
                 }
@@ -139,8 +198,13 @@ MANY(WSize) make_wsizes() {
     index = 0;
 
     WSize wsizes_arr[] = {
-        {.index = index++, .value = 100},
+        // {.index = index++, .value = 1},
+        // {.index = index++, .value = 10},
+        {.index = index++, .value = 50},
+        // {.index = index++, .value = 100},
         // {.index = index++, .value = 500},
+        // {.index = index++, .value = 1000},
+        // {.index = index++, .value = 1500},
     };
 
     n = sizeof(wsizes_arr)/sizeof(WSize);
@@ -163,34 +227,34 @@ MANY(PSet) make_parameters(const size_t subset) {
 
         WindowingType windowing[] = {
             WINDOWING_Q,
-            WINDOWING_R,
-            WINDOWING_QR
+            // WINDOWING_R,
+            // WINDOWING_QR
         };
 
         double ninf[] = {
             -50,
-            -20,
+            // -20,
             0
         };
 
         double pinf[] = {
             50,
-            20,
+            // 20,
             0
         };
 
         size_t wl_rank[] = {
-            100,
+            // 100,
             1000,
-            10000,
+            // 10000,
             100000
         };
 
         size_t wl_value[] = {
             0,
-            -20,
+            // -20,
             -50,
-            -100
+            // -100
         };
 
         double nx_epsilon_increment[] = { 0.1 };
@@ -377,6 +441,44 @@ void test_addpsets() {
     FREEMANY(performances);
 }
 
+void tb2_make(char dirname[200], MANY(WSize) wsizes, MANY(PSet) psets) {
+    RTestBed2 tb2;
+    RTrainer trainer;
+
+    tb2 = NULL;
+    trainer = NULL;
+
+    {
+        printf("Performing windowing...\n");
+        tb2 = testbed2_create(wsizes);
+        stratosphere_add(tb2);
+        testbed2_windowing(tb2);
+    }
+    {
+        printf("Performing folding...\n");
+        FoldConfig foldconfig;
+    
+        foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 2;
+        fold_add(tb2, foldconfig);
+
+        foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 5;
+        fold_add(tb2, foldconfig);
+
+        foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 8;
+        fold_add(tb2, foldconfig);
+    }
+    {
+        printf("Appling...\n");
+        testbed2_addpsets(tb2, psets);
+        testbed2_apply(tb2);
+    }
+
+    testbed2_io(IO_WRITE, dirname, &tb2);
+
+    testbed2_free(tb2);
+    gatherer_free_all();
+}
+
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
 
@@ -394,8 +496,46 @@ int main (int argc, char* argv[]) {
 
     /* Do your magic here :) */
 
-    test_loadANDsave();
-    test_addpsets();
+    // test_loadANDsave();
+    // test_addpsets();
+
+    char fpathtb2[200];
+    char fpathcsv[200];
+
+    RTestBed2 tb2;
+    MANY(Performance) performances;
+    RTrainer trainer;
+    MANY(PSet) psets;
+    MANY(WSize) wsizes;
+
+    tb2 = NULL;
+    wsizes = make_wsizes();
+    psets = make_parameters(0);
+    performances = make_performance();
+
+    sprintf(fpathtb2, "/home/princio/Desktop/results/tests/wsize_1000/tb2_%ld_%ld.bin", wsizes._[0].value, psets.number);
+    sprintf(fpathcsv, "/home/princio/Desktop/results/tests/wsize_1000/tb2_%ld_%ld.csv", wsizes._[0].value, psets.number);
+
+    // if (1) {
+    if (testbed2_io(IO_READ, fpathtb2, &tb2)) {
+        tb2_make(fpathtb2, wsizes, psets);
+    }
+
+    if (testbed2_io(IO_READ, fpathtb2, &tb2)) {
+        printf("Impossible to continue.\n");
+        return -1;
+    }
+
+    trainer = trainer_run(tb2, performances);
+    // print_trainer(trainer);
+    csv_trainer(fpathcsv, trainer);
+
+    trainer_free(trainer);
+    testbed2_free(tb2);
+    gatherer_free_all();
+    FREEMANY(performances);
+    FREEMANY(wsizes);
+    FREEMANY(psets);
 
     return 0;
 }

@@ -30,6 +30,18 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset, const size_t applies_number) {
         INITMANY(ths._[a], dataset->windows.all.number, ThsDataset);
     }
 
+    size_t min = SIZE_MAX;
+    size_t max = - SIZE_MAX;
+    size_t avg = 0;
+    int th_reducer;
+
+    th_reducer = 50;
+    // if (dataset->windows.all.number < 10000) th_reducer = 25;
+    // else
+    // if (dataset->windows.all.number < 1000) th_reducer = 10;
+    // else
+    // if (dataset->windows.all.number < 100) th_reducer = 5;
+    
     for (size_t a = 0; a < applies_number; a++) {
         size_t n = 0;
 
@@ -37,7 +49,7 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset, const size_t applies_number) {
             int logit;
             int exists;
 
-            logit = floor(dataset->windows.all._[w]->applies._[a].logit);
+            logit = ((int) floor(dataset->windows.all._[w]->applies._[a].logit))  / th_reducer * th_reducer;
             exists = 0;
 
             for (size_t i = 0; i < n; i++) {
@@ -54,7 +66,12 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset, const size_t applies_number) {
 
         ths._[a]._ = realloc(ths._[a]._, n * sizeof(double));
         ths._[a].number = n;
+
+        if (n > max) max = n;
+        if (n < min) min = n;
+        avg += n;
     }
+    printf("Ths number: wn=%-10ld\tmin=%-10ld\tmax=%-10ld\tavg=%-10ld\n", dataset->windows.all.number, min, max, avg / applies_number);
 
     return ths;
 }
@@ -106,8 +123,11 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers) {
 
     int r = 0;
     for (size_t idxfold = 0; idxfold < tb2->folds.number; idxfold++) {
+        printf("Results: fold %ld/%ld\n", idxfold, tb2->folds.number);
         for (size_t try = 0; try < tb2->folds._[idxfold]->config.tries; try++) {
+            printf("Results: try %ld/%ld\n", try, tb2->folds._[idxfold]->config.tries);
             for (size_t idxwsize = 0; idxwsize < tb2->wsizes.number; idxwsize++) {
+                printf("Results: wsize %ld/%ld\n", idxwsize, tb2->wsizes.number);
                 DatasetSplits const * const splits = &tb2->folds._[idxfold]->tries._[try].bywsize._[idxwsize].splits;
 
                 if (!splits->isok) {
@@ -116,6 +136,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers) {
                 }
 
                 for (size_t idxsplit = 0; idxsplit < splits->splits.number; idxsplit++) {
+                    printf("Results: split %ld/%ld\n", idxsplit, splits->splits.number);
                     DatasetSplit0 split = splits->splits._[idxsplit];
 
                     MANY(ThsDataset) ths = _trainer_ths(split.train, tb2->applies.number);

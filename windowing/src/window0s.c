@@ -54,7 +54,6 @@ MANY(RWindow0) window0s_alloc(size_t window0s_number) {
         windows->_[w].index = w;
         windows->_[w].fn_req_min = 0;
         windows->_[w].fn_req_max = 0;
-        windows->_[w].applies_number = 0;
         windows->_[w].windowing = NULL;
         rwindows._[w] = &windows->_[w];
     }
