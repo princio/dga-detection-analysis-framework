@@ -9,6 +9,8 @@
 #include "wapply.h"
 #include "windowing.h"
 
+#include <linux/limits.h>
+
 #define TB2_WSIZES_N(A) A->wsizes.number
 
 MAKEMANY(MANY(RWindowing));

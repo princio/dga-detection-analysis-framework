@@ -22,6 +22,8 @@ typedef struct PSet {
     float nx_epsilon_increment;
 } PSet;
 
+#define N_PSET_ITEMS 7
+
 typedef PSet* RPSet;
 
 typedef struct PSetGenerator {

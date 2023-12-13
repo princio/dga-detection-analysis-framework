@@ -37,6 +37,19 @@ int io_makedir(char dir[PATH_MAX], int append_time) {
     return 0;
 }
 
+void io_path_concat(char path1[PATH_MAX], char path2[PATH_MAX], char res[PATH_MAX]) {
+    assert(strlen(path1) + strlen(path2) < PATH_MAX);
+    assert(path1[strlen(path1) - 1] == '/');
+
+    char a[strlen(path1)];
+    char b[strlen(path2)];
+
+    strcpy(a, path1);
+    strcpy(b, path2);
+
+    snprintf(res, PATH_MAX, "%s%s", a, b);
+}
+
 int io_makedirs(char dir[PATH_MAX]) {
     char tmp[PATH_MAX];
     char *p = NULL;

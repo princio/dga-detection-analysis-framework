@@ -7,6 +7,8 @@
 #include "window0s.h"
 #include "testbed2.h"
 
+#include <linux/limits.h>
+
 typedef struct Result {
     Performance* threshold_chooser;
     Detection best_train;
@@ -60,7 +62,7 @@ typedef struct __Trainer* RTrainer;
 
 #define RESULT_IDX(R, WSIZE, APPLY, FOLD, TRY, SPLIT, THCHOOSER) R.bywsize._[WSIZE].byapply._[APPLY].byfold._[FOLD].bytry._[TRY].bysplits._[SPLIT].bythchooser._[THCHOOSER]
 
-RTrainer trainer_run(RTestBed2, MANY(Performance));
+RTrainer trainer_run(RTestBed2, MANY(Performance), char rootdir[PATH_MAX - 100]);
 
 void trainer_free(RTrainer results);
 

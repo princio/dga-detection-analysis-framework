@@ -3,7 +3,7 @@
 
 #include "common.h"
 
-#include <limits.h>
+#include <linux/limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <time.h>
@@ -40,6 +40,7 @@ int io_fileexists(char* dir);
 
 int io_makedir(char dir[PATH_MAX], int append_time);
 int io_makedirs(char dir[PATH_MAX]);
+void io_path_concat(char path1[PATH_MAX], char path2[PATH_MAX], char res[PATH_MAX]);
 
 void io_dumphex(const void* data, size_t size);
 void io_fwrite32(uint32_t* n, FILE* file);

@@ -39,18 +39,17 @@ void wapply_run(WApply* wapply, TCPC(DNSMessage) message, TCPC(PSet) pset) {
     }
 
     value = message->value;
-    logit = message->logit;
 
-    // if (pset->nx_epsilon_increment >= 0 && message->rcode == 3) {
-    //     value += pset->nx_epsilon_increment;
-    //     value = value >= 1 ? 1 : value;
-    // }
+    if (pset->nx_epsilon_increment >= 0 && message->rcode == 3) {
+        value += pset->nx_epsilon_increment;
+        value = value >= 1 ? 1 : value;
+    }
 
-    // if (value == 1 || value == -1) {
-    //     logit = value * INFINITY;
-    // } else {
-    //     logit = log(value / (1 - value)); // message->logit;
-    // }
+    if (value == 1 || value == -1) {
+        logit = value * INFINITY;
+    } else {
+        logit = log(value / (1 - value));
+    }
     
     if (message->top10m > 0 && ((size_t) message->top10m) < pset->wl_rank) {
         value = 0;

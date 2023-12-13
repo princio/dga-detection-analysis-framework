@@ -153,7 +153,9 @@
         "trainer.h": "c",
         "tetra.h": "c",
         "fold.h": "c",
-        "limits.h": "c"
+        "limits.h": "c",
+        "gatherer.h": "c",
+        "endian.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

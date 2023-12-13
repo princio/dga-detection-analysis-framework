@@ -4,6 +4,7 @@
 #include "dataset.h"
 #include "gatherer.h"
 #include "io.h"
+#include "logger.h"
 #include "stratosphere.h"
 
 #include <math.h>
@@ -127,14 +128,14 @@ void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets) {
         }
     }
 
-    printf("New psets added over %ld: %ld\n", old_applies_count, new_applies_count);
+    LOG_INFO("New psets added over %ld: %ld.", old_applies_count, new_applies_count);
 }
 
 void testbed2_apply(RTestBed2 tb2) {
     MANY(PSet) to_apply_psets;
 
     if (tb2->applies.number == 0) {
-        printf("Error: impossible to apply, no parameters added.\n");
+        LOG_ERROR("impossible to apply, no parameters added.");
         return;
     }
     {
@@ -143,7 +144,7 @@ void testbed2_apply(RTestBed2 tb2) {
             applied += tb2->applies._[a].applied;
         }
         if (applied == tb2->applies.number) {
-            printf("Notice: all applies already applied, skipping apply.\n");
+            LOG_INFO("Notice: all applies already applied, skipping apply.\n");
             return;
         }
     }
@@ -163,7 +164,7 @@ void testbed2_apply(RTestBed2 tb2) {
 
     for (size_t s = 0; s < tb2->sources.number; s++) {
         TB2WindowingsSource swindowings = tb2->windowings.bysource._[s];
-        printf("Performing apply for source %ld having fnreqmax=%ld.\n", s, tb2->sources._[s]->fnreq_max);
+        LOG_DEBUG("Performing apply for source %ld having fnreqmax=%ld.", s, tb2->sources._[s]->fnreq_max);
         stratosphere_apply(swindowings.bywsize, &to_apply_psets);
     }
 
@@ -450,9 +451,11 @@ int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
     FILE* file;
     file = io_openfile(rw, fpath);
     if (file == NULL) {
-        printf("Error[%s]: file <%s> impossible to open.\n", rw == IO_WRITE ? "w" : "r", fpath);
+        LOG_DEBUG("impossible to open file <%s>.", rw == IO_WRITE ? "w" : "r", fpath);
         return -1;
     }
+
+    LOG_TRACE("%s from file %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath);
 
     if (rw == IO_READ) {
         MANY(WSize) wsizes;
@@ -493,8 +496,8 @@ void testbed2_md(char fpath[PATH_MAX], const RTestBed2 tb2) {
 
     file = fopen(fpath, "w");
     if (file == NULL) {
-        printf("Error[%s]: file-md <%s> impossible to open.\n", fpath);
-        return -1;
+        LOG_WARN("impossible to open md-file <%s>.", fpath);
+        return;
     }
 
     t = time(NULL);

@@ -4,6 +4,9 @@
 
 #include "window0s.h"
 
+#define DETECT_TRUERATIO(DET, CL) ((double) (DET.windows)[CL][1]) / ((DET.windows)[CL][0] + (DET.windows)[CL][1])
+#define DETECT_FALSERATIO(DET, CL) ((double) (DET.windows)[CL][0]) / ((DET.windows)[CL][0] + (DET.windows)[CL][1])
+
 typedef struct Detection {
     double th;
 

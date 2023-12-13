@@ -1,6 +1,7 @@
 
 #include "stratosphere.h"
 
+#include "logger.h"
 #include "parameters.h"
 #include "testbed2.h"
 #include "window0s.h"
@@ -35,7 +36,7 @@ int _stratosphere_connect() {
         return 0;
     }
     
-    fprintf(stderr, "CONNECTION_BAD %s\n", PQerrorMessage(conn));
+    LOG_ERROR("connection error %s.", PQerrorMessage(conn));
 
     _stratosphere_disconnect();
 
@@ -122,7 +123,7 @@ int get_pcaps_number() {
     int64_t rownumber = -1;
 
     if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        printf("No data\n");
+        LOG_WARN("no data.");
     }
     else {
         char* srownumber = PQgetvalue(res, 0, 0);
@@ -140,7 +141,7 @@ int32_t get_fnreq_max(int32_t id) {
 
     PGresult* res_nrows = PQexec(conn, sql);
     if (PQresultStatus(res_nrows) != PGRES_TUPLES_OK) {
-        printf("[%s:%d] Get MAX(FN_REQ) for source %d failed\n", __FILE__, __LINE__, id);
+        LOG_WARN("get MAX(FN_REQ) for source %d failed.", id);
     } else {
         fnreq_max = atoi(PQgetvalue(res_nrows, 0, 0));
     }
@@ -174,7 +175,7 @@ void fetch_window(const __Source* source, uint64_t fn_req_min, uint64_t fn_req_m
     *pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
 
     if (PQresultStatus(*pgresult) != PGRES_TUPLES_OK) {
-        printf("[%s:%d] Select messages error for pcap %d: %s\n", __FILE__, __LINE__, source->id, PQerrorMessage(conn));
+        LOG_ERROR("Select messages error for pcap %d: %s.", source->id, PQerrorMessage(conn));
         PQclear(*pgresult);
         return;
     }
@@ -197,7 +198,7 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
     *pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
 
     if (PQresultStatus(*pgresult) != PGRES_TUPLES_OK) {
-        printf("[%s:%d] Select messages error for pcap %d: %s\n", __FILE__, __LINE__, source->id, PQerrorMessage(conn));
+        LOG_ERROR("select messages error for pcap %d: %s.", source->id, PQerrorMessage(conn));
         PQclear(*pgresult);
         return;
     }
@@ -207,7 +208,7 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
     // printf("stratosphere source: id=%d\tnrows=%d\n", source->id, *nrows);
 
     if ((*nrows) != source->qr) {
-        printf("[%s:%d] nrows != source->qr:\t%d != %ld\n", __FILE__, __LINE__, *nrows, source->qr);
+        LOG_WARN("nrows != source->qr:\t%d != %ld.", *nrows, source->qr);
 
         if ((*nrows) > source->qr) {
             (*nrows) = source->qr; // we may occur in a new unallocated window
@@ -270,13 +271,13 @@ void _stratosphere_add(RTestBed2 tb2) {
     pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr ASC");
 
     if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
-        printf("[%s:%d] Get pcaps failed: %s\n", __FILE__, __LINE__, PQerrorMessage(conn));
+        LOG_ERROR("get pcaps failed: %s.", PQerrorMessage(conn));
         exit(1);
     }
 
     int nrows = PQntuples(pgresult);
 
-    nrows = 10; // DEBUG DEVELOP
+    nrows = 25; // DEBUG DEVELOP
 
     for(int row = 0; row < nrows; row++) {
         int32_t id;
@@ -314,7 +315,7 @@ void _stratosphere_add(RTestBed2 tb2) {
 
 void stratosphere_add(RTestBed2 tb2) {
     if (_stratosphere_connect()) {
-        printf("Stratosphere: cannot connect to database.");
+        LOG_ERROR("cannot connect to database.");
         return;
     }
 

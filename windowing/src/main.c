@@ -20,19 +20,22 @@
 #include "args.h"
 #include "colors.h"
 #include "common.h"
+#include "detect.h"
 #include "fold.h"
 #include "gatherer.h"
 #include "io.h"
+#include "logger.h"
 #include "parameters.h"
 #include "performance_defaults.h"
 #include "stratosphere.h"
+#include "stat.h"
 #include "testbed2.h"
 #include "trainer.h"
 #include "windowing.h"
 
 #include <assert.h>
 #include <float.h>
-#include <limits.h>
+#include <linux/limits.h>
 #include <math.h>
 #include <stdint.h>
 #include <string.h>
@@ -76,9 +79,6 @@ typedef struct Score {
 
 MANY(Performance) performances;
 
-
-
-#define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
 void print_trainer(RTrainer trainer) {
 
     FILE* file_csv = fopen("results.csv", "w");
@@ -116,11 +116,11 @@ void print_trainer(RTrainer trainer) {
                             }
 
                             DGAFOR(cl) {
-                                printf("%1.4f\t", TR(result->best_train.windows, cl));
+                                printf("%1.4f\t", DETECT_TRUERATIO(result->best_train, cl));
                             }
                             printf("|\t");
                             DGAFOR(cl) {
-                                printf("%1.4f\t", TR(result->best_test.windows, cl));
+                                printf("%1.4f\t", DETECT_TRUERATIO(result->best_test, cl));
                             }
                             printf("\n");
                         }
@@ -130,10 +130,7 @@ void print_trainer(RTrainer trainer) {
         }
     }
 }
-#undef TR
 
-
-#define TR(CM, CL) ((double) (CM)[CL][1]) / ((CM)[CL][0] + (CM)[CL][1])
 void csv_trainer(char dirname[PATH_MAX], RTrainer trainer) {
     char fpath[PATH_MAX];
     FILE* file_csv;
@@ -175,10 +172,10 @@ void csv_trainer(char dirname[PATH_MAX], RTrainer trainer) {
                             fprintf(file_csv, "%s", trainer->thchoosers._[ev].name);
 
                             DGAFOR(cl) {
-                                fprintf(file_csv, ",%1.4f", TR(result->best_train.windows, cl));
+                                fprintf(file_csv, ",%1.4f", DETECT_TRUERATIO(result->best_train, cl));
                             }
                             DGAFOR(cl) {
-                                fprintf(file_csv, ",%1.4f", TR(result->best_test.windows, cl));
+                                fprintf(file_csv, ",%1.4f", DETECT_TRUERATIO(result->best_test, cl));
                             }
                             fprintf(file_csv, "\n");
                         }
@@ -232,32 +229,28 @@ MANY(PSet) make_parameters(const size_t subset) {
         };
 
         double ninf[] = {
-            -50,
-            // -20,
-            0
+            -50, // -2E-22
         };
 
         double pinf[] = {
-            50,
-            // 20,
-            0
+            50, // 2E-22
         };
 
         size_t wl_rank[] = {
-            // 100,
+            100,
             1000,
             // 10000,
-            100000
+            // 100000
         };
 
-        size_t wl_value[] = {
+        double wl_value[] = {
             0,
-            // -20,
+            -20,
             -50,
-            // -100
+            -100
         };
 
-        double nx_epsilon_increment[] = { 0.1 };
+        float nx_epsilon_increment[] = { 0.25 };
 
         #define _COPY(A, T) psetgenerator->n_## A = sizeof(A) / sizeof(T); psetgenerator->A = calloc(1, sizeof(A)); memcpy(psetgenerator->A, A, sizeof(A));
 
@@ -298,24 +291,6 @@ MANY(Performance) make_performance() {
     performances.number = i;
 
     return performances;
-}
-
-RTrainer run_trainer(IOReadWrite rw, char dirname[200], RTestBed2 tb2) {
-    RTrainer trainer;
-
-    if (rw == IO_WRITE) {
-        MANY(Performance) performances;
-
-        performances = make_performance();
-
-        trainer = trainer_run(tb2, performances);
-
-        FREEMANY(performances);
-    }
-
-    trainer_io(rw, dirname, tb2, &trainer);
-
-    return trainer;
 }
 
 void test_loadANDsave() {
@@ -385,7 +360,7 @@ void test_loadANDsave() {
             sprintf(dirname, "/home/princio/Desktop/results/test/loaded/applied");
             testbed2_io(IO_READ, dirname, &tb2);
             performances = make_performance();
-            trainer = trainer_run(tb2, performances);
+            trainer = trainer_run(tb2, performances, dirname);
             FREEMANY(performances);
 
             trainer_io(IO_WRITE, dirname, tb2, &trainer);
@@ -412,7 +387,7 @@ void test_addpsets() {
 
     {
         RTrainer trainer;
-        trainer = trainer_run(tb2, performances);
+        trainer = trainer_run(tb2, performances, dirname);
         print_trainer(trainer);
         trainer_free(trainer);
     }
@@ -428,7 +403,7 @@ void test_addpsets() {
 
     {
         RTrainer trainer;
-        trainer = trainer_run(tb2, performances);
+        trainer = trainer_run(tb2, performances, dirname);
         print_trainer(trainer);
         trainer_free(trainer);
     }
@@ -461,11 +436,14 @@ void tb2_make(char fpath[PATH_MAX], MANY(WSize) wsizes, MANY(PSet) psets) {
         foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 2;
         fold_add(tb2, foldconfig);
 
-        foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 5;
-        fold_add(tb2, foldconfig);
+        // foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 5;
+        // fold_add(tb2, foldconfig);
 
-        foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 8;
-        fold_add(tb2, foldconfig);
+        // foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 8;
+        // fold_add(tb2, foldconfig);
+
+        // foldconfig.tries = 2; foldconfig.k = 20; foldconfig.k_test = 10;
+        // fold_add(tb2, foldconfig);
     }
     {
         printf("Appling...\n");
@@ -499,22 +477,24 @@ int main (int argc, char* argv[]) {
     // test_loadANDsave();
     // test_addpsets();
 
+    // logger_initConsoleLogger(stdout);
+    logger_initFileLogger("log/log.txt", 1024 * 1024, 5);
+    logger_setLevel(LogLevel_TRACE);
+    logger_autoFlush(100);
+    LOG_INFO("console logging");
+
     
-    char rootdir[PATH_MAX - 100];
+    char rootdir[PATH_MAX];
 
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/0_tests/");
+        sprintf(rootdir, "/home/princio/Desktop/results/2_tests/tiny_25/");
     }
 
-    if (io_makedirs(rootdir)) {
-        printf("Impossible to create directories: %s\n", rootdir);
-        exit(1);
-    }
-
-    char fpathtb2[PATH_MAX];
-    char fpathcsv[PATH_MAX];
+    char fpathtb2[200];
+    char fpathcsv[200];
+    char dirtrainer[200];
 
     RTestBed2 tb2;
     MANY(Performance) performances;
@@ -524,25 +504,42 @@ int main (int argc, char* argv[]) {
 
     tb2 = NULL;
     wsizes = make_wsizes();
-    psets = make_parameters(0);
+    psets = make_parameters(8);
     performances = make_performance();
-    snprintf(fpathtb2, PATH_MAX, "%s/tb2_%ld_%ld.bin", rootdir, wsizes._[0].value, psets.number);
-    snprintf(fpathcsv, PATH_MAX, "%s/tb2_%ld_%ld.csv", rootdir, wsizes._[0].value, psets.number);
+
+    snprintf(fpathtb2, PATH_MAX, "tb2_%ld_%ld.bin", wsizes._[0].value, psets.number);
+    snprintf(fpathcsv, PATH_MAX, "tb2_%ld_%ld.csv", wsizes._[0].value, psets.number);
+    io_path_concat(rootdir, fpathtb2, fpathtb2);
+    io_path_concat(rootdir, fpathcsv, fpathcsv);
+    io_path_concat(rootdir, "trainer/", dirtrainer);
+
+    if (io_makedirs(rootdir)) {
+        printf("Impossible to create directories: %s\n", rootdir);
+        return -1;
+    }
+
+    if (io_makedirs(dirtrainer)) {
+        printf("Impossible to create directories: %s\n", rootdir);
+        return -1;
+    }
 
     // if (1) {
     if (testbed2_io(IO_READ, fpathtb2, &tb2)) {
         tb2_make(fpathtb2, wsizes, psets);
+        if (testbed2_io(IO_READ, fpathtb2, &tb2)) {
+            printf("Impossible to continue.\n");
+            return -1;
+        }
     }
 
-    if (testbed2_io(IO_READ, fpathtb2, &tb2)) {
-        printf("Impossible to continue.\n");
-        return -1;
-    }
-
-    trainer = trainer_run(tb2, performances);
+    printf("Start training.\n");
+    trainer = trainer_run(tb2, performances, dirtrainer);
     // print_trainer(trainer);
     csv_trainer(fpathcsv, trainer);
 
+    Stat stat = stat_run(trainer);
+
+    stat_free(stat);
     trainer_free(trainer);
     testbed2_free(tb2);
     gatherer_free_all();
