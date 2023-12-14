@@ -117,9 +117,9 @@ Stat stat_run(RTrainer trainer) {
 
     #define init_stat(NAME) \
     {\
-        INITMANY(stats.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser._[idxthchooser].by ## NAME, psetitems.NAME.number, StatByPSetItemValue);\
+        INITMANY(GETBY3(stats.by, fold, wsize, thchooser).by ## NAME, psetitems.NAME.number, StatByPSetItemValue);\
         for (size_t __idx = 0; __idx < psetitems.NAME.number; __idx++) {\
-            StatByPSetItemValue* sm = &stats.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser._[idxthchooser].by ## NAME._[__idx];\
+            StatByPSetItemValue* sm = &GETBY3(stats.by, fold, wsize, thchooser).by ## NAME._[__idx];\
             strcpy(sm->name, #NAME);\
             sprintf(sm->svalue, "%"FMT_ ## NAME, FMT_PRE_ ## NAME(psetitems.NAME._[__idx]));\
             init_statmetric(train);\
@@ -165,16 +165,13 @@ Stat stat_run(RTrainer trainer) {
         }\
     }
 
-    memcpy((size_t*) &stats.by.n.fold, &trainer->tb2->folds.number, sizeof(size_t));
-    memcpy((size_t*) &stats.by.n.wsize, &trainer->tb2->wsizes.number, sizeof(size_t));
-    memcpy((size_t*) &stats.by.n.thchooser, &trainer->thchoosers.number, sizeof(size_t));
+    INITBY_N(stats.by, fold, trainer->tb2->dataset.n.fold);
+    INITBY_N(stats.by, wsize, trainer->tb2->dataset.n.wsize);
+    INITBY_N(stats.by, thchooser, trainer->thchoosers.number);
 
-    INITMANY(stats.by.byfold, stats.by.n.fold, StatByFold);
-    FORBY(stats.by, fold) {
-        INITMANY(stats.by.byfold._[idxfold].bywsize, stats.by.n.wsize, StatByWSize);
-        FORBY(stats.by, wsize) {
-            INITMANY(stats.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser, stats.by.n.thchooser, StatByThChooser);
-            FORBY(stats.by, thchooser) {
+    INITBYFOR(stats.by, stats.by, fold, StatBy) {
+        INITBYFOR(stats.by, GETBY(stats.by, fold), wsize, StatBy) {
+            INITBYFOR(stats.by, GETBY2(stats.by, fold, wsize), thchooser, StatBy) {
                 multi_psetitem(init_stat);
             }
         }
@@ -183,11 +180,11 @@ Stat stat_run(RTrainer trainer) {
     FORBY(stats.by, fold) {
         FORBY(stats.by, wsize) {
             FORBY(stats.by, thchooser) {
-                FORBY((*by), apply) {
-                    for (size_t idxtry = 0; idxtry < by->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry.number; idxtry++) {
-                        for (size_t idxsplit = 0; idxsplit < by->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry._[idxtry].bysplits.number; idxsplit++) {
-                            TrainerBy_thchooser* result;
-                            result = &RESULT_IDX((*by), idxwsize, idxapply, idxfold, idxtry, idxsplit, idxthchooser);
+                FORBY(trainer->by, apply) {
+                    FORBY(trainer->by, try) {
+                        for (size_t k = 0; k < GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits.number; k++) {
+                            TrainerBy_splits* result;
+                            result = &GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits._[k];
                             multi_psetitem(update_stat);
                         }
                     }

@@ -70,12 +70,12 @@ DatasetSplits dataset0_splits(RDataset0 dataset0, const size_t _k, const size_t 
 
     splits.isok = 1;
 
-    window0s_shuffle(dataset0->windows.all);
-    window0s_shuffle(dataset0->windows.binary[0]);
-    window0s_shuffle(dataset0->windows.binary[1]);
-    DGAFOR(cl) {
-        window0s_shuffle(dataset0->windows.multi[cl]);
-    }
+    // window0s_shuffle(dataset0->windows.all);
+    // window0s_shuffle(dataset0->windows.binary[0]);
+    // window0s_shuffle(dataset0->windows.binary[1]);
+    // DGAFOR(cl) {
+    //     window0s_shuffle(dataset0->windows.multi[cl]);
+    // }
 
     INITMANY(splits.splits, KFOLDs, DatasetSplit0);
 

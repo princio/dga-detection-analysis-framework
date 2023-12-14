@@ -30,7 +30,6 @@ void gatherer_many_realloc(__MANY* many, size_t element_size, size_t size_reallo
     } else if (many->size == many->number) {
         many->size += size_realloc_increment;
         many->_ = realloc(many->_, many->size * element_size);
-        // printf("realloc-after: size=%ld, number=%ld, inc=%ld\telement=%ld\n", many->size, many->number, size_realloc_increment, element_size);
     }
 }
 

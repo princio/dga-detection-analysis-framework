@@ -4,7 +4,6 @@
 #include "common.h"
 
 #include "dataset.h"
-#include "fold.h"
 #include "parameters.h"
 #include "wapply.h"
 #include "windowing.h"
@@ -13,22 +12,71 @@
 
 #define TB2_WSIZES_N(A) A->wsizes.number
 
-MAKEMANY(MANY(RWindowing));
 
-MAKETETRA(MANY(MANY(RWindowing)));
+/* Windowing */
+/* Windowing */
+/* Windowing */
 
-typedef struct TB2WindowingsSource {
-    MANY(RWindowing) bywsize;
-} TB2WindowingsSource;
-MAKEMANY(TB2WindowingsSource);
 
-typedef struct TestBed2Windowings {
-    MANY(TB2WindowingsSource) bysource;
-} TestBed2Windowings;
+typedef RWindowing TestBed2WindowingBy_wsize;
+typedef MANY(RWindowing) MANY(TestBed2WindowingBy_wsize);
 
-typedef struct TestBed2Datasets {
-    MANY(RDataset0) bywsize;
-} TestBed2Datasets;
+typedef struct TestBed2WindowingBy_source {
+    MANY(TestBed2WindowingBy_wsize) bywsize;
+} TestBed2WindowingBy_source;
+MAKEMANY(TestBed2WindowingBy_source);
+
+typedef struct TestBed2WindowingBy {
+    struct {
+        const size_t source;
+        const size_t wsize;
+    } n;
+    MANY(TestBed2WindowingBy_source) bysource;
+} TestBed2WindowingBy;
+
+
+
+
+
+/* Dataset */
+/* Dataset */
+/* Dataset */
+
+typedef DatasetSplits TestBed2DatasetBy_fold;
+MAKEMANY(TestBed2DatasetBy_fold);
+
+typedef struct TestBed2DatasetBy_try {
+    RDataset0 dataset;
+    MANY(TestBed2DatasetBy_fold) byfold;
+} TestBed2DatasetBy_try;
+MAKEMANY(TestBed2DatasetBy_try);
+
+typedef struct TestBed2DatasetBy_wsize {
+    MANY(TestBed2DatasetBy_try) bytry;
+} TestBed2DatasetBy_wsize;
+MAKEMANY(TestBed2DatasetBy_wsize);
+
+typedef struct FoldConfig {
+    size_t k;
+    size_t k_test;
+} FoldConfig;
+
+MAKEMANY(FoldConfig);
+
+typedef struct TestBed2DatasetBy {
+    struct {
+        const size_t wsize;
+        const size_t try;
+        const size_t fold;
+    } n;
+
+    MANY(FoldConfig) folds;
+    MANY(TestBed2DatasetBy_wsize) bywsize;
+} TestBed2DatasetBy;
+
+/* Apply */
+/* Apply */
+/* Apply */
 
 typedef struct TestBed2Apply {
     int applied;
@@ -37,27 +85,30 @@ typedef struct TestBed2Apply {
 
 MAKEMANY(TestBed2Apply);
 
+/* __TestBed2 */
+/* __TestBed2 */
+/* __TestBed2 */
+
 typedef struct __TestBed2 {
     MANY(TestBed2Apply) applies;
 
     MANY(WSize) wsizes;
 
     MANY(RSource) sources;
-    TestBed2Windowings windowings;
-    TestBed2Datasets datasets;
 
-    MANY(RFold) folds;
+    TestBed2WindowingBy windowing;
+
+    TestBed2DatasetBy dataset;
 } __TestBed2;
 
-RTestBed2 testbed2_create(MANY(WSize) wsizes);
-void testbed2_source_add(RTestBed2 tb2, RSource source);
-void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets);
-void testbed2_apply(RTestBed2 tb2);
+
+RTestBed2 testbed2_create(MANY(WSize), const size_t);
+
+void testbed2_source_add(RTestBed2, RSource);
 void testbed2_windowing(RTestBed2);
 void testbed2_fold_add(RTestBed2, FoldConfig);
+void testbed2_addpsets(RTestBed2, MANY(PSet));
+void testbed2_apply(RTestBed2);
 void testbed2_free(RTestBed2);
-
-void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, const WSize wsize, RDataset0* ds_ref);
-int testbed2_io(IOReadWrite rw, char dirname[200], RTestBed2* tb2);
 
 #endif

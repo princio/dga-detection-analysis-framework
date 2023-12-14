@@ -24,7 +24,7 @@ typedef struct StatByPSetItemValue {
 } StatByPSetItemValue;
 MAKEMANY(StatByPSetItemValue);
 
-typedef struct StatByThChooser {
+typedef struct StatBy_thchooser {
     MANY(StatByPSetItemValue) byninf;
     MANY(StatByPSetItemValue) bypinf;
     MANY(StatByPSetItemValue) bynn;
@@ -32,18 +32,18 @@ typedef struct StatByThChooser {
     MANY(StatByPSetItemValue) bywl_value;
     MANY(StatByPSetItemValue) bywindowing;
     MANY(StatByPSetItemValue) bynx_epsilon_increment;
-} StatByThChooser;
-MAKEMANY(StatByThChooser);
+} StatBy_thchooser;
+MAKEMANY(StatBy_thchooser);
 
-typedef struct StatByWSize {
-    MANY(StatByThChooser) bythchooser;
-} StatByWSize;
-MAKEMANY(StatByWSize);
+typedef struct StatBy_wsize {
+    MANY(StatBy_thchooser) bythchooser;
+} StatBy_wsize;
+MAKEMANY(StatBy_wsize);
 
-typedef struct StatByFold {
-    MANY(StatByWSize) bywsize;
-} StatByFold;
-MAKEMANY(StatByFold);
+typedef struct StatBy_fold {
+    MANY(StatBy_wsize) bywsize;
+} StatBy_fold;
+MAKEMANY(StatBy_fold);
 
 typedef struct StatBy {
     struct {
@@ -51,7 +51,7 @@ typedef struct StatBy {
         const size_t wsize;
         const size_t thchooser;
     } n;
-    MANY(StatByFold) byfold;
+    MANY(StatBy_fold) byfold;
 } StatBy;
 
 typedef struct Stat {

@@ -4,27 +4,27 @@
 
 #include "common.h"
 
+#include "detect.h"
 #include "window0s.h"
 #include "testbed2.h"
 
 #include <linux/limits.h>
 
-typedef struct TrainerBy_thchooser {
+typedef struct TrainerBy_splits {
     Performance* threshold_chooser;
     Detection best_train;
     Detection best_test;
-} TrainerBy_thchooser;
-
-MAKEMANY(TrainerBy_thchooser);
-
-typedef struct TrainerBy_splits {
-    MANY(TrainerBy_thchooser) bythchooser;
 } TrainerBy_splits;
 
 MAKEMANY(TrainerBy_splits);
 
+typedef struct TrainerBy_thchooser {
+    MANY(TrainerBy_splits) splits;
+} TrainerBy_thchooser;
+MAKEMANY(TrainerBy_thchooser);
+
 typedef struct TrainerBy_try {
-    MANY(TrainerBy_splits) bysplits;
+    MANY(TrainerBy_thchooser) bythchooser;
 } TrainerBy_try;
 
 MAKEMANY(TrainerBy_try);
@@ -52,6 +52,7 @@ typedef struct TrainerBy {
         const size_t wsize;
         const size_t apply;
         const size_t fold;
+        const size_t try;
         const size_t thchooser;
     } n;
     MANY(TrainerBy_wsize) bywsize;
@@ -65,9 +66,6 @@ typedef struct __Trainer {
 } __Trainer;
 
 typedef struct __Trainer* RTrainer;
-
-#define FORBY(BY, NAME)\
-    for (size_t idx ## NAME = 0; idx ## NAME < BY.n.NAME; idx ## NAME++)
 
 #define RESULT_IDX(BY, WSIZE, APPLY, FOLD, TRY, SPLIT, THCHOOSER) BY.bywsize._[WSIZE].byapply._[APPLY].byfold._[FOLD].bytry._[TRY].bysplits._[SPLIT].bythchooser._[THCHOOSER]
 

@@ -68,6 +68,22 @@
 #define FREEMANY(A) { if (A.number) free(A._); A.number = 0; A.size = 0; }
 #define FREEMANYREF(A) { if (A->number) free(A->_); A->number = 0; A->size = 0; }
 
+#define INITBY_N(BY, NAME, N) memcpy((size_t*) &BY.n.NAME, &N, sizeof(size_t));
+#define INITBY(BY, BYSUB, NAME, T) \
+    INITMANY(BYSUB.by ## NAME, BY.n.NAME, T ## _ ## NAME);
+#define INITBY(BY, BYSUB, NAME, T) \
+    INITMANY(BYSUB.by ## NAME, BY.n.NAME, T ## _ ## NAME);
+#define FORBY(BY, NAME)\
+    for (size_t idx ## NAME = 0; idx ## NAME < BY.n.NAME; idx ## NAME++)
+#define INITBYFOR(BY, BYSUB, NAME, T) INITBY(BY, BYSUB, NAME, T); FORBY(BY, NAME)
+
+#define GETBY(BY, N1) BY.by ## N1._[idx ## N1]
+#define GETBY2(BY, N1, N2) GETBY(GETBY(BY, N1), N2)
+#define GETBY3(BY, N1, N2, N3) GETBY2(GETBY(BY, N1), N2, N3)
+#define GETBY4(BY, N1, N2, N3, N4) GETBY3(GETBY(BY, N1), N2, N3, N4)
+#define GETBY5(BY, N1, N2, N3, N4, N5) GETBY4(GETBY(BY, N1), N2, N3, N4, N5)
+
+
 typedef int32_t IDX;
 
 typedef struct Index {
