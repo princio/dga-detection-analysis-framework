@@ -19,7 +19,8 @@ typedef struct StatMetric {
 typedef struct StatByPSetItemValue {
     char name[25];
     char svalue[100];
-    StatMetric tr[N_DGACLASSES];
+    StatMetric train[N_DGACLASSES];
+    StatMetric test[N_DGACLASSES];
 } StatByPSetItemValue;
 MAKEMANY(StatByPSetItemValue);
 
@@ -45,6 +46,11 @@ typedef struct StatByFold {
 MAKEMANY(StatByFold);
 
 typedef struct StatBy {
+    struct {
+        const size_t fold;
+        const size_t wsize;
+        const size_t thchooser;
+    } n;
     MANY(StatByFold) byfold;
 } StatBy;
 

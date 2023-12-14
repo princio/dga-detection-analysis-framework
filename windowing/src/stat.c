@@ -101,7 +101,7 @@ StatPSet _parameters_count(MANY(TestBed2Apply) applies) {
 
 Stat stat_run(RTrainer trainer) {
 
-    TrainerResults* results = &trainer->results;
+    TrainerBy* by = &trainer->by;
 
     Stat stats;
 
@@ -122,15 +122,17 @@ Stat stat_run(RTrainer trainer) {
             StatByPSetItemValue* sm = &stats.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser._[idxthchooser].by ## NAME._[__idx];\
             strcpy(sm->name, #NAME);\
             sprintf(sm->svalue, "%"FMT_ ## NAME, FMT_PRE_ ## NAME(psetitems.NAME._[__idx]));\
-            init_statmetric(tr);\
+            init_statmetric(train);\
+            init_statmetric(test);\
         }\
     }
 
-    #define update_statmetric(NAME, statmetric_value) \
+    #define update_statmetric(NAME) \
     {\
-        if (sm->NAME[cl].min > statmetric_value) sm->NAME[cl].min = statmetric_value;\
-        if (sm->NAME[cl].max < statmetric_value) sm->NAME[cl].max = statmetric_value;\
-        sm->NAME[cl].avg += statmetric_value;\
+        const double value = DETECT_TRUERATIO(result->best_ ## NAME, cl);\
+        if (sm->NAME[cl].min > value) sm->NAME[cl].min = value;\
+        if (sm->NAME[cl].max < value) sm->NAME[cl].max = value;\
+        sm->NAME[cl].avg += value;\
         sm->NAME[cl].count++;\
     }
 
@@ -146,39 +148,46 @@ Stat stat_run(RTrainer trainer) {
         }\
         sm = &STAT_IDX(stats, idxfold, idxwsize, idxthchooser, NAME, idxpsetitem);\
         DGAFOR(cl) {\
-            const double value_tr = DETECT_TRUERATIO(result->best_test, cl);\
-            update_statmetric(tr, value_tr);\
+            update_statmetric(train);\
+            update_statmetric(test);\
         }\
     }
+
+    #define finalize_statmetric(NAME) DGAFOR(cl) { sm->NAME[cl].avg /= sm->NAME[cl].count; }
 
     #define finalize_stat(NAME) \
     {\
         for (size_t idxpsetitem = 0; idxpsetitem < psetitems.NAME.number; idxpsetitem++) {\
             StatByPSetItemValue* sm;\
             sm = &STAT_IDX(stats, idxfold, idxwsize, idxthchooser, NAME, idxpsetitem);\
-            DGAFOR(cl) { sm->tr[cl].avg /= sm->tr[cl].count; }\
+            finalize_statmetric(train);\
+            finalize_statmetric(test);\
         }\
     }
 
-    INITMANY(stats.by.byfold, trainer->tb2->folds.number, StatByFold);
-    for (size_t idxfold = 0; idxfold < trainer->tb2->folds.number; idxfold++) {
-        INITMANY(stats.by.byfold._[idxfold].bywsize, trainer->tb2->wsizes.number, StatByWSize);
-        for (size_t idxwsize = 0; idxwsize < trainer->tb2->wsizes.number; idxwsize++) {
-            INITMANY(stats.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser, trainer->thchoosers.number, StatByThChooser);
-            for (size_t idxthchooser = 0; idxthchooser < trainer->thchoosers.number; idxthchooser++) {
+    memcpy((size_t*) &stats.by.n.fold, &trainer->tb2->folds.number, sizeof(size_t));
+    memcpy((size_t*) &stats.by.n.wsize, &trainer->tb2->wsizes.number, sizeof(size_t));
+    memcpy((size_t*) &stats.by.n.thchooser, &trainer->thchoosers.number, sizeof(size_t));
+
+    INITMANY(stats.by.byfold, stats.by.n.fold, StatByFold);
+    FORBY(stats.by, fold) {
+        INITMANY(stats.by.byfold._[idxfold].bywsize, stats.by.n.wsize, StatByWSize);
+        FORBY(stats.by, wsize) {
+            INITMANY(stats.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser, stats.by.n.thchooser, StatByThChooser);
+            FORBY(stats.by, thchooser) {
                 multi_psetitem(init_stat);
             }
         }
     }
 
-    for (size_t idxwsize = 0; idxwsize < results->bywsize.number; idxwsize++) {
-        for (size_t idxapply = 0; idxapply < results->bywsize._[idxwsize].byapply.number; idxapply++) {
-            for (size_t idxfold = 0; idxfold < results->bywsize._[idxwsize].byapply._[idxapply].byfold.number; idxfold++) {
-                for (size_t idxtry = 0; idxtry < results->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry.number; idxtry++) {
-                    for (size_t idxsplit = 0; idxsplit < results->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry._[idxtry].bysplits.number; idxsplit++) {
-                        for (size_t idxthchooser = 0; idxthchooser < results->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry._[idxtry].bysplits._[idxsplit].bythchooser.number; idxthchooser++) {
-                            Result* result;
-                            result = &RESULT_IDX((*results), idxwsize, idxapply, idxfold, idxtry, idxsplit, idxthchooser);
+    FORBY(stats.by, fold) {
+        FORBY(stats.by, wsize) {
+            FORBY(stats.by, thchooser) {
+                FORBY((*by), apply) {
+                    for (size_t idxtry = 0; idxtry < by->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry.number; idxtry++) {
+                        for (size_t idxsplit = 0; idxsplit < by->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry._[idxtry].bysplits.number; idxsplit++) {
+                            TrainerBy_thchooser* result;
+                            result = &RESULT_IDX((*by), idxwsize, idxapply, idxfold, idxtry, idxsplit, idxthchooser);
                             multi_psetitem(update_stat);
                         }
                     }
@@ -187,19 +196,29 @@ Stat stat_run(RTrainer trainer) {
         }
     }
 
-    for (size_t idxwsize = 0; idxwsize < results->bywsize.number; idxwsize++) {
-        for (size_t idxapply = 0; idxapply < results->bywsize._[idxwsize].byapply.number; idxapply++) {
-            for (size_t idxfold = 0; idxfold < results->bywsize._[idxwsize].byapply._[idxapply].byfold.number; idxfold++) {
-                for (size_t idxtry = 0; idxtry < results->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry.number; idxtry++) {
-                    for (size_t idxsplit = 0; idxsplit < results->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry._[idxtry].bysplits.number; idxsplit++) {
-                        for (size_t idxthchooser = 0; idxthchooser < results->bywsize._[idxwsize].byapply._[idxapply].byfold._[idxfold].bytry._[idxtry].bysplits._[idxsplit].bythchooser.number; idxthchooser++) {
-                            multi_psetitem(finalize_stat)
-                        }
-                    }
-                }
+    FORBY(stats.by, fold) {
+        FORBY(stats.by, wsize) {
+            FORBY(stats.by, thchooser) {
+                multi_psetitem(finalize_stat)
             }
         }
     }
+
+    #define print_statmetric\
+        DGAFOR(cl) {\
+            printf("%7.2f~%-7.2f", item->train[cl].min, item->test[cl].min);\
+            printf("%7.2f~%-7.2f", item->train[cl].max, item->test[cl].max);\
+            printf("%7.2f~%-7.2f", item->train[cl].avg, item->test[cl].avg);\
+            printf("    ");\
+        }\
+
+    #define print_statmetric_2d\
+        DGAFOR(cl) {\
+            printf("%5d~%-5d", (int) (item->train[cl].min * 100), (int) (item->test[cl].min * 100));\
+            printf("%5d~%-5d", (int) (item->train[cl].max * 100), (int) (item->test[cl].max * 100));\
+            printf("%5d~%-5d", (int) (item->train[cl].avg * 100), (int) (item->test[cl].avg * 100));\
+            printf("    ");\
+        }\
 
     #define prin_stat(NAME)\
     for (size_t idxpsetitem = 0; idxpsetitem < psetitems.NAME.number; idxpsetitem++) {\
@@ -209,17 +228,23 @@ Stat stat_run(RTrainer trainer) {
         printf("%-15s ", trainer->thchoosers._[idxthchooser].name);\
         printf("%-25s ", item->name);\
         printf("%-20s ", item->svalue);\
-        DGAFOR(cl) {\
-            printf("%-5.2f ", item->tr[cl].min);\
-            printf("%-5.2f ", item->tr[cl].max);\
-            printf("%-5.2f      ", item->tr[cl].avg);\
-        }\
+        print_statmetric_2d\
         printf("\n");\
     }
 
-    for (size_t idxfold = 0; idxfold < trainer->tb2->folds.number; idxfold++) {
-        for (size_t idxwsize = 0; idxwsize < trainer->tb2->wsizes.number; idxwsize++) {
-            for (size_t idxthchooser = 0; idxthchooser < trainer->thchoosers.number; idxthchooser++) {
+    printf("%-8s ", "fold");
+    printf("%-8s ", "wsize");
+    printf("%-15s ", "thchooser");
+    printf("%-25s ", "psetitem");
+    printf("%-20s ", "psetitem value");
+    DGAFOR(cl) {
+        printf("  min[%d]     max[%d]     avg[%d]  ", cl, cl, cl);
+        printf("    ");
+    }
+    printf("\n");\
+    FORBY(stats.by, fold) {
+        FORBY(stats.by, wsize) {
+            FORBY(stats.by, thchooser) {
                 multi_psetitem(prin_stat);
             }
         }
@@ -237,10 +262,9 @@ void stat_free(Stat stat) {
     #define free_psetitem(NAME)\
         FREEMANY(stat.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser._[idxthchooser].by ## NAME);
 
-
-    for (size_t idxfold = 0; idxfold < stat.by.byfold.number; idxfold++) {
-        for (size_t idxwsize = 0; idxwsize < stat.by.byfold._[idxfold].bywsize.number; idxwsize++) {
-            for (size_t idxthchooser = 0; idxthchooser < stat.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser.number; idxthchooser++) {
+    FORBY(stat.by, fold) {
+        FORBY(stat.by, wsize) {
+            FORBY(stat.by, thchooser) {
                 multi_psetitem(free_psetitem);
             }
             FREEMANY(stat.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser);

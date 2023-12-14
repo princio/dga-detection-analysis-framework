@@ -83,7 +83,7 @@ void print_trainer(RTrainer trainer) {
 
     FILE* file_csv = fopen("results.csv", "w");
 
-    TrainerResults* results = &trainer->results;
+    TrainerBy* by = &trainer->by;
 
     RTestBed2 tb2 = trainer->tb2;
 
@@ -91,14 +91,13 @@ void print_trainer(RTrainer trainer) {
     fprintf(file_csv, ",,,,,,train,train,train,test,test,test");
     fprintf(file_csv, "fold,try,k,wsize,apply,thchooser,0,1,2,0,1,2");
 
-    for (size_t w = 0; w < results->bywsize.number; w++) {
-        for (size_t a = 0; a < results->bywsize._[w].byapply.number; a++) {
-            for (size_t f = 0; f < results->bywsize._[w].byapply._[a].byfold.number; f++) {
-                for (size_t try = 0; try < results->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
-                    for (size_t k = 0; k < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
-                        for (size_t ev = 0; ev < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits._[k].bythchooser.number; ev++) {
-
-                            Result* result = &RESULT_IDX((*results), w, a, f, try, k, ev);
+    for (size_t w = 0; w < by->n.wsize; w++) {
+        for (size_t a = 0; a < by->n.apply; a++) {
+            for (size_t f = 0; f < by->n.fold; f++) {
+                for (size_t try = 0; try < by->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
+                    for (size_t k = 0; k < by->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
+                        for (size_t ev = 0; ev < by->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits._[k].bythchooser.number; ev++) {
+                            TrainerBy_thchooser* result = &RESULT_IDX((*by), w, a, f, try, k, ev);
 
                             {
                                 char headers[4][50];
@@ -143,20 +142,20 @@ void csv_trainer(char dirname[PATH_MAX], RTrainer trainer) {
     sprintf(fpath, "%s/results.csv", dirname);
     file_csv = fopen(fpath, "w");
 
-    TrainerResults* results = &trainer->results;
+    TrainerBy* by = &trainer->by;
 
     RTestBed2 tb2 = trainer->tb2;
 
     fprintf(file_csv, "caos,caos,caos,wsize,pset,pset,pset,pset,pset,pset,pset,pset,train,train,train,test,test,test\n");
     fprintf(file_csv, "fold,try,k,wsize,ninf,pinf,nn,windowing,wl_rank,wl_value,nx_eps_incr,thchooser,0,1,2,0,1,2\n");
 
-    for (size_t w = 0; w < results->bywsize.number; w++) {
-        for (size_t a = 0; a < results->bywsize._[w].byapply.number; a++) {
-            for (size_t f = 0; f < results->bywsize._[w].byapply._[a].byfold.number; f++) {
-                for (size_t try = 0; try < results->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
-                    for (size_t k = 0; k < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
-                        for (size_t ev = 0; ev < results->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits._[k].bythchooser.number; ev++) {
-                            Result* result = &RESULT_IDX((*results), w, a, f, try, k, ev);
+    for (size_t w = 0; w < by->n.wsize; w++) {
+        for (size_t a = 0; a < by->n.apply; a++) {
+            for (size_t f = 0; f < by->n.fold; f++) {
+                for (size_t try = 0; try < by->bywsize._[w].byapply._[a].byfold._[f].bytry.number; try++) {
+                    for (size_t k = 0; k < by->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits.number; k++) {
+                        for (size_t ev = 0; ev < by->bywsize._[w].byapply._[a].byfold._[f].bytry._[try].bysplits._[k].bythchooser.number; ev++) {
+                            TrainerBy_thchooser* result = &RESULT_IDX((*by), w, a, f, try, k, ev);
 
                             fprintf(file_csv, "%ld,", f);
                             fprintf(file_csv, "%ld,", try);
@@ -489,7 +488,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/2_tests/tiny_25/");
+        sprintf(rootdir, "/home/princio/Desktop/results/2_tests/tiny_25_by/");
     }
 
     char fpathtb2[200];

@@ -9,58 +9,67 @@
 
 #include <linux/limits.h>
 
-typedef struct Result {
+typedef struct TrainerBy_thchooser {
     Performance* threshold_chooser;
     Detection best_train;
     Detection best_test;
-} Result;
+} TrainerBy_thchooser;
 
-MAKEMANY(Result);
+MAKEMANY(TrainerBy_thchooser);
 
-typedef struct ResultsFoldTriesSplits {
-    MANY(Result) bythchooser;
-} ResultsFoldTriesSplits;
+typedef struct TrainerBy_splits {
+    MANY(TrainerBy_thchooser) bythchooser;
+} TrainerBy_splits;
 
-MAKEMANY(ResultsFoldTriesSplits);
+MAKEMANY(TrainerBy_splits);
 
-typedef struct ResultsFoldTries {
-    MANY(ResultsFoldTriesSplits) bysplits;
-} ResultsFoldTries;
+typedef struct TrainerBy_try {
+    MANY(TrainerBy_splits) bysplits;
+} TrainerBy_try;
 
-MAKEMANY(ResultsFoldTries);
+MAKEMANY(TrainerBy_try);
 
-typedef struct ResultsFold {
-    MANY(ResultsFoldTries) bytry;
-} ResultsFold;
+typedef struct TrainerBy_fold {
+    MANY(TrainerBy_try) bytry;
+} TrainerBy_fold;
 
-MAKEMANY(ResultsFold);
+MAKEMANY(TrainerBy_fold);
 
-typedef struct ResultsApply {
-    MANY(ResultsFold) byfold;
-} ResultsApply;
+typedef struct TrainerBy_apply {
+    MANY(TrainerBy_fold) byfold;
+} TrainerBy_apply;
 
-MAKEMANY(ResultsApply);
+MAKEMANY(TrainerBy_apply);
 
-typedef struct ResultsWSize {
-    MANY(ResultsApply) byapply;
-} ResultsWSize;
+typedef struct TrainerBy_wsize {
+    MANY(TrainerBy_apply) byapply;
+} TrainerBy_wsize;
 
-MAKEMANY(ResultsWSize);
+MAKEMANY(TrainerBy_wsize);
 
-typedef struct TrainerResults {
-    MANY(ResultsWSize) bywsize;
-} TrainerResults;
+typedef struct TrainerBy {
+    struct {
+        const size_t wsize;
+        const size_t apply;
+        const size_t fold;
+        const size_t thchooser;
+    } n;
+    MANY(TrainerBy_wsize) bywsize;
+} TrainerBy;
 
 typedef struct __Trainer {
     RTestBed2 tb2;
     MANY(Performance) thchoosers;
 
-    TrainerResults results;
+    TrainerBy by;
 } __Trainer;
 
 typedef struct __Trainer* RTrainer;
 
-#define RESULT_IDX(R, WSIZE, APPLY, FOLD, TRY, SPLIT, THCHOOSER) R.bywsize._[WSIZE].byapply._[APPLY].byfold._[FOLD].bytry._[TRY].bysplits._[SPLIT].bythchooser._[THCHOOSER]
+#define FORBY(BY, NAME)\
+    for (size_t idx ## NAME = 0; idx ## NAME < BY.n.NAME; idx ## NAME++)
+
+#define RESULT_IDX(BY, WSIZE, APPLY, FOLD, TRY, SPLIT, THCHOOSER) BY.bywsize._[WSIZE].byapply._[APPLY].byfold._[FOLD].bytry._[TRY].bysplits._[SPLIT].bythchooser._[THCHOOSER]
 
 RTrainer trainer_run(RTestBed2, MANY(Performance), char rootdir[PATH_MAX - 100]);
 
