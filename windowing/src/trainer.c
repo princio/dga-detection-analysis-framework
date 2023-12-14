@@ -246,7 +246,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
                                 }
                             }
                         }
-                    }// calculating performances for each detection
+                    }// calculating performances for each detection and setting the best one
 
                     for (size_t w = 0; w < split.test->windows.all.number; w++) {
                         RWindow0 window0 = split.test->windows.all._[w];

@@ -6,12 +6,14 @@
 
 #define UNUSED(x) (void)(x)
 
-const Performance performance_defaults[5] = {
+const Performance performance_defaults[7] = {
     { .name = "F1SCORE_1.0", .func=&performancedefaults_f1score_1, .greater_is_better=1 },
     { .name = "F1SCORE_0.5", .func=&performancedefaults_f1score_05, .greater_is_better=1 },
     { .name = "F1SCORE_0.1", .func=&performancedefaults_f1score_01, .greater_is_better=1 },
     { .name = "FPR", .func=&performancedefaults_fpr, .greater_is_better=0 },
-    { .name = "TPR", .func=&performancedefaults_tpr, .greater_is_better=1 },
+    { .name = "TPR1", .func=&performancedefaults_tpr1, .greater_is_better=1 },
+    { .name = "TPR2", .func=&performancedefaults_tpr2, .greater_is_better=1 },
+    { .name = "TPR12", .func=&performancedefaults_tpr12, .greater_is_better=1 },
 };
 
 double _performancedefaults_f1score_beta(Detection* detection, TCPC(Performance) performance, double beta) {
@@ -65,22 +67,29 @@ double performancedefaults_fpr(Detection* detection, TCPC(Performance) performan
     return ((double) fp) / (fp + tn);
 }
 
-double performancedefaults_tpr(Detection* detection, TCPC(Performance) performance) {
+double performancedefaults_tpr1(Detection* detection, TCPC(Performance) performance) {
     double fn, tp;
 
-    switch (performance->dgadet)
-    {
-        case PERFORMANCE_DGAHANDLING_MERGE_1: {
-            fn = detection->windows[2][0] + detection->windows[1][0];
-            tp = detection->windows[2][1] + detection->windows[1][1];
-            break;
-        }
-        case PERFORMANCE_DGAHANDLING_IGNORE_1: {
-            fn = detection->windows[2][0];
-            tp = detection->windows[2][1];
-            break;
-        }
-    }
+    fn = detection->windows[1][0];
+    tp = detection->windows[1][1];
 
-    return ((double) fn) / (fn + tp);
+    return ((double) tp) / (fn + tp);
+}
+
+double performancedefaults_tpr2(Detection* detection, TCPC(Performance) performance) {
+    double fn, tp;
+
+    fn = detection->windows[2][0];
+    tp = detection->windows[2][1];
+
+    return ((double) tp) / (fn + tp);
+}
+
+double performancedefaults_tpr12(Detection* detection, TCPC(Performance) performance) {
+    double fn, tp;
+
+    fn = detection->windows[2][0]+ detection->windows[1][0];
+    tp = detection->windows[2][1]+ detection->windows[1][1];
+
+    return ((double) tp) / (fn + tp);
 }

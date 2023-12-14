@@ -216,9 +216,9 @@ MANY(PSet) make_parameters(const size_t subset) {
     {
         NN nn[] = {
             NN_NONE,
-            NN_TLD,
-            NN_ICANN,
-            NN_PRIVATE
+            // NN_TLD,
+            // NN_ICANN,
+            // NN_PRIVATE
         };
 
         WindowingType windowing[] = {
@@ -246,7 +246,8 @@ MANY(PSet) make_parameters(const size_t subset) {
             0,
             -20,
             -50,
-            -100
+            -100,
+            -1000
         };
 
         float nx_epsilon_increment[] = { 0.25 };
@@ -281,10 +282,10 @@ MANY(Performance) make_performance() {
     INITMANY(performances, 10, Performance);
 
     int i = 0;
-    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_1];
+    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_1];
     // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_05];
     // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_01];
-    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_TPR];
+    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_TPR2];
     performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_FPR];
 
     performances.number = i;
@@ -317,10 +318,10 @@ void test_loadANDsave() {
                 FoldConfig foldconfig;
                 foldconfig.tries = 1; foldconfig.k = 10; foldconfig.k_test = 8;
                 fold_add(tb2, foldconfig);
-                // foldconfig.tries = 5; foldconfig.k = 20; foldconfig.k_test = 15;
-                // fold_add(tb2, foldconfig);
-                // foldconfig.tries = 5; foldconfig.k = 10; foldconfig.k_test = 8;
-                // fold_add(tb2, foldconfig);
+                foldconfig.tries = 5; foldconfig.k = 20; foldconfig.k_test = 15;
+                fold_add(tb2, foldconfig);
+                foldconfig.tries = 5; foldconfig.k = 10; foldconfig.k_test = 8;
+                fold_add(tb2, foldconfig);
             }
 
             sprintf(dirname, "/home/princio/Desktop/results/test/not_loaded/not_applied/");
@@ -435,14 +436,14 @@ void tb2_make(char fpath[PATH_MAX], MANY(WSize) wsizes, MANY(PSet) psets) {
         foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 2;
         fold_add(tb2, foldconfig);
 
-        // foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 5;
-        // fold_add(tb2, foldconfig);
+        foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 5;
+        fold_add(tb2, foldconfig);
 
-        // foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 8;
-        // fold_add(tb2, foldconfig);
+        foldconfig.tries = 2; foldconfig.k = 10; foldconfig.k_test = 8;
+        fold_add(tb2, foldconfig);
 
-        // foldconfig.tries = 2; foldconfig.k = 20; foldconfig.k_test = 10;
-        // fold_add(tb2, foldconfig);
+        foldconfig.tries = 2; foldconfig.k = 20; foldconfig.k_test = 10;
+        fold_add(tb2, foldconfig);
     }
     {
         printf("Appling...\n");
@@ -488,7 +489,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/2_tests/tiny_25_by/");
+        sprintf(rootdir, "/home/princio/Desktop/results/2_tests/tiny_45_wvalue/");
     }
 
     char fpathtb2[200];
@@ -503,7 +504,7 @@ int main (int argc, char* argv[]) {
 
     tb2 = NULL;
     wsizes = make_wsizes();
-    psets = make_parameters(8);
+    psets = make_parameters(0);
     performances = make_performance();
 
     snprintf(fpathtb2, PATH_MAX, "tb2_%ld_%ld.bin", wsizes._[0].value, psets.number);
@@ -522,13 +523,39 @@ int main (int argc, char* argv[]) {
         return -1;
     }
 
-    // if (1) {
     if (testbed2_io(IO_READ, fpathtb2, &tb2)) {
-        tb2_make(fpathtb2, wsizes, psets);
-        if (testbed2_io(IO_READ, fpathtb2, &tb2)) {
-            printf("Impossible to continue.\n");
-            return -1;
+        {
+            printf("Performing windowing...\n");
+            tb2 = testbed2_create(wsizes);
+            stratosphere_add(tb2);
+            testbed2_windowing(tb2);
         }
+        {
+            printf("Performing folding...\n");
+            FoldConfig foldconfig;
+        
+            foldconfig.tries = 10; foldconfig.k = 10; foldconfig.k_test = 2;
+            fold_add(tb2, foldconfig);
+
+            foldconfig.tries = 10; foldconfig.k = 10; foldconfig.k_test = 8;
+            fold_add(tb2, foldconfig);
+
+            foldconfig.tries = 10; foldconfig.k = 10; foldconfig.k_test = 5;
+            fold_add(tb2, foldconfig);
+
+            foldconfig.tries = 10; foldconfig.k = 20; foldconfig.k_test = 10;
+            fold_add(tb2, foldconfig);
+
+            foldconfig.tries = 10; foldconfig.k = 20; foldconfig.k_test = 15;
+            fold_add(tb2, foldconfig);
+        }
+        {
+            printf("Appling...\n");
+            testbed2_addpsets(tb2, psets);
+            testbed2_apply(tb2);
+        }
+
+        testbed2_io(IO_WRITE, fpathtb2, &tb2);
     }
 
     printf("Start training.\n");

@@ -43,7 +43,7 @@ RFold fold_create(RTestBed2 tb2, FoldConfig config) {
     RFold fold;
 
     if (folds_gatherer == NULL) {
-        gatherer_alloc(&folds_gatherer, "folds", fold_free, 10, sizeof(__Fold), 5);
+        gatherer_alloc(&folds_gatherer, "folds", fold_free, 50, sizeof(__Fold), 5);
     }
 
     fold = gatherer_alloc_item(folds_gatherer);

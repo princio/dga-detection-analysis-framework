@@ -451,7 +451,7 @@ int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
     FILE* file;
     file = io_openfile(rw, fpath);
     if (file == NULL) {
-        LOG_DEBUG("impossible to open file <%s>.", rw == IO_WRITE ? "w" : "r", fpath);
+        LOG_DEBUG("[%s] impossible to open file <%s>.", rw == IO_WRITE ? "Writing" : "Reading", fpath);
         return -1;
     }
 

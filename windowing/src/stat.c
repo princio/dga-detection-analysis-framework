@@ -214,9 +214,9 @@ Stat stat_run(RTrainer trainer) {
 
     #define print_statmetric_2d\
         DGAFOR(cl) {\
-            printf("%5d~%-5d", (int) (item->train[cl].min * 100), (int) (item->test[cl].min * 100));\
-            printf("%5d~%-5d", (int) (item->train[cl].max * 100), (int) (item->test[cl].max * 100));\
-            printf("%5d~%-5d", (int) (item->train[cl].avg * 100), (int) (item->test[cl].avg * 100));\
+            printf("%5d,%-5d", (int) (item->train[cl].min * 100), (int) (item->test[cl].min * 100));\
+            printf("%5d,%-5d", (int) (item->train[cl].max * 100), (int) (item->test[cl].max * 100));\
+            printf("%5d,%-5d", (int) (item->train[cl].avg * 100), (int) (item->test[cl].avg * 100));\
             printf("    ");\
         }\
 
@@ -241,11 +241,44 @@ Stat stat_run(RTrainer trainer) {
         printf("  min[%d]     max[%d]     avg[%d]  ", cl, cl, cl);
         printf("    ");
     }
-    printf("\n");\
+    printf("\n");
     FORBY(stats.by, fold) {
         FORBY(stats.by, wsize) {
             FORBY(stats.by, thchooser) {
                 multi_psetitem(prin_stat);
+            }
+        }
+    }
+
+    #define fprint_statmetric_csv\
+        DGAFOR(cl) {\
+            fprintf(file, ",%d,%d,", (int) (item->train[cl].min * 100), (int) (item->test[cl].min * 100));\
+            fprintf(file, "%d,%d,", (int) (item->train[cl].max * 100), (int) (item->test[cl].max * 100));\
+            fprintf(file, "%d,%d", (int) (item->train[cl].avg * 100), (int) (item->test[cl].avg * 100));\
+        }
+
+    #define fprint_stat_csv(NAME)\
+    for (size_t idxpsetitem = 0; idxpsetitem < psetitems.NAME.number; idxpsetitem++) {\
+        StatByPSetItemValue* item = &stats.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser._[idxthchooser].by ## NAME._[idxpsetitem];\
+        fprintf(file, "%ld,", idxfold);\
+        fprintf(file, "%ld,", trainer->tb2->wsizes._[idxwsize].value);\
+        fprintf(file, "%s,", trainer->thchoosers._[idxthchooser].name);\
+        fprintf(file, "%s,", item->name);\
+        fprintf(file, "%s", item->svalue);\
+        fprint_statmetric_csv;\
+        fprintf(file, "\n");\
+    }
+
+    FILE* file = fopen("stat.csv", "w");
+    fprintf(file, "fold,wsize,thchooser,psetitem,psetitemvalue");
+    DGAFOR(cl) {
+        fprintf(file, ",min[%d] train,min[%d] test,max[%d] train,max[%d] test,avg[%d] train, avg[%d] test", cl, cl, cl, cl, cl, cl);
+    }
+    fprintf(file, "\n");
+    FORBY(stats.by, fold) {
+        FORBY(stats.by, wsize) {
+            FORBY(stats.by, thchooser) {
+                multi_psetitem(fprint_stat_csv);
             }
         }
     }
