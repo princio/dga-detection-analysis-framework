@@ -27,15 +27,17 @@ RTestBed2 testbed2_create(MANY(WSize) wsizes, const size_t n_try) {
 
     CLONEMANY(tb2->wsizes, wsizes);
 
+    tb2->sources.element_size = sizeof(RSource);
+    tb2->dataset.folds.element_size = sizeof(FoldConfig);
+
     INITBY_N(tb2->dataset, wsize, wsizes.number);
     INITBY_N(tb2->dataset, try, n_try);
     
-    INITBY(tb2->dataset, tb2->dataset, wsize, TestBed2DatasetBy);
+    INITBY1(tb2->dataset, wsize, TestBed2DatasetBy);
     FORBY(tb2->dataset, wsize) {
-        INITBY(tb2->dataset, GETBY(tb2->dataset, wsize), try, TestBed2DatasetBy);
+        INITBY2(tb2->dataset, wsize, try, TestBed2DatasetBy);
         FORBY(tb2->dataset, try) {
-            INITMANY(GETBY(GETBY(tb2->dataset, wsize), try).byfold, 10, TestBed2DatasetBy_fold);
-            GETBY(GETBY(tb2->dataset, wsize), try).byfold.number = 0;
+            GETBY2(tb2->dataset, wsize, try).byfold.element_size = sizeof(TestBed2DatasetBy_fold);
         }
     }
     
@@ -43,7 +45,7 @@ RTestBed2 testbed2_create(MANY(WSize) wsizes, const size_t n_try) {
 }
 
 void testbed2_source_add(RTestBed2 tb2, RSource source) {
-    gatherer_many_add((__MANY*) &tb2->sources, sizeof(RSource), 5, source);
+    GATHERER_ADD(tb2->sources, 5, source, RSource);
 
     SourceIndex walker;
     memset(&walker, 0, sizeof(SourceIndex));
@@ -61,56 +63,47 @@ void testbed2_windowing(RTestBed2 tb2) {
 
     INITBY_N(tb2->windowing, source, tb2->sources.number);
     INITBY_N(tb2->windowing, wsize, tb2->wsizes.number);
-    INITBY(tb2->windowing, tb2->windowing, source, TestBed2WindowingBy);
-    FORBY(tb2->windowing, source) {
-        INITBY(tb2->windowing, GETBY(tb2->windowing, source), wsize, TestBed2WindowingBy);
+    INITBY1(tb2->windowing, wsize, TestBed2WindowingBy);
+    FORBY(tb2->windowing, wsize) {
+        INITBY2(tb2->windowing, wsize, source, TestBed2WindowingBy);
     }
 
     int32_t count_windows[tb2->wsizes.number][N_DGACLASSES];
     memset(&count_windows, 0, sizeof(int32_t) * tb2->wsizes.number * N_DGACLASSES);
-    for (size_t s = 0; s < tb2->sources.number; s++) {
-        RSource source = tb2->sources._[s];
-        MANY(RWindowing)* windowings = &tb2->windowing.bysource._[s].bywsize;
+    FORBY(tb2->windowing, wsize) {
+        const WSize wsize = tb2->wsizes._[idxwsize];
+        FORBY(tb2->windowing, source) {
+            RSource source;
+            RWindowing* windowing_ref;
 
-        INITMANYREF(windowings, tb2->wsizes.number, RWindowing);
+            source = tb2->sources._[idxsource];
+            windowing_ref = &GETBY2(tb2->windowing, wsize, source);
 
-        for (size_t u = 0; u < tb2->wsizes.number; u++) {
-            const WSize wsize = tb2->wsizes._[u];
-            windowings->_[u] = windowings_create(wsize, source);
-
-            count_windows[u][source->wclass.mc] += windowings->_[u]->windows.number;
+            *windowing_ref = windowings_create(wsize, source);
+            count_windows[idxwsize][source->wclass.mc] += (*windowing_ref)->windows.number;
         }
     }
 
     FORBY(tb2->dataset, wsize) {
-        MANY(RWindowing) tmp;
-
-        INITMANY(tmp, tb2->sources.number, RWindowing);
-
-        FORBY(tb2->windowing, source) {
-            tmp._[idxsource] = GETBY2(tb2->windowing, source, wsize);
-        }
-
         FORBY(tb2->dataset, try) {
-            GETBY2(tb2->dataset, wsize, try).dataset = dataset0_from_windowings(tmp);
+            GETBY2(tb2->dataset, wsize, try).dataset = dataset0_from_windowings(GETBY(tb2->windowing, wsize).bysource);
         }
-
-        FREEMANY(tmp);
     }
 }
 
 void testbed2_fold_add(RTestBed2 tb2, FoldConfig config) {
-    gatherer_many_add((__MANY*) &tb2->dataset.folds, sizeof(FoldConfig), 5, &config);
+    GATHERER_ADD(tb2->dataset.folds, 5, config, FoldConfig);
+    INITBY_N(tb2->dataset, fold, tb2->dataset.folds.number);
 
     FORBY(tb2->dataset, wsize) {
         FORBY(tb2->dataset, try) {
             FORBY(tb2->dataset, fold) {
                 DatasetSplits splits = dataset0_splits(GETBY2(tb2->dataset, wsize, try).dataset, config.k, config.k_test);
-                gatherer_many_add((__MANY*) &GETBY2(tb2->dataset, wsize, try).byfold, sizeof(TestBed2DatasetBy), 5, &splits);
+                GATHERER_ADD(GETBY2(tb2->dataset, wsize, try).byfold, 5, splits, DatasetSplits);
             }
         }
     }
-    size_t n_fold = 1 + tb2->dataset.n.fold;
+    size_t n_fold = tb2->dataset.n.fold;
     INITBY_N(tb2->dataset, fold, n_fold);
 }
 
@@ -150,9 +143,9 @@ void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets) {
         }
     }
 
-    FORBY(tb2->windowing, source) {
-        FORBY(tb2->windowing, wsize) {
-            RWindowing windowing = tb2->windowing.bysource._[idxsource].bywsize._[idxwsize];
+    FORBY(tb2->windowing, wsize) {
+        FORBY(tb2->windowing, source) {
+            RWindowing windowing = GETBY2(tb2->windowing, wsize, source);
             for (size_t w = 0; w < windowing->windows.number; w++) {
                 wapply_init(windowing->windows._[w], tb2->applies.number);
             }
@@ -192,10 +185,18 @@ void testbed2_apply(RTestBed2 tb2) {
         to_apply_psets.number = idx;
     }
 
-
-    FORBY(tb2->windowing, source) {
-        LOG_DEBUG("Performing apply for source %ld having fnreqmax=%ld.", idxsource, tb2->sources._[idxsource]->fnreq_max);
-        stratosphere_apply(tb2->windowing.bysource._[idxsource].bywsize, &to_apply_psets);
+    {
+        MANY(RWindowing) source_windowings;
+        INITMANY(source_windowings, tb2->wsizes.number, RWindowing);
+        FORBY(tb2->windowing, source) {
+            FORBY(tb2->windowing, wsize) {
+                source_windowings._[idxwsize] = GETBY2(tb2->windowing, wsize, source);
+            }
+            LOG_DEBUG("Performing apply for source %ld having fnreqmax=%ld.", idxsource, tb2->sources._[idxsource]->fnreq_max);
+                
+            stratosphere_apply(source_windowings, &to_apply_psets);
+        }
+        FREEMANY(source_windowings);
     }
 
     for (size_t p = 0; p < tb2->applies.number; p++) {
@@ -206,20 +207,23 @@ void testbed2_apply(RTestBed2 tb2) {
 }
 
 void testbed2_free(RTestBed2 tb2) {
-    FORBY(tb2->windowing, source) {
-        FREEMANY(tb2->windowing.bysource._[idxsource].bywsize);
+    FORBY(tb2->windowing, wsize) {
+        FREEMANY(GETBY(tb2->windowing, wsize).bysource);
     }
+    FREEMANY(tb2->windowing.bywsize);
+
     FORBY(tb2->dataset, wsize) {
         FORBY(tb2->dataset, try) {
             FORBY(tb2->dataset, fold) {
-                FREEMANY(GETBY(GETBY(tb2->dataset, wsize), try).byfold);
+                FREEMANY(GETBY3(tb2->dataset, wsize, try, fold).splits);
             }
-            FREEMANY(GETBY(GETBY(tb2->dataset, wsize), try).byfold);
+            FREEMANY(GETBY2(tb2->dataset, wsize, try).byfold);
         }
         FREEMANY(GETBY(tb2->dataset, wsize).bytry);
     }
-    FREEMANY(tb2->windowing.bysource);
     FREEMANY(tb2->dataset.bywsize);
+    FREEMANY(tb2->dataset.folds);
+
     FREEMANY(tb2->sources);
     FREEMANY(tb2->wsizes);
     FREEMANY(tb2->applies);

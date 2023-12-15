@@ -20,8 +20,11 @@ typedef struct __Gatherer {
     __MANY many;
 } __Gatherer;
 
+#define GATHERER_ADD(MANY, SRI, ELEMENT, T)\
+    gatherer_many_add((__MANY*) &(MANY), (SRI), (uint8_t*) (&ELEMENT), sizeof(T));
 
-void gatherer_many_add(__MANY* many, size_t element_size, size_t size_realloc_increment, void* element);
+
+void gatherer_many_add(__MANY* many, size_t size_realloc_increment, uint8_t* element, size_t element_size);
 void gatherer_many_realloc(__MANY* many, size_t element_size, size_t size_realloc_increment);
 void gatherer_many_finalize(__MANY* many, size_t element_size);
 void gatherer_alloc(RGatherer*, char name[50], GathererFreeFn, size_t initial_size, size_t element_size, size_t size_realloc_increment);

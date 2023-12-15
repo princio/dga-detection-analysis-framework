@@ -148,6 +148,14 @@ static long getFileSize(const char* filename)
     return size;
 }
 
+
+void logger_close()
+{
+    if (s_flog.output != NULL) { /* reinit */
+        fclose(s_flog.output);
+    }
+}
+
 int logger_initFileLogger(const char* filename, long maxFileSize, unsigned char maxBackupFiles)
 {
     int ok = 0; /* false */

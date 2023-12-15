@@ -51,6 +51,8 @@
             (A).element_size = sizeof(T); \
             (A)._ = calloc(A.number, sizeof(T)); }
 
+#define INITMANY_0(A, N, T) INITMANY(A, N, T); (A).number = 0;
+
 #define INITMANYREF(A, N, T) { if ((N) == 0) printf("Warning[%s::%d]: initializing empty block.\n", __FILE__, __LINE__);\
             (A)->size = (N); \
             (A)->number = (N); \
@@ -69,19 +71,25 @@
 #define FREEMANYREF(A) { if (A->number) free(A->_); A->number = 0; A->size = 0; }
 
 #define INITBY_N(BY, NAME, N) memcpy((size_t*) &BY.n.NAME, &N, sizeof(size_t));
-#define INITBY(BY, BYSUB, NAME, T) \
-    INITMANY(BYSUB.by ## NAME, BY.n.NAME, T ## _ ## NAME);
-#define INITBY(BY, BYSUB, NAME, T) \
-    INITMANY(BYSUB.by ## NAME, BY.n.NAME, T ## _ ## NAME);
-#define FORBY(BY, NAME)\
-    for (size_t idx ## NAME = 0; idx ## NAME < BY.n.NAME; idx ## NAME++)
-#define INITBYFOR(BY, BYSUB, NAME, T) INITBY(BY, BYSUB, NAME, T); FORBY(BY, NAME)
 
 #define GETBY(BY, N1) BY.by ## N1._[idx ## N1]
 #define GETBY2(BY, N1, N2) GETBY(GETBY(BY, N1), N2)
 #define GETBY3(BY, N1, N2, N3) GETBY2(GETBY(BY, N1), N2, N3)
 #define GETBY4(BY, N1, N2, N3, N4) GETBY3(GETBY(BY, N1), N2, N3, N4)
 #define GETBY5(BY, N1, N2, N3, N4, N5) GETBY4(GETBY(BY, N1), N2, N3, N4, N5)
+
+#define INITBY(BY, BYSUB, NAME, T) \
+    INITMANY(BYSUB.by ## NAME, BY.n.NAME, T ## _ ## NAME);
+#define INITBY1(BY, N1, T) \
+    INITMANY(BY.by ## N1, BY.n.N1, T ## _ ## N1);
+#define INITBY2(BY, N1, N2, T) \
+    INITMANY(GETBY(BY, N1).by ## N2, BY.n.N2, T ## _ ## N2);
+#define INITBY3(BY, N1, N2, N3, T) \
+    INITMANY(GETBY2(BY, N1, N2).by ## N3, BY.n.N3, T ## _ ## N3);
+
+#define FORBY(BY, NAME)\
+    for (size_t idx ## NAME = 0; idx ## NAME < BY.n.NAME; idx ## NAME++)
+#define INITBYFOR(BY, BYSUB, NAME, T) INITBY(BY, BYSUB, NAME, T); FORBY(BY, NAME)
 
 
 typedef int32_t IDX;

@@ -85,30 +85,62 @@ FILE* io_openfile(IOReadWrite read, char fname[500]) {
     return file;
 }
 
+void io_dumphex_file(FILE* file, const void* data, size_t size) {
+	size_t i, j;
+    size_t row_len = 64;
+	char ascii[row_len+1];
+	ascii[row_len] = '\0';
+	for (i = 0; i < size; ++i) {
+		fprintf(file, "%02X ", ((unsigned char*)data)[i]);
+		if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~') {
+			ascii[i % row_len] = ((unsigned char*)data)[i];
+		} else {
+			ascii[i % row_len] = '.';
+		}
+		if ((i+1) % 8 == 0 || i+1 == size) {
+			fprintf(file, " ");
+			if ((i+1) % row_len == 0) {
+				fprintf(file, "|  %s \n", ascii);
+			} else if (i+1 == size) {
+				ascii[(i+1) % row_len] = '\0';
+				if ((i+1) % row_len <= 8) {
+					fprintf(file, " ");
+				}
+				for (j = (i+1) % row_len; j < row_len; ++j) {
+					fprintf(file, "   ");
+				}
+				// printf("|  %s \n", ascii);
+			}
+		}
+	}
+    fprintf(file, "\n");
+}
+
 void io_dumphex(const void* data, size_t size) {
 	char ascii[17];
 	size_t i, j;
-	ascii[16] = '\0';
+    size_t row_len = 64;
+	ascii[row_len] = '\0';
 	for (i = 0; i < size; ++i) {
 		printf("%02X ", ((unsigned char*)data)[i]);
 		if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~') {
-			ascii[i % 16] = ((unsigned char*)data)[i];
+			ascii[i % row_len] = ((unsigned char*)data)[i];
 		} else {
-			ascii[i % 16] = '.';
+			ascii[i % row_len] = '.';
 		}
 		if ((i+1) % 8 == 0 || i+1 == size) {
 			printf(" ");
-			if ((i+1) % 16 == 0) {
+			if ((i+1) % row_len == 0) {
 				printf("|  %s \n", ascii);
 			} else if (i+1 == size) {
-				ascii[(i+1) % 16] = '\0';
-				if ((i+1) % 16 <= 8) {
+				ascii[(i+1) % row_len] = '\0';
+				if ((i+1) % row_len <= 8) {
 					printf(" ");
 				}
-				for (j = (i+1) % 16; j < 16; ++j) {
+				for (j = (i+1) % row_len; j < row_len; ++j) {
 					printf("   ");
 				}
-				printf("|  %s \n", ascii);
+				// printf("|  %s \n", ascii);
 			}
 		}
 	}
@@ -137,6 +169,14 @@ void io_fwriteN(void* v, size_t s, FILE* file) {
         be[i] = htobe64(be[i]);
     }
     fwrite(be, 8, block64_2write, file);
+
+#ifdef IO_DEBUG
+    if (__io__debug) {
+        io_dumphex_file(__io__log, (void*) be, block64_2write * 8);
+        fflush(__io__log);
+    }
+#endif
+
 }
 
 void io_freadN(void* v, size_t s, FILE* file) {
@@ -146,6 +186,14 @@ void io_freadN(void* v, size_t s, FILE* file) {
     memset(be, 0, block64_2read * 8);
 
     fread(be, 8, block64_2read, file);
+
+#ifdef IO_DEBUG
+    if (__io__debug) {
+        io_dumphex_file(__io__log, (void*) be, block64_2read * 8);
+        fflush(__io__log);
+    }
+#endif
+
     for (int i = 0; i < block64_2read; ++i) {
         be[i] = be64toh(be[i]);
     }

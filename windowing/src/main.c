@@ -185,6 +185,7 @@ void csv_trainer(char dirname[PATH_MAX], RTrainer trainer) {
             }
         }
     }
+    fclose(file_csv);
 }
 #undef TR
 
@@ -313,7 +314,7 @@ void test_loadANDsave() {
                 MANY(WSize) wsizes;
                 wsizes = make_wsizes();
                 tb2 = testbed2_create(wsizes, n_try);
-                stratosphere_add(tb2);
+                stratosphere_add(tb2, 100);
                 testbed2_windowing(tb2);
                 FREEMANY(wsizes);
             }
@@ -431,7 +432,7 @@ void tb2_make(char fpath[PATH_MAX], MANY(WSize) wsizes, MANY(PSet) psets) {
     {
         printf("Performing windowing...\n");
         tb2 = testbed2_create(wsizes, n_try);
-        stratosphere_add(tb2);
+        stratosphere_add(tb2, 0);
         testbed2_windowing(tb2);
     }
     {
@@ -483,6 +484,11 @@ int main (int argc, char* argv[]) {
     // test_addpsets();
 
     // logger_initConsoleLogger(stdout);
+
+#ifdef IO_DEBUG
+    __io__debug = 0;
+#endif
+
     logger_initFileLogger("log/log.txt", 1024 * 1024, 5);
     logger_setLevel(LogLevel_TRACE);
     logger_autoFlush(100);
@@ -494,7 +500,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/2_tests/tiny_45_wvalue/");
+        sprintf(rootdir, "/home/princio/Desktop/results/3_tests/tiny_5_wvalue/");
     }
 
     char fpathtb2[200];
@@ -506,7 +512,7 @@ int main (int argc, char* argv[]) {
     RTrainer trainer;
     MANY(PSet) psets;
     MANY(WSize) wsizes;
-    const size_t n_try = 10;
+    const size_t n_try = 1;
 
     tb2 = NULL;
     wsizes = make_wsizes();
@@ -533,27 +539,30 @@ int main (int argc, char* argv[]) {
         {
             printf("Performing windowing...\n");
             tb2 = testbed2_create(wsizes, n_try);
-            stratosphere_add(tb2);
+            stratosphere_add(tb2, 5);
             testbed2_windowing(tb2);
         }
         {
             printf("Performing folding...\n");
             FoldConfig foldconfig;
+
+            foldconfig.k = 2; foldconfig.k_test = 1;
+            testbed2_fold_add(tb2, foldconfig);
         
-             foldconfig.k = 10; foldconfig.k_test = 2;
-            testbed2_fold_add(tb2, foldconfig);
+            // foldconfig.k = 10; foldconfig.k_test = 2;
+            // testbed2_fold_add(tb2, foldconfig);
 
-             foldconfig.k = 10; foldconfig.k_test = 8;
-            testbed2_fold_add(tb2, foldconfig);
+            // foldconfig.k = 10; foldconfig.k_test = 8;
+            // testbed2_fold_add(tb2, foldconfig);
 
-             foldconfig.k = 10; foldconfig.k_test = 5;
-            testbed2_fold_add(tb2, foldconfig);
+            // foldconfig.k = 10; foldconfig.k_test = 5;
+            // testbed2_fold_add(tb2, foldconfig);
 
-             foldconfig.k = 20; foldconfig.k_test = 10;
-            testbed2_fold_add(tb2, foldconfig);
+            // foldconfig.k = 20; foldconfig.k_test = 10;
+            // testbed2_fold_add(tb2, foldconfig);
 
-             foldconfig.k = 20; foldconfig.k_test = 15;
-            testbed2_fold_add(tb2, foldconfig);
+            // foldconfig.k = 20; foldconfig.k_test = 15;
+            // testbed2_fold_add(tb2, foldconfig);
         }
         {
             printf("Appling...\n");
@@ -578,6 +587,7 @@ int main (int argc, char* argv[]) {
     FREEMANY(performances);
     FREEMANY(wsizes);
     FREEMANY(psets);
+    logger_close();
 
     return 0;
 }

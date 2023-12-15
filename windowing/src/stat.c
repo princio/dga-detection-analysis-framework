@@ -284,6 +284,8 @@ Stat stat_run(RTrainer trainer) {
 
     multi_psetitem(pc_free);
 
+    fclose(file);
+
     return stats;
 }
 

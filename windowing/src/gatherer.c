@@ -17,9 +17,10 @@ MANY(__Gatherer) gatherer_of_gatherers = {
     ._ = NULL
 };
 
-void gatherer_many_add(__MANY* many, size_t element_size, size_t size_realloc_increment, void* element) {
+void gatherer_many_add(__MANY* many, size_t size_realloc_increment, uint8_t* element, size_t element_size) {
+    assert(many->element_size == element_size);
     gatherer_many_realloc(many, element_size, size_realloc_increment);
-    memcpy(&many->_[many->number * element_size], &element, element_size);
+    memcpy(&many->_[many->number * element_size], element, element_size);
     many->number++;
 }
 

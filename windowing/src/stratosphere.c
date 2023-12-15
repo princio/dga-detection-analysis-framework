@@ -265,7 +265,7 @@ void stratosphere_run_windowfetch(RWindow0 window0, MANY(PSet) psets) {
     PQclear(pgresult);
 }
 
-void _stratosphere_add(RTestBed2 tb2) {
+void _stratosphere_add(RTestBed2 tb2, size_t limit) {
     PGresult* pgresult = NULL;
 
     pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr ASC");
@@ -277,7 +277,7 @@ void _stratosphere_add(RTestBed2 tb2) {
 
     int nrows = PQntuples(pgresult);
 
-    nrows = 45; // DEBUG DEVELOP
+    if (limit && nrows > (int) limit) nrows = limit;
 
     for(int row = 0; row < nrows; row++) {
         int32_t id;
@@ -313,13 +313,13 @@ void _stratosphere_add(RTestBed2 tb2) {
     PQclear(pgresult);
 }
 
-void stratosphere_add(RTestBed2 tb2) {
+void stratosphere_add(RTestBed2 tb2, size_t limit) {
     if (_stratosphere_connect()) {
         LOG_ERROR("cannot connect to database.");
         return;
     }
 
-    _stratosphere_add(tb2);
+    _stratosphere_add(tb2, limit);
 
     _stratosphere_disconnect();
 }

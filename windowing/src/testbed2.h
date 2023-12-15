@@ -18,20 +18,20 @@
 /* Windowing */
 
 
-typedef RWindowing TestBed2WindowingBy_wsize;
-typedef MANY(RWindowing) MANY(TestBed2WindowingBy_wsize);
+typedef RWindowing TestBed2WindowingBy_source;
+typedef MANY(RWindowing) MANY(TestBed2WindowingBy_source);
 
-typedef struct TestBed2WindowingBy_source {
-    MANY(TestBed2WindowingBy_wsize) bywsize;
-} TestBed2WindowingBy_source;
-MAKEMANY(TestBed2WindowingBy_source);
+typedef struct TestBed2WindowingBy_wsize {
+    MANY(TestBed2WindowingBy_source) bysource;
+} TestBed2WindowingBy_wsize;
+MAKEMANY(TestBed2WindowingBy_wsize);
 
 typedef struct TestBed2WindowingBy {
     struct {
-        const size_t source;
         const size_t wsize;
+        const size_t source;
     } n;
-    MANY(TestBed2WindowingBy_source) bysource;
+    MANY(TestBed2WindowingBy_wsize) bywsize;
 } TestBed2WindowingBy;
 
 

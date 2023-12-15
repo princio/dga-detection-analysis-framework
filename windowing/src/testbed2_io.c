@@ -39,30 +39,27 @@ void testbed2_dataset_io(IOReadWrite rw, FILE* file, RTestBed2 tb2, RDataset0* d
         RWindow0* window_mul_ref;
         RSource source;
 
-        struct {
-            uint32_t window_index;
-            uint8_t wsize_index;
-            uint16_t source_index;
-            uint8_t _void;
-        } windex;
-        memset(&windex, 0, sizeof(windex));
+        uint8_t idxwsize = 0;
+        uint16_t idxsource = 0;
+        uint32_t idxwindow = 0;
 
         if (rw == IO_WRITE) {
-            windex.window_index = (*window_ref)->index;
-            windex.source_index = (*window_ref)->windowing->source->index.all;
-            windex.wsize_index = (*window_ref)->windowing->wsize.index;
-            windex._void = 0;
+            idxwsize = (*window_ref)->windowing->wsize.index;
+            idxsource = (*window_ref)->windowing->source->index.all;
+            idxwindow = (*window_ref)->index;
         }
 
-        FRW(windex);
+        FRW(idxwsize);
+        FRW(idxsource);
+        FRW(idxwindow);
 
-        source = tb2->sources._[windex.source_index];
+        source = tb2->sources._[idxsource];
 
         window_bin_ref = &(*dataset_ref)->windows.binary[source->wclass.bc]._[walker.binary[source->wclass.bc]++];
         window_mul_ref = &(*dataset_ref)->windows.multi[source->wclass.mc]._[walker.multi[source->wclass.mc]++];
 
         if (rw == IO_READ) {
-            (*window_ref) = tb2->windowing.bysource._[windex.source_index].bywsize._[windex.wsize_index]->windows._[windex.window_index];
+            (*window_ref) = GETBY2(tb2->windowing, wsize, source)->windows._[idxwindow];
             (*window_bin_ref) = (*window_ref);
             (*window_mul_ref) = (*window_ref);
         }
@@ -156,7 +153,6 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, RTestBed2 tb2, RW
 
         window0->windowing = windowing;
 
-        // FRW(window0->applies_number);
         FRW(window0->duration);
 
         struct {
@@ -219,20 +215,20 @@ void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     FRW(tb2->windowing.n.wsize);
 
     if (rw == IO_READ) {
-        INITBY(tb2->windowing, tb2->windowing, source, TestBed2WindowingBy);
+        INITBY1(tb2->windowing, wsize, TestBed2WindowingBy);
     }
 
-    FORBY(tb2->windowing, source) {
+    FORBY(tb2->windowing, wsize) {
         if (rw == IO_READ) {
-            INITBY(tb2->windowing, GETBY(tb2->windowing, source), wsize, TestBed2WindowingBy);
+            INITBY2(tb2->windowing, wsize, source, TestBed2WindowingBy);
         }
     
-        FORBY(tb2->windowing, wsize) {
+        FORBY(tb2->windowing, source) {
             RWindowing* windowing_ref;
             SourceIndex source_index;
             WSize wsize;
 
-            windowing_ref = &tb2->windowing.bysource._[idxsource].bywsize._[idxwsize];
+            windowing_ref = &GETBY2(tb2->windowing, wsize, source);
 
             if (rw == IO_WRITE) {
                 source_index = (*windowing_ref)->source->index;
@@ -259,21 +255,21 @@ void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, RDataset0* d
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     Index windows_counter;
-    WSize wsize;
+    size_t idxwsize;
+    Index walker;
 
     if (rw == IO_WRITE) {
         windows_counter = dataset_counter(*dataset_ref);
-        wsize = (*dataset_ref)->wsize;
+        idxwsize = (*dataset_ref)->wsize.index;
     }
 
-    FRW(wsize);
+    FRW(idxwsize);
     FRW(windows_counter);
 
     if (rw == IO_READ) {
-        (*dataset_ref) = dataset0_create(wsize, windows_counter);
+        (*dataset_ref) = dataset0_create(tb2->wsizes._[idxwsize], windows_counter);
     }
 
-    Index walker;
     memset(&walker, 0, sizeof(Index));
     for (size_t i = 0; i < windows_counter.all; i++) {
         RWindow0* window_ref = &(*dataset_ref)->windows.all._[i];
@@ -282,41 +278,86 @@ void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, RDataset0* d
         RSource source;
 
         struct {
-            uint32_t window_index;
-            uint8_t wsize_index;
-            uint16_t source_index;
-            uint8_t _void;
+            uint32_t windowing_idxwindow;
+            uint32_t idxsource;
         } windex;
         memset(&windex, 0, sizeof(windex));
 
         if (rw == IO_WRITE) {
-            windex.window_index = (*window_ref)->index;
-            windex.source_index = (*window_ref)->windowing->source->index.all;
-            windex.wsize_index = (*window_ref)->windowing->wsize.index;
-            windex._void = 0;
+            windex.windowing_idxwindow = (*window_ref)->index;
+            windex.idxsource = (*window_ref)->windowing->source->index.all;
         }
 
         FRW(windex);
 
-        source = tb2->sources._[windex.source_index];
+        source = tb2->sources._[windex.idxsource];
 
         window_bin_ref = &(*dataset_ref)->windows.binary[source->wclass.bc]._[walker.binary[source->wclass.bc]++];
         window_mul_ref = &(*dataset_ref)->windows.multi[source->wclass.mc]._[walker.multi[source->wclass.mc]++];
 
         if (rw == IO_READ) {
-            const size_t idxsource = windex.source_index;
-            const size_t idxwsize = windex.wsize_index;
-            (*window_ref) = GETBY2(tb2->windowing, source, wsize)->windows._[windex.window_index];
+            const size_t idxsource = windex.idxsource;
+            (*window_ref) = GETBY2(tb2->windowing, wsize, source)->windows._[windex.windowing_idxwindow];
             (*window_bin_ref) = (*window_ref);
             (*window_mul_ref) = (*window_ref);
         }
-
-        // fflush(file);
     }
 }
 
-int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
+void testbed2_io_all_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    FRW(tb2->dataset.n.try);
+    FRW(tb2->dataset.n.wsize);
+    FRW(tb2->dataset.n.fold);
+
+    if (rw == IO_READ) {
+        INITMANY(tb2->dataset.folds, tb2->dataset.n.fold, FoldConfig);
+    }
+    for (size_t idxfold = 0; idxfold < tb2->dataset.folds.number; idxfold++) {
+        FRW(tb2->dataset.folds._[idxfold].k);
+        FRW(tb2->dataset.folds._[idxfold].k_test);
+    }
+    
+
+    FORBY(tb2->dataset, wsize) {
+        FORBY(tb2->dataset, try) {
+            testbed2_io_dataset(rw, file, tb2, &GETBY2(tb2->dataset, wsize, try).dataset);
+            if (rw == IO_READ) {
+                INITBY(tb2->dataset, GETBY2(tb2->dataset, wsize, try), fold, TestBed2DatasetBy);
+            }
+            FORBY(tb2->dataset, fold) {
+                for (size_t k = 0; k < GETBY3(tb2->dataset, wsize, try, fold).splits.number; k++) {
+                    testbed2_io_dataset(rw, file, tb2, &GETBY3(tb2->dataset, wsize, try, fold).splits._[k].train);
+                    testbed2_io_dataset(rw, file, tb2, &GETBY3(tb2->dataset, wsize, try, fold).splits._[k].test);
+                }
+            }
+        }
+    }
+}
+
+void testbed2_io_create(IOReadWrite rw, FILE* file, RTestBed2* tb2) {
+    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    size_t n_tries = 0;
+    MANY(WSize) wsizes;
+    memset(&wsizes, 0, sizeof(WSize));
+
+    if (rw == IO_WRITE) {
+        n_tries = (*tb2)->dataset.n.try;
+        CLONEMANY(wsizes, (*tb2)->wsizes);
+    }
+
+    FRW(n_tries);
+    testbed2_io_wsizes(rw, file, &wsizes);
+
+    if (rw == IO_READ) {
+        *tb2 = testbed2_create(wsizes, n_tries);
+    }
+    FREEMANY(wsizes);
+}
+
+int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
 
     FILE* file;
     file = io_openfile(rw, fpath);
@@ -327,50 +368,21 @@ int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
 
     LOG_TRACE("%s from file %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath);
 
-    if (rw == IO_READ) {
-        MANY(WSize) wsizes;
-        size_t n_tries;
-        
-        testbed2_io_wsizes(rw, file, &wsizes);
-        FRW(n_tries);
-        
-        *tb2 = testbed2_create(wsizes, n_tries);
-        FREEMANY(wsizes);
-    } else {
-        testbed2_io_wsizes(rw, file, &(*tb2)->wsizes);
-    }
 
+    IOLOGPATH(rw, create);
+    testbed2_io_create(rw, file, tb2);
+
+    IOLOGPATH(rw, sources);
     testbed2_io_sources(rw, file, (*tb2));
 
+    IOLOGPATH(rw, parameters);
     testbed2_io_parameters(rw, file, (*tb2));
 
+    IOLOGPATH(rw, windowing);
     testbed2_io_windowing(rw, file, (*tb2));
 
-    FRW((*tb2)->dataset.n.try);
-    FRW((*tb2)->dataset.n.wsize);
-
-    if (rw == IO_READ) {
-        INITBY((*tb2)->dataset, (*tb2)->dataset, wsize, TestBed2DatasetBy);
-    }
-    FORBY((*tb2)->dataset, wsize) {
-        if (rw == IO_READ) {
-            INITBY((*tb2)->dataset, GETBY((*tb2)->dataset, wsize), try, TestBed2DatasetBy);
-        }
-        FORBY((*tb2)->dataset, try) {
-            testbed2_io_dataset(rw, file, (*tb2), &GETBY2((*tb2)->dataset, wsize, try).dataset);
-            if (rw == IO_READ) {
-                INITBY((*tb2)->dataset, GETBY2((*tb2)->dataset, wsize, try), fold, TestBed2DatasetBy);
-            }
-            FORBY((*tb2)->dataset, fold) {
-                for (size_t k = 0; k < GETBY3((*tb2)->dataset, wsize, try, fold).splits.number; k++) {
-                    testbed2_io_dataset(rw, file, (*tb2), &GETBY3((*tb2)->dataset, wsize, try, fold).splits._[k].train);
-                    testbed2_io_dataset(rw, file, (*tb2), &GETBY3((*tb2)->dataset, wsize, try, fold).splits._[k].test);
-                }
-            }
-        }
-    }
-
-    // testbed2_io_folds(rw, file, (*tb2));
+    IOLOGPATH(rw, all_dataset);
+    testbed2_io_all_dataset(rw, file, (*tb2));
 
     fclose(file);
 

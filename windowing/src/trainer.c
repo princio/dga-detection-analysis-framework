@@ -306,10 +306,9 @@ void trainer_free(RTrainer trainer) {
             FORBY(trainer->by, fold) {
                 FORBY(trainer->by, try) {
                     FORBY(trainer->by, thchooser) {
-                        for (size_t k = 0; k < GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits.number; k++) {
-                            FREEMANY(GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits);
-                        }
+                        FREEMANY(GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits);
                     }
+                    printf("\n");
                     FREEMANY(GETBY4(trainer->by, wsize, apply, fold, try).bythchooser);
                 }
                 FREEMANY(GETBY3(trainer->by, wsize, apply, fold).bytry);

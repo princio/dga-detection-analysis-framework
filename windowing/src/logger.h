@@ -87,6 +87,8 @@ void logger_autoFlush(unsigned long long interval);
  */
 void logger_flush(void);
 
+void logger_close();
+
 /**
  * Log a message.
  * Make sure to call one of the following initialize functions before starting logging.

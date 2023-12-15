@@ -19,7 +19,24 @@
 #define FR64(A) fread64((void*) &A, file)
 
 #define FWR(R, A) { if (R) freadN((void*) &A, sizeof(A), file); else fwriteN((void*) &A, sizeof(A), file); }
+
+
+#ifdef IO_DEBUG
+FILE* __io__log;
+int __io__debug;
+
+#define FRW(A) \
+if(__io__debug) fprintf(__io__log, "%d\t%ld\t%30s\t", __LINE__, sizeof(A), #A); \
+(*__FRW)((void*) &A, sizeof(A), file);
+#define IOLOGPATH(rw, N) { char __io__log__path[PATH_MAX]; \
+    sprintf(__io__log__path, "/tmp/io_%s_%s.log", rw ? "read" : "write", #N);\
+    __io__log = fopen(__io__log__path, "w");\
+}
+#else
+#define IOLOGPATH(rw, N)
 #define FRW(A) (*__FRW)((void*) &A, sizeof(A), file);
+#endif
+
 #define FW(A) fwriteN((void*) &A, sizeof(A), file)
 #define FR(A) freadN((void*) &A, sizeof(A), file)
 
@@ -42,6 +59,7 @@ int io_makedir(char dir[PATH_MAX], int append_time);
 int io_makedirs(char dir[PATH_MAX]);
 void io_path_concat(char path1[PATH_MAX], char path2[PATH_MAX], char res[PATH_MAX]);
 
+void io_dumphex_file(FILE* file, const void* data, size_t size);
 void io_dumphex(const void* data, size_t size);
 void io_fwrite32(uint32_t* n, FILE* file);
 void io_fwriteN(void* v, size_t s, FILE* file);
