@@ -327,6 +327,10 @@ void testbed2_io_all_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
                 INITBY(tb2->dataset, GETBY2(tb2->dataset, wsize, try), fold, TestBed2DatasetBy);
             }
             FORBY(tb2->dataset, fold) {
+                FRW(GETBY3(tb2->dataset, wsize, try, fold).isok);
+                if (rw == IO_READ) {
+                    INITMANY(GETBY3(tb2->dataset, wsize, try, fold).splits, tb2->dataset.folds._[idxfold].k, DatasetSplit0);
+                }
                 for (size_t k = 0; k < GETBY3(tb2->dataset, wsize, try, fold).splits.number; k++) {
                     testbed2_io_dataset(rw, file, tb2, &GETBY3(tb2->dataset, wsize, try, fold).splits._[k].train);
                     testbed2_io_dataset(rw, file, tb2, &GETBY3(tb2->dataset, wsize, try, fold).splits._[k].test);
