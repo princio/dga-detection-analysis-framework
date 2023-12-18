@@ -52,7 +52,7 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset, MANY(ResultsTODO) todo) {
     size_t avg = 0;
     int th_reducer;
 
-    th_reducer = 50;
+    th_reducer = 100;
     // if (dataset->windows.all.number < 10000) th_reducer = 25;
     // else
     // if (dataset->windows.all.number < 1000) th_reducer = 10;
@@ -95,6 +95,44 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset, MANY(ResultsTODO) todo) {
     LOG_TRACE("Ths number: reducer=%d\twn=%-10ld\tmin=%-10ld\tmax=%-10ld\tavg=%-10ld", th_reducer, dataset->windows.all.number, min, max, avg / todo.number);
 
     return ths;
+}
+
+ThsDataset _trainer_ths_2(RDataset0 dataset, size_t n_ths) {
+    ThsDataset ths;
+
+    double ths_min = DBL_MAX;
+    double ths_max = - DBL_MAX;
+
+    size_t applies_number = dataset->windows.all._[0]->applies.number;
+    
+    for (size_t a = 0; a < applies_number; a++) {
+        for (size_t w = 0; w < dataset->windows.all.number; w++) {
+            const double logit = dataset->windows.all._[w]->applies._[a].logit;
+            if (logit > ths_max) ths_max = logit;
+            if (logit < ths_min) ths_min = logit;
+        }
+    }
+
+    size_t ths_freq[n_ths * 50];
+    double ths_freq_rel[n_ths * 50];
+
+    const double cell_width = (ths_max - ths_min) / (n_ths * 50);
+    
+    for (size_t a = 0; a < applies_number; a++) {
+        for (size_t w = 0; w < dataset->windows.all.number; w++) {
+            const double logit = dataset->windows.all._[w]->applies._[a].logit;
+            size_t ths_freq_i = ((logit - ths_min) / cell_width);
+            ths_freq[ths_freq_i]++;
+        }
+    }
+
+    for (size_t i = 0; i < n_ths * 50; i++) {
+        ths_freq_rel[i] = ((double) ths_freq[i]) / (n_ths * 50);
+        if (ths_freq_rel[i] > 0) printf("%5ld) %4.4f\n", i, 100 * ths_freq_rel[i]);
+    }
+    printf("\n");
+    
+    // return ths;
 }
 
 void _trainer_ths_free(MANY(ThsDataset) ths) {
@@ -154,7 +192,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
             FORBY((*by), wsize) {
                 TCPC(DatasetSplits) splits = &GETBY3(tb2->dataset, wsize, try, fold);
                 if (!splits->isok) {
-                    LOG_WARN("Warning: skipping folding for fold=%ld, try=%ld, wsize=%ld\n", idxfold, idxtry, tb2->wsizes._[idxwsize].value);
+                    LOG_WARN("Warning: skipping folding for fold=%ld, try=%ld, wsize=%ld", idxfold, idxtry, tb2->wsizes._[idxwsize].value);
                     continue;
                 }
 
@@ -163,6 +201,8 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
                     printf("%3ld/%-3ld | ", 1+idxtry, tb2->dataset.n.try);
                     printf("%3ld/%-3ld | ", 1+idxwsize, tb2->wsizes.number);
                     printf("%3ld/%-3ld | ", 1+k, splits->splits.number);
+
+                    // _trainer_ths_2(splits->splits._[k].train, 100);
 
                     DatasetSplit0 split = splits->splits._[k];
                     MANY(ResultsTODO) results_todo;
@@ -206,12 +246,14 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
                         INITMANY(best_detections[idxapply], thchoosers.number, Detection);
                     }
 
+                    CLOCK_START(calculating_detections);
                     for (size_t idxwindow = 0; idxwindow < split.train->windows.all.number; idxwindow++) {
                         RWindow0 window0 = split.train->windows.all._[idxwindow];
                         RSource source = window0->windowing->source;
 
 
-                        FORBY((*by), apply) { APPLY_SKIP;
+                        FORBY((*by), apply) {
+                            APPLY_SKIP;
                             for (size_t idxth = 0; idxth < ths._[idxapply].number; idxth++) {
                                 double th = ths._[idxapply]._[idxth];
                                 const int prediction = window0->applies._[idxapply].logit >= th;
@@ -223,7 +265,10 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
                             }
                         }
                     } // calculating detections
+                    CLOCK_END(calculating_detections);
 
+
+                    CLOCK_START(calculating_performance_train);
                     FORBY((*by), apply) { APPLY_SKIP;
                         FORBY((*by), thchooser) { THCHOOSER_SKIP;
                             for (size_t idxth = 0; idxth < ths._[idxapply].number; idxth++) {
@@ -244,7 +289,9 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
                             }
                         }
                     }// calculating performances for each detection and setting the best one
+                    CLOCK_END(calculating_performance_train);
 
+                    CLOCK_START(calculating_performance_from_train_th_to_test);
                     for (size_t w = 0; w < split.test->windows.all.number; w++) {
                         RWindow0 window0 = split.test->windows.all._[w];
                         RSource source = window0->windowing->source;
@@ -275,6 +322,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
                             }
                         }
                     } // filling Result
+                    CLOCK_END(calculating_performance_from_train_th_to_test);
 
                     FORBY((*by), apply) { APPLY_SKIP;
                         FORBY((*by), thchooser) { THCHOOSER_SKIP;
@@ -308,7 +356,6 @@ void trainer_free(RTrainer trainer) {
                     FORBY(trainer->by, thchooser) {
                         FREEMANY(GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits);
                     }
-                    printf("\n");
                     FREEMANY(GETBY4(trainer->by, wsize, apply, fold, try).bythchooser);
                 }
                 FREEMANY(GETBY3(trainer->by, wsize, apply, fold).bytry);

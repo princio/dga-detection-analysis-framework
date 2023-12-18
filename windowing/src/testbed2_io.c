@@ -15,57 +15,6 @@
 
 void testbed2_md(char fpath[PATH_MAX], const RTestBed2 tb2);
 
-void testbed2_dataset_io(IOReadWrite rw, FILE* file, RTestBed2 tb2, RDataset0* dataset_ref) {
-    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
-
-    Index windows_counter;
-
-    if (rw == IO_WRITE) {
-        windows_counter = dataset_counter(*dataset_ref);
-    }
-
-    FRW((*dataset_ref)->wsize);
-    FRW(windows_counter);
-
-    if (rw == IO_READ) {
-        (*dataset_ref) = dataset0_create((*dataset_ref)->wsize, windows_counter);
-    }
-
-    Index walker;
-    memset(&walker, 0, sizeof(Index));
-    for (size_t i = 0; i < windows_counter.all; i++) {
-        RWindow0* window_ref = &(*dataset_ref)->windows.all._[i];
-        RWindow0* window_bin_ref;
-        RWindow0* window_mul_ref;
-        RSource source;
-
-        uint8_t idxwsize = 0;
-        uint16_t idxsource = 0;
-        uint32_t idxwindow = 0;
-
-        if (rw == IO_WRITE) {
-            idxwsize = (*window_ref)->windowing->wsize.index;
-            idxsource = (*window_ref)->windowing->source->index.all;
-            idxwindow = (*window_ref)->index;
-        }
-
-        FRW(idxwsize);
-        FRW(idxsource);
-        FRW(idxwindow);
-
-        source = tb2->sources._[idxsource];
-
-        window_bin_ref = &(*dataset_ref)->windows.binary[source->wclass.bc]._[walker.binary[source->wclass.bc]++];
-        window_mul_ref = &(*dataset_ref)->windows.multi[source->wclass.mc]._[walker.multi[source->wclass.mc]++];
-
-        if (rw == IO_READ) {
-            (*window_ref) = GETBY2(tb2->windowing, wsize, source)->windows._[idxwindow];
-            (*window_bin_ref) = (*window_ref);
-            (*window_mul_ref) = (*window_ref);
-        }
-    }
-}
-
 void testbed2_io_parameters(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
@@ -328,6 +277,9 @@ void testbed2_io_all_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
             }
             FORBY(tb2->dataset, fold) {
                 FRW(GETBY3(tb2->dataset, wsize, try, fold).isok);
+                // if (0 == GETBY3(tb2->dataset, wsize, try, fold).isok) {
+                //     continue;
+                // }
                 if (rw == IO_READ) {
                     INITMANY(GETBY3(tb2->dataset, wsize, try, fold).splits, tb2->dataset.folds._[idxfold].k, DatasetSplit0);
                 }
@@ -372,7 +324,7 @@ int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
 
     LOG_TRACE("%s from file %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath);
 
-
+    __io__debug = 1;
     IOLOGPATH(rw, create);
     testbed2_io_create(rw, file, tb2);
 
@@ -387,6 +339,7 @@ int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
 
     IOLOGPATH(rw, all_dataset);
     testbed2_io_all_dataset(rw, file, (*tb2));
+    __io__debug = 0;
 
     fclose(file);
 

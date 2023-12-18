@@ -21,19 +21,27 @@
 #define FWR(R, A) { if (R) freadN((void*) &A, sizeof(A), file); else fwriteN((void*) &A, sizeof(A), file); }
 
 
+int __io__debug;
 #ifdef IO_DEBUG
 FILE* __io__log;
-int __io__debug;
 
 #define FRW(A) \
 if(__io__debug) fprintf(__io__log, "%d\t%ld\t%30s\t", __LINE__, sizeof(A), #A); \
 (*__FRW)((void*) &A, sizeof(A), file);
+
+#define IOPRINT(...) \
+if(__io__debug) {\
+    fprintf(__io__log, "%d\t", __LINE__); \
+    fprintf(__io__log, __VA_ARGS__); \
+}\
+
 #define IOLOGPATH(rw, N) { char __io__log__path[PATH_MAX]; \
-    sprintf(__io__log__path, "/tmp/io_%s_%s.log", rw ? "read" : "write", #N);\
+    sprintf(__io__log__path, "/home/princio/Desktop/results/%s.%s", #N, rw ? "read" : "write");\
     __io__log = fopen(__io__log__path, "w");\
 }
 #else
 #define IOLOGPATH(rw, N)
+#define IOPRINT(...)
 #define FRW(A) (*__FRW)((void*) &A, sizeof(A), file);
 #endif
 

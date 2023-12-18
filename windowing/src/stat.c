@@ -225,7 +225,7 @@ Stat stat_run(RTrainer trainer) {
         printf("%-15s ", trainer->thchoosers._[idxthchooser].name);\
         printf("%-25s ", item->name);\
         printf("%-20s ", item->svalue);\
-        print_statmetric_2d\
+        print_statmetric\
         printf("\n");\
     }
 

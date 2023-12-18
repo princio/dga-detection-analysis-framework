@@ -253,7 +253,10 @@ MANY(PSet) make_parameters(const size_t subset) {
             -1000
         };
 
-        float nx_epsilon_increment[] = { 0.25 };
+        float nx_epsilon_increment[] = {
+            0,
+            0.25
+        };
 
         #define _COPY(A, T) psetgenerator->n_## A = sizeof(A) / sizeof(T); psetgenerator->A = calloc(1, sizeof(A)); memcpy(psetgenerator->A, A, sizeof(A));
 
@@ -296,173 +299,6 @@ MANY(Performance) make_performance() {
     return performances;
 }
 
-void test_loadANDsave() {
-    char dirname[200];
-
-    for (size_t rw = 0; rw < 3; rw++) {
-        RTestBed2 tb2;
-        RTrainer trainer;
-        const size_t n_try = 10;
-
-        tb2 = NULL;
-        trainer = NULL;
-
-        printf("------ RW %ld\n\n\n", rw);
-
-        if (rw == 0) {
-            {
-                MANY(WSize) wsizes;
-                wsizes = make_wsizes();
-                tb2 = testbed2_create(wsizes, n_try);
-                stratosphere_add(tb2, 100);
-                testbed2_windowing(tb2);
-                FREEMANY(wsizes);
-            }
-            {
-                FoldConfig foldconfig;
-                foldconfig.k = 10; foldconfig.k_test = 8;
-                testbed2_fold_add(tb2, foldconfig);
-                foldconfig.k = 20; foldconfig.k_test = 15;
-                testbed2_fold_add(tb2, foldconfig);
-                foldconfig.k = 10; foldconfig.k_test = 8;
-                testbed2_fold_add(tb2, foldconfig);
-            }
-
-            sprintf(dirname, "/home/princio/Desktop/results/test/not_loaded/not_applied/");
-            testbed2_io(IO_WRITE, dirname, &tb2);
-
-            {
-                MANY(PSet) psets;
-                psets = make_parameters(2);
-                testbed2_addpsets(tb2, psets);
-                testbed2_apply(tb2);
-                FREEMANY(psets);
-            }
-
-            sprintf(dirname, "/home/princio/Desktop/results/test/not_loaded/applied/");
-            testbed2_io(IO_WRITE, dirname, &tb2);
-        }
-
-        if (rw == 1) {
-            sprintf(dirname, "/home/princio/Desktop/results/test/not_loaded/not_applied/");
-            testbed2_io(IO_READ, dirname, &tb2);
-            sprintf(dirname, "/home/princio/Desktop/results/test/loaded/not_applied/");
-            testbed2_io(IO_WRITE, dirname, &tb2);
-            {
-                MANY(PSet) psets;
-                psets = make_parameters(2);
-                testbed2_addpsets(tb2, psets);
-                testbed2_apply(tb2);
-                FREEMANY(psets);
-            }
-            sprintf(dirname, "/home/princio/Desktop/results/test/loaded/applied");
-            testbed2_io(IO_WRITE, dirname, &tb2);
-        } else
-        if (rw == 2) {
-            MANY(Performance) performances;
-
-            sprintf(dirname, "/home/princio/Desktop/results/test/loaded/applied");
-            testbed2_io(IO_READ, dirname, &tb2);
-            performances = make_performance();
-            trainer = trainer_run(tb2, performances, dirname);
-            FREEMANY(performances);
-
-            trainer_io(IO_WRITE, dirname, tb2, &trainer);
-            print_trainer(trainer);
-            trainer_free(trainer);
-        }
-
-        testbed2_free(tb2);
-        gatherer_free_all();
-    }
-}
-
-void test_addpsets() {
-    char dirname[200];
-
-    RTestBed2 tb2;
-    MANY(Performance) performances;
-
-    tb2 = NULL;
-    performances = make_performance();
-
-    sprintf(dirname, "/home/princio/Desktop/results/test/loaded/applied");
-    testbed2_io(IO_READ, dirname, &tb2);
-
-    {
-        RTrainer trainer;
-        trainer = trainer_run(tb2, performances, dirname);
-        print_trainer(trainer);
-        trainer_free(trainer);
-    }
-
-    {
-        MANY(PSet) psets;
-        psets = make_parameters(4);
-        testbed2_addpsets(tb2, psets);
-        FREEMANY(psets);
-    }
-
-    printf("--------\n");
-
-    {
-        RTrainer trainer;
-        trainer = trainer_run(tb2, performances, dirname);
-        print_trainer(trainer);
-        trainer_free(trainer);
-    }
-
-    sprintf(dirname, "/home/princio/Desktop/results/test/loaded/addpsets");
-    testbed2_io(IO_WRITE, dirname, &tb2);
-
-    testbed2_free(tb2);
-    gatherer_free_all();
-    FREEMANY(performances);
-}
-
-void tb2_make(char fpath[PATH_MAX], MANY(WSize) wsizes, MANY(PSet) psets) {
-    RTestBed2 tb2;
-    RTrainer trainer;
-
-    const size_t n_try = 10;
-
-    tb2 = NULL;
-    trainer = NULL;
-
-    {
-        printf("Performing windowing...\n");
-        tb2 = testbed2_create(wsizes, n_try);
-        stratosphere_add(tb2, 0);
-        testbed2_windowing(tb2);
-    }
-    {
-        printf("Performing folding...\n");
-        FoldConfig foldconfig;
-    
-        foldconfig.k = 10; foldconfig.k_test = 2;
-        testbed2_fold_add(tb2, foldconfig);
-
-        foldconfig.k = 10; foldconfig.k_test = 5;
-        testbed2_fold_add(tb2, foldconfig);
-
-        foldconfig.k = 10; foldconfig.k_test = 8;
-        testbed2_fold_add(tb2, foldconfig);
-
-        foldconfig.k = 20; foldconfig.k_test = 10;
-        testbed2_fold_add(tb2, foldconfig);
-    }
-    {
-        printf("Appling...\n");
-        testbed2_addpsets(tb2, psets);
-        testbed2_apply(tb2);
-    }
-
-    testbed2_io(IO_WRITE, fpath, &tb2);
-
-    testbed2_free(tb2);
-    gatherer_free_all();
-}
-
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
 
@@ -500,7 +336,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/3_tests/tiny_5_wvalue/");
+        sprintf(rootdir, "/home/princio/Desktop/results/4_tests_45/");
     }
 
     char fpathtb2[200];
@@ -512,7 +348,7 @@ int main (int argc, char* argv[]) {
     RTrainer trainer;
     MANY(PSet) psets;
     MANY(WSize) wsizes;
-    const size_t n_try = 1;
+    const size_t n_try = 10;
 
     tb2 = NULL;
     wsizes = make_wsizes();
@@ -539,30 +375,24 @@ int main (int argc, char* argv[]) {
         {
             printf("Performing windowing...\n");
             tb2 = testbed2_create(wsizes, n_try);
-            stratosphere_add(tb2, 5);
+            stratosphere_add(tb2, 45);
             testbed2_windowing(tb2);
         }
         {
             printf("Performing folding...\n");
             FoldConfig foldconfig;
 
-            foldconfig.k = 2; foldconfig.k_test = 1;
+            foldconfig.k = 10; foldconfig.k_test = 5;
             testbed2_fold_add(tb2, foldconfig);
-        
-            // foldconfig.k = 10; foldconfig.k_test = 2;
-            // testbed2_fold_add(tb2, foldconfig);
 
-            // foldconfig.k = 10; foldconfig.k_test = 8;
-            // testbed2_fold_add(tb2, foldconfig);
+            foldconfig.k = 10; foldconfig.k_test = 8;
+            testbed2_fold_add(tb2, foldconfig);
 
-            // foldconfig.k = 10; foldconfig.k_test = 5;
-            // testbed2_fold_add(tb2, foldconfig);
+            foldconfig.k = 20; foldconfig.k_test = 10;
+            testbed2_fold_add(tb2, foldconfig);
 
-            // foldconfig.k = 20; foldconfig.k_test = 10;
-            // testbed2_fold_add(tb2, foldconfig);
-
-            // foldconfig.k = 20; foldconfig.k_test = 15;
-            // testbed2_fold_add(tb2, foldconfig);
+            foldconfig.k = 20; foldconfig.k_test = 15;
+            testbed2_fold_add(tb2, foldconfig);
         }
         {
             printf("Appling...\n");
@@ -573,15 +403,17 @@ int main (int argc, char* argv[]) {
         testbed2_io(IO_WRITE, fpathtb2, &tb2);
     }
 
-    printf("Start training.\n");
-    trainer = trainer_run(tb2, performances, dirtrainer);
-    // print_trainer(trainer);
-    csv_trainer(fpathcsv, trainer);
+    if (1) {
+        printf("Start training.\n");
+        trainer = trainer_run(tb2, performances, dirtrainer);
+        // print_trainer(trainer);
+        csv_trainer(fpathcsv, trainer);
 
-    Stat stat = stat_run(trainer);
+        Stat stat = stat_run(trainer);
 
-    stat_free(stat);
-    trainer_free(trainer);
+        stat_free(stat);
+        trainer_free(trainer);
+    }
     testbed2_free(tb2);
     gatherer_free_all();
     FREEMANY(performances);

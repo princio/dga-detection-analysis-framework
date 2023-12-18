@@ -6,6 +6,8 @@
 #include <openssl/sha.h>
 #include <stdlib.h>
 
+// #define IO_DEBUG
+
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
 #define MAX_WSIZES 20
@@ -43,6 +45,11 @@
     T binary[2];\
     T multi[N_DGACLASSES];\
 } TETRA(T)
+
+#define CLOCK_START(A) clock_t begin_ ## A = clock();
+
+#define CLOCK_END(A) { double time_spent_ ## A = (double)(clock() - begin_ ## A) / CLOCKS_PER_SEC;\
+    printf("%60s: %f µs\n", #A, time_spent_ ## A * 1000000); }
 
 
 #define INITMANY(A, N, T) { if ((N) == 0) printf("Warning[%s::%d]: initializing empty block.\n", __FILE__, __LINE__); \

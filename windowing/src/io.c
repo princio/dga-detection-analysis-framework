@@ -87,31 +87,9 @@ FILE* io_openfile(IOReadWrite read, char fname[500]) {
 
 void io_dumphex_file(FILE* file, const void* data, size_t size) {
 	size_t i, j;
-    size_t row_len = 64;
-	char ascii[row_len+1];
-	ascii[row_len] = '\0';
+    size_t row_len = 128;
 	for (i = 0; i < size; ++i) {
 		fprintf(file, "%02X ", ((unsigned char*)data)[i]);
-		if (((unsigned char*)data)[i] >= ' ' && ((unsigned char*)data)[i] <= '~') {
-			ascii[i % row_len] = ((unsigned char*)data)[i];
-		} else {
-			ascii[i % row_len] = '.';
-		}
-		if ((i+1) % 8 == 0 || i+1 == size) {
-			fprintf(file, " ");
-			if ((i+1) % row_len == 0) {
-				fprintf(file, "|  %s \n", ascii);
-			} else if (i+1 == size) {
-				ascii[(i+1) % row_len] = '\0';
-				if ((i+1) % row_len <= 8) {
-					fprintf(file, " ");
-				}
-				for (j = (i+1) % row_len; j < row_len; ++j) {
-					fprintf(file, "   ");
-				}
-				// printf("|  %s \n", ascii);
-			}
-		}
 	}
     fprintf(file, "\n");
 }

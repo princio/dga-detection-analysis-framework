@@ -1,6 +1,7 @@
 #include "dataset.h"
 
 #include "gatherer.h"
+#include "logger.h"
 #include "sources.h"
 #include "windowing.h"
 
@@ -97,7 +98,7 @@ DatasetSplits dataset0_splits(RDataset0 dataset0, const size_t _k, const size_t 
         MANY(RWindow0) window0s = dataset0->windows.multi[cl];
 
         if (window0s.number == 0) {
-            printf("Dataset-split: empty windows for class %d\n", cl);
+            LOG_WARN("Dataset-split: empty windows for class %d\n", cl);
             continue;
         }
     
