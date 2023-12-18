@@ -92,12 +92,14 @@ void testbed2_windowing(RTestBed2 tb2) {
 }
 
 void testbed2_fold_add(RTestBed2 tb2, FoldConfig config) {
+    const size_t n_old_folds = tb2->dataset.n.fold;
     GATHERER_ADD(tb2->dataset.folds, 5, config, FoldConfig);
     INITBY_N(tb2->dataset, fold, tb2->dataset.folds.number);
 
     FORBY(tb2->dataset, wsize) {
         FORBY(tb2->dataset, try) {
             FORBY(tb2->dataset, fold) {
+                if (idxfold < n_old_folds) continue;
                 DatasetSplits splits = dataset0_splits(GETBY2(tb2->dataset, wsize, try).dataset, config.k, config.k_test);
                 GATHERER_ADD(GETBY2(tb2->dataset, wsize, try).byfold, 5, splits, DatasetSplits);
             }
