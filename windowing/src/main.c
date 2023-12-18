@@ -287,13 +287,36 @@ PSetByField make_parameters_toignore() {
     PSetByField psetbyfield;
     memset(&psetbyfield, 0, sizeof(PSetByField));
 
-    INITMANY(psetbyfield.windowing, 2, windowing_t);
-
     {
+        INITMANY(psetbyfield.windowing, 2, windowing_t);
         size_t idx = 0;
-        psetbyfield.windowing._[idx++] = WINDOWING_Q;
+        psetbyfield.windowing._[idx++] = WINDOWING_R;
         psetbyfield.windowing._[idx++] = WINDOWING_QR;
         if (idx > psetbyfield.windowing.number) exit(1);
+    }
+
+    {
+        INITMANY(psetbyfield.nx_epsilon_increment, 1, nx_epsilon_increment_t);
+        size_t idx = 0;
+        psetbyfield.nx_epsilon_increment._[idx++] = 0;
+        if (idx > psetbyfield.nx_epsilon_increment.number) exit(1);
+    }
+
+    {
+        INITMANY(psetbyfield.wl_value, 4, wl_value_t);
+        size_t idx = 0;
+        psetbyfield.wl_value._[idx++] = 0;
+        psetbyfield.wl_value._[idx++] = -20;
+        psetbyfield.wl_value._[idx++] = -50;
+        psetbyfield.wl_value._[idx++] = -100;
+        if (idx > psetbyfield.wl_value.number) exit(1);
+    }
+
+    {
+        INITMANY(psetbyfield.wl_rank, 1, wl_rank_t);
+        size_t idx = 0;
+        psetbyfield.wl_rank._[idx++] = 100;
+        if (idx > psetbyfield.wl_value.number) exit(1);
     }
 
     return psetbyfield;
