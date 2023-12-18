@@ -16,96 +16,87 @@
 #include <string.h>
 #include <time.h>
 
-
-typedef size_t index_t;
-typedef double ninf_t;
-typedef double pinf_t;
-typedef NN nn_t;
-typedef size_t wl_rank_t;
-typedef double wl_value_t;
-typedef WindowingType windowing_t;
-typedef float nx_epsilon_increment_t;
-
-MAKEMANY(index_t);
-MAKEMANY(ninf_t);
-MAKEMANY(pinf_t);
-MAKEMANY(nn_t);
-MAKEMANY(wl_rank_t);
-MAKEMANY(wl_value_t);
-MAKEMANY(windowing_t);
-MAKEMANY(nx_epsilon_increment_t);
-
-typedef struct StatPSet {
-    MANY(ninf_t) ninf;
-    MANY(pinf_t) pinf;
-    MANY(nn_t) nn;
-    MANY(wl_rank_t) wl_rank;
-    MANY(wl_value_t) wl_value;
-    MANY(windowing_t) windowing;
-    MANY(nx_epsilon_increment_t) nx_epsilon_increment;
-} StatPSet;
-
-#define FMT_ninf "f"
-#define FMT_pinf "f"
-#define FMT_nn "s"
-#define FMT_wl_rank "ld"
-#define FMT_wl_value "f"
-#define FMT_windowing "s"
-#define FMT_nx_epsilon_increment "f"
-
-#define FMT_PRE_ninf(V) V
-#define FMT_PRE_pinf(V) V
-#define FMT_PRE_nn(V) NN_NAMES[V]
-#define FMT_PRE_wl_rank(V) V
-#define FMT_PRE_wl_value(V) V
-#define FMT_PRE_windowing(V) WINDOWING_NAMES[V]
-#define FMT_PRE_nx_epsilon_increment(V) V
-
-#define multi_psetitem(FUN)\
-FUN(ninf);\
-FUN(pinf);\
-FUN(nn);\
-FUN(wl_rank);\
-FUN(wl_value);\
-FUN(windowing);\
-FUN(nx_epsilon_increment);
-
-StatPSet _parameters_count(MANY(TestBed2Apply) applies) {
-    StatPSet sp;
-    
-    #define pc_init(NAME)\
-    INITMANY(sp.NAME, applies.number, NAME ## _t);\
-    sp.NAME.number = 0;
-
-    #define pc_search(NAME) {\
-            int found = 0;\
-            for (size_t idx_ ## NAME = 0; idx_ ## NAME < sp.NAME.number; idx_ ## NAME++) {\
-                if (applies._[idxpset].pset.NAME ==  sp.NAME._[idx_ ## NAME]) {\
-                    found = 1;\
-                }\
-            }\
-            if (!found) { sp.NAME._[sp.NAME.number++] = applies._[idxpset].pset.NAME; }\
-        }
-
-    multi_psetitem(pc_init);
-
-    for (size_t idxpset = 0; idxpset < applies.number; idxpset++) {
-        multi_psetitem(pc_search);
+int stat_pset_ignore(TCPC(PSet) pset, TCPC(PSetByField) psetitems_to_ignore) {
+    #define __IGNORE(NAME) for (size_t idxpsetitem = 0; idxpsetitem < psetitems_to_ignore->NAME.number; idxpsetitem++) {\
+        int cmp = memcmp(&pset->NAME, &psetitems_to_ignore->NAME._[idxpsetitem], sizeof(NAME ## _t));\
+        if (cmp == 0) {\
+            return 1;\
+        }\
     }
 
-    #undef pc_init
-    #undef pc_search
+    multi_psetitem(__IGNORE);
 
-    return sp;
+    return 0;
 }
 
-Stat stat_run(RTrainer trainer) {
-
-    TrainerBy* by = &trainer->by;
+Stat stat_run(RTrainer trainer, PSetByField psetitems_toignore, char fpath[PATH_MAX]) {
 
     Stat stats;
+    PSetByField psetitems;
+    TrainerBy* by = &trainer->by;
 
-    StatPSet psetitems = _parameters_count(trainer->tb2->applies);
+
+    #define psetitems_toignore(NAME)\
+    printf(#NAME " [%ld/%ld]\t", psetitems_toignore.NAME.number, psetitems.NAME.number);\
+    for (size_t idxfield = 0; idxfield < psetitems.NAME.number; idxfield++) {\
+        for (size_t idxfield2ignore = 0; idxfield2ignore < psetitems_toignore.NAME.number; idxfield2ignore++) {\
+            NAME ## _t NAME ## _value = psetitems_toignore.NAME._[idxfield2ignore];\
+            int cmp = memcmp(&NAME ## _value, &psetitems.NAME._[idxfield], sizeof(NAME ## _t));\
+            if (cmp == 0) {\
+                printf("%ld-%" PSET_FMT(NAME) "\t", idxfield, PSET_FMT_PRE_2(NAME, psetitems.NAME._[idxfield]));\
+                psetitems.NAME._[idxfield] = psetitems.NAME._[--psetitems.NAME.number];\
+                idxfield--;\
+                if (0 == psetitems.NAME.number) {\
+                    printf("Warning: will ignore all due to ignoring all fields of %s.\n", #NAME);\
+                    return stats;\
+                }\
+                break;\
+            }\
+        }\
+    }\
+    printf("\n");
+
+    {
+        MANY(PSet) psets;
+        INITMANY(psets, trainer->tb2->applies.number, PSet);
+
+        for (size_t idxapply = 0; idxapply < trainer->tb2->applies.number; idxapply++) {
+            PSet* pset = &trainer->tb2->applies._[idxapply].pset;
+            psets._[idxapply] = *pset;
+        }
+        
+        psetitems = parameters_psets2byfields(&psets);
+
+        FREEMANY(psets);
+    }
+
+    // printf("windowing"
+    //     " [%ld/%ld]\t",
+    //     psetitems_toignore.windowing.number, psetitems.windowing.number);
+    // for (size_t idxfield = 0; idxfield < psetitems.windowing.number; idxfield++) {
+    //     for (size_t idxfield2ignore = 0; idxfield2ignore < psetitems_toignore.windowing.number; idxfield2ignore++) {
+    //         windowing_t windowing_value = psetitems_toignore.windowing._[idxfield2ignore];
+    //         int cmp = memcmp(&windowing_value, &psetitems.windowing._[idxfield], sizeof(windowing_t));
+    //         if (cmp == 0) {
+    //             printf("%ld-%"
+    //                 "s"
+    //                 "\t",
+    //                 idxfield, WINDOWING_NAMES[psetitems.windowing._[idxfield]]);
+    //             psetitems.windowing._[idxfield] = psetitems.windowing._[--psetitems.windowing.number];
+    //             idxfield--;
+    //             if (0 == psetitems.windowing.number) {
+    //                 printf("Warning: will ignore all due to ignoring all fields of %s.\n", "windowing");
+    //                 return stats;
+    //             }
+    //             break;
+    //         }
+    //     }
+    // }
+    // printf("\n");
+
+
+    multi_psetitem(psetitems_toignore);
+
 
     #define init_statmetric(NAME) DGAFOR(cl) DGAFOR(cl) {\
         sm->NAME[cl].min = DBL_MAX;\
@@ -120,8 +111,9 @@ Stat stat_run(RTrainer trainer) {
         INITMANY(GETBY3(stats.by, fold, wsize, thchooser).by ## NAME, psetitems.NAME.number, StatByPSetItemValue);\
         for (size_t __idx = 0; __idx < psetitems.NAME.number; __idx++) {\
             StatByPSetItemValue* sm = &GETBY3(stats.by, fold, wsize, thchooser).by ## NAME._[__idx];\
+            NAME ## _t NAME ## _value = psetitems.NAME._[__idx];\
             strcpy(sm->name, #NAME);\
-            sprintf(sm->svalue, "%"FMT_ ## NAME, FMT_PRE_ ## NAME(psetitems.NAME._[__idx]));\
+            sprintf(sm->svalue, "%"PSET_FMT(NAME), PSET_FMT_PRE(NAME));\
             init_statmetric(train);\
             init_statmetric(test);\
         }\
@@ -185,7 +177,15 @@ Stat stat_run(RTrainer trainer) {
                         for (size_t k = 0; k < GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits.number; k++) {
                             TrainerBy_splits* result;
                             result = &GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits._[k];
-                            multi_psetitem(update_stat);
+                            if (stat_pset_ignore(&trainer->tb2->applies._[idxapply].pset, &psetitems_toignore)) continue;
+update_stat(ninf);
+update_stat(pinf);
+update_stat(nn);
+update_stat(wl_rank);
+update_stat(wl_value);
+update_stat(windowing);
+update_stat(nx_epsilon_increment);
+                            // multi_psetitem(update_stat);
                         }
                     }
                 }
@@ -225,7 +225,7 @@ Stat stat_run(RTrainer trainer) {
         printf("%-15s ", trainer->thchoosers._[idxthchooser].name);\
         printf("%-25s ", item->name);\
         printf("%-20s ", item->svalue);\
-        print_statmetric\
+        print_statmetric_2d\
         printf("\n");\
     }
 
@@ -266,7 +266,7 @@ Stat stat_run(RTrainer trainer) {
         fprintf(file, "\n");\
     }
 
-    FILE* file = fopen("stat.csv", "w");
+    FILE* file = fopen(fpath, "w");
     fprintf(file, "fold,wsize,thchooser,psetitem,psetitemvalue");
     DGAFOR(cl) {
         fprintf(file, ",min[%d] train,min[%d] test,max[%d] train,max[%d] test,avg[%d] train, avg[%d] test", cl, cl, cl, cl, cl, cl);
@@ -287,6 +287,19 @@ Stat stat_run(RTrainer trainer) {
     fclose(file);
 
     return stats;
+
+#undef init_statmetric
+#undef init_stat
+#undef update_statmetric
+#undef update_stat
+#undef finalize_statmetric
+#undef finalize_stat
+#undef print_statmetric
+#undef print_statmetric_2d
+#undef prin_stat
+#undef fprint_statmetric_csv
+#undef fprint_stat_csv
+#undef pc_free
 }
 
 void stat_free(Stat stat) {

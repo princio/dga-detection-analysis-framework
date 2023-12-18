@@ -46,11 +46,14 @@
     T multi[N_DGACLASSES];\
 } TETRA(T)
 
+#ifdef BENCHMARKING
 #define CLOCK_START(A) clock_t begin_ ## A = clock();
-
 #define CLOCK_END(A) { double time_spent_ ## A = (double)(clock() - begin_ ## A) / CLOCKS_PER_SEC;\
     printf("%60s: %f µs\n", #A, time_spent_ ## A * 1000000); }
-
+#else
+#define CLOCK_START(A)
+#define CLOCK_END(A)
+#endif
 
 #define INITMANY(A, N, T) { if ((N) == 0) printf("Warning[%s::%d]: initializing empty block.\n", __FILE__, __LINE__); \
             (A).size = (N); \

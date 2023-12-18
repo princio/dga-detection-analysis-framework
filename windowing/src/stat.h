@@ -61,10 +61,8 @@ typedef struct Stat {
 
 #define STAT_IDX(STAT, FOLD, WSIZE, THCHOOSER, PSETNAME, PSETITEM) STAT.by.byfold._[FOLD].bywsize._[WSIZE].bythchooser._[THCHOOSER].by ## PSETNAME._[PSETITEM]
 
-Stat stat_run(RTrainer);
+Stat stat_run(RTrainer, PSetByField psetitems_toignore, char fpath[PATH_MAX]);
 
 void stat_free(Stat results);
-
-void stat_io(IOReadWrite rw, char dirname[200], RTrainer);
 
 #endif

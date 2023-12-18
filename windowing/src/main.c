@@ -35,6 +35,7 @@
 #include "windowing.h"
 
 #include <assert.h>
+#include <errno.h>
 #include <float.h>
 #include <linux/limits.h>
 #include <math.h>
@@ -132,17 +133,14 @@ void print_trainer(RTrainer trainer) {
     }
 }
 
-void csv_trainer(char dirname[PATH_MAX], RTrainer trainer) {
-    char fpath[PATH_MAX];
+void csv_trainer(char fpath[PATH_MAX], RTrainer trainer) {
     FILE* file_csv;
 
-    if (io_makedir(dirname, 0)) {
-        printf("Error: impossible to create directory <%s>\n", dirname);
+    file_csv = fopen(fpath, "w");
+    if (file_csv == NULL) {
+        LOG_ERROR("Impossible to open file (%s): %s\n", file_csv, strerror(errno));
         return;
     }
-
-    sprintf(fpath, "%s/results.csv", dirname);
-    file_csv = fopen(fpath, "w");
 
     TrainerBy* by = &trainer->by;
 
@@ -199,7 +197,7 @@ MANY(WSize) make_wsizes() {
     WSize wsizes_arr[] = {
         // {.index = index++, .value = 1},
         // {.index = index++, .value = 10},
-        {.index = index++, .value = 50},
+        {.index = index++, .value = 10},
         // {.index = index++, .value = 100},
         // {.index = index++, .value = 500},
         // {.index = index++, .value = 1000},
@@ -214,38 +212,39 @@ MANY(WSize) make_wsizes() {
 }
 
 MANY(PSet) make_parameters(const size_t subset) {
-    PSetGenerator* psetgenerator = calloc(1, sizeof(PSetGenerator));
+    PSetByField psetbyfield;
+    MANY(PSet) psets;
 
     {
-        NN nn[] = {
+        nn_t nn[] = {
             NN_NONE,
             // NN_TLD,
             // NN_ICANN,
             // NN_PRIVATE
         };
 
-        WindowingType windowing[] = {
+        windowing_t windowing[] = {
             WINDOWING_Q,
-            // WINDOWING_R,
-            // WINDOWING_QR
+            WINDOWING_R,
+            WINDOWING_QR
         };
 
-        double ninf[] = {
+        ninf_t ninf[] = {
             -50, // -2E-22
         };
 
-        double pinf[] = {
+        pinf_t pinf[] = {
             50, // 2E-22
         };
 
-        size_t wl_rank[] = {
+        wl_rank_t wl_rank[] = {
             100,
             1000,
             // 10000,
             // 100000
         };
 
-        double wl_value[] = {
+        wl_value_t wl_value[] = {
             0,
             -20,
             -50,
@@ -253,33 +252,51 @@ MANY(PSet) make_parameters(const size_t subset) {
             -1000
         };
 
-        float nx_epsilon_increment[] = {
+        nx_epsilon_increment_t nx_epsilon_increment[] = {
             0,
             0.25
         };
 
-        #define _COPY(A, T) psetgenerator->n_## A = sizeof(A) / sizeof(T); psetgenerator->A = calloc(1, sizeof(A)); memcpy(psetgenerator->A, A, sizeof(A));
+        #define _COPY(A) {\
+            const size_t num = sizeof(A) / sizeof(A ## _t);\
+            INITMANY(psetbyfield.A, num, A ## _t);\
+            for (size_t idxfield = 0; idxfield < num; idxfield++) {\
+                psetbyfield.A._[idxfield] = A[idxfield];\
+            }\
+        }
 
-        _COPY(ninf, double);
-        _COPY(pinf, double);
-        _COPY(nn, NN);
-        _COPY(windowing, WindowingType);
-        _COPY(wl_rank, size_t);
-        _COPY(wl_value, double);
-        _COPY(nx_epsilon_increment, float);
+        multi_psetitem(_COPY)
 
         #undef _COPY
+
+        psets = parameters_fields2psets(&psetbyfield);
+
+        parameters_fields_free(&psetbyfield);
     }
 
-    MANY(PSet) psets = parameters_generate(psetgenerator);
-
-    parameters_generate_free(psetgenerator);
-
-    if (subset && subset < psets.number) {
-        psets.number = subset;
+    for (size_t i = 0; i < psets.number; i++) {
+        PSet* pset = &psets._[i];
+        multi_psetitem(PSETPRINT);
     }
+    
 
     return psets;
+}
+
+PSetByField make_parameters_toignore() {
+    PSetByField psetbyfield;
+    memset(&psetbyfield, 0, sizeof(PSetByField));
+
+    INITMANY(psetbyfield.windowing, 2, windowing_t);
+
+    {
+        size_t idx = 0;
+        psetbyfield.windowing._[idx++] = WINDOWING_Q;
+        psetbyfield.windowing._[idx++] = WINDOWING_QR;
+        if (idx > psetbyfield.windowing.number) exit(1);
+    }
+
+    return psetbyfield;
 }
 
 MANY(Performance) make_performance() {
@@ -336,11 +353,12 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/4_tests_45/");
+        sprintf(rootdir, "/home/princio/Desktop/results/test_0/");
     }
 
     char fpathtb2[200];
     char fpathcsv[200];
+    char fpathstatcsv[200];
     char dirtrainer[200];
 
     RTestBed2 tb2;
@@ -348,17 +366,28 @@ int main (int argc, char* argv[]) {
     RTrainer trainer;
     MANY(PSet) psets;
     MANY(WSize) wsizes;
-    const size_t n_try = 10;
+    const size_t n_try = 2;
 
     tb2 = NULL;
     wsizes = make_wsizes();
     psets = make_parameters(0);
     performances = make_performance();
 
-    snprintf(fpathtb2, PATH_MAX, "tb2_%ld_%ld.bin", wsizes._[0].value, psets.number);
-    snprintf(fpathcsv, PATH_MAX, "tb2_%ld_%ld.csv", wsizes._[0].value, psets.number);
+    const size_t max_sources_number = 45;
+
+    char __name[100];
+    sprintf(__name, "wsize=%ld_psets=%ld_maxsources=%ld/", wsizes._[0].value, psets.number, max_sources_number);
+    printf("%s\n", rootdir);
+    io_path_concat(rootdir, __name, rootdir);
+
+    printf("%s\n", rootdir);
+
+    snprintf(fpathtb2, PATH_MAX, "tb2.bin");
+    snprintf(fpathcsv, PATH_MAX, "trainer.csv");
+    snprintf(fpathstatcsv, PATH_MAX, "stat.csv");
     io_path_concat(rootdir, fpathtb2, fpathtb2);
     io_path_concat(rootdir, fpathcsv, fpathcsv);
+    io_path_concat(rootdir, fpathstatcsv, fpathstatcsv);
     io_path_concat(rootdir, "trainer/", dirtrainer);
 
     if (io_makedirs(rootdir)) {
@@ -409,7 +438,9 @@ int main (int argc, char* argv[]) {
         // print_trainer(trainer);
         csv_trainer(fpathcsv, trainer);
 
-        Stat stat = stat_run(trainer);
+        PSetByField psetbyfield_toignore = make_parameters_toignore();
+
+        Stat stat = stat_run(trainer, psetbyfield_toignore, fpathstatcsv);
 
         stat_free(stat);
         trainer_free(trainer);
