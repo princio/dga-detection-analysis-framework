@@ -41,8 +41,8 @@ void io_path_concat(char path1[PATH_MAX], char path2[PATH_MAX], char res[PATH_MA
     assert(strlen(path1) + strlen(path2) < PATH_MAX);
     assert(path1[strlen(path1) - 1] == '/');
 
-    char a[strlen(path1)];
-    char b[strlen(path2)];
+    char a[strlen(path1) + 50];
+    char b[strlen(path2) + 50];
 
     strcpy(a, path1);
     strcpy(b, path2);
