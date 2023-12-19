@@ -206,14 +206,14 @@ extern char WINDOWING_NAMES[3][10];
 extern char NN_NAMES[11][10];
 
 typedef struct __Windowing* RWindowing;
-typedef struct __Window0* RWindow0;
+typedef struct __Window0* RWindow;
 typedef struct __Source* RSource;
-typedef struct __Dataset0* RDataset0;
+typedef struct __Dataset* RDataset;
 typedef struct __Fold* RFold0;
 typedef struct __TestBed2* RTestBed2;
 
-MAKEMANY(RWindow0);
-MAKEMANY(RDataset0);
+MAKEMANY(RWindow);
+MAKEMANY(RDataset);
 MAKEMANY(RWindowing);
 MAKEMANY(RFold0);
 MAKEMANY(double);

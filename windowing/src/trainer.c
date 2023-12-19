@@ -36,7 +36,7 @@ typedef MANY(double) ThsDataset;
 typedef MANY(Detection) DetectionDataset[3];
 MAKEMANY(ThsDataset);
 
-MANY(ThsDataset) _trainer_ths(RDataset0 dataset, MANY(ResultsTODO) todo) {
+MANY(ThsDataset) _trainer_ths(RDataset dataset, MANY(ResultsTODO) todo) {
     MANY(ThsDataset) ths;
 
     INITMANY(ths, todo.number, MANY(ThsDataset));
@@ -97,7 +97,7 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset, MANY(ResultsTODO) todo) {
     return ths;
 }
 
-ThsDataset _trainer_ths_2(RDataset0 dataset, size_t n_ths) {
+ThsDataset _trainer_ths_2(RDataset dataset, size_t n_ths) {
     ThsDataset ths;
 
     INITMANY(ths, 0, double);
@@ -206,7 +206,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
 
                     // _trainer_ths_2(splits->splits._[k].train, 100);
 
-                    DatasetSplit0 split = splits->splits._[k];
+                    DatasetSplit split = splits->splits._[k];
                     MANY(ResultsTODO) results_todo;
                     MANY(ThsDataset) ths;
                     MANY(Detection) detections[by->n.apply];
@@ -250,7 +250,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
 
                     CLOCK_START(calculating_detections);
                     for (size_t idxwindow = 0; idxwindow < split.train->windows.all.number; idxwindow++) {
-                        RWindow0 window0 = split.train->windows.all._[idxwindow];
+                        RWindow window0 = split.train->windows.all._[idxwindow];
                         RSource source = window0->windowing->source;
 
 
@@ -295,7 +295,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
 
                     CLOCK_START(calculating_performance_from_train_th_to_test);
                     for (size_t w = 0; w < split.test->windows.all.number; w++) {
-                        RWindow0 window0 = split.test->windows.all._[w];
+                        RWindow window0 = split.test->windows.all._[w];
                         RSource source = window0->windowing->source;
 
                         FORBY((*by), apply) { APPLY_SKIP;

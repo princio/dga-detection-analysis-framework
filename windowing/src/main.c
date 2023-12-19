@@ -197,7 +197,7 @@ MANY(WSize) make_wsizes() {
     WSize wsizes_arr[] = {
         // {.index = index++, .value = 1},
         // {.index = index++, .value = 10},
-        {.index = index++, .value = 10},
+        { .index = index++, .value = 100 },
         // {.index = index++, .value = 100},
         // {.index = index++, .value = 500},
         // {.index = index++, .value = 1000},
@@ -219,14 +219,13 @@ MANY(PSet) make_parameters(const size_t subset) {
         nn_t nn[] = {
             NN_NONE,
             NN_TLD,
-            NN_ICANN,
-            NN_PRIVATE
+            // NN_ICANN,
+            // NN_PRIVATE
         };
 
         windowing_t windowing[] = {
             WINDOWING_Q,
             WINDOWING_R,
-            WINDOWING_QR
         };
 
         ninf_t ninf[] = {
@@ -247,9 +246,7 @@ MANY(PSet) make_parameters(const size_t subset) {
         wl_value_t wl_value[] = {
             0,
             -20,
-            -50,
-            -100,
-            -1000
+            -80
         };
 
         nx_epsilon_increment_t nx_epsilon_increment[] = {
@@ -274,11 +271,12 @@ MANY(PSet) make_parameters(const size_t subset) {
         parameters_fields_free(&psetbyfield);
     }
 
-    for (size_t i = 0; i < psets.number; i++) {
-        PSet* pset = &psets._[i];
-        multi_psetitem(PSETPRINT);
-    }
+    // for (size_t i = 0; i < psets.number; i++) {
+    //     PSet* pset = &psets._[i];
+    //     multi_psetitem(PSETPRINT);
+    // }
     
+    psets.number = subset;
 
     return psets;
 }
@@ -288,31 +286,34 @@ PSetByField make_parameters_toignore() {
     memset(&psetbyfield, 0, sizeof(PSetByField));
 
     {
-        INITMANY(psetbyfield.windowing, 2, windowing_t);
+        INITMANY(psetbyfield.windowing, 1, windowing_t);
         size_t idx = 0;
         psetbyfield.windowing._[idx++] = WINDOWING_R;
-        psetbyfield.windowing._[idx++] = WINDOWING_QR;
-        if (idx > psetbyfield.windowing.number) exit(1);
+        // psetbyfield.windowing._[idx++] = WINDOWING_QR;
+        if (idx != psetbyfield.windowing.number) {
+            printf("ignoring windowing number are different\n");
+            exit(1);
+        }
     }
 
-    {
+    if (0) {
         INITMANY(psetbyfield.nx_epsilon_increment, 1, nx_epsilon_increment_t);
         size_t idx = 0;
         psetbyfield.nx_epsilon_increment._[idx++] = 0;
         if (idx > psetbyfield.nx_epsilon_increment.number) exit(1);
     }
 
-    {
-        INITMANY(psetbyfield.wl_value, 4, wl_value_t);
+    if (0) {
+        INITMANY(psetbyfield.wl_value, 2, wl_value_t);
         size_t idx = 0;
         psetbyfield.wl_value._[idx++] = 0;
         psetbyfield.wl_value._[idx++] = -20;
-        psetbyfield.wl_value._[idx++] = -50;
-        psetbyfield.wl_value._[idx++] = -100;
+        // psetbyfield.wl_value._[idx++] = -50;
+        // psetbyfield.wl_value._[idx++] = -100;
         if (idx > psetbyfield.wl_value.number) exit(1);
     }
 
-    {
+    if (0) {
         INITMANY(psetbyfield.wl_rank, 1, wl_rank_t);
         size_t idx = 0;
         psetbyfield.wl_rank._[idx++] = 100;
@@ -365,10 +366,11 @@ int main (int argc, char* argv[]) {
     __io__debug = 0;
 #endif
 
+    #ifdef LOGGING
     logger_initFileLogger("log/log.txt", 1024 * 1024, 5);
     logger_setLevel(LogLevel_TRACE);
     logger_autoFlush(100);
-    LOG_INFO("console logging");
+    #endif
 
     
     char rootdir[PATH_MAX];
@@ -385,25 +387,23 @@ int main (int argc, char* argv[]) {
     char dirtrainer[200];
 
     RTestBed2 tb2;
-    MANY(Performance) performances;
-    RTrainer trainer;
     MANY(PSet) psets;
     MANY(WSize) wsizes;
-    const size_t n_try = 2;
+    MANY(Performance) performances;
+    RTrainer trainer;
+    const size_t n_try = 5;
 
     tb2 = NULL;
-    wsizes = make_wsizes();
-    psets = make_parameters(0);
-    performances = make_performance();
 
+    const size_t wsize_value = 100;
+    const size_t max_pests_number = 48;
     const size_t max_sources_number = 45;
 
-    char __name[100];
-    sprintf(__name, "wsize=%ld_psets=%ld_maxsources=%ld/", wsizes._[0].value, psets.number, max_sources_number);
-    printf("%s\n", rootdir);
-    io_path_concat(rootdir, __name, rootdir);
-
-    printf("%s\n", rootdir);
+    {
+        char __name[100];
+        sprintf(__name, "wsize=%ld_psets=%ld_maxsources=%ld/", wsize_value, max_pests_number, max_sources_number);
+        io_path_concat(rootdir, __name, rootdir);
+    }
 
     snprintf(fpathtb2, PATH_MAX, "tb2.bin");
     snprintf(fpathcsv, PATH_MAX, "trainer.csv");
@@ -419,31 +419,52 @@ int main (int argc, char* argv[]) {
     }
 
     if (io_makedirs(dirtrainer)) {
-        printf("Impossible to create directories: %s\n", rootdir);
+        printf("Impossible to create directories: %s\n", dirtrainer);
         return -1;
     }
 
+    printf("   rootdir: %s\n", rootdir);
+    printf("dirtrainer: %s\n", dirtrainer);
+
+    performances = make_performance();
+
     if (testbed2_io(IO_READ, fpathtb2, &tb2)) {
+        {
+            wsizes = make_wsizes();
+            if (wsizes._[0].value != wsize_value) {
+                printf("Error: wsize value not correspond.\n");
+                exit(-1);
+            }
+            psets = make_parameters(max_pests_number);
+            if (psets.number != max_pests_number) {
+                printf("Error: psets number not correspond.\n");
+                exit(-1);
+            }
+        }
         {
             printf("Performing windowing...\n");
             tb2 = testbed2_create(wsizes, n_try);
-            stratosphere_add(tb2, 45);
+            stratosphere_add(tb2, max_sources_number);
+            if (tb2->sources.number != max_sources_number) {
+                printf("Error: max sources number not correspond.\n");
+                exit(-1);
+            }
             testbed2_windowing(tb2);
         }
         {
             printf("Performing folding...\n");
             FoldConfig foldconfig;
 
-            foldconfig.k = 10; foldconfig.k_test = 5;
+            foldconfig.k = 10; foldconfig.k_test = 2;
+            testbed2_fold_add(tb2, foldconfig);
+
+            foldconfig.k = 10; foldconfig.k_test = 4;
+            testbed2_fold_add(tb2, foldconfig);
+
+            foldconfig.k = 10; foldconfig.k_test = 6;
             testbed2_fold_add(tb2, foldconfig);
 
             foldconfig.k = 10; foldconfig.k_test = 8;
-            testbed2_fold_add(tb2, foldconfig);
-
-            foldconfig.k = 20; foldconfig.k_test = 10;
-            testbed2_fold_add(tb2, foldconfig);
-
-            foldconfig.k = 20; foldconfig.k_test = 15;
             testbed2_fold_add(tb2, foldconfig);
         }
         {
@@ -454,6 +475,13 @@ int main (int argc, char* argv[]) {
 
         testbed2_io(IO_WRITE, fpathtb2, &tb2);
     }
+
+    // if (1) {
+    //     if (0 == testbed2_try_set(tb2, 10)) {
+    //         testbed2_io(IO_WRITE, fpathtb2, &tb2);
+    //     }
+    //     exit(0);
+    // }
 
     if (1) {
         printf("Start training.\n");
@@ -470,10 +498,14 @@ int main (int argc, char* argv[]) {
     }
     testbed2_free(tb2);
     gatherer_free_all();
+
     FREEMANY(performances);
     FREEMANY(wsizes);
     FREEMANY(psets);
+
+    #ifdef LOGGING
     logger_close();
+    #endif
 
     return 0;
 }

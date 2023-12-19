@@ -2,7 +2,7 @@
 #ifndef __DETECT_H__
 #define __DETECT_H__
 
-#include "window0s.h"
+#include "windows.h"
 
 #define DETECT_TRUERATIO(DET, CL) ((double) (DET.windows)[CL][1]) / ((DET.windows)[CL][0] + (DET.windows)[CL][1])
 #define DETECT_FALSERATIO(DET, CL) ((double) (DET.windows)[CL][0]) / ((DET.windows)[CL][0] + (DET.windows)[CL][1])
@@ -48,7 +48,7 @@ MAKEMANY(Performance);
 void detect_reset(Detection*);
 void detect_copy(TCPC(Detection) src, Detection* dst);
 
-void detect_run(MANY(RWindow0) ds, const double th, MANY(Detection)* detections_);
+void detect_run(MANY(RWindow) ds, const double th, MANY(Detection)* detections_);
 
 double detect_performance(Detection[N_DGACLASSES], TCPC(Performance));
 

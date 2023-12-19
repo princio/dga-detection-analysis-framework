@@ -41,7 +41,7 @@ RWindowing windowings_create(WSize wsize, RSource source) {
 
     windowing->wsize = wsize;
     windowing->source = source;
-    windowing->windows = window0s_alloc(nw);
+    windowing->windows = windows_alloc(nw);
 
     size_t fnreq = 0;
     for (size_t w = 0; w < nw; w++) {

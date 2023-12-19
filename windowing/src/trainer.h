@@ -5,7 +5,7 @@
 #include "common.h"
 
 #include "detect.h"
-#include "window0s.h"
+#include "windows.h"
 #include "testbed2.h"
 
 #include <linux/limits.h>

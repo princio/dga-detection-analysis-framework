@@ -98,7 +98,7 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, RTestBed2 tb2, RW
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     for (size_t w = 0; w < windowing->windows.number; w++) {
-        RWindow0 window0 = windowing->windows._[w];
+        RWindow window0 = windowing->windows._[w];
 
         window0->windowing = windowing;
 
@@ -200,7 +200,7 @@ void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     }
 }
 
-void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, RDataset0* dataset_ref) {
+void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, RDataset* dataset_ref) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     Index windows_counter;
@@ -216,14 +216,14 @@ void testbed2_io_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2, RDataset0* d
     FRW(windows_counter);
 
     if (rw == IO_READ) {
-        (*dataset_ref) = dataset0_create(tb2->wsizes._[idxwsize], windows_counter);
+        (*dataset_ref) = dataset_create(tb2->wsizes._[idxwsize], windows_counter);
     }
 
     memset(&walker, 0, sizeof(Index));
     for (size_t i = 0; i < windows_counter.all; i++) {
-        RWindow0* window_ref = &(*dataset_ref)->windows.all._[i];
-        RWindow0* window_bin_ref;
-        RWindow0* window_mul_ref;
+        RWindow* window_ref = &(*dataset_ref)->windows.all._[i];
+        RWindow* window_bin_ref;
+        RWindow* window_mul_ref;
         RSource source;
 
         struct {
@@ -281,7 +281,7 @@ void testbed2_io_all_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
                 //     continue;
                 // }
                 if (rw == IO_READ) {
-                    INITMANY(GETBY3(tb2->dataset, wsize, try, fold).splits, tb2->dataset.folds._[idxfold].k, DatasetSplit0);
+                    INITMANY(GETBY3(tb2->dataset, wsize, try, fold).splits, tb2->dataset.folds._[idxfold].k, DatasetSplit);
                 }
                 for (size_t k = 0; k < GETBY3(tb2->dataset, wsize, try, fold).splits.number; k++) {
                     testbed2_io_dataset(rw, file, tb2, &GETBY3(tb2->dataset, wsize, try, fold).splits._[k].train);

@@ -86,7 +86,8 @@ void testbed2_windowing(RTestBed2 tb2) {
 
     FORBY(tb2->dataset, wsize) {
         FORBY(tb2->dataset, try) {
-            GETBY2(tb2->dataset, wsize, try).dataset = dataset0_from_windowings(GETBY(tb2->windowing, wsize).bysource);
+            GETBY2(tb2->dataset, wsize, try).dataset = dataset_from_windowings(GETBY(tb2->windowing, wsize).bysource);
+            dataset_shuffle(GETBY2(tb2->dataset, wsize, try).dataset);
         }
     }
 }
@@ -100,7 +101,7 @@ void testbed2_fold_add(RTestBed2 tb2, FoldConfig config) {
         FORBY(tb2->dataset, try) {
             FORBY(tb2->dataset, fold) {
                 if (idxfold < n_old_folds) continue;
-                DatasetSplits splits = dataset0_splits(GETBY2(tb2->dataset, wsize, try).dataset, config.k, config.k_test);
+                DatasetSplits splits = dataset_splits(GETBY2(tb2->dataset, wsize, try).dataset, config.k, config.k_test);
                 GATHERER_ADD(GETBY2(tb2->dataset, wsize, try).byfold, 5, splits, DatasetSplits);
             }
         }
@@ -109,25 +110,40 @@ void testbed2_fold_add(RTestBed2 tb2, FoldConfig config) {
     INITBY_N(tb2->dataset, fold, n_fold);
 }
 
-void testbed2_try_add(RTestBed2 tb2, size_t n_try) {
+int testbed2_try_set(RTestBed2 tb2, size_t n_try) {
     const size_t n_try_old = tb2->dataset.n.try;
-    const size_t n_try_new = n_try_old + n_try;
+
+    if (n_try <= n_try_old) {
+        LOG_WARN("Already %ld tries.", n_try);
+        return -1;
+    }
+
+    INITBY_N(tb2->dataset, try, n_try);
 
     FORBY(tb2->dataset, wsize) {
         MANY(TestBed2DatasetBy_try) tb2_dataset_try_new;
-        INITMANY(tb2_dataset_try_new, n_try_new, TestBed2DatasetBy_try);
+        INITMANY(tb2_dataset_try_new, n_try, TestBed2DatasetBy_try);
+
         FORBY(tb2->dataset, try) {
+
             if (idxtry < n_try_old) {
                 tb2_dataset_try_new._[idxtry] = GETBY2(tb2->dataset, wsize, try);
             } else {
                 INITMANY(tb2_dataset_try_new._[idxtry].byfold, tb2->dataset.n.fold, TestBed2DatasetBy_fold);
+
+                tb2_dataset_try_new._[idxtry].dataset = dataset_from_windowings(GETBY(tb2->windowing, wsize).bysource);
+                dataset_shuffle(tb2_dataset_try_new._[idxtry].dataset);
+
                 FORBY(tb2->dataset, fold) {
-                    tb2_dataset_try_new._[idxtry].byfold._[idxfold] = dataset0_splits(GETBY2(tb2->dataset, wsize, try).dataset, tb2->dataset.folds._[idxfold].k, tb2->dataset.folds._[idxfold].k_test);
+                    tb2_dataset_try_new._[idxtry].byfold._[idxfold] = dataset_splits(tb2_dataset_try_new._[idxtry].dataset, tb2->dataset.folds._[idxfold].k, tb2->dataset.folds._[idxfold].k_test);
                 }
             }
         }
+
         tb2->dataset.bywsize._[idxwsize].bytry = tb2_dataset_try_new;
     }
+
+    return 0;
 }
 
 void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets) {
@@ -197,7 +213,7 @@ void testbed2_apply(RTestBed2 tb2) {
     }
 
     {
-        int idx = 0;
+        size_t idx = 0;
         INITMANY(to_apply_psets, tb2->applies.number, PSet);
         for (size_t p = 0; p < tb2->applies.number; p++) {
             if (tb2->applies._[p].applied == 0) {

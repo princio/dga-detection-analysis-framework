@@ -3,36 +3,37 @@
 #define __DATASET_H__
 
 #include "common.h"
-#include "window0s.h"
+#include "windows.h"
 
-typedef struct DatasetRWindow0 {
-    MANY(RWindow0) all;
-    MANY(RWindow0) binary[2];
-    MANY(RWindow0) multi[N_DGACLASSES];
-} DatasetRWindow0;
+typedef struct DatasetRWindow {
+    MANY(RWindow) all;
+    MANY(RWindow) binary[2];
+    MANY(RWindow) multi[N_DGACLASSES];
+} DatasetRWindow;
 
-typedef struct __Dataset0 {
+typedef struct __Dataset {
     WSize wsize;
-    DatasetRWindow0 windows;
-} __Dataset0;
+    DatasetRWindow windows;
+} __Dataset;
 
-typedef struct DatasetSplit0 {
-    RDataset0 train;
-    RDataset0 test;
-} DatasetSplit0;
+typedef struct DatasetSplit {
+    RDataset train;
+    RDataset test;
+} DatasetSplit;
 
-MAKEMANY(DatasetSplit0);
+MAKEMANY(DatasetSplit);
 
 typedef struct DatasetSplits {
     int isok;
-    MANY(DatasetSplit0) splits;
+    MANY(DatasetSplit) splits;
 } DatasetSplits;
 
-RDataset0 dataset0_alloc();
-RDataset0 dataset0_create(WSize wsize, Index counter);
-int dataset0_splits_ok(MANY(DatasetSplit0) splits);
-DatasetSplits dataset0_splits(RDataset0 dataset0, const size_t k, const size_t k_test);
-Index dataset_counter(RDataset0 ds);
-RDataset0 dataset0_from_windowings(MANY(RWindowing) windowings);
+RDataset dataset_alloc();
+RDataset dataset_create(WSize wsize, Index counter);
+void dataset_shuffle(RDataset dataset);
+int dataset_splits_ok(MANY(DatasetSplit) splits);
+DatasetSplits dataset_splits(RDataset dataset, const size_t k, const size_t k_test);
+Index dataset_counter(RDataset ds);
+RDataset dataset_from_windowings(MANY(RWindowing) windowings);
 
 #endif

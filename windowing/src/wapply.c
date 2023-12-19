@@ -3,7 +3,7 @@
 
 #include "common.h"
 #include "io.h"
-#include "window0s.h"
+#include "windows.h"
 
 #include <assert.h>
 #include <math.h>
@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void wapply_init(RWindow0 window0, const size_t psets_number) {
+void wapply_init(RWindow window0, const size_t psets_number) {
     const size_t old_applies = window0->applies.number;
     
     window0->applies.number = psets_number;
@@ -21,9 +21,9 @@ void wapply_init(RWindow0 window0, const size_t psets_number) {
     memset(&window0->applies._[old_applies], 0, (psets_number - old_applies) * sizeof(WApply));
 }
 
-void wapply_init_many(MANY(RWindow0) window0s, MANY(WSize) wsizes, MANY(PSet) psets) {
+void wapply_init_many(MANY(RWindow) windows, MANY(WSize) wsizes, MANY(PSet) psets) {
     for (size_t i = 0; i < wsizes.number; i++) {
-        wapply_init(window0s._[i], psets.number);
+        wapply_init(windows._[i], psets.number);
     }
 }
 

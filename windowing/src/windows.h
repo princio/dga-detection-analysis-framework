@@ -1,6 +1,6 @@
 
-#ifndef __WINDOWS0_H__
-#define __WINDOWS0_H__
+#ifndef __WINDOWS_H__
+#define __WINDOWS_H__
 
 #include "common.h"
 
@@ -18,8 +18,8 @@ typedef struct __Window0 {
     MANY(WApply) applies;
 } __Window0;
 
-void window0s_shuffle(MANY(RWindow0) rwindows);
+void windows_shuffle(MANY(RWindow) rwindows);
 
-MANY(RWindow0) window0s_alloc(size_t window0s_number);
+MANY(RWindow) windows_alloc(size_t windows_number);
 
 #endif

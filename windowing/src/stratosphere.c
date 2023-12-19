@@ -4,7 +4,7 @@
 #include "logger.h"
 #include "parameters.h"
 #include "testbed2.h"
-#include "window0s.h"
+#include "windows.h"
 
 #include <libpq-fe.h>
 #include <15/server/catalog/pg_type_d.h>
@@ -246,7 +246,7 @@ void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets) {
     _stratosphere_disconnect();
 }
 
-void stratosphere_run_windowfetch(RWindow0 window0, MANY(PSet) psets) {
+void stratosphere_run_windowfetch(RWindow window0, MANY(PSet) psets) {
     PGresult* pgresult = NULL;
     int nrows;
 

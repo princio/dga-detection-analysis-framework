@@ -3,13 +3,13 @@
 
 #include "parameters.h"
 #include "sources.h"
-#include "window0s.h"
+#include "windows.h"
 
 typedef struct __Windowing {
     size_t index;
     RSource source;
     WSize wsize;
-    MANY(RWindow0) windows;
+    MANY(RWindow) windows;
 } __Windowing;
 
 RWindowing windowings_alloc();
