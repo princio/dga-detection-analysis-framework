@@ -100,6 +100,8 @@ MANY(ThsDataset) _trainer_ths(RDataset0 dataset, MANY(ResultsTODO) todo) {
 ThsDataset _trainer_ths_2(RDataset0 dataset, size_t n_ths) {
     ThsDataset ths;
 
+    INITMANY(ths, 0, double);
+
     double ths_min = DBL_MAX;
     double ths_max = - DBL_MAX;
 
@@ -132,7 +134,7 @@ ThsDataset _trainer_ths_2(RDataset0 dataset, size_t n_ths) {
     }
     printf("\n");
     
-    // return ths;
+    return ths;
 }
 
 void _trainer_ths_free(MANY(ThsDataset) ths) {

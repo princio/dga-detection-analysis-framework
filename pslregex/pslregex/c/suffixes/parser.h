@@ -6,44 +6,25 @@
 
 #include "utils.h"
 
-// suffix               54
-// code                 10
-// punycode             24
-// type                 18
-// origin               5
-// section              14
-// isprivate            7
-typedef struct StructRow {
-    char index[20];
-    char suffix[MAX_SUFFIX_SIZE]; // 63 bytes is the maximum
-    char code[15];
-    char punycode[24];
-    char type[18];
-    char origin[6];
-    char section[16];
-    char isprivate[8];
-} Row;
-
-
 typedef enum SuffixType {
-    CountryCode,
-    Generic,
-    GenericRestricted,
-    Infrastructure,
-    Sponsored,
-    Test
+    SUFFIXTYPE_COUNTRYCODE,
+    SUFFIXTYPE_GENERIC,
+    SUFFIXTYPE_GENERICRESTRICTED,
+    SUFFIXTYPE_INFRASTRUCTURE,
+    SUFFIXTYPE_SPONSORED,
+    SUFFIXTYPE_TEST
 } SuffixType;
 
-typedef enum _SuffixOrigin {
-    Origin_Both,
-    Origin_Icann,
-    Origin_PSL
+typedef enum SuffixOrigin {
+    SUFFIXORIGIN_BOTH,
+    SUFFIXORIGIN_ICANN,
+    SUFFIXORIGIN_PSL
 } SuffixOrigin;
 
-typedef enum _SuffixSection {
-    Section_Icann,
-    Section_IcannNew,
-    Section_PrivateDomain
+typedef enum SuffixSection {
+    SUFFIXSECTION_ICANN,
+    SUFFIXSECTION_ICANNNEW,
+    SUFFIXSECTION_PRIVATEDOMAIN
 } SuffixSection;
 
 
@@ -56,7 +37,7 @@ typedef enum _SuffixSection {
 // ### - TT: two letters which indicates the type
 // ### - E: if is an exception suffix
 // ### - 1: the number of labels
-typedef struct StructSuffixCode {
+typedef struct SuffixCode {
     char section;
     char index[5];
     char type[2];
@@ -64,17 +45,11 @@ typedef struct StructSuffixCode {
     char nlabels;
 } SuffixCode;
 
-typedef struct _Suffix
+typedef struct Suffix
 {
-    int index;
+    size_t index;
 
-    char label0[MAX_LABEL_SIZE];
-    char label1[MAX_LABEL_SIZE];
-    char label2[MAX_LABEL_SIZE];
-    char label3[MAX_LABEL_SIZE];
-    char label4[MAX_LABEL_SIZE];
-
-    char suffix[MAX_SUFFIX_SIZE];
+    DomainSuffix suffix;
 
     SuffixCode code;
     SuffixType type;

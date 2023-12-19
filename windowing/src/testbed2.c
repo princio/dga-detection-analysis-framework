@@ -109,6 +109,27 @@ void testbed2_fold_add(RTestBed2 tb2, FoldConfig config) {
     INITBY_N(tb2->dataset, fold, n_fold);
 }
 
+void testbed2_try_add(RTestBed2 tb2, size_t n_try) {
+    const size_t n_try_old = tb2->dataset.n.try;
+    const size_t n_try_new = n_try_old + n_try;
+
+    FORBY(tb2->dataset, wsize) {
+        MANY(TestBed2DatasetBy_try) tb2_dataset_try_new;
+        INITMANY(tb2_dataset_try_new, n_try_new, TestBed2DatasetBy_try);
+        FORBY(tb2->dataset, try) {
+            if (idxtry < n_try_old) {
+                tb2_dataset_try_new._[idxtry] = GETBY2(tb2->dataset, wsize, try);
+            } else {
+                INITMANY(tb2_dataset_try_new._[idxtry].byfold, tb2->dataset.n.fold, TestBed2DatasetBy_fold);
+                FORBY(tb2->dataset, fold) {
+                    tb2_dataset_try_new._[idxtry].byfold._[idxfold] = dataset0_splits(GETBY2(tb2->dataset, wsize, try).dataset, tb2->dataset.folds._[idxfold].k, tb2->dataset.folds._[idxfold].k_test);
+                }
+            }
+        }
+        tb2->dataset.bywsize._[idxwsize].bytry = tb2_dataset_try_new;
+    }
+}
+
 void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets) {
     size_t new_applies_count;
     size_t new_psets_index;

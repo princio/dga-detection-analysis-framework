@@ -155,7 +155,10 @@
         "fold.h": "c",
         "limits.h": "c",
         "gatherer.h": "c",
-        "endian.h": "c"
+        "endian.h": "c",
+        "parser.h": "c",
+        "flashstart.h": "c",
+        "main.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

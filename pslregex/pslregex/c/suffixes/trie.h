@@ -1,6 +1,8 @@
 #ifndef TRIE_H
 #define TRIE_H
 
+#include "common.h"
+
 #include "parser.h"
 
 #define ALPHABET_SIZE 484
@@ -19,7 +21,7 @@ typedef struct TrieNode
     // represents end of a word 
     int isEndOfWord;
     Suffix* suffix;
-    char inverted[MAX_SUFFIX_SIZE];
+    Suffix inverted;
 } TrieNode;
 
 struct SuffixSearchResult {

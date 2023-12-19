@@ -12,15 +12,6 @@
 #include "generator/training.h"
 
 #define BUFFER_SIZE 1024
-#define MAX_DOMAIN_SIZE 500
-
-
-struct Domain {
-    char domain[MAX_DOMAIN_SIZE];
-    int is_malware;
-    int is_dga;
-    struct SuffixSearchResult suffixes;
-};
 
 
 int main() {

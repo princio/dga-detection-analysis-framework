@@ -218,9 +218,9 @@ MANY(PSet) make_parameters(const size_t subset) {
     {
         nn_t nn[] = {
             NN_NONE,
-            // NN_TLD,
-            // NN_ICANN,
-            // NN_PRIVATE
+            NN_TLD,
+            NN_ICANN,
+            NN_PRIVATE
         };
 
         windowing_t windowing[] = {

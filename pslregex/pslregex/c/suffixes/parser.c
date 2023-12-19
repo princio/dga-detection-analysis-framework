@@ -4,7 +4,24 @@
 
 #include "parser.h"
 
-/* PRIVATE METHODS */
+// suffix               54
+// code                 10
+// punycode             24
+// type                 18
+// origin               5
+// section              14
+// isprivate            7
+
+typedef struct StructRow {
+    char index[20];
+    char suffix; // 63 bytes is the maximum
+    char code[15];
+    char punycode[24];
+    char type[18];
+    char origin[6];
+    char section[16];
+    char isprivate[8];
+} Row;
 
 int read_header()
 {
@@ -253,49 +270,49 @@ void parser(char *filepath, Suffix** suffixes_ptr, int *nsuffixes) {
         suffix->is_punycode = strlen(row.punycode) > 0;
 
         if(strcmp(row.type, "country-code") == 0) {
-            suffix->type = CountryCode;
+            suffix->type = SUFFIXTYPE_COUNTRYCODE;
         } else
         if(strcmp(row.type, "generic") == 0) {
-            suffix->type = Generic;
+            suffix->type = SUFFIXTYPE_GENERIC;
         } else
         if(strcmp(row.type, "generic-restricted") == 0) {
-            suffix->type = GenericRestricted;
+            suffix->type = SUFFIXTYPE_GENERICRESTRICTED;
         } else
         if(strcmp(row.type, "infrastructure") == 0) {
-            suffix->type = Infrastructure;
+            suffix->type = SUFFIXTYPE_INFRASTRUCTURE;
         } else
         if(strcmp(row.type, "sponsored") == 0) {
-            suffix->type = Sponsored;
+            suffix->type = SUFFIXTYPE_SPONSORED;
         } else
         if(strcmp(row.type, "test") == 0) {
-            suffix->type = Test;
+            suffix->type = SUFFIXTYPE_TEST;
         }
 
 
         if(strcmp(row.origin, "both") == 0) {
-            suffix->origin = Origin_Both;
+            suffix->origin = SUFFIXORIGIN_BOTH;
         }
         else
         if(strcmp(row.origin, "icann") == 0) {
-            suffix->origin = Origin_Icann;
+            suffix->origin = SUFFIXORIGIN_ICANN;
         }
         else
         if(strcmp(row.origin, "PSL") == 0) {
-            suffix->origin = Origin_PSL;
+            suffix->origin = SUFFIXORIGIN_PSL;
         }
 
 
         
         if(strcmp(row.section, "icann") == 0) {
-            suffix->section = Section_Icann;
+            suffix->section = SUFFIXSECTION_ICANN;
         }
         else
         if(strcmp(row.section, "icann-new") == 0) {
-            suffix->section = Section_IcannNew;
+            suffix->section = SUFFIXSECTION_ICANNNEW;
         }
         else
         if(strcmp(row.section, "private-domain") == 0) {
-            suffix->section = Section_PrivateDomain;
+            suffix->section = SUFFIXSECTION_PRIVATEDOMAIN;
         }
 
 
