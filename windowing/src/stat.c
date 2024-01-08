@@ -211,7 +211,7 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                         {  
                             char str[20];
                             parameters_definition[pp].print(parameterrealm[pp]._[idxparameter], 0, str);
-                            printf("%-20s ", str);
+                            // printf("%-20s ", str);
                         }
                         fprint_statmetric_csv;
                         fprintf(file, "\n");

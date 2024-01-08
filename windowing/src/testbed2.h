@@ -97,6 +97,8 @@ typedef struct __TestBed2 {
 
 RTestBed2 testbed2_create(MANY(WSize), const size_t);
 
+
+void testbed2_set_configapplied(RTestBed2);
 void testbed2_source_add(RTestBed2, RSource);
 void testbed2_windowing(RTestBed2);
 void testbed2_fold_add(RTestBed2, FoldConfig);

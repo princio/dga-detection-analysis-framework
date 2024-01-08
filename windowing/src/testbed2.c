@@ -33,28 +33,6 @@ RTestBed2 testbed2_create(MANY(WSize) wsizes, const size_t n_try) {
 
     INITBY_N(tb2->dataset, wsize, wsizes.number);
     INITBY_N(tb2->dataset, try, n_try);
-
-    {
-        size_t enabled = 0;
-        for (size_t idxconfig = 0; idxconfig < configsuite.number; idxconfig++) {
-            if (!configsuite._[idxconfig].disabled) {
-                enabled++;
-            }
-        }
-
-        size_t a = 0;
-        INITMANY(tb2->applies, enabled, ConfigApplied);
-        for (size_t idxconfig = 0; idxconfig < configsuite.number; idxconfig++) {
-            if (configsuite._[idxconfig].disabled) {
-                continue;
-            }
-            tb2->applies._[a].applied = 0;
-            tb2->applies._[a].index = a;
-            tb2->applies._[a].config = &configsuite._[idxconfig];
-            a++;
-        }
-    }
-    
     
     INITBY1(tb2->dataset, wsize, TestBed2DatasetBy);
     FORBY(tb2->dataset, wsize) {
@@ -65,6 +43,27 @@ RTestBed2 testbed2_create(MANY(WSize) wsizes, const size_t n_try) {
     }
     
     return tb2;
+}
+
+void testbed2_set_configapplied(RTestBed2 tb2) {
+    size_t enabled = 0;
+    for (size_t idxconfig = 0; idxconfig < configsuite.number; idxconfig++) {
+        if (!configsuite._[idxconfig].disabled) {
+            enabled++;
+        }
+    }
+
+    size_t a = 0;
+    INITMANY(tb2->applies, enabled, ConfigApplied);
+    for (size_t idxconfig = 0; idxconfig < configsuite.number; idxconfig++) {
+        if (configsuite._[idxconfig].disabled) {
+            continue;
+        }
+        tb2->applies._[a].applied = 0;
+        tb2->applies._[a].index = a;
+        tb2->applies._[a].config = &configsuite._[idxconfig];
+        a++;
+    }
 }
 
 void testbed2_source_add(RTestBed2 tb2, RSource source) {
@@ -236,13 +235,12 @@ void testbed2_apply(RTestBed2 tb2) {
 
     FORBY(tb2->windowing, source) {
 
-
         size_t total_applies_undone = 0;
 
         FORBY(tb2->windowing, wsize) {
 
             for (size_t idxapply = 0; idxapply < tb2->applies.number; idxapply++) {
-                const int applied = testbed2_io_windowing_applied(tb2, GETBY2(tb2->windowing, wsize, source), idxapply);
+                const int applied = testbed2_io_windowing_applied(tb2, GETBY2(tb2->windowing, wsize, source), tb2->applies._[idxapply].config->index);
 
                 tb2->applies._[idxapply].applied = applied;
 

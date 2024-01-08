@@ -126,8 +126,38 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, RTestBed2 tb2, RW
     }
 }
 
-void testbed2_io_windowing_windows_apply(IOReadWrite rw, FILE* file, RTestBed2 tb2, RWindowing windowing, size_t idxapply) {
+void testbed2_io_windowing_configapplied_path(RTestBed2 tb2, RWindowing windowing, size_t idxconfig, char fpath[PATH_MAX]) {
+    char fname[100];
+
+    sprintf(fname, "applies/apply__wsize_%ld__config_%ld__source_%ld.bin", windowing->wsize.value, idxconfig, windowing->source->index.all);
+
+    io_path_concat(CACHE_DIR, fname, fpath);
+}
+
+int testbed2_io_windowing_applied(RTestBed2 tb2, RWindowing windowing, size_t idxconfig) {
+    char fpath[PATH_MAX];
+    testbed2_io_windowing_configapplied_path(tb2, windowing, idxconfig, fpath);
+    return io_fileexists(fpath);
+}
+
+int testbed2_io_windowing_apply_windows_file(IOReadWrite rw, RTestBed2 tb2, RWindowing windowing, size_t idxapply) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    const size_t idxconfig = tb2->applies._[idxapply].config->index;
+
+    char fpath[PATH_MAX];
+    testbed2_io_windowing_configapplied_path(tb2, windowing, idxconfig, fpath);
+
+    if (rw == IO_WRITE) {
+        strcat(fpath, ".tmp");
+    }
+
+    FILE* file;
+    file = io_openfile(rw, fpath);
+    if (!file) {
+        LOG_DEBUG("%s: File not found: %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath);
+        return -1;
+    }
 
     for (size_t w = 0; w < windowing->windows.number; w++) {
         WApply* wapply = &windowing->windows._[w]->applies._[idxapply];
@@ -157,48 +187,10 @@ void testbed2_io_windowing_windows_apply(IOReadWrite rw, FILE* file, RTestBed2 t
         }
     
         FRW(wapply->logit);
-        if (w == 0) {
-            printf("%f\n", wapply->logit);
-            printf("%d\n", wapply->whitelistened);
-        }
         FRW(wapply->pset_index);
         FRW(wapply->wcount);
         FRW(wapply->whitelistened);
     }
-}
-
-void testbed2_io_windowing_applied_path(RTestBed2 tb2, RWindowing windowing, size_t idxapply, char fpath[PATH_MAX]) {
-    char fname[100];
-
-    sprintf(fname, "applies/apply__wsize_%ld__config_%ld__source_%ld.bin", windowing->wsize.value, tb2->applies._[idxapply].config->index, windowing->source->index.all);
-
-    io_path_concat(CACHE_DIR, fname, fpath);
-}
-
-int testbed2_io_windowing_applied(RTestBed2 tb2, RWindowing windowing, size_t idxconfig) {
-    char fpath[PATH_MAX];
-    testbed2_io_windowing_applied_path(tb2, windowing, idxconfig, fpath);
-    return io_fileexists(fpath);
-}
-
-int testbed2_io_windowing_apply_windows_file(IOReadWrite rw, RTestBed2 tb2, RWindowing windowing, size_t idxapply) {
-    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
-
-    char fpath[PATH_MAX];
-    testbed2_io_windowing_applied_path(tb2, windowing, idxapply, fpath);
-
-    if (rw == IO_WRITE) {
-        strcat(fpath, ".tmp");
-    }
-
-    FILE* file;
-    file = io_openfile(rw, fpath);
-    if (!file) {
-        LOG_DEBUG("%s: File not found: %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath);
-        return -1;
-    }
-
-    testbed2_io_windowing_windows_apply(rw, file, tb2, windowing, idxapply);
 
     if(fclose(file)) {
         LOG_ERROR("%s: file %s close: %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath, strerror(errno));
@@ -207,7 +199,7 @@ int testbed2_io_windowing_apply_windows_file(IOReadWrite rw, RTestBed2 tb2, RWin
 
     if (rw == IO_WRITE) {
         char fpath2[PATH_MAX];
-        testbed2_io_windowing_applied_path(tb2, windowing, idxapply, fpath2);
+        testbed2_io_windowing_configapplied_path(tb2, windowing, idxconfig, fpath2);
         if (rename(fpath, fpath2)) {
             LOG_ERROR("%s: file rename (%s -> %s): %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath, fpath2, strerror(errno));
             return -1;
@@ -256,9 +248,7 @@ void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
 
             FRW((*windowing_ref)->windows.number);
 
-            for (size_t idxconfig = 0; idxconfig < tb2->applies.number; idxconfig++) {
-                testbed2_io_windowing_windows(rw, file, tb2, *windowing_ref);
-            }
+            testbed2_io_windowing_windows(rw, file, tb2, *windowing_ref);
 
             fflush(file);
         }
@@ -328,11 +318,11 @@ void testbed2_io_all_dataset(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     if (rw == IO_READ) {
         INITMANY(tb2->dataset.folds, tb2->dataset.n.fold, FoldConfig);
     }
+
     for (size_t idxfold = 0; idxfold < tb2->dataset.folds.number; idxfold++) {
         FRW(tb2->dataset.folds._[idxfold].k);
         FRW(tb2->dataset.folds._[idxfold].k_test);
     }
-    
 
     FORBY(tb2->dataset, wsize) {
         FORBY(tb2->dataset, try) {
@@ -396,8 +386,10 @@ int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
     IOLOGPATH(rw, sources);
     testbed2_io_sources(rw, file, (*tb2));
 
-    IOLOGPATH(rw, parameters_definition);
-    testbed2_io_parameters(rw, file, (*tb2));
+    // IOLOGPATH(rw, parameters_definition);
+    // testbed2_io_parameters(rw, file, (*tb2));
+
+    testbed2_set_configapplied((*tb2));
 
     IOLOGPATH(rw, windowing);
     testbed2_io_windowing(rw, file, (*tb2));

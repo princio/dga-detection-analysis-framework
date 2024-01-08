@@ -195,19 +195,19 @@ MANY(WSize) make_wsizes() {
 void make_parameters_toignore() {
     {
         size_t idx = 0;
-        parameterrealm[PE_NINF]._[idx++].disabled = 1; // 0
+        parameterrealm[PE_NINF]._[idx++].disabled = 0; // 0
         parameterrealm[PE_NINF]._[idx++].disabled = 1; // -10
         parameterrealm[PE_NINF]._[idx++].disabled = 1; // -25
-        parameterrealm[PE_NINF]._[idx++].disabled = 0; // -50
+        parameterrealm[PE_NINF]._[idx++].disabled = 1; // -50
         parameterrealm[PE_NINF]._[idx++].disabled = 1; // -100
         parameterrealm[PE_NINF]._[idx++].disabled = 1; // -150
     }
     {
         size_t idx = 0;
-        parameterrealm[PE_PINF]._[idx++].disabled = 1; // 0
+        parameterrealm[PE_PINF]._[idx++].disabled = 0; // 0
         parameterrealm[PE_PINF]._[idx++].disabled = 1; // 10
         parameterrealm[PE_PINF]._[idx++].disabled = 1; // 25
-        parameterrealm[PE_PINF]._[idx++].disabled = 0; // 50
+        parameterrealm[PE_PINF]._[idx++].disabled = 1; // 50
         parameterrealm[PE_PINF]._[idx++].disabled = 1; // 100
         parameterrealm[PE_PINF]._[idx++].disabled = 1; // 150
     }
@@ -220,32 +220,32 @@ void make_parameters_toignore() {
     }
     {
         size_t idx = 0;
-        parameterrealm[PE_WL_RANK]._[idx++].disabled = 1; // 0
+        parameterrealm[PE_WL_RANK]._[idx++].disabled = 0; // 0
         parameterrealm[PE_WL_RANK]._[idx++].disabled = 1; // 100
         parameterrealm[PE_WL_RANK]._[idx++].disabled = 0; // 1000
-        parameterrealm[PE_WL_RANK]._[idx++].disabled = 1; // 10000
+        parameterrealm[PE_WL_RANK]._[idx++].disabled = 0; // 10000
         parameterrealm[PE_WL_RANK]._[idx++].disabled = 1; // 100000
     }
     {
         size_t idx = 0;
         parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // 0
         parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // -10
-        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // -25
-        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 0; // -50
-        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // -100
-        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // -150
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 0; // -25
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // -50
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 0; // -100
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 0; // -150
     }
     {
         size_t idx = 0;
         parameterrealm[PE_WINDOWING]._[idx++].disabled = 0; // WINDOWING_Q
-        parameterrealm[PE_WINDOWING]._[idx++].disabled = 0; // WINDOWING_R
+        parameterrealm[PE_WINDOWING]._[idx++].disabled = 1; // WINDOWING_R
         parameterrealm[PE_WINDOWING]._[idx++].disabled = 1; // WINDOWING_QR
     }
     {
         size_t idx = 0;
         parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 0; // 0
         parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 1; // 0.05
-        parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 0; // 0.1
+        parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 1; // 0.1
         parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 1; // 0.25
         parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 1; // 0.5
     }

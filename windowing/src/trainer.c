@@ -220,7 +220,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
                         FORBY((*by), apply) {
                             INITMANY(results_todo._[idxapply].thchoosers, thchoosers.number, TODO);
                             FORBY((*by), thchooser) {
-                                sprintf(fpath, "results_%ld_%ld_%ld_%ld_%s__%ld.bin", idxfold, idxtry, idxwsize, idxapply, thchoosers._[idxthchooser].name, k);
+                                sprintf(fpath, "results_%ld_%ld_%ld_%ld_%s__%ld.bin", idxfold, idxtry, idxwsize, tb2->applies._[idxapply].config->index, thchoosers._[idxthchooser].name, k);
                                 io_path_concat(rootdir, fpath, fpath);
                                 if (trainer_io_results_file(IO_READ, fpath, &GETBY5((*by), wsize, apply, fold, try, thchooser).splits._[k])) {
                                     results_todo._[idxapply].thchoosers._[idxthchooser] = 1;
@@ -331,7 +331,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
                             TrainerBy_splits* result = &GETBY5((*by), wsize, apply, fold, try, thchooser).splits._[k];
                             {
                                 char fpath[PATH_MAX];
-                                sprintf(fpath, "results_%ld_%ld_%ld_%ld_%s__%ld.bin", idxfold, idxtry, idxwsize, idxapply, thchoosers._[idxthchooser].name, k);
+                                sprintf(fpath, "results_%ld_%ld_%ld_%ld_%s__%ld.bin", idxfold, idxtry, idxwsize, tb2->applies._[idxapply].config->index, thchoosers._[idxthchooser].name, k);
                                 io_path_concat(rootdir, fpath, fpath);
                                 trainer_io_results_file(IO_WRITE, fpath, result);
                             }
