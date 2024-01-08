@@ -3,7 +3,7 @@
 #include "dataset.h"
 #include "io.h"
 #include "logger.h"
-#include "parameters.h"
+#include "configset.h"
 #include "detect.h"
 #include "sources.h"
 
@@ -181,8 +181,6 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
     RTrainer trainer = trainer_create(tb2, thchoosers);
     TrainerBy* by = &trainer->by;
 
-    testbed2_apply(tb2);
-
     printf("%-7s | ", "fold");
     printf("%-7s | ", "try");
     printf("%-7s | ", "wsize");
@@ -194,7 +192,7 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
             FORBY((*by), wsize) {
                 TCPC(DatasetSplits) splits = &GETBY3(tb2->dataset, wsize, try, fold);
                 if (!splits->isok) {
-                    LOG_WARN("Warning: skipping folding for fold=%ld, try=%ld, wsize=%ld", idxfold, idxtry, tb2->wsizes._[idxwsize].value);
+                    printf("Warning: skipping folding for fold=%ld, try=%ld, wsize=%ld", idxfold, idxtry, tb2->wsizes._[idxwsize].value);
                     continue;
                 }
 
@@ -299,6 +297,8 @@ RTrainer trainer_run(RTestBed2 tb2, MANY(Performance) thchoosers, char rootdir[P
                         RSource source = window0->windowing->source;
 
                         FORBY((*by), apply) { APPLY_SKIP;
+                            // printf("%ld\t%f\n", );
+
                             FORBY((*by), thchooser) { THCHOOSER_SKIP;
                                 TrainerBy_splits* result = &GETBY5((*by), wsize, apply, fold, try, thchooser).splits._[k];
                                 Detection* detection = &result->best_test;

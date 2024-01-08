@@ -1,7 +1,6 @@
 #ifndef __WINDOWING_H__
 #define __WINDOWING_H__
 
-#include "parameters.h"
 #include "sources.h"
 #include "windows.h"
 

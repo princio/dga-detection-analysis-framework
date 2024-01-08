@@ -2,7 +2,7 @@
 #include "stratosphere.h"
 
 #include "logger.h"
-#include "parameters.h"
+#include "configset.h"
 #include "testbed2.h"
 #include "windows.h"
 
@@ -216,7 +216,7 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
     }
 }
 
-void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets) {
+void stratosphere_apply(MANY(RWindowing) windowings,  MANY(ConfigApplied) applies) {
     const RSource source = windowings._[0]->source;
     
     PGresult* pgresult = NULL;
@@ -237,32 +237,13 @@ void stratosphere_apply(MANY(RWindowing) windowings, TCPC(MANY(PSet)) psets) {
 
             const int wnum = (int64_t) floor(message.fn_req / windowing->wsize.value);
 
-            wapply_run_many(&windowing->windows._[wnum]->applies, &message, psets);
+            wapply_run_many(&windowing->windows._[wnum]->applies, &message, applies);
         }
     }
 
     PQclear(pgresult);
 
     _stratosphere_disconnect();
-}
-
-void stratosphere_run_windowfetch(RWindow window0, MANY(PSet) psets) {
-    PGresult* pgresult = NULL;
-    int nrows;
-
-    if (_stratosphere_connect()) {
-        return;
-    }
-
-    fetch_window(window0->windowing->source, window0->fn_req_min, window0->fn_req_max, &pgresult, &nrows);
-
-    for (int r = 0; r < nrows; r++) {
-        DNSMessage message;
-        parse_message(pgresult, r, &message);
-        wapply_run_many(&window0->applies, &message, &psets);
-    }
-
-    PQclear(pgresult);
 }
 
 void _stratosphere_add(RTestBed2 tb2, size_t limit) {

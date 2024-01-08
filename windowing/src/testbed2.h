@@ -4,7 +4,7 @@
 #include "common.h"
 
 #include "dataset.h"
-#include "parameters.h"
+#include "configset.h"
 #include "wapply.h"
 #include "windowing.h"
 
@@ -78,19 +78,12 @@ typedef struct TestBed2DatasetBy {
 /* Apply */
 /* Apply */
 
-typedef struct TestBed2Apply {
-    int applied;
-    PSet pset;
-} TestBed2Apply;
-
-MAKEMANY(TestBed2Apply);
-
 /* __TestBed2 */
 /* __TestBed2 */
 /* __TestBed2 */
 
 typedef struct __TestBed2 {
-    MANY(TestBed2Apply) applies;
+    MANY(ConfigApplied) applies;
 
     MANY(WSize) wsizes;
 
@@ -108,7 +101,7 @@ void testbed2_source_add(RTestBed2, RSource);
 void testbed2_windowing(RTestBed2);
 void testbed2_fold_add(RTestBed2, FoldConfig);
 int testbed2_try_set(RTestBed2, size_t);
-void testbed2_addpsets(RTestBed2, MANY(PSet));
+void testbed2_addpsets(RTestBed2);
 void testbed2_apply(RTestBed2);
 void testbed2_free(RTestBed2);
 

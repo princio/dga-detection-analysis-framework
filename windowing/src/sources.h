@@ -4,8 +4,6 @@
 
 #include "common.h"
 
-#include "parameters.h"
-
 #include "io.h"
 #include "list.h"
 

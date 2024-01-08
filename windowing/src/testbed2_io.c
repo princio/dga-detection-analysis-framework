@@ -7,6 +7,7 @@
 #include "logger.h"
 #include "stratosphere.h"
 
+#include <errno.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -18,30 +19,29 @@ void testbed2_md(char fpath[PATH_MAX], const RTestBed2 tb2);
 void testbed2_io_parameters(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    MANY(TestBed2Apply)* applies = &tb2->applies;
+    MANY(ConfigApplied)* applies = &tb2->applies;
 
     FRW(applies->number);
 
     if (rw == IO_READ && applies->number > 0) {
-        INITMANYREF(applies, applies->number, TestBed2Apply);
+        INITMANYREF(applies, applies->number, ConfigApplied);
     }
 
     for (size_t p = 0; p < applies->number; p++) {
-        TestBed2Apply* apply = &applies->_[p];
+        ConfigApplied* apply = &applies->_[p];
+        size_t idxconfig;
 
         FRW(apply->applied);
 
-        if (rw == IO_READ) {
-            apply->pset.index = p;
+        FRW(apply->index);
+
+        if (rw == IO_WRITE) {
+            idxconfig = apply->config->index;
         }
 
-        FRW(apply->pset.ninf);
-        FRW(apply->pset.pinf);
-        FRW(apply->pset.nn);
-        FRW(apply->pset.wl_rank);
-        FRW(apply->pset.wl_value);
-        FRW(apply->pset.windowing);
-        FRW(apply->pset.nx_epsilon_increment);
+        FRW(idxconfig);
+
+        apply->config = &configsuite._[idxconfig];
     }
 }
 
@@ -121,40 +121,100 @@ void testbed2_io_windowing_windows(IOReadWrite rw, FILE* file, RTestBed2 tb2, RW
         if (rw == IO_READ) {
             window0->fn_req_min = fnreq.min;
             window0->fn_req_max = fnreq.max;
-            wapply_init(window0, tb2->applies.number);
-        }
-        for (size_t p = 0; p < tb2->applies.number; p++) {
-            WApply* wapply = &window0->applies._[p];
-            struct {
-             uint16_t _05;
-             uint16_t _0999;
-             uint16_t _099;
-             uint16_t _09;
-            } dn_bad;
-            memset(&dn_bad, 0, sizeof(dn_bad));
-
-            if (rw == IO_WRITE) {
-                dn_bad._05 = wapply->dn_bad_05;
-                dn_bad._0999 = wapply->dn_bad_0999;
-                dn_bad._099 = wapply->dn_bad_099;
-                dn_bad._09 = wapply->dn_bad_09;
-            }
-
-            FRW(dn_bad);
-
-            if (rw == IO_READ) {
-                wapply->dn_bad_05 = dn_bad._05;
-                wapply->dn_bad_0999 = dn_bad._0999;
-                wapply->dn_bad_099 = dn_bad._099;
-                wapply->dn_bad_09 = dn_bad._09;
-            }
-        
-            FRW(wapply->logit);
-            FRW(wapply->pset_index);
-            FRW(wapply->wcount);
-            FRW(wapply->whitelistened);
+            INITMANY(window0->applies, tb2->applies.number, WApply);
         }
     }
+}
+
+void testbed2_io_windowing_windows_apply(IOReadWrite rw, FILE* file, RTestBed2 tb2, RWindowing windowing, size_t idxapply) {
+    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    for (size_t w = 0; w < windowing->windows.number; w++) {
+        WApply* wapply = &windowing->windows._[w]->applies._[idxapply];
+
+        struct {
+            uint16_t _05;
+            uint16_t _0999;
+            uint16_t _099;
+            uint16_t _09;
+        } dn_bad;
+        memset(&dn_bad, 0, sizeof(dn_bad));
+
+        if (rw == IO_WRITE) {
+            dn_bad._05 = wapply->dn_bad_05;
+            dn_bad._0999 = wapply->dn_bad_0999;
+            dn_bad._099 = wapply->dn_bad_099;
+            dn_bad._09 = wapply->dn_bad_09;
+        }
+
+        FRW(dn_bad);
+
+        if (rw == IO_READ) {
+            wapply->dn_bad_05 = dn_bad._05;
+            wapply->dn_bad_0999 = dn_bad._0999;
+            wapply->dn_bad_099 = dn_bad._099;
+            wapply->dn_bad_09 = dn_bad._09;
+        }
+    
+        FRW(wapply->logit);
+        if (w == 0) {
+            printf("%f\n", wapply->logit);
+            printf("%d\n", wapply->whitelistened);
+        }
+        FRW(wapply->pset_index);
+        FRW(wapply->wcount);
+        FRW(wapply->whitelistened);
+    }
+}
+
+void testbed2_io_windowing_applied_path(RTestBed2 tb2, RWindowing windowing, size_t idxapply, char fpath[PATH_MAX]) {
+    char fname[100];
+
+    sprintf(fname, "applies/apply__wsize_%ld__config_%ld__source_%ld.bin", windowing->wsize.value, tb2->applies._[idxapply].config->index, windowing->source->index.all);
+
+    io_path_concat(CACHE_DIR, fname, fpath);
+}
+
+int testbed2_io_windowing_applied(RTestBed2 tb2, RWindowing windowing, size_t idxconfig) {
+    char fpath[PATH_MAX];
+    testbed2_io_windowing_applied_path(tb2, windowing, idxconfig, fpath);
+    return io_fileexists(fpath);
+}
+
+int testbed2_io_windowing_apply_windows_file(IOReadWrite rw, RTestBed2 tb2, RWindowing windowing, size_t idxapply) {
+    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    char fpath[PATH_MAX];
+    testbed2_io_windowing_applied_path(tb2, windowing, idxapply, fpath);
+
+    if (rw == IO_WRITE) {
+        strcat(fpath, ".tmp");
+    }
+
+    FILE* file;
+    file = io_openfile(rw, fpath);
+    if (!file) {
+        LOG_DEBUG("%s: File not found: %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath);
+        return -1;
+    }
+
+    testbed2_io_windowing_windows_apply(rw, file, tb2, windowing, idxapply);
+
+    if(fclose(file)) {
+        LOG_ERROR("%s: file %s close: %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath, strerror(errno));
+        return -1;
+    }
+
+    if (rw == IO_WRITE) {
+        char fpath2[PATH_MAX];
+        testbed2_io_windowing_applied_path(tb2, windowing, idxapply, fpath2);
+        if (rename(fpath, fpath2)) {
+            LOG_ERROR("%s: file rename (%s -> %s): %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath, fpath2, strerror(errno));
+            return -1;
+        }
+    }
+
+    return 0;
 }
 
 void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
@@ -173,6 +233,7 @@ void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
         }
     
         FORBY(tb2->windowing, source) {
+
             RWindowing* windowing_ref;
             SourceIndex source_index;
             WSize wsize;
@@ -187,13 +248,17 @@ void testbed2_io_windowing(IOReadWrite rw, FILE* file, RTestBed2 tb2) {
             FRW(source_index);
             FRW(wsize);
 
+            printf("%s\tsource %3ld with wsize %ld\n", rw == IO_WRITE ? "w" : "r", idxsource, wsize.value);
+
             if (rw == IO_READ) {
                 (*windowing_ref) = windowings_create(wsize, tb2->sources._[source_index.all]);
             }
 
             FRW((*windowing_ref)->windows.number);
 
-            testbed2_io_windowing_windows(rw, file, tb2, *windowing_ref);
+            for (size_t idxconfig = 0; idxconfig < tb2->applies.number; idxconfig++) {
+                testbed2_io_windowing_windows(rw, file, tb2, *windowing_ref);
+            }
 
             fflush(file);
         }
@@ -331,7 +396,7 @@ int testbed2_io(IOReadWrite rw, char fpath[PATH_MAX], RTestBed2* tb2) {
     IOLOGPATH(rw, sources);
     testbed2_io_sources(rw, file, (*tb2));
 
-    IOLOGPATH(rw, parameters);
+    IOLOGPATH(rw, parameters_definition);
     testbed2_io_parameters(rw, file, (*tb2));
 
     IOLOGPATH(rw, windowing);
@@ -446,7 +511,7 @@ void testbed2_md(char fpath[PATH_MAX], const RTestBed2 tb2) {
         }
         FPNL(1, "|");
         for (size_t i = 0; i < tb2->applies.number; i++) {
-            TCPC(PSet) pset = &tb2->applies._[i].pset;
+            TCPC(Config) pset = tb2->applies._[i].config;
             applies_applied_count += tb2->applies._[i].applied;
             FP("|%*ld", len_header, i);
             FP("|%*d", len_header,  tb2->applies._[i].applied);

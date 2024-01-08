@@ -25,7 +25,7 @@
 #include "gatherer.h"
 #include "io.h"
 #include "logger.h"
-#include "parameters.h"
+#include "configset.h"
 #include "performance_defaults.h"
 #include "stratosphere.h"
 #include "stat.h"
@@ -51,26 +51,6 @@
 #include <arpa/inet.h>
 
 #include <endian.h>
-
-char WINDOWING_NAMES[3][10] = {
-    "QUERY",
-    "RESPONSE",
-    "BOTH"
-};
-
-char NN_NAMES[11][10] = {
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "",
-    "ICANN",
-    "NONE",
-    "PRIVATE",
-    "TLD"
-};
 
 typedef struct Score {
     double th;
@@ -161,13 +141,13 @@ void csv_trainer(char fpath[PATH_MAX], RTrainer trainer) {
                             fprintf(file_csv, "%ld,", idxtry);
                             fprintf(file_csv, "%ld,", k);
                             fprintf(file_csv, "%ld,", tb2->wsizes._[idxwsize].value);
-                            fprintf(file_csv, "%f,", tb2->applies._[idxapply].pset.ninf);
-                            fprintf(file_csv, "%f,", tb2->applies._[idxapply].pset.pinf);
-                            fprintf(file_csv, "%s,", NN_NAMES[tb2->applies._[idxapply].pset.nn]);
-                            fprintf(file_csv, "%s,", WINDOWING_NAMES[tb2->applies._[idxapply].pset.windowing]);
-                            fprintf(file_csv, "%ld,", tb2->applies._[idxapply].pset.wl_rank);
-                            fprintf(file_csv, "%f,", tb2->applies._[idxapply].pset.wl_value);
-                            fprintf(file_csv, "%f,", tb2->applies._[idxapply].pset.nx_epsilon_increment);
+                            fprintf(file_csv, "%f,", tb2->applies._[idxapply].config->ninf);
+                            fprintf(file_csv, "%f,", tb2->applies._[idxapply].config->pinf);
+                            fprintf(file_csv, "%s,", NN_NAMES[tb2->applies._[idxapply].config->nn]);
+                            fprintf(file_csv, "%s,", WINDOWING_NAMES[tb2->applies._[idxapply].config->windowing]);
+                            fprintf(file_csv, "%ld,", tb2->applies._[idxapply].config->wl_rank);
+                            fprintf(file_csv, "%f,", tb2->applies._[idxapply].config->wl_value);
+                            fprintf(file_csv, "%f,", tb2->applies._[idxapply].config->nx_epsilon_increment);
                             fprintf(file_csv, "%s", trainer->thchoosers._[idxthchooser].name);
 
                             DGAFOR(cl) {
@@ -197,7 +177,7 @@ MANY(WSize) make_wsizes() {
     WSize wsizes_arr[] = {
         // {.index = index++, .value = 1},
         // {.index = index++, .value = 10},
-        { .index = index++, .value = 100 },
+        { .index = index++, .value = 2000 },
         // {.index = index++, .value = 100},
         // {.index = index++, .value = 500},
         // {.index = index++, .value = 1000},
@@ -211,116 +191,64 @@ MANY(WSize) make_wsizes() {
     return wsizes;
 }
 
-MANY(PSet) make_parameters(const size_t subset) {
-    PSetByField psetbyfield;
-    MANY(PSet) psets;
 
+void make_parameters_toignore() {
     {
-        nn_t nn[] = {
-            NN_NONE,
-            NN_TLD,
-            // NN_ICANN,
-            // NN_PRIVATE
-        };
-
-        windowing_t windowing[] = {
-            WINDOWING_Q,
-            WINDOWING_R,
-        };
-
-        ninf_t ninf[] = {
-            -50, // -2E-22
-        };
-
-        pinf_t pinf[] = {
-            50, // 2E-22
-        };
-
-        wl_rank_t wl_rank[] = {
-            100,
-            1000,
-            // 10000,
-            // 100000
-        };
-
-        wl_value_t wl_value[] = {
-            0,
-            -20,
-            -80
-        };
-
-        nx_epsilon_increment_t nx_epsilon_increment[] = {
-            0,
-            0.25
-        };
-
-        #define _COPY(A) {\
-            const size_t num = sizeof(A) / sizeof(A ## _t);\
-            INITMANY(psetbyfield.A, num, A ## _t);\
-            for (size_t idxfield = 0; idxfield < num; idxfield++) {\
-                psetbyfield.A._[idxfield] = A[idxfield];\
-            }\
-        }
-
-        multi_psetitem(_COPY)
-
-        #undef _COPY
-
-        psets = parameters_fields2psets(&psetbyfield);
-
-        parameters_fields_free(&psetbyfield);
+        size_t idx = 0;
+        parameterrealm[PE_NINF]._[idx++].disabled = 1; // 0
+        parameterrealm[PE_NINF]._[idx++].disabled = 1; // -10
+        parameterrealm[PE_NINF]._[idx++].disabled = 1; // -25
+        parameterrealm[PE_NINF]._[idx++].disabled = 0; // -50
+        parameterrealm[PE_NINF]._[idx++].disabled = 1; // -100
+        parameterrealm[PE_NINF]._[idx++].disabled = 1; // -150
     }
-
-    // for (size_t i = 0; i < psets.number; i++) {
-    //     PSet* pset = &psets._[i];
-    //     multi_psetitem(PSETPRINT);
-    // }
-    
-    psets.number = subset;
-
-    return psets;
-}
-
-PSetByField make_parameters_toignore() {
-    PSetByField psetbyfield;
-    memset(&psetbyfield, 0, sizeof(PSetByField));
-
     {
-        INITMANY(psetbyfield.windowing, 1, windowing_t);
         size_t idx = 0;
-        psetbyfield.windowing._[idx++] = WINDOWING_R;
-        // psetbyfield.windowing._[idx++] = WINDOWING_QR;
-        if (idx != psetbyfield.windowing.number) {
-            printf("ignoring windowing number are different\n");
-            exit(1);
-        }
+        parameterrealm[PE_PINF]._[idx++].disabled = 1; // 0
+        parameterrealm[PE_PINF]._[idx++].disabled = 1; // 10
+        parameterrealm[PE_PINF]._[idx++].disabled = 1; // 25
+        parameterrealm[PE_PINF]._[idx++].disabled = 0; // 50
+        parameterrealm[PE_PINF]._[idx++].disabled = 1; // 100
+        parameterrealm[PE_PINF]._[idx++].disabled = 1; // 150
     }
-
-    if (0) {
-        INITMANY(psetbyfield.nx_epsilon_increment, 1, nx_epsilon_increment_t);
+    {
         size_t idx = 0;
-        psetbyfield.nx_epsilon_increment._[idx++] = 0;
-        if (idx > psetbyfield.nx_epsilon_increment.number) exit(1);
+        parameterrealm[PE_NN]._[idx++].disabled = 0; // NN_NONE
+        parameterrealm[PE_NN]._[idx++].disabled = 1; // NN_TLD
+        parameterrealm[PE_NN]._[idx++].disabled = 1; // NN_ICANN
+        parameterrealm[PE_NN]._[idx++].disabled = 1; // NN_PRIVATE
     }
-
-    if (0) {
-        INITMANY(psetbyfield.wl_value, 2, wl_value_t);
+    {
         size_t idx = 0;
-        psetbyfield.wl_value._[idx++] = 0;
-        psetbyfield.wl_value._[idx++] = -20;
-        // psetbyfield.wl_value._[idx++] = -50;
-        // psetbyfield.wl_value._[idx++] = -100;
-        if (idx > psetbyfield.wl_value.number) exit(1);
+        parameterrealm[PE_WL_RANK]._[idx++].disabled = 1; // 0
+        parameterrealm[PE_WL_RANK]._[idx++].disabled = 1; // 100
+        parameterrealm[PE_WL_RANK]._[idx++].disabled = 0; // 1000
+        parameterrealm[PE_WL_RANK]._[idx++].disabled = 1; // 10000
+        parameterrealm[PE_WL_RANK]._[idx++].disabled = 1; // 100000
     }
-
-    if (0) {
-        INITMANY(psetbyfield.wl_rank, 1, wl_rank_t);
+    {
         size_t idx = 0;
-        psetbyfield.wl_rank._[idx++] = 100;
-        if (idx > psetbyfield.wl_value.number) exit(1);
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // 0
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // -10
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // -25
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 0; // -50
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // -100
+        parameterrealm[PE_WL_VALUE]._[idx++].disabled = 1; // -150
     }
-
-    return psetbyfield;
+    {
+        size_t idx = 0;
+        parameterrealm[PE_WINDOWING]._[idx++].disabled = 0; // WINDOWING_Q
+        parameterrealm[PE_WINDOWING]._[idx++].disabled = 0; // WINDOWING_R
+        parameterrealm[PE_WINDOWING]._[idx++].disabled = 1; // WINDOWING_QR
+    }
+    {
+        size_t idx = 0;
+        parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 0; // 0
+        parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 1; // 0.05
+        parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 0; // 0.1
+        parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 1; // 0.25
+        parameterrealm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 1; // 0.5
+    }
 }
 
 MANY(Performance) make_performance() {
@@ -366,11 +294,11 @@ int main (int argc, char* argv[]) {
     __io__debug = 0;
 #endif
 
-    #ifdef LOGGING
+#ifdef LOGGING
     logger_initFileLogger("log/log.txt", 1024 * 1024, 5);
     logger_setLevel(LogLevel_TRACE);
     logger_autoFlush(100);
-    #endif
+#endif
 
     
     char rootdir[PATH_MAX];
@@ -378,7 +306,24 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/test_0/");
+        sprintf(rootdir, "/home/princio/Desktop/results/test_configsuite/");
+    }
+
+    {
+        char tmp[PATH_MAX];
+        sprintf(CACHE_DIR, "/home/princio/Desktop/results/cache/");
+
+        io_path_concat(CACHE_DIR, "trainer/", tmp);
+        if (io_makedirs(tmp)) {
+            printf("Impossible to create directories: %s\n", tmp);
+            return -1;
+        }
+
+        io_path_concat(CACHE_DIR, "applies/", tmp);
+        if (io_makedirs(tmp)) {
+            printf("Impossible to create directories: %s\n", tmp);
+            return -1;
+        }
     }
 
     char fpathtb2[200];
@@ -387,21 +332,21 @@ int main (int argc, char* argv[]) {
     char dirtrainer[200];
 
     RTestBed2 tb2;
-    MANY(PSet) psets;
     MANY(WSize) wsizes;
     MANY(Performance) performances;
     RTrainer trainer;
-    const size_t n_try = 5;
+    ParameterRealmEnabled parameters_toignore;
+
+    const size_t n_try = 1;
 
     tb2 = NULL;
 
-    const size_t wsize_value = 100;
-    const size_t max_pests_number = 48;
+    const size_t wsize_value = 2000;
     const size_t max_sources_number = 45;
 
     {
         char __name[100];
-        sprintf(__name, "wsize=%ld_psets=%ld_maxsources=%ld/", wsize_value, max_pests_number, max_sources_number);
+        sprintf(__name, "wsize=%ld_maxsources=%ld/", wsize_value, max_sources_number);
         io_path_concat(rootdir, __name, rootdir);
     }
 
@@ -426,6 +371,17 @@ int main (int argc, char* argv[]) {
     printf("   rootdir: %s\n", rootdir);
     printf("dirtrainer: %s\n", dirtrainer);
 
+    configset_init();
+    make_parameters_toignore();
+    configset_disable();
+
+    for (size_t p = 0; p < configsuite.number; p++) {
+        for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+            char str[50] = "";
+            parameters_definition[pp].print(*configsuite._[p].parameters[pp], 10, str);
+        }
+    }
+    
     performances = make_performance();
 
     if (testbed2_io(IO_READ, fpathtb2, &tb2)) {
@@ -435,17 +391,12 @@ int main (int argc, char* argv[]) {
                 printf("Error: wsize value not correspond.\n");
                 exit(-1);
             }
-            psets = make_parameters(max_pests_number);
-            if (psets.number != max_pests_number) {
-                printf("Error: psets number not correspond.\n");
-                exit(-1);
-            }
         }
         {
             printf("Performing windowing...\n");
             tb2 = testbed2_create(wsizes, n_try);
             stratosphere_add(tb2, max_sources_number);
-            if (tb2->sources.number != max_sources_number) {
+            if (max_sources_number && tb2->sources.number != max_sources_number) {
                 printf("Error: max sources number not correspond.\n");
                 exit(-1);
             }
@@ -458,22 +409,22 @@ int main (int argc, char* argv[]) {
             foldconfig.k = 10; foldconfig.k_test = 2;
             testbed2_fold_add(tb2, foldconfig);
 
-            foldconfig.k = 10; foldconfig.k_test = 4;
-            testbed2_fold_add(tb2, foldconfig);
+            // foldconfig.k = 10; foldconfig.k_test = 4;
+            // testbed2_fold_add(tb2, foldconfig);
 
-            foldconfig.k = 10; foldconfig.k_test = 6;
-            testbed2_fold_add(tb2, foldconfig);
+            // foldconfig.k = 10; foldconfig.k_test = 6;
+            // testbed2_fold_add(tb2, foldconfig);
 
-            foldconfig.k = 10; foldconfig.k_test = 8;
-            testbed2_fold_add(tb2, foldconfig);
+            // foldconfig.k = 10; foldconfig.k_test = 8;
+            // testbed2_fold_add(tb2, foldconfig);
         }
-        {
-            printf("Appling...\n");
-            testbed2_addpsets(tb2, psets);
-            testbed2_apply(tb2);
-        }
-
         testbed2_io(IO_WRITE, fpathtb2, &tb2);
+    }
+
+    {
+        printf("Appling...\n");
+        // testbed2_addpsets(tb2);
+        testbed2_apply(tb2);
     }
 
     // if (1) {
@@ -489,9 +440,7 @@ int main (int argc, char* argv[]) {
         // print_trainer(trainer);
         csv_trainer(fpathcsv, trainer);
 
-        PSetByField psetbyfield_toignore = make_parameters_toignore();
-
-        Stat stat = stat_run(trainer, psetbyfield_toignore, fpathstatcsv);
+        Stat stat = stat_run(trainer, parameters_toignore, fpathstatcsv);
 
         stat_free(stat);
         trainer_free(trainer);
@@ -501,7 +450,6 @@ int main (int argc, char* argv[]) {
 
     FREEMANY(performances);
     FREEMANY(wsizes);
-    FREEMANY(psets);
 
     #ifdef LOGGING
     logger_close();

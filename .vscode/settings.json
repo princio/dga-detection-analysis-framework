@@ -158,7 +158,10 @@
         "endian.h": "c",
         "parser.h": "c",
         "flashstart.h": "c",
-        "main.h": "c"
+        "main.h": "c",
+        "configset.h": "c",
+        "logger.h": "c",
+        "stat.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

@@ -1,12 +1,16 @@
 #ifndef __WWCOMMON_H__
 #define __WWCOMMON_H__
 
+#include <linux/limits.h>
 #include <stdint.h>
 #include <time.h>
 #include <openssl/sha.h>
 #include <stdlib.h>
 
+char CACHE_DIR[PATH_MAX - 100];
+
 // #define IO_DEBUG
+#define LOGGING
 
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
@@ -39,6 +43,13 @@
     size_t element_size; \
     T* _; \
 } MANY(T)
+
+#define MAKEMANYNAME(NAME, T) typedef struct NAME {\
+    size_t size; \
+    size_t number; \
+    size_t element_size; \
+    T* _; \
+} NAME
 
 #define MAKETETRA(T) typedef struct TETRA(T) {\
     T all;\
@@ -201,10 +212,6 @@ typedef struct  {
 
 extern char CLASSES[N_DGACLASSES][50];
 
-extern char WINDOWING_NAMES[3][10];
-
-extern char NN_NAMES[11][10];
-
 typedef struct __Windowing* RWindowing;
 typedef struct __Window0* RWindow;
 typedef struct __Source* RSource;
@@ -216,7 +223,9 @@ MAKEMANY(RWindow);
 MAKEMANY(RDataset);
 MAKEMANY(RWindowing);
 MAKEMANY(RFold0);
+MAKEMANY(size_t);
 MAKEMANY(double);
 MAKEMANY(MANY(double));
+
 
 #endif

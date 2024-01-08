@@ -4,7 +4,7 @@
 
 #include "common.h"
 
-#include "parameters.h"
+#include "configset.h"
 #include "testbed2.h"
 #include "trainer.h"
 
@@ -24,15 +24,8 @@ typedef struct StatByPSetItemValue {
 } StatByPSetItemValue;
 MAKEMANY(StatByPSetItemValue);
 
-typedef struct StatBy_thchooser {
-    MANY(StatByPSetItemValue) byninf;
-    MANY(StatByPSetItemValue) bypinf;
-    MANY(StatByPSetItemValue) bynn;
-    MANY(StatByPSetItemValue) bywl_rank;
-    MANY(StatByPSetItemValue) bywl_value;
-    MANY(StatByPSetItemValue) bywindowing;
-    MANY(StatByPSetItemValue) bynx_epsilon_increment;
-} StatBy_thchooser;
+typedef MANY(StatByPSetItemValue) StatBy_thchooser[N_PARAMETERS];
+
 MAKEMANY(StatBy_thchooser);
 
 typedef struct StatBy_wsize {
@@ -59,9 +52,9 @@ typedef struct Stat {
     StatBy by;
 } Stat;
 
-#define STAT_IDX(STAT, FOLD, WSIZE, THCHOOSER, PSETNAME, PSETITEM) STAT.by.byfold._[FOLD].bywsize._[WSIZE].bythchooser._[THCHOOSER].by ## PSETNAME._[PSETITEM]
+#define STAT_IDX(STAT, FOLD, WSIZE, THCHOOSER, PP, PARAMETER) STAT.by.byfold._[FOLD].bywsize._[WSIZE].bythchooser._[THCHOOSER][PP]._[PARAMETER]
 
-Stat stat_run(RTrainer, PSetByField psetitems_toignore, char fpath[PATH_MAX]);
+Stat stat_run(RTrainer, ParameterRealmEnabled parameterrealmenabled, char fpath[PATH_MAX]);
 
 void stat_free(Stat results);
 

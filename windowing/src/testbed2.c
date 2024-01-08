@@ -6,6 +6,7 @@
 #include "io.h"
 #include "logger.h"
 #include "stratosphere.h"
+#include "testbed2_io.h"
 
 #include <math.h>
 #include <stdint.h>
@@ -32,6 +33,28 @@ RTestBed2 testbed2_create(MANY(WSize) wsizes, const size_t n_try) {
 
     INITBY_N(tb2->dataset, wsize, wsizes.number);
     INITBY_N(tb2->dataset, try, n_try);
+
+    {
+        size_t enabled = 0;
+        for (size_t idxconfig = 0; idxconfig < configsuite.number; idxconfig++) {
+            if (!configsuite._[idxconfig].disabled) {
+                enabled++;
+            }
+        }
+
+        size_t a = 0;
+        INITMANY(tb2->applies, enabled, ConfigApplied);
+        for (size_t idxconfig = 0; idxconfig < configsuite.number; idxconfig++) {
+            if (configsuite._[idxconfig].disabled) {
+                continue;
+            }
+            tb2->applies._[a].applied = 0;
+            tb2->applies._[a].index = a;
+            tb2->applies._[a].config = &configsuite._[idxconfig];
+            a++;
+        }
+    }
+    
     
     INITBY1(tb2->dataset, wsize, TestBed2DatasetBy);
     FORBY(tb2->dataset, wsize) {
@@ -90,6 +113,16 @@ void testbed2_windowing(RTestBed2 tb2) {
             dataset_shuffle(GETBY2(tb2->dataset, wsize, try).dataset);
         }
     }
+
+    FORBY(tb2->windowing, wsize) {
+        FORBY(tb2->windowing, source) {
+            RWindowing windowing = GETBY2(tb2->windowing, wsize, source);
+            for (size_t w = 0; w < windowing->windows.number; w++) {
+                // wapply_init(windowing->windows._[w]);
+                INITMANY(windowing->windows._[w]->applies, configsuite.number, WApply);
+            }
+        }
+    }
 }
 
 void testbed2_fold_add(RTestBed2 tb2, FoldConfig config) {
@@ -146,20 +179,21 @@ int testbed2_try_set(RTestBed2 tb2, size_t n_try) {
     return 0;
 }
 
-void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets) {
+/*
+void testbed2_addpsets(RTestBed2 tb2) {
     size_t new_applies_count;
     size_t new_psets_index;
-    int new_psets[psets.number];
+    int new_psets[configsuite.number];
 
     const size_t old_applies_count = tb2->applies.number;
 
     {
-        memset(new_psets, 0, sizeof(int) * psets.number);
+        memset(new_psets, 0, sizeof(int) * configsuite.number);
         new_applies_count = 0;
-        for (size_t new = 0; new < psets.number; new++) {
+        for (size_t new = 0; new < configsuite.number; new++) {
             int is_new = 1;
             for (size_t old = 0; old < tb2->applies.number; old++) {
-                int cmp = memcmp(&psets._[new], &tb2->applies._[old].pset, sizeof(PSet));
+                int cmp = memcmp(&configsuite._[new], &tb2->applies._[old].config, sizeof(Config));
                 if (cmp == 0) {
                     is_new = 0;
                     break;
@@ -171,12 +205,12 @@ void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets) {
     }
 
     tb2->applies.number = tb2->applies.number + new_applies_count;
-    tb2->applies._ = realloc(tb2->applies._, sizeof(TestBed2Apply) * tb2->applies.number);
+    tb2->applies._ = realloc(tb2->applies._, sizeof(ConfigApplied) * tb2->applies.number);
 
     new_psets_index = old_applies_count;
-    for (size_t a = 0; a < psets.number; a++) {
+    for (size_t a = 0; a < configsuite.number; a++) {
         if (new_psets[a]) {
-            tb2->applies._[new_psets_index].pset = psets._[a];
+            tb2->applies._[new_psets_index].config = configsuite._[a];
             tb2->applies._[new_psets_index].applied = 0;
             new_psets_index++;
         }
@@ -186,63 +220,60 @@ void testbed2_addpsets(RTestBed2 tb2, MANY(PSet) psets) {
         FORBY(tb2->windowing, source) {
             RWindowing windowing = GETBY2(tb2->windowing, wsize, source);
             for (size_t w = 0; w < windowing->windows.number; w++) {
-                wapply_init(windowing->windows._[w], tb2->applies.number);
+                INITMANY(windowing->windows._[w]->applies, tb2->applies.number, WApply);
             }
         }
     }
 
     LOG_INFO("New psets added over %ld: %ld.", old_applies_count, new_applies_count);
 }
+*/
 
 void testbed2_apply(RTestBed2 tb2) {
-    MANY(PSet) to_apply_psets;
+    MANY(RWindowing) source_windowings;
 
-    if (tb2->applies.number == 0) {
-        LOG_ERROR("impossible to apply, no parameters added.");
-        return;
-    }
-    {
-        size_t applied = 0;
-        for (size_t a = 0; a < tb2->applies.number; a++) {
-            applied += tb2->applies._[a].applied;
-        }
-        if (applied == tb2->applies.number) {
-            LOG_INFO("Notice: all applies already applied, skipping apply.\n");
-            return;
-        }
-    }
+    INITMANY(source_windowings, tb2->wsizes.number, RWindowing);
 
-    {
-        size_t idx = 0;
-        INITMANY(to_apply_psets, tb2->applies.number, PSet);
-        for (size_t p = 0; p < tb2->applies.number; p++) {
-            if (tb2->applies._[p].applied == 0) {
-                to_apply_psets._[idx] = tb2->applies._[p].pset;
-                ++idx;
+    FORBY(tb2->windowing, source) {
+
+        MANY(size_t) applies_undone[tb2->wsizes.number];
+
+        size_t total_applies_undone = 0;
+
+        FORBY(tb2->windowing, wsize) {
+
+            INITMANY(applies_undone[idxwsize], tb2->applies.number, Config);
+            applies_undone[idxwsize].number = 0;
+
+            for (size_t idxapply = 0; idxapply < tb2->applies.number; idxapply++) {
+                const int applied = testbed2_io_windowing_applied(tb2, GETBY2(tb2->windowing, wsize, source), idxapply);
+
+                tb2->applies._[idxapply].applied = applied;
+
+                if (0 == applied) {
+                    total_applies_undone++;
+                } else {
+                    testbed2_io_windowing_apply_windows_file(IO_READ, tb2, GETBY2(tb2->windowing, wsize, source), idxapply);
+                }
+
+                LOG_DEBUG("Apply %sexist for apply %ld (config %ld)", applied ? "" : "not ", idxapply, tb2->applies._[idxapply].config->index);
             }
-        }
-        to_apply_psets.number = idx;
-    }
 
-    {
-        MANY(RWindowing) source_windowings;
-        INITMANY(source_windowings, tb2->wsizes.number, RWindowing);
-        FORBY(tb2->windowing, source) {
-            FORBY(tb2->windowing, wsize) {
-                source_windowings._[idxwsize] = GETBY2(tb2->windowing, wsize, source);
+            source_windowings._[idxwsize] = GETBY2(tb2->windowing, wsize, source);
+        }
+
+        LOG_DEBUG("Performing %ld applies for source %ld having fnreqmax=%ld.", total_applies_undone, idxsource, tb2->sources._[idxsource]->fnreq_max);
+        stratosphere_apply(source_windowings, tb2->applies);
+
+        FORBY(tb2->windowing, wsize) {
+            for (size_t idxapply = 0; idxapply < applies_undone[idxwsize].number; idxapply++) {
+                testbed2_io_windowing_apply_windows_file(IO_WRITE, tb2, GETBY2(tb2->windowing, wsize, source), idxapply);
             }
-            LOG_DEBUG("Performing apply for source %ld having fnreqmax=%ld.", idxsource, tb2->sources._[idxsource]->fnreq_max);
-                
-            stratosphere_apply(source_windowings, &to_apply_psets);
+            FREEMANY(applies_undone[idxwsize]);
         }
-        FREEMANY(source_windowings);
     }
 
-    for (size_t p = 0; p < tb2->applies.number; p++) {
-        tb2->applies._[p].applied = 1;
-    }
-
-    FREEMANY(to_apply_psets);
+    FREEMANY(source_windowings);
 }
 
 void testbed2_free(RTestBed2 tb2) {
