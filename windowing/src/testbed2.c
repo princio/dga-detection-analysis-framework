@@ -236,14 +236,10 @@ void testbed2_apply(RTestBed2 tb2) {
 
     FORBY(tb2->windowing, source) {
 
-        MANY(size_t) applies_undone[tb2->wsizes.number];
 
         size_t total_applies_undone = 0;
 
         FORBY(tb2->windowing, wsize) {
-
-            INITMANY(applies_undone[idxwsize], tb2->applies.number, Config);
-            applies_undone[idxwsize].number = 0;
 
             for (size_t idxapply = 0; idxapply < tb2->applies.number; idxapply++) {
                 const int applied = testbed2_io_windowing_applied(tb2, GETBY2(tb2->windowing, wsize, source), idxapply);
@@ -266,10 +262,12 @@ void testbed2_apply(RTestBed2 tb2) {
         stratosphere_apply(source_windowings, tb2->applies);
 
         FORBY(tb2->windowing, wsize) {
-            for (size_t idxapply = 0; idxapply < applies_undone[idxwsize].number; idxapply++) {
-                testbed2_io_windowing_apply_windows_file(IO_WRITE, tb2, GETBY2(tb2->windowing, wsize, source), idxapply);
+            for (size_t idxapply = 0; idxapply < tb2->applies.number; idxapply++) {
+                if (tb2->applies._[idxapply].applied) {
+                    testbed2_io_windowing_apply_windows_file(IO_WRITE, tb2, GETBY2(tb2->windowing, wsize, source), idxapply);
+                    tb2->applies._[idxapply].applied = 1;
+                }
             }
-            FREEMANY(applies_undone[idxwsize]);
         }
     }
 

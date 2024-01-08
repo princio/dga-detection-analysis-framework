@@ -342,7 +342,7 @@ int main (int argc, char* argv[]) {
     tb2 = NULL;
 
     const size_t wsize_value = 2000;
-    const size_t max_sources_number = 45;
+    const size_t max_sources_number = 25;
 
     {
         char __name[100];
