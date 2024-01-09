@@ -79,6 +79,21 @@ int io_makedirs(char dir[PATH_MAX]) {
     return error;
 }
 
+int io_makedirs_notoverwrite(char dirpath[DIR_MAX]) {
+
+    if (io_direxists(dirpath)) {
+        printf("Directory already exist: %s\n", dirpath);
+        return -1;
+    }
+
+    if (io_makedirs(dirpath)) {
+        printf("Impossible to create tb2 directory: %s\n", dirpath);
+        return -1;
+    }
+
+    return 0;
+}
+
 FILE* io_openfile(IOReadWrite read, char fname[500]) {
     FILE* file;
     file = fopen(fname, read ? "rb+" : "wb+");

@@ -2,9 +2,9 @@
 #ifndef __STRATOSPHERE_H__
 #define __STRATOSPHERE_H__
 
-#include "testbed2.h"
+#include "tb2w.h"
 
-void stratosphere_add(RTestBed2 testbed, size_t limit);
-void stratosphere_apply(MANY(RWindowing) windowings, MANY(ConfigApplied));
+void stratosphere_add(RTB2W testbed, size_t limit);
+void stratosphere_apply(RTB2W tb2w, RWindowing);
 
 #endif

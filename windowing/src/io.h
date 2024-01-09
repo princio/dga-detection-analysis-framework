@@ -66,6 +66,7 @@ int io_fileexists(char* dir);
 int io_makedir(char dir[PATH_MAX], int append_time);
 int io_makedirs(char dir[PATH_MAX]);
 void io_path_concat(char path1[PATH_MAX], char path2[PATH_MAX], char res[PATH_MAX]);
+int io_makedirs_notoverwrite(char dirpath[DIR_MAX]);
 
 void io_dumphex_file(FILE* file, const void* data, size_t size);
 void io_dumphex(const void* data, size_t size);

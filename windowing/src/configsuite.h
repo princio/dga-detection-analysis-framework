@@ -1,6 +1,6 @@
 
-#ifndef __WINDOWING_CONFIGSET_H__
-#define __WINDOWING_CONFIGSET_H__
+#ifndef __WINDOWING_CONFIGSUITE_H__
+#define __WINDOWING_CONFIGSUITE_H__
 
 #include "common.h"
 
@@ -31,6 +31,28 @@ typedef enum ParametersEnum {
 
 
 
+typedef struct ParameterGenerator {
+    size_t ninf_n;
+    ninf_t ninf[100];
+
+    size_t pinf_n;
+    pinf_t pinf[100];
+
+    size_t nn_n;
+    nn_t nn[100];
+
+    size_t wl_rank_n;
+    wl_rank_t wl_rank[100];
+
+    size_t wl_value_n;
+    wl_value_t wl_value[100];
+
+    size_t windowing_n;
+    windowing_t windowing[100];
+
+    size_t nx_epsilon_increment_n;
+    nx_epsilon_increment_t nx_epsilon_increment[100];
+} ParameterGenerator;
 
 
 
@@ -72,10 +94,7 @@ typedef struct Config {
     double nx_epsilon_increment;
 } Config;
 
-MAKEMANYNAME(ConfigSuite, Config);
-
-
-
+MAKEMANY(Config);
 
 
 
@@ -88,8 +107,6 @@ typedef struct ParameterDefinition {
     ParameterPreFunc* print;
 } ParameterDefinition;
 
-
-
 typedef struct ConfigApplied {
     int applied;
     size_t index;
@@ -98,17 +115,23 @@ typedef struct ConfigApplied {
 
 MAKEMANY(ConfigApplied);
 
-
-
 char WINDOWING_NAMES[3][10];
 char NN_NAMES[11][10];
-const ParameterDefinition parameters_definition[N_PARAMETERS];
-const ParameterRealm parameterrealm;
-const ConfigSuite configsuite;
-const char parameters_format[N_PARAMETERS][5];
 
-void configset_init();
-void configset_disable();
-void configset_free();
+
+typedef struct ConfigSuite {
+    ParameterGenerator pg;
+    ParameterRealm pr;
+    MANY(Config) configs;
+} ConfigSuite;
+
+
+const ParameterDefinition parameters_definition[N_PARAMETERS];
+
+size_t configsuite_pg_count(ParameterGenerator);
+
+void configsuite_generate(ConfigSuite* cs, ParameterGenerator);
+void configset_disable(ConfigSuite* cs);
+void configset_free(ConfigSuite* cs);
 
 #endif

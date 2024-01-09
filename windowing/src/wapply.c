@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void wapply_run(WApply* wapply, TCPC(DNSMessage) message, TCPC(Config) config) {
+void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config) {
     int whitelistened = 0;
     double value, logit;
 
@@ -56,12 +56,4 @@ void wapply_run(WApply* wapply, TCPC(DNSMessage) message, TCPC(Config) config) {
 
     wapply->logit += logit;
     wapply->whitelistened += whitelistened;
-}
-
-void wapply_run_many(MANY(WApply)* wapplies, TCPC(DNSMessage) message, MANY(ConfigApplied) applies) {
-    for (size_t idxapply = 0; idxapply < applies.number; idxapply++) {
-        if (applies._[idxapply].applied == 0) {
-            wapply_run(&wapplies->_[idxapply], message, applies._[idxapply].config);
-        }
-    }
 }

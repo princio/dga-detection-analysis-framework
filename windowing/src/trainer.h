@@ -6,7 +6,7 @@
 
 #include "detect.h"
 #include "windows.h"
-#include "testbed2.h"
+#include "tb2d.h"
 
 #include <linux/limits.h>
 
@@ -35,44 +35,36 @@ typedef struct TrainerBy_fold {
 
 MAKEMANY(TrainerBy_fold);
 
-typedef struct TrainerBy_apply {
+typedef struct TrainerBy_config {
     MANY(TrainerBy_fold) byfold;
-} TrainerBy_apply;
+} TrainerBy_config;
 
-MAKEMANY(TrainerBy_apply);
-
-typedef struct TrainerBy_wsize {
-    MANY(TrainerBy_apply) byapply;
-} TrainerBy_wsize;
-
-MAKEMANY(TrainerBy_wsize);
+MAKEMANY(TrainerBy_config);
 
 typedef struct TrainerBy {
     struct {
-        const size_t wsize;
-        const size_t apply;
+        const size_t config;
         const size_t fold;
         const size_t try;
         const size_t thchooser;
     } n;
-    MANY(TrainerBy_wsize) bywsize;
+    MANY(TrainerBy_config) byconfig;
 } TrainerBy;
 
 typedef struct __Trainer {
-    RTestBed2 tb2;
+    RTB2D tb2d;
     MANY(Performance) thchoosers;
-
     TrainerBy by;
 } __Trainer;
 
 typedef struct __Trainer* RTrainer;
 
-#define RESULT_IDX(BY, WSIZE, APPLY, FOLD, TRY, SPLIT, THCHOOSER) BY.bywsize._[WSIZE].byapply._[APPLY].byfold._[FOLD].bytry._[TRY].bysplits._[SPLIT].bythchooser._[THCHOOSER]
+#define RESULT_IDX(BY, CONFIG, FOLD, TRY, SPLIT, THCHOOSER) BY.byconfig._[CONFIG].byfold._[FOLD].bytry._[TRY].bysplits._[SPLIT].bythchooser._[THCHOOSER]
 
-RTrainer trainer_run(RTestBed2, MANY(Performance), char rootdir[PATH_MAX - 100]);
+RTrainer trainer_run(RTB2D, MANY(Performance), char rootdir[DIR_MAX]);
 
 void trainer_free(RTrainer results);
 
-void trainer_io(IOReadWrite rw, char dirname[200], RTestBed2, RTrainer* results);
+void trainer_io(IOReadWrite rw, char dirname[200], RTB2D, RTrainer* results);
 
 #endif

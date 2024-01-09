@@ -44,7 +44,7 @@ void gatherer_alloc(RGatherer* gatherer_ref, char name[50], GathererFreeFn freef
     RGatherer gatherer;
     {
         if (gatherer_of_gatherers.size == 0) {
-            INITMANY(gatherer_of_gatherers, 10, __Gatherer);
+            MANY_INIT(gatherer_of_gatherers, 10, __Gatherer);
             gatherer_of_gatherers.number = 0;
         }
         gatherer_many_realloc((__MANY*) &gatherer_of_gatherers, sizeof(__Gatherer), 5);
@@ -59,7 +59,7 @@ void gatherer_alloc(RGatherer* gatherer_ref, char name[50], GathererFreeFn freef
     gatherer->element_size = element_size;
     gatherer->size_realloc_increment = size_realloc_increment;
 
-    INITMANYSIZE(gatherer->many, initial_size, element_size);
+    MANY_INITSIZE(gatherer->many, initial_size, element_size);
     gatherer->many.number = 0;
     
     *gatherer_ref = gatherer;

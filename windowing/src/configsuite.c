@@ -1,4 +1,4 @@
-#include "configset.h"
+#include "configsuite.h"
 
 #include "logger.h"
 
@@ -8,9 +8,9 @@
 
 #include <openssl/sha.h>
 
+int parametersdefinition_init_done = 0;
+
 const ParameterDefinition parameters_definition[N_PARAMETERS];
-const ParameterRealm parameterrealm;
-const ConfigSuite configsuite;
 
 char WINDOWING_NAMES[3][10] = {
     "QUERY",
@@ -115,114 +115,39 @@ void _parametersdefinition_init() {
     memcpy((void*) parameters_definition, parameters_notconst, sizeof(ParameterDefinition) * N_PARAMETERS);
 }
 
-void _parameterset_init() {
-    ParameterRealm parameterset_notconst;
-    memset(parameterset_notconst, 0, sizeof(ParameterRealm));
+void _configsuite_fill_pr(ConfigSuite* cs, ParameterGenerator pg) {
 
     #define __CPY(NAME_LW, NAME_UP) \
-        INITMANY(parameterset_notconst[PE_ ## NAME_UP], sizeof(NAME_LW) / sizeof(NAME_LW ## _t), ParameterValue);\
-        for (size_t i = 0; i < sizeof(NAME_LW) / sizeof(NAME_LW ## _t); i++) {\
-            parameterset_notconst[PE_ ## NAME_UP]._[i].index = i;\
-            memcpy(parameterset_notconst[PE_ ## NAME_UP]._[i].value, &NAME_LW[i], sizeof(NAME_LW ## _t));\
+        MANY_INIT(cs->pr[PE_ ## NAME_UP], pg.NAME_LW ## _n, ParameterValue);\
+        for (size_t i = 0; i < pg.NAME_LW ## _n; i++) {\
+            cs->pr[PE_ ## NAME_UP]._[i].index = i;\
+            memcpy(cs->pr[PE_ ## NAME_UP]._[i].value, &pg.NAME_LW[i], sizeof(NAME_LW ## _t));\
         }
 
-    {
-        ninf_t ninf[] = {
-            0,
-            -10,
-            -25,
-            -50,
-            -100,
-            -150
-        };
-        __CPY(ninf, NINF);
-    }
-
-    {
-        pinf_t pinf[] = {
-            0,
-            10,
-            25,
-            50,
-            100,
-            150
-        };
-        __CPY(pinf, PINF);
-    }
-
-    {
-        nn_t nn[] = {
-            NN_NONE,
-            NN_TLD,
-            NN_ICANN,
-            NN_PRIVATE
-        };
-        __CPY(nn, NN);
-    }
-
-    {
-        wl_rank_t wl_rank[] = {
-            0,
-            100,
-            1000,
-            10000,
-            100000
-        };
-        __CPY(wl_rank, WL_RANK);
-    }
-
-    {
-        wl_value_t wl_value[] = {
-            0,
-            -10,
-            -25,
-            -50,
-            -100,
-            -150
-        };
-        __CPY(wl_value, WL_VALUE);
-    }
-
-    {
-        windowing_t windowing[] = {
-            WINDOWING_Q,
-            WINDOWING_R,
-            WINDOWING_QR
-        };
-        __CPY(windowing, WINDOWING);
-    }
-
-    {
-        nx_epsilon_increment_t nx_epsilon_increment[] = {
-            0,
-            0.05,
-            0.1,
-            0.25,
-            0.5
-        };
-        __CPY(nx_epsilon_increment, NX_EPSILON_INCREMENT);
-    }
+    __CPY(ninf, NINF);
+    __CPY(pinf, PINF);
+    __CPY(nn, NN);
+    __CPY(wl_rank, WL_RANK);
+    __CPY(wl_value, WL_VALUE);
+    __CPY(windowing, WINDOWING);
+    __CPY(nx_epsilon_increment, NX_EPSILON_INCREMENT);
 
     #undef __CPY
-
-    memcpy((void*) parameterrealm, parameterset_notconst, sizeof(ParameterRealm));
 }
 
-void _configsuite_init() {
-    ConfigSuite configsuite_notconst;
-
-    size_t n_psets = 1;
+void _configsuite_fill_configs(ConfigSuite* cs) {
+    size_t n_config = 1;
 
     for (size_t i = 0; i < N_PARAMETERS; i++) {
-        n_psets *= parameterrealm[i].number;
+        n_config *= cs->pr[i].number;
     }
 
-    INITMANY(configsuite_notconst, n_psets, Config);
+    MANY_INIT(cs->configs, n_config, Config);
 
-    size_t p = 0;
+    size_t idxconfig = 0;
     size_t idxs[N_PARAMETERS];
     memset(idxs, 0, sizeof(size_t) * N_PARAMETERS);
-    #define PE_FOR(NAME) for (idxs[PE_ ## NAME] = 0; idxs[PE_ ## NAME] < parameterrealm[PE_ ## NAME].number; ++idxs[PE_ ## NAME])
+    #define PE_FOR(NAME) for (idxs[PE_ ## NAME] = 0; idxs[PE_ ## NAME] < cs->pr[PE_ ## NAME].number; ++idxs[PE_ ## NAME])
     PE_FOR(NINF) {
         PE_FOR(PINF) {
             PE_FOR(NN) {
@@ -231,11 +156,11 @@ void _configsuite_init() {
                         PE_FOR(WINDOWING) {
                             PE_FOR(NX_EPSILON_INCREMENT) {
 
-                                Config* config = &configsuite_notconst._[p];
+                                Config* config = &cs->configs._[idxconfig];
 
-                                config->index = p;
+                                config->index = idxconfig;
 
-                                p++;
+                                idxconfig++;
 
                                 void* ptr[N_PARAMETERS] = {
                                     &config->ninf,
@@ -250,8 +175,8 @@ void _configsuite_init() {
                                 // if (p >= 6) break;
 
                                 for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-                                    config->parameters[pp] = &parameterrealm[pp]._[idxs[pp]];
-                                    memcpy(ptr[pp], &parameterrealm[pp]._[idxs[pp]].value, parameters_definition[pp].size);
+                                    config->parameters[pp] = &cs->pr[pp]._[idxs[pp]];
+                                    memcpy(ptr[pp], &cs->pr[pp]._[idxs[pp]].value, parameters_definition[pp].size);
                                 }
                             }
                         }
@@ -261,34 +186,46 @@ void _configsuite_init() {
         }
     }
     #undef PE_FOR
-    memcpy((void*) &configsuite, &configsuite_notconst, sizeof(ConfigSuite));
 }
 
-void configset_init() {
-    _parametersdefinition_init();
-    _parameterset_init();
-    _configsuite_init();
+size_t configsuite_pg_count(ParameterGenerator pg) {
+    size_t count = 1;
+
+    count *= pg.ninf_n;
+    count *= pg.pinf_n;
+    count *= pg.nn_n;
+    count *= pg.wl_rank_n;
+    count *= pg.wl_value_n;
+    count *= pg.windowing_n;
+    count *= pg.nx_epsilon_increment_n;
+
+    return count;
 }
 
-void configset_disable() {
-    for (size_t c = 0; c < configsuite.number; c++) {
+void configsuite_generate(ConfigSuite* cs, ParameterGenerator pg) {
+    if (0 == parametersdefinition_init_done) {
+        _parametersdefinition_init();
+        parametersdefinition_init_done = 1;
+    }
+    _configsuite_fill_pr(cs, pg);
+    _configsuite_fill_configs(cs);
+}
+
+void configset_disable(ConfigSuite* cs) {
+    for (size_t c = 0; c < cs->configs.number; c++) {
         int disabled = 0;
         for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-            disabled = parameterrealm[pp]._[configsuite._[c].parameters[pp]->index].disabled;
+            disabled = cs->pr[pp]._[cs->configs._[c].parameters[pp]->index].disabled;
             if (disabled) break;
         }
-        if (!disabled) LOG_DEBUG("Config %ld enabled", c);
-        configsuite._[c].disabled = disabled;
+        if (!disabled) LOG_TRACE("Config %ld enabled", c);
+        cs->configs._[c].disabled = disabled;
     }
 }
 
-void configset_free() {
-    ParameterRealm parameterset_notconst;
-    ConfigSuite configsuite_notconst;
-    memcpy(&configsuite_notconst, &configsuite, sizeof(ConfigSuite));
-    memcpy(parameterset_notconst, parameterrealm, sizeof(ParameterRealm));
+void configset_free(ConfigSuite* cs) {
     for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-        FREEMANY(parameterset_notconst[pp]);
+        FREEMANY(cs->pr[pp]);
     }
-    FREEMANY(configsuite_notconst);
+    FREEMANY(cs->configs);
 }

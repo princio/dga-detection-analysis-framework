@@ -33,9 +33,9 @@ RWindowing windowings_alloc() {
     return rwindowing;
 }
 
-RWindowing windowings_create(WSize wsize, RSource source) {
+RWindowing windowings_create(size_t wsize, RSource source) {
     RWindowing windowing;
-    const size_t nw = N_WINDOWS(source->fnreq_max, wsize.value);
+    const size_t nw = N_WINDOWS(source->fnreq_max, wsize);
 
     windowing = windowings_alloc();
 
@@ -47,8 +47,8 @@ RWindowing windowings_create(WSize wsize, RSource source) {
     for (size_t w = 0; w < nw; w++) {
         windowing->windows._[w]->windowing = windowing;
         windowing->windows._[w]->fn_req_min = fnreq;
-        windowing->windows._[w]->fn_req_max = fnreq + wsize.value;
-        fnreq += wsize.value;
+        windowing->windows._[w]->fn_req_max = fnreq + wsize;
+        fnreq += wsize;
     }
     return windowing;
 }

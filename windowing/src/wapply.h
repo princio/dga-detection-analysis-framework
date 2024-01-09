@@ -3,13 +3,17 @@
 
 #include "common.h"
 
-#include "configset.h"
+#include "configsuite.h"
 
 #define WAPPLY_GET(APPLY, WSIZE_INDEX, PSET_INDEX)
 
-typedef struct WApply {
-    uint32_t pset_index;
+typedef struct WApplyTiny {
+    uint16_t wcount;
+    double  logit;
+    uint16_t whitelistened;
+} WApplyTiny;
 
+typedef struct WApply {
     uint16_t wcount;
     double  logit;
     uint16_t whitelistened;
@@ -19,9 +23,9 @@ typedef struct WApply {
     uint16_t dn_bad_0999;
 } WApply;
 
+MAKEMANY(WApplyTiny);
 MAKEMANY(WApply);
 
-void wapply_init(RWindow, const size_t);
-void wapply_run_many(MANY(WApply)*, TCPC(DNSMessage), MANY(ConfigApplied));
+void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config);
 
 #endif

@@ -19,10 +19,10 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
 
     Stat stats;
     TrainerBy* by = &trainer->by;
+    ConfigSuite* cs = &trainer->tb2d->tb2w->configsuite;
 
-    INITBY_N(stats.by, fold, trainer->tb2->dataset.n.fold);
-    INITBY_N(stats.by, wsize, trainer->tb2->dataset.n.wsize);
-    INITBY_N(stats.by, thchooser, trainer->thchoosers.number);
+    BY_SETN(stats.by, fold, trainer->tb2d->n.fold);
+    BY_SETN(stats.by, thchooser, trainer->thchoosers.number);
 
 
     #define init_statmetric(NAME) {\
@@ -32,19 +32,18 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
         sm->NAME[cl].std = 0;\
         sm->NAME[cl].count = 0;\
     }
-    INITBYFOR(stats.by, stats.by, fold, StatBy) {
-        INITBYFOR(stats.by, GETBY(stats.by, fold), wsize, StatBy) {
-            INITBYFOR(stats.by, GETBY2(stats.by, fold, wsize), thchooser, StatBy) {
-                for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-                    INITMANY(GETBY3(stats.by, fold, wsize, thchooser)[pp], parameterrealm[pp].number, StatByPSetItemValue);
-                    for (size_t idxparameter = 0; idxparameter < parameterrealm[pp].number; idxparameter++) {
-                        if (0 == parameterrealm[pp]._[idxparameter].disabled) {
-                            StatByPSetItemValue* sm;
-                            sm = &STAT_IDX(stats, idxfold, idxwsize, idxthchooser, pp, idxparameter);
-                            DGAFOR(cl) {
-                                init_statmetric(train);
-                                init_statmetric(test);
-                            }
+    BY_FOR(stats.by, fold) {
+        BY_FOR(stats.by, thchooser) {
+            for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+                MANY_INIT(BY_GET2(stats.by, fold, thchooser)[pp], cs->pr[pp].number, StatByPSetItemValue);
+
+                for (size_t idxparameter = 0; idxparameter < cs->pr[pp].number; idxparameter++) {
+                    if (0 == cs->pr[pp]._[idxparameter].disabled) {
+                        StatByPSetItemValue* sm;
+                        sm = &STAT_IDX(stats, idxfold, idxthchooser, pp, idxparameter);
+                        DGAFOR(cl) {
+                            init_statmetric(train);
+                            init_statmetric(test);
                         }
                     }
                 }
@@ -62,26 +61,24 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
         sm->NAME[cl].avg += value;\
         sm->NAME[cl].count++;\
     }
-    FORBY(stats.by, fold) {
-        FORBY(stats.by, wsize) {
-            FORBY(stats.by, thchooser) {
-                FORBY(trainer->by, apply) {
-                    FORBY(trainer->by, try) {
-                        for (size_t k = 0; k < GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits.number; k++) {
-                            TrainerBy_splits* result;
-                            Config* config;
+    BY_FOR(stats.by, fold) {
+        BY_FOR(stats.by, thchooser) {
+            BY_FOR(trainer->by, config) {
+                BY_FOR(trainer->by, try) {
+                    for (size_t k = 0; k < BY_GET4(trainer->by, config, fold, try, thchooser).splits.number; k++) {
+                        TrainerBy_splits* result;
+                        Config* config;
 
-                            config = trainer->tb2->applies._[idxapply].config;
-                            
-                            result = &GETBY5(trainer->by, wsize, apply, fold, try, thchooser).splits._[k];
+                        config = &cs->configs._[idxconfig];
+                        
+                        result = &BY_GET4(trainer->by, config, fold, try, thchooser).splits._[k];
 
-                            for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-                                StatByPSetItemValue* sm;
-                                sm = &STAT_IDX(stats, idxfold, idxwsize, idxthchooser, pp, config->parameters[pp]->index);
-                                DGAFOR(cl) {
-                                    update_statmetric(train);
-                                    update_statmetric(test);
-                                }
+                        for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+                            StatByPSetItemValue* sm;
+                            sm = &STAT_IDX(stats, idxfold, idxthchooser, pp, config->parameters[pp]->index);
+                            DGAFOR(cl) {
+                                update_statmetric(train);
+                                update_statmetric(test);
                             }
                         }
                     }
@@ -93,17 +90,15 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
 
 
     #define finalize_statmetric(NAME) DGAFOR(cl) { sm->NAME[cl].avg /= sm->NAME[cl].count; }
-    FORBY(stats.by, fold) {
-        FORBY(stats.by, wsize) {
-            FORBY(stats.by, thchooser) {
-                for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-                    for (size_t idxparameter = 0; idxparameter < parameterrealm[pp].number; idxparameter++) {
-                        if (parameterrealm[pp]._[idxparameter].disabled == 0) {
-                            StatByPSetItemValue* sm;
-                            sm = &STAT_IDX(stats, idxfold, idxwsize, idxthchooser, pp, idxparameter);
-                            finalize_statmetric(train);
-                            finalize_statmetric(test);
-                        }
+    BY_FOR(stats.by, fold) {
+        BY_FOR(stats.by, thchooser) {
+            for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+                for (size_t idxparameter = 0; idxparameter < cs->pr[pp].number; idxparameter++) {
+                    if (cs->pr[pp]._[idxparameter].disabled == 0) {
+                        StatByPSetItemValue* sm;
+                        sm = &STAT_IDX(stats, idxfold, idxthchooser, pp, idxparameter);
+                        finalize_statmetric(train);
+                        finalize_statmetric(test);
                     }
                 }
             }
@@ -147,27 +142,25 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
         "%s",
         "%7.2f"
     };
-    FORBY(stats.by, fold) {
-        FORBY(stats.by, wsize) {
-            FORBY(stats.by, thchooser) {
-                for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-                    for (size_t idxparameter = 0; idxparameter < parameterrealm[pp].number; idxparameter++) {\
-                        if (parameterrealm[pp]._[idxparameter].disabled) continue;\
-                        StatByPSetItemValue* item;
-                        item = &STAT_IDX(stats, idxfold, idxwsize, idxthchooser, pp, idxparameter);
+    BY_FOR(stats.by, fold) {
+        BY_FOR(stats.by, thchooser) {
+            for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+                for (size_t idxparameter = 0; idxparameter < cs->pr[pp].number; idxparameter++) {\
+                    if (cs->pr[pp]._[idxparameter].disabled) continue;\
+                    StatByPSetItemValue* item;
+                    item = &STAT_IDX(stats, idxfold, idxthchooser, pp, idxparameter);
 
-                        printf("%-8ld ", idxfold);
-                        printf("%-8ld ", trainer->tb2->wsizes._[idxwsize].value);
-                        printf("%-15s ", trainer->thchoosers._[idxthchooser].name);
-                        printf("%-25s ", parameters_definition[pp].name);
-                        {  
-                            char str[20];
-                            parameters_definition[pp].print(parameterrealm[pp]._[idxparameter], 7, str);
-                            printf("%-20s ", str);
-                        }
-                        print_statmetric_2d
-                        printf("\n");
+                    printf("%-8ld ", idxfold);
+                    printf("%-8ld ", trainer->tb2d->tb2w->wsize);
+                    printf("%-15s ", trainer->thchoosers._[idxthchooser].name);
+                    printf("%-25s ", parameters_definition[pp].name);
+                    {  
+                        char str[20];
+                        parameters_definition[pp].print(cs->pr[pp]._[idxparameter], 7, str);
+                        printf("%-20s ", str);
                     }
+                    print_statmetric_2d
+                    printf("\n");
                 }
             }
         }
@@ -196,26 +189,24 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
         "%s",
         "%f"
     };
-    FORBY(stats.by, fold) {
-        FORBY(stats.by, wsize) {
-            FORBY(stats.by, thchooser) {
-                for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-                    for (size_t idxparameter = 0; idxparameter < parameterrealm[pp].number; idxparameter++) {\
-                        StatByPSetItemValue* item;
-                        item = &STAT_IDX(stats, idxfold, idxwsize, idxthchooser, pp, idxparameter);
+    BY_FOR(stats.by, fold) {
+        BY_FOR(stats.by, thchooser) {
+            for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+                for (size_t idxparameter = 0; idxparameter < cs->pr[pp].number; idxparameter++) {\
+                    StatByPSetItemValue* item;
+                    item = &STAT_IDX(stats, idxfold, idxthchooser, pp, idxparameter);
 
-                        fprintf(file, "%ld,", idxfold);
-                        fprintf(file, "%ld,", trainer->tb2->wsizes._[idxwsize].value);
-                        fprintf(file, "%s,", trainer->thchoosers._[idxthchooser].name);
-                        fprintf(file, "%s,", item->name);
-                        {  
-                            char str[20];
-                            parameters_definition[pp].print(parameterrealm[pp]._[idxparameter], 0, str);
-                            // printf("%-20s ", str);
-                        }
-                        fprint_statmetric_csv;
-                        fprintf(file, "\n");
+                    fprintf(file, "%ld,", idxfold);
+                    fprintf(file, "%ld,", trainer->tb2d->tb2w->wsize);
+                    fprintf(file, "%s,", trainer->thchoosers._[idxthchooser].name);
+                    fprintf(file, "%s,", item->name);
+                    {  
+                        char str[20];
+                        parameters_definition[pp].print(cs->pr[pp]._[idxparameter], 0, str);
+                        // printf("%-20s ", str);
                     }
+                    fprint_statmetric_csv;
+                    fprintf(file, "\n");
                 }
             }
         }
@@ -240,16 +231,13 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
 }
 
 void stat_free(Stat stat) {
-    FORBY(stat.by, fold) {
-        FORBY(stat.by, wsize) {
-            FORBY(stat.by, thchooser) {
-                for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-                    FREEMANY(stat.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser._[idxthchooser][pp]);
-                }
+    BY_FOR(stat.by, fold) {
+        BY_FOR(stat.by, thchooser) {
+            for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+                FREEMANY(stat.by.byfold._[idxfold].bythchooser._[idxthchooser][pp]);
             }
-            FREEMANY(stat.by.byfold._[idxfold].bywsize._[idxwsize].bythchooser);
         }
-        FREEMANY(stat.by.byfold._[idxfold].bywsize);
+        FREEMANY(stat.by.byfold._[idxfold].bythchooser);
     }
     FREEMANY(stat.by.byfold);
 }

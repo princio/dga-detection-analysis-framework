@@ -4,8 +4,7 @@
 
 #include "common.h"
 
-#include "configset.h"
-#include "testbed2.h"
+#include "configsuite.h"
 #include "trainer.h"
 
 typedef struct StatMetric {
@@ -28,20 +27,14 @@ typedef MANY(StatByPSetItemValue) StatBy_thchooser[N_PARAMETERS];
 
 MAKEMANY(StatBy_thchooser);
 
-typedef struct StatBy_wsize {
-    MANY(StatBy_thchooser) bythchooser;
-} StatBy_wsize;
-MAKEMANY(StatBy_wsize);
-
 typedef struct StatBy_fold {
-    MANY(StatBy_wsize) bywsize;
+    MANY(StatBy_thchooser) bythchooser;
 } StatBy_fold;
 MAKEMANY(StatBy_fold);
 
 typedef struct StatBy {
     struct {
         const size_t fold;
-        const size_t wsize;
         const size_t thchooser;
     } n;
     MANY(StatBy_fold) byfold;
@@ -52,7 +45,7 @@ typedef struct Stat {
     StatBy by;
 } Stat;
 
-#define STAT_IDX(STAT, FOLD, WSIZE, THCHOOSER, PP, PARAMETER) STAT.by.byfold._[FOLD].bywsize._[WSIZE].bythchooser._[THCHOOSER][PP]._[PARAMETER]
+#define STAT_IDX(STAT, FOLD, THCHOOSER, PP, PARAMETER) STAT.by.byfold._[FOLD].bythchooser._[THCHOOSER][PP]._[PARAMETER]
 
 Stat stat_run(RTrainer, ParameterRealmEnabled parameterrealmenabled, char fpath[PATH_MAX]);
 

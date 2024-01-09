@@ -1,0 +1,12 @@
+
+#ifndef __MAIN_DATASET_H__
+#define __MAIN_DATASET_H__
+
+#include "common.h"
+
+#include "tb2d.h"
+
+int main_dataset_generate(char dirname[DIR_MAX], RTB2W tb2w, const size_t n_try, MANY(FoldConfig) foldconfig_many);
+RTB2D main_dataset_load(RTB2W tb2w, char dirname[DIR_MAX]);
+
+#endif

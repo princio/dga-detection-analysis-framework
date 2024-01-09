@@ -34,14 +34,14 @@ RDataset dataset_create(WSize wsize, Index counter) {
     dataset->wsize = wsize;
     
     if (counter.all)
-        INITMANY(dataset->windows.all, counter.all, RWindow);
+        MANY_INIT(dataset->windows.all, counter.all, RWindow);
     if (counter.binary[0])
-        INITMANY(dataset->windows.binary[0], counter.binary[0], RWindow);
+        MANY_INIT(dataset->windows.binary[0], counter.binary[0], RWindow);
     if (counter.binary[1])
-        INITMANY(dataset->windows.binary[1], counter.binary[1], RWindow);
+        MANY_INIT(dataset->windows.binary[1], counter.binary[1], RWindow);
     DGAFOR(cl) {
         if (counter.multi[cl])
-            INITMANY(dataset->windows.multi[cl], counter.multi[cl], RWindow);
+            MANY_INIT(dataset->windows.multi[cl], counter.multi[cl], RWindow);
     }
 
     return dataset;
@@ -80,7 +80,7 @@ DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_
 
     splits.isok = 1;
 
-    INITMANY(splits.splits, KFOLDs, DatasetSplit);
+    MANY_INIT(splits.splits, KFOLDs, DatasetSplit);
 
     {
         Index counter;
@@ -135,8 +135,8 @@ DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_
             MANY(RWindow)* train = &splits.splits._[k].train->windows.multi[cl];
             MANY(RWindow)* test = &splits.splits._[k].test->windows.multi[cl];
 
-            INITMANYREF(train, train_size, RWindow);
-            INITMANYREF(test, test_size, RWindow);
+            MANY_INITREF(train, train_size, RWindow);
+            MANY_INITREF(test, test_size, RWindow);
 
             train_index = 0;
             test_index = 0;
@@ -160,13 +160,13 @@ DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_
         RDataset train = splits.splits._[k].train;
         RDataset test = splits.splits._[k].test;
 
-        INITMANYREF(&train->windows.all, train_counter[k].all, RWindow);
-        INITMANYREF(&train->windows.binary[0], train_counter[k].binary[0], RWindow);
-        INITMANYREF(&train->windows.binary[1], train_counter[k].binary[1], RWindow);
+        MANY_INITREF(&train->windows.all, train_counter[k].all, RWindow);
+        MANY_INITREF(&train->windows.binary[0], train_counter[k].binary[0], RWindow);
+        MANY_INITREF(&train->windows.binary[1], train_counter[k].binary[1], RWindow);
 
-        INITMANYREF(&test->windows.all, test_counter[k].all, RWindow);
-        INITMANYREF(&test->windows.binary[0], test_counter[k].binary[0], RWindow);
-        INITMANYREF(&test->windows.binary[1], test_counter[k].binary[1], RWindow);
+        MANY_INITREF(&test->windows.all, test_counter[k].all, RWindow);
+        MANY_INITREF(&test->windows.binary[0], test_counter[k].binary[0], RWindow);
+        MANY_INITREF(&test->windows.binary[1], test_counter[k].binary[1], RWindow);
     }
 
     Index train_counter_2[KFOLDs];

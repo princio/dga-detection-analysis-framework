@@ -161,7 +161,8 @@
         "main.h": "c",
         "configset.h": "c",
         "logger.h": "c",
-        "stat.h": "c"
+        "stat.h": "c",
+        "main_windowing.h": "c"
     },
     "cmake.sourceDirectory": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex/pslregex/c"
 }

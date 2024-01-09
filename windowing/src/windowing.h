@@ -7,11 +7,11 @@
 typedef struct __Windowing {
     size_t index;
     RSource source;
-    WSize wsize;
+    size_t wsize;
     MANY(RWindow) windows;
 } __Windowing;
 
 RWindowing windowings_alloc();
-RWindowing windowings_create(WSize wsize, RSource source);
+RWindowing windowings_create(size_t wsize, RSource source);
 
 #endif

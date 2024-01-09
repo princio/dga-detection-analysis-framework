@@ -2,8 +2,8 @@
 #include "stratosphere.h"
 
 #include "logger.h"
-#include "configset.h"
-#include "testbed2.h"
+#include "configsuite.h"
+#include "tb2w.h"
 #include "windows.h"
 
 #include <libpq-fe.h>
@@ -216,8 +216,8 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
     }
 }
 
-void stratosphere_apply(MANY(RWindowing) windowings,  MANY(ConfigApplied) applies) {
-    const RSource source = windowings._[0]->source;
+void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
+    const RSource source = windowing->source;
     
     PGresult* pgresult = NULL;
     int nrows;
@@ -228,16 +228,20 @@ void stratosphere_apply(MANY(RWindowing) windowings,  MANY(ConfigApplied) applie
 
     fetch_source_messages(source, &nrows, &pgresult);
 
+    printf("Starting %d\n", nrows);
     for (int r = 0; r < nrows; r++) {
         DNSMessage message;
         parse_message(pgresult, r, &message);
 
-        for (size_t i = 0; i < windowings.number; i++) {
-            RWindowing windowing = windowings._[i];
+        if (nrows % 1000 == 0) {
+            printf("\33[2K\r");
+            printf("%d/%d\n", r, nrows);
+        }
+    
+        const int wnum = (int64_t) floor(message.fn_req / windowing->wsize);
 
-            const int wnum = (int64_t) floor(message.fn_req / windowing->wsize.value);
-
-            wapply_run_many(&windowing->windows._[wnum]->applies, &message, applies);
+        for (size_t idxconfig = 0; idxconfig < tb2w->configsuite.configs.number; idxconfig++) {
+            wapply_run(&windowing->windows._[wnum]->applies._[idxconfig], &message, &tb2w->configsuite.configs._[idxconfig]);
         }
     }
 
@@ -246,7 +250,7 @@ void stratosphere_apply(MANY(RWindowing) windowings,  MANY(ConfigApplied) applie
     _stratosphere_disconnect();
 }
 
-void _stratosphere_add(RTestBed2 tb2, size_t limit) {
+void _stratosphere_add(RTB2W tb2, size_t limit) {
     PGresult* pgresult = NULL;
 
     pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr ASC");
@@ -288,13 +292,13 @@ void _stratosphere_add(RTestBed2 tb2, size_t limit) {
         rsource->r = r;
         rsource->fnreq_max = fnreq_max;
 
-        testbed2_source_add(tb2, rsource);
+        tb2w_source_add(tb2, rsource);
     }
 
     PQclear(pgresult);
 }
 
-void stratosphere_add(RTestBed2 tb2, size_t limit) {
+void stratosphere_add(RTB2W tb2, size_t limit) {
     if (_stratosphere_connect()) {
         LOG_ERROR("cannot connect to database.");
         return;

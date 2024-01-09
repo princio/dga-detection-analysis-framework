@@ -48,8 +48,8 @@ MANY(RWindow) windows_alloc(size_t windows_number) {
 
     windows = gatherer_alloc_item(windows_gatherer);
 
-    INITMANYREF(windows,  windows_number, __Window0);
-    INITMANY(rwindows, windows_number, RWindow);
+    MANY_INITREF(windows,  windows_number, __Window0);
+    MANY_INIT(rwindows, windows_number, RWindow);
 
     for (size_t w = 0; w < rwindows.number; w++) {
         windows->_[w].index = w;
