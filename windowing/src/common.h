@@ -5,9 +5,12 @@
 #include <linux/limits.h>
 #include <stdint.h>
 #include <time.h>
+#include <sys/time.h>  
 #include <openssl/sha.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define BENCHMARKING
 
 #define DELLINE "\033[A\033[2K"
 #define DELCHARS(N) { char bb[N]; for (int i = 0; i < N; ++i) { bb[i] = '\b'; } printf("%s", bb); }
@@ -67,6 +70,10 @@ char CACHE_DIR[DIR_MAX];
 } TETRA(T)
 
 #ifdef BENCHMARKING
+#define CLOCK_START(A) printf("%60s: %s\n", "start", #A); struct timeval begin_ ## A; gettimeofday(&begin_ ## A, NULL);
+#define CLOCK_END(A) { struct timeval end_ ## A; gettimeofday(&end_ ## A, NULL); \
+    printf("%60s: %f ms\n", #A, ((end_ ## A.tv_sec - begin_ ## A.tv_sec) * 1000.0 + (end_ ## A.tv_usec - begin_ ## A.tv_usec) / 1000.0)); }
+#elif BENCHMARKING_CLOCK
 #define CLOCK_START(A) clock_t begin_ ## A = clock();
 #define CLOCK_END(A) { double time_spent_ ## A = (double)(clock() - begin_ ## A) / CLOCKS_PER_SEC;\
     printf("%60s: %f µs\n", #A, time_spent_ ## A * 1000000); }

@@ -81,7 +81,7 @@ void tb2w_windowing(RTB2W tb2w) {
 
 void tb2w_apply(RTB2W tb2w) {
     BY_FOR(tb2w->windowing, source) {
-        printf("%d %ld/%ld -> ", tb2w->windowing.bysource._[idxsource]->source->id, idxsource, tb2w->windowing.n.source);
+        printf("Applying %2ld/%-2ld: source#%5d -> ", idxsource, tb2w->windowing.n.source, tb2w->windowing.bysource._[idxsource]->source->id);
         int c = printf("doing");
         stratosphere_apply(tb2w, BY_GET(tb2w->windowing, source));
         DELCHARS(c); printf("%-*s\n", c, "done");

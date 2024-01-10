@@ -57,3 +57,11 @@ void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config) {
     wapply->logit += logit;
     wapply->whitelistened += whitelistened;
 }
+
+void* wapply_run_args(void* argsvoid) {
+    WApplyArgs* args = argsvoid;
+    printf("Running %d", args->id);
+    wapply_run(args->wapply, args->message, args->config);
+    printf("Ended %d", args->id);
+    return NULL;
+}

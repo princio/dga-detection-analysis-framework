@@ -4,6 +4,7 @@
 #include "logger.h"
 #include "configsuite.h"
 #include "tb2w.h"
+#include "queue.h"
 #include "windows.h"
 
 #include <ncurses.h>
@@ -11,6 +12,7 @@
 #include <15/server/catalog/pg_type_d.h>
 
 #include <math.h>
+#include <pthread.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -217,6 +219,64 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
     }
 }
 
+struct stratosphere_apply_producer_args {
+    PGresult* pgresult;
+    const int nrows;
+    queue_t* queue;
+};
+
+struct stratosphere_apply_consumer_args {
+    int id;
+    RTB2W tb2w;
+    RWindowing windowing;
+    queue_t* queue;
+};
+
+void* stratosphere_apply_producer(void* argsvoid) {
+    struct stratosphere_apply_producer_args* args = argsvoid;
+    int n_blocks = args->nrows / QM_MAX_SIZE + (args->nrows % QM_MAX_SIZE > 0);
+
+    printf("n blocks %d\n", n_blocks);
+
+    for (int block = 0; block < n_blocks; block++) {
+        queue_messages* qm = calloc(1, sizeof(queue_messages));
+        qm->id = block;
+        qm->number = QM_MAX_SIZE;
+        for (size_t i = 0; i < QM_MAX_SIZE; i++) {
+            int idx = block * QM_MAX_SIZE + i;
+            if (idx == args->nrows) {
+                qm->number = i;
+                break;
+            }
+            parse_message(args->pgresult, idx, &qm->messages[i]);
+        }
+        queue_enqueue(args->queue, qm, (block + 1) == n_blocks);
+    }
+    return NULL;
+}
+
+void* stratosphere_apply_consumer(void* argsvoid) {
+    struct stratosphere_apply_consumer_args* args = argsvoid;
+
+    while(!queue_isend(args->queue)) {
+        queue_messages* qm = queue_dequeue(args->queue);
+        if (qm == NULL) break;
+
+        for (int i = 0; i < qm->number; i++) {
+            const int wnum = (int64_t) floor(qm->messages[i].fn_req / args->windowing->wsize);
+
+            // printf("Processing message %8ld for window %d: START\n", message.id, wnum);
+            for (size_t idxconfig = 0; idxconfig < args->tb2w->configsuite.configs.number; idxconfig++) {
+                wapply_run(&args->windowing->windows._[wnum]->applies._[idxconfig], &qm->messages[i], &args->tb2w->configsuite.configs._[idxconfig]);
+            }
+        }
+        // printf("end %d\n", qm->id);
+        free(qm);
+    }
+
+    return NULL;
+}
+
 void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
     const RSource source = windowing->source;
     
@@ -229,32 +289,68 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
 
     fetch_source_messages(source, &nrows, &pgresult);
 
-    // printf("progress: %-8d/%8d", 0, nrows);
+    printf("\nNROWS: %d\n", nrows);
+
+    queue_messages* qm[100];
+	queue_t queue = QUEUE_INITIALIZER(qm);
+
+    struct stratosphere_apply_producer_args producer_args = {
+        .pgresult = pgresult,
+        .nrows = nrows,
+        .queue = &queue,
+    };
+
+    struct stratosphere_apply_consumer_args consumer_args[NTHREADS];
+
+    pthread_t producer;
+    pthread_t consumers[NTHREADS];
+
+    CLOCK_START(memazzo);
+    {
+        pthread_create(&producer, NULL, stratosphere_apply_producer, &producer_args);
+
+        for (size_t i = 0; i < NTHREADS; ++ i) {
+            consumer_args[i].id = i;
+            consumer_args[i].tb2w = tb2w;
+            consumer_args[i].windowing = windowing;
+            consumer_args[i].queue = &queue;
+
+            pthread_create(&consumers[i], NULL, stratosphere_apply_consumer, &consumer_args);
+        }
+
+        pthread_join(producer, NULL);
+
+        for (size_t i = 0; i < NTHREADS; ++ i) {
+            pthread_join(consumers[i], NULL);
+        }
+
+    }
+    CLOCK_END(memazzo);
+
+    CLOCK_START(memazzodavvero);
     for (int r = 0; r < nrows; r++) {
         DNSMessage message;
         parse_message(pgresult, r, &message);
 
-        if (nrows == 0 || nrows % 1000 == 0) {
-            // printf(DELLINE"progress: %d/%d\n", r, nrows);
-        }
-    
         const int wnum = (int64_t) floor(message.fn_req / windowing->wsize);
 
         for (size_t idxconfig = 0; idxconfig < tb2w->configsuite.configs.number; idxconfig++) {
             wapply_run(&windowing->windows._[wnum]->applies._[idxconfig], &message, &tb2w->configsuite.configs._[idxconfig]);
         }
     }
-    // printf(DELLINE);
+    CLOCK_END(memazzo);
 
     PQclear(pgresult);
 
     _stratosphere_disconnect();
+
+    pthread_mutex_destroy(&queue.mutex);
 }
 
 void _stratosphere_add(RTB2W tb2, size_t limit) {
     PGresult* pgresult = NULL;
 
-    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr ASC");
+    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id WHERE qr < 1007792 ORDER BY qr DESC");
 
     if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
         LOG_ERROR("get pcaps failed: %s.", PQerrorMessage(conn));

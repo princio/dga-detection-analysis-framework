@@ -26,6 +26,16 @@ typedef struct WApply {
 MAKEMANY(WApplyTiny);
 MAKEMANY(WApply);
 
+typedef struct WApplyArgs
+{
+    int id;
+    WApply* wapply;
+    TCPC(DNSMessage) message;
+    Config* config;
+} WApplyArgs;
+
+
 void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config);
+void* wapply_run_args(void*);
 
 #endif

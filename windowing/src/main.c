@@ -46,8 +46,8 @@ ParameterGenerator main_parametergenerator() {
     {
         ninf_t ninf[] = {
             0,
-            // -10,
-            // -25,
+            -10,
+            -25,
             // -50,
             // -100,
             // -150
@@ -58,8 +58,8 @@ ParameterGenerator main_parametergenerator() {
     {
         pinf_t pinf[] = {
             0,
-            // 10,
-            // 25,
+            10,
+            25,
             // 50,
             // 100,
             // 150
@@ -80,9 +80,9 @@ ParameterGenerator main_parametergenerator() {
     {
         wl_rank_t wl_rank[] = {
             0,
-            // 100,
+            100,
             // 1000,
-            10000,
+            // 10000,
             // 100000
         };
         __SET(wl_rank);
@@ -91,9 +91,9 @@ ParameterGenerator main_parametergenerator() {
     {
         wl_value_t wl_value[] = {
             0,
-            // -10,
-            // -25,
-            -50,
+            -10,
+            -25,
+            // -50,
             // -100,
             // -150
         };
@@ -103,8 +103,8 @@ ParameterGenerator main_parametergenerator() {
     {
         windowing_t windowing[] = {
             WINDOWING_Q,
-            // WINDOWING_R,
-            // WINDOWING_QR
+            WINDOWING_R,
+            WINDOWING_QR
         };
         __SET(windowing);
     }
@@ -112,10 +112,10 @@ ParameterGenerator main_parametergenerator() {
     {
         nx_epsilon_increment_t nx_epsilon_increment[] = {
             0,
-            // 0.05,
-            // 0.1,
-            // 0.25,
-            // 0.5
+            0.05,
+            0.1,
+            0.25,
+            0.5
         };
         __SET(nx_epsilon_increment);
     }
@@ -206,12 +206,14 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/test_configsuite/");
+        sprintf(rootdir, "/home/princio/Desktop/results/test_configsuite_allsources/");
     }
 
-    main_windowing_generate(rootdir, 2000, 20, main_parametergenerator());
+    main_windowing_generate(rootdir, 2000, 5, main_parametergenerator());
+    gatherer_free_all();
 
     RTB2W tb2w = main_windowing_load(rootdir);
+    printf("%f\n", tb2w->windowing.bysource._[0]->windows._[0]->applies._[2].logit);
     tb2w_free(tb2w);
     
     gatherer_free_all();
