@@ -14,6 +14,7 @@
  */
 
 
+#include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -186,24 +187,8 @@ void make_parameters_toignore(ConfigSuite* cs) {
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
 
-    /* Read command line options */
-    options_t options;
-    options_parser(argc, argv, &options);
-
-#ifdef DEBUG
-    fprintf(stdout, BLUE "Command line options:\n" NO_COLOR);
-    fprintf(stdout, BROWN "help: %d\n" NO_COLOR, options.help);
-    fprintf(stdout, BROWN "version: %d\n" NO_COLOR, options.version);
-    fprintf(stdout, BROWN "use colors: %d\n" NO_COLOR, options.use_colors);
-    fprintf(stdout, BROWN "filename: %s\n" NO_COLOR, options.file_name);
-#endif
-
-    /* Do your magic here :) */
-
-    // test_loadANDsave();
-    // test_addpsets();
-
-    // logger_initConsoleLogger(stdout);
+    // cwin = initscr();
+    raw();
 
 #ifdef IO_DEBUG
     __io__debug = 0;
@@ -225,6 +210,9 @@ int main (int argc, char* argv[]) {
     }
 
     main_windowing_generate(rootdir, 2000, 20, main_parametergenerator());
+
+    RTB2W tb2w = main_windowing_load(rootdir);
+    tb2w_free(tb2w);
     
     gatherer_free_all();
 

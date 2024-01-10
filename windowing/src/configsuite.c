@@ -209,6 +209,7 @@ void configsuite_generate(ConfigSuite* cs, ParameterGenerator pg) {
     }
     _configsuite_fill_pr(cs, pg);
     _configsuite_fill_configs(cs);
+    cs->pg = pg;
 }
 
 void configset_disable(ConfigSuite* cs) {

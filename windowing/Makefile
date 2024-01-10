@@ -84,7 +84,7 @@ CFLAGS := $(STD) $(STACK) $(WARNS) $(NOWARNS) -I/usr/include/postgresql/
 DEBUG := -g3 -DDEBUG=1
 
 # Dependency libraries
-POSTGRES_LIBS := -lpq  -lm -lssl -lcrypto -ldl -pthread # -lpgcommon -lpgport -lgssapi_krb5 -lldap_r 
+POSTGRES_LIBS := -lpq  -lm -lssl -lcrypto -ldl -pthread -lncurses # -lpgcommon -lpgport -lgssapi_krb5 -lldap_r 
 LIBS := $(POSTGRES_LIBS) #-I /home/princio/Repo/b64.c/build/libb64c.so # -lm  -I some/path/to/library
 
 # Test libraries

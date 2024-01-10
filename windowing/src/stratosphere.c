@@ -6,6 +6,7 @@
 #include "tb2w.h"
 #include "windows.h"
 
+#include <ncurses.h>
 #include <libpq-fe.h>
 #include <15/server/catalog/pg_type_d.h>
 
@@ -228,14 +229,13 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
 
     fetch_source_messages(source, &nrows, &pgresult);
 
-    printf("Starting %d\n", nrows);
+    // printf("progress: %-8d/%8d", 0, nrows);
     for (int r = 0; r < nrows; r++) {
         DNSMessage message;
         parse_message(pgresult, r, &message);
 
-        if (nrows % 1000 == 0) {
-            printf("\33[2K\r");
-            printf("%d/%d\n", r, nrows);
+        if (nrows == 0 || nrows % 1000 == 0) {
+            // printf(DELLINE"progress: %d/%d\n", r, nrows);
         }
     
         const int wnum = (int64_t) floor(message.fn_req / windowing->wsize);
@@ -244,6 +244,7 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
             wapply_run(&windowing->windows._[wnum]->applies._[idxconfig], &message, &tb2w->configsuite.configs._[idxconfig]);
         }
     }
+    // printf(DELLINE);
 
     PQclear(pgresult);
 

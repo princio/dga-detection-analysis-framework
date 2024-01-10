@@ -38,7 +38,7 @@ int main_windowing_generate(char dirpath[DIR_MAX], const WSize wsize, const size
 RTB2W main_windowing_load(char dirpath[DIR_MAX]) {
     RTB2W tb2w;
 
-    tb2w_io(IO_WRITE, dirpath, &tb2w);
+    tb2w_io(IO_READ, dirpath, &tb2w);
 
     return tb2w;
 }

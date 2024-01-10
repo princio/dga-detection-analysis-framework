@@ -1,6 +1,7 @@
 #ifndef __WWCOMMON_H__
 #define __WWCOMMON_H__
 
+#include <curses.h>
 #include <linux/limits.h>
 #include <stdint.h>
 #include <time.h>
@@ -8,7 +9,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define DELLINE "\033[A\033[2K"
+#define DELCHARS(N) { char bb[N]; for (int i = 0; i < N; ++i) { bb[i] = '\b'; } printf("%s", bb); }
+
 #define DIR_MAX (PATH_MAX - 100)
+
+WINDOW* cwin;
 
 char CACHE_DIR[DIR_MAX];
 

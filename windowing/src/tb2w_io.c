@@ -5,28 +5,34 @@
 #include <errno.h>
 #include <string.h>
 
+#define RW_CHAR (rw == IO_WRITE ? 'w' : 'r')
+
 void tb2w_md(char fpath[PATH_MAX], const RTB2W tb2);
 
 void tb2_io_flag_testbed(IOReadWrite rw, FILE* file, WSize wsize, int line) {
     char flag_code[TB2_IO_FLAG_LEN];
+    memset(flag_code, 0, sizeof(flag_code));
     sprintf(flag_code, "testbed_%ld", wsize);
     tb2_io_flag(rw, file, flag_code, line);
 }
 
 void tb2_io_flag_config(IOReadWrite rw, FILE* file, size_t idxconfig, int line) {
     char flag_code[TB2_IO_FLAG_LEN];
+    memset(flag_code, 0, sizeof(flag_code));
     sprintf(flag_code, "config_%ld", idxconfig);
     tb2_io_flag(rw, file, flag_code, line);
 }
 
 void tb2_io_flag_source(IOReadWrite rw, FILE* file, int id, int line) {
     char flag_code[TB2_IO_FLAG_LEN];
+    memset(flag_code, 0, sizeof(flag_code));
     sprintf(flag_code, "source_%d", id);
     tb2_io_flag(rw, file, flag_code, line);
 }
 
 void tb2_io_flag_windowing(IOReadWrite rw, FILE* file, RWindowing windowing, int line) {
     char flag_code[TB2_IO_FLAG_LEN];
+    memset(flag_code, 0, sizeof(flag_code));
     sprintf(flag_code, "windowing_%ld_%d", windowing->wsize, windowing->source->id);
     tb2_io_flag(rw, file, flag_code, line);
 }
@@ -54,8 +60,8 @@ void tb2w_io_sources(IOReadWrite rw, FILE* file, RTB2W tb2) {
         }
 
         FRW(source->index);
-        FRW(source->name);
         FRW(source->galaxy);
+        FRW(source->name);
         FRW(source->wclass);
         FRW(source->id);
         FRW(source->qr);
@@ -77,22 +83,26 @@ void tb2w_windowing_path(RTB2W tb2, RWindowing windowing, char fpath[PATH_MAX]) 
     io_path_concat(tb2->rootdir, fname, fpath);
 }
 
-void tb2w_io_create(IOReadWrite rw, FILE* file, char rootdir[DIR_MAX], RTB2W* tb2) {
+void tb2w_io_create(IOReadWrite rw, FILE* file, char rootdir[DIR_MAX], RTB2W* tb2w) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     WSize wsize;
     size_t n_tries = 0;
 
     if (rw == IO_WRITE) {
-        wsize = (*tb2)->wsize;
+        wsize = (*tb2w)->wsize;
     }
 
     FRW(wsize);
 
     ParameterGenerator pg;
-    {
-        memset(&pg, 0, sizeof(ParameterGenerator));
     
+    if (rw == IO_WRITE) {
+        memcpy(&pg, &(*tb2w)->configsuite.pg, sizeof(ParameterGenerator));
+    } else {
+        memset(&pg, 0, sizeof(ParameterGenerator));
+    }
+    {
         #define __PG(NAME_LW, NAME_UP) \
             tb2_io_flag_config(rw, file, PE_ ## NAME_UP, __LINE__); \
             FRW(pg.NAME_LW ## _n); \
@@ -110,7 +120,7 @@ void tb2w_io_create(IOReadWrite rw, FILE* file, char rootdir[DIR_MAX], RTB2W* tb
     }
 
     if (rw == IO_READ) {
-        *tb2 = tb2w_create(rootdir, wsize, pg);
+        *tb2w = tb2w_create(rootdir, wsize, pg);
     }
 }
 
@@ -147,40 +157,8 @@ void tb2_io_windows(IOReadWrite rw, FILE* file, RTB2W tb2w, MANY(RWindow) window
         FRW(window->fn_req_max);
         
         FRW(window->applies.number);
-        if (rw == IO_READ) {
-            MANY_INIT(window->applies, tb2w->configsuite.configs.number, WApply);
-        }
 
         __FRW(window->applies._, tb2w->configsuite.configs.number * sizeof(WApply), file);
-
-        // struct {
-        //     uint16_t _05;
-        //     uint16_t _0999;
-        //     uint16_t _099;
-        //     uint16_t _09;
-        // } dn_bad;
-        // memset(&dn_bad, 0, sizeof(dn_bad));
-
-        // if (rw == IO_WRITE) {
-        //     dn_bad._05 = wapply->dn_bad_05;
-        //     dn_bad._0999 = wapply->dn_bad_0999;
-        //     dn_bad._099 = wapply->dn_bad_099;
-        //     dn_bad._09 = wapply->dn_bad_09;
-        // }
-
-        // FRW(dn_bad);
-
-        // if (rw == IO_READ) {
-        //     wapply->dn_bad_05 = dn_bad._05;
-        //     wapply->dn_bad_0999 = dn_bad._0999;
-        //     wapply->dn_bad_099 = dn_bad._099;
-        //     wapply->dn_bad_09 = dn_bad._09;
-        // }
-    
-        // FRW(wapply->logit);
-        // FRW(wapply->pset_index);
-        // FRW(wapply->wcount);
-        // FRW(wapply->whitelistened);
     }
 }
 
@@ -249,7 +227,9 @@ int tb2w_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W* tb2w) {
 
     tb2_io_flag_testbed(rw, file, (*tb2w)->sources.number, __LINE__);
 
-    tb2w_windowing(*tb2w);
+    if (rw == IO_READ) {
+        tb2w_windowing(*tb2w);
+    }
     
     BY_FOR((*tb2w)->windowing, source) {
         tb2w_io_windowing(rw, (*tb2w), BY_GET((*tb2w)->windowing, source));

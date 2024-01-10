@@ -8,6 +8,7 @@
 #include "stratosphere.h"
 #include "tb2w_io.h"
 
+#include <ncurses.h>
 #include <math.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -51,44 +52,45 @@ void tb2w_source_add(RTB2W tb2, RSource source) {
     source->index = walker;
 }
 
-void tb2w_windowing(RTB2W tb2) {
-    gatherer_many_finalize((__MANY*) &tb2->sources, sizeof(RSource));
+void tb2w_windowing(RTB2W tb2w) {
+    gatherer_many_finalize((__MANY*) &tb2w->sources, sizeof(RSource));
 
-    BY_SETN(tb2->windowing, source, tb2->sources.number);
-    MANY_INIT(tb2->windowing.bysource, tb2->sources.number, RWindow);
+    BY_SETN(tb2w->windowing, source, tb2w->sources.number);
+    MANY_INIT(tb2w->windowing.bysource, tb2w->sources.number, RWindow);
 
     int32_t count_windows[N_DGACLASSES];
     memset(&count_windows, 0, sizeof(int32_t) * N_DGACLASSES);
-    BY_FOR(tb2->windowing, source) {
+    BY_FOR(tb2w->windowing, source) {
         RSource source;
         RWindowing* windowing_ref;
 
-        source = tb2->sources._[idxsource];
-        windowing_ref = &BY_GET(tb2->windowing, source);
+        source = tb2w->sources._[idxsource];
+        windowing_ref = &BY_GET(tb2w->windowing, source);
 
-        *windowing_ref = windowings_create(tb2->wsize, source);
+        *windowing_ref = windowings_create(tb2w->wsize, source);
         count_windows[source->wclass.mc] += (*windowing_ref)->windows.number;
     }
 
-    BY_FOR(tb2->windowing, source) {
-        RWindowing windowing = BY_GET(tb2->windowing, source);
+    BY_FOR(tb2w->windowing, source) {
+        RWindowing windowing = BY_GET(tb2w->windowing, source);
         for (size_t w = 0; w < windowing->windows.number; w++) {
-            MANY_INIT(windowing->windows._[w]->applies, tb2->configsuite.configs.number, WApply);
+            MANY_INIT(windowing->windows._[w]->applies, tb2w->configsuite.configs.number, WApply);
         }
     }
 }
 
 void tb2w_apply(RTB2W tb2w) {
-    #define DELLINE "\033[A\033[2K"
     BY_FOR(tb2w->windowing, source) {
-        printf(DELLINE"%d %ld/%ld -> doing\n", tb2w->windowing.bysource._[idxsource]->source->id, idxsource, tb2w->windowing.n.source);
+        printf("%d %ld/%ld -> ", tb2w->windowing.bysource._[idxsource]->source->id, idxsource, tb2w->windowing.n.source);
+        int c = printf("doing");
         stratosphere_apply(tb2w, BY_GET(tb2w->windowing, source));
+        DELCHARS(c); printf("%-*s\n", c, "done");
     }
-    #undef DELLINE
 }
 
 void tb2w_free(RTB2W tb2w) {
     FREEMANY(tb2w->windowing.bysource);
     FREEMANY(tb2w->sources);
+    configset_free(&tb2w->configsuite);
     free(tb2w);
 }
