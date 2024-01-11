@@ -14,7 +14,7 @@ typedef struct __Window0 {
 
     uint32_t fn_req_min;
     uint32_t fn_req_max;
-    
+
     MANY(WApply) applies;
 } __Window0;
 

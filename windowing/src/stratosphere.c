@@ -4,7 +4,7 @@
 #include "logger.h"
 #include "configsuite.h"
 #include "tb2w.h"
-#include "queue.h"
+#include "wqueue.h"
 #include "windows.h"
 
 #include <ncurses.h>
@@ -223,6 +223,8 @@ struct stratosphere_apply_producer_args {
     PGresult* pgresult;
     const int nrows;
     queue_t* queue;
+    int qm_max_size;
+    size_t wsize;
 };
 
 struct stratosphere_apply_consumer_args {
@@ -232,26 +234,88 @@ struct stratosphere_apply_consumer_args {
     queue_t* queue;
 };
 
+#define CALC_WNUM(FNREQ, WSIZE) FNREQ / WSIZE
+
 void* stratosphere_apply_producer(void* argsvoid) {
     struct stratosphere_apply_producer_args* args = argsvoid;
-    int n_blocks = args->nrows / QM_MAX_SIZE + (args->nrows % QM_MAX_SIZE > 0);
 
-    printf("n blocks %d\n", n_blocks);
+    DNSMessage window[args->qm_max_size];
+    memset(window, 0, sizeof(window));
 
-    for (int block = 0; block < n_blocks; block++) {
-        queue_messages* qm = calloc(1, sizeof(queue_messages));
-        qm->id = block;
-        qm->number = QM_MAX_SIZE;
-        for (size_t i = 0; i < QM_MAX_SIZE; i++) {
-            int idx = block * QM_MAX_SIZE + i;
-            if (idx == args->nrows) {
-                qm->number = i;
-                break;
-            }
-            parse_message(args->pgresult, idx, &qm->messages[i]);
+    int row = 0;
+    int window_index = 0;
+    int window_wnum = 0;
+    int window_wcount = 0;
+    queue_messages* qm = NULL;
+    while (row < args->nrows) {
+        parse_message(args->pgresult, row, &window[window_wcount]);
+        const int wnum = CALC_WNUM(window[window_wcount].fn_req, args->wsize);
+
+        if (!qm) {
+            qm = calloc(1, sizeof(queue_messages));
         }
-        queue_enqueue(args->queue, qm, (block + 1) == n_blocks);
+
+
+        if (window_wcount > args->qm_max_size) {
+            printf("window_wcount > args->qm_max_size: %d > %d\n", window_wcount, args->qm_max_size);
+            exit(-1);
+        }
+
+        const int is_last_message = (row + 1) == args->nrows;
+        int is_window_changed = window_wnum != wnum || is_last_message;
+        if (is_window_changed) {
+            int requires_newqueue = (qm->number + window_wcount) >= args->qm_max_size;
+            if (requires_newqueue) {
+                queue_enqueue(args->queue, qm, 0);
+                qm = calloc(1, sizeof(queue_messages));
+            }
+
+            memcpy(&qm->messages[qm->number], window, sizeof(DNSMessage) * window_wcount);
+
+            qm->number += window_wcount;
+            if (is_last_message) {
+                qm->messages[qm->number++] = window[window_wcount];
+                queue_enqueue(args->queue, qm, 1);
+                break;
+            } else {
+                window[0] = window[window_wcount];
+            }
+            window_wnum = wnum;
+            window_wcount = 0;
+        }
+        
+        window_wcount++;
+        row++;
     }
+
+    // for (int idxblock = 0; idxblock < n_blocks; idxblock++) {
+    //     queue_messages* qm;
+    //     int message_first;
+    //     int message_last;
+    //     size_t last_wnum = -1;
+
+    //     qm = calloc(1, sizeof(queue_messages));
+
+    //     message_first = idxblock * args->qm_max_size;
+    //     message_last = (idxblock + 1) * args->qm_max_size;
+
+    //     if (message_last > args->nrows) {
+    //         message_last = args->nrows;
+    //     }
+
+    //     qm->id = idxblock;
+    //     qm->number = message_last - message_first;
+
+    //     for (int i = 0; i < qm->number; i++) {
+    //         const int row = i + message_first;
+    //         parse_message(args->pgresult, row, &qm->messages[i]);
+
+    //         const size_t wnum = qm->messages[i].fn_req / args->wsize;
+    //         if (last_wnum == -1) last_wnum = wnum;
+    //     }
+    //     printf("end: %d\n", idxblock * args->qm_max_size + qm->number);
+    //     queue_enqueue(args->queue, qm, (idxblock + 1) == n_blocks);
+    // }
     return NULL;
 }
 
@@ -263,14 +327,12 @@ void* stratosphere_apply_consumer(void* argsvoid) {
         if (qm == NULL) break;
 
         for (int i = 0; i < qm->number; i++) {
-            const int wnum = (int64_t) floor(qm->messages[i].fn_req / args->windowing->wsize);
-
-            // printf("Processing message %8ld for window %d: START\n", message.id, wnum);
+            const int wnum = CALC_WNUM(qm->messages[i].fn_req, args->windowing->wsize);
+            RWindow rwindow = args->windowing->windows._[wnum];
             for (size_t idxconfig = 0; idxconfig < args->tb2w->configsuite.configs.number; idxconfig++) {
-                wapply_run(&args->windowing->windows._[wnum]->applies._[idxconfig], &qm->messages[i], &args->tb2w->configsuite.configs._[idxconfig]);
+                wapply_run(&rwindow->applies._[idxconfig], &qm->messages[i], &args->tb2w->configsuite.configs._[idxconfig]);
             }
         }
-        // printf("end %d\n", qm->id);
         free(qm);
     }
 
@@ -293,11 +355,30 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
 
     queue_messages* qm[100];
 	queue_t queue = QUEUE_INITIALIZER(qm);
+    int qm_max_size;
+    const int qm_min_size = windowing->wsize * 3;
+    const int ideal_block_size = (nrows + NTHREADS - 1) / NTHREADS;
+
+    if (ideal_block_size < qm_min_size) {
+        qm_max_size = qm_min_size;
+        printf("QM SIZE Set to MIN:\t%5d\n", qm_max_size);
+    } else
+    if (ideal_block_size > QM_MAX_SIZE) {
+        qm_max_size = QM_MAX_SIZE;
+        printf("QM SIZE Set to MAX:\t%5d\n", qm_max_size);
+    } else {
+        qm_max_size = ideal_block_size;
+        printf("QM SIZE Set to IDEAL:\t%5d\n", qm_max_size);
+    }
+
+    const int n_blocks = nrows / qm_max_size + (nrows % qm_max_size > 0);
 
     struct stratosphere_apply_producer_args producer_args = {
         .pgresult = pgresult,
         .nrows = nrows,
         .queue = &queue,
+        .qm_max_size = qm_max_size,
+        .wsize = windowing->wsize,
     };
 
     struct stratosphere_apply_consumer_args consumer_args[NTHREADS];
@@ -323,22 +404,46 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
         for (size_t i = 0; i < NTHREADS; ++ i) {
             pthread_join(consumers[i], NULL);
         }
-
     }
     CLOCK_END(memazzo);
 
-    CLOCK_START(memazzodavvero);
-    for (int r = 0; r < nrows; r++) {
-        DNSMessage message;
-        parse_message(pgresult, r, &message);
+    if (1) { //test
+        RWindowing windowing_test = windowings_create(windowing->wsize, source);
 
-        const int wnum = (int64_t) floor(message.fn_req / windowing->wsize);
+        CLOCK_START(memazzodavvero);
+        for (int r = 0; r < nrows; r++) {
+            DNSMessage message;
+            parse_message(pgresult, r, &message);
 
-        for (size_t idxconfig = 0; idxconfig < tb2w->configsuite.configs.number; idxconfig++) {
-            wapply_run(&windowing->windows._[wnum]->applies._[idxconfig], &message, &tb2w->configsuite.configs._[idxconfig]);
+            const int wnum = CALC_WNUM(message.fn_req, windowing_test->wsize);
+
+            int wcount = 0;
+            for (size_t idxconfig = 0; idxconfig < tb2w->configsuite.configs.number; idxconfig++) {
+                if (windowing_test->windows._[wnum]->applies.size == 0) {
+                    MANY_INIT(windowing_test->windows._[wnum]->applies, tb2w->configsuite.configs.number, WApply);
+                }
+                wapply_run(&windowing_test->windows._[wnum]->applies._[idxconfig], &message, &tb2w->configsuite.configs._[idxconfig]);
+                wcount++;
+            }
+        }
+        CLOCK_END(memazzo);
+        for (size_t idxwindow = 0; idxwindow < windowing->windows.number; idxwindow++) {
+            for (size_t idxconfig = 0; idxconfig < tb2w->configsuite.configs.number; idxconfig++) {
+                WApply* wapply1 = & windowing->windows._[idxwindow]->applies._[idxconfig];
+                WApply* wapply2 = & windowing_test->windows._[idxwindow]->applies._[idxconfig];
+                double l1 = wapply1->logit;
+                double l2 = wapply2->logit;
+                if ((size_t) (l1 - l2) * 100000000 > 0) {
+                    printf("Error for %6ld\t%6ld!! %f - %f = %f\n", idxwindow, idxconfig, l1, l2, l1 - l2);
+                    exit(1);
+                }
+                if (wapply1->wcount != wapply2->wcount) {
+                    printf("Error for %6ld\t%6ld!! %d <> %d\n", idxwindow, idxconfig, wapply1->wcount, wapply2->wcount);
+                    exit(1);
+                }
+            }
         }
     }
-    CLOCK_END(memazzo);
 
     PQclear(pgresult);
 
@@ -350,7 +455,7 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
 void _stratosphere_add(RTB2W tb2, size_t limit) {
     PGresult* pgresult = NULL;
 
-    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id WHERE qr < 1007792 ORDER BY qr DESC");
+    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr DESC");
 
     if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
         LOG_ERROR("get pcaps failed: %s.", PQerrorMessage(conn));

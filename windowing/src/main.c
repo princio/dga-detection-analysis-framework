@@ -25,6 +25,7 @@
 #include "io.h"
 #include "logger.h"
 #include "main_windowing.h"
+#include "wqueue.h"
 
 // typedef struct Score {
 //     double th;
@@ -35,6 +36,8 @@
 
 // MANY(Performance) performances;
 
+// #define PARAMETERS_ALL
+#define PARAMETERS_MANY
 
 ParameterGenerator main_parametergenerator() {
     ParameterGenerator pg;
@@ -48,9 +51,12 @@ ParameterGenerator main_parametergenerator() {
             0,
             -10,
             -25,
-            // -50,
-            // -100,
-            // -150
+            #ifdef PARAMETERS_ALL
+            -100,
+            -150
+            #elif defined(PARAMETERS_MANY)
+            -100,
+            #endif
         };
         __SET(ninf);
     }
@@ -58,11 +64,17 @@ ParameterGenerator main_parametergenerator() {
     {
         pinf_t pinf[] = {
             0,
+            #ifdef PARAMETERS_ALL
             10,
             25,
-            // 50,
-            // 100,
-            // 150
+            50,
+            100,
+            150
+            #elif defined(PARAMETERS_MANY)
+            50,
+            100,
+            150
+            #endif
         };
         __SET(pinf);
     }
@@ -70,9 +82,14 @@ ParameterGenerator main_parametergenerator() {
     {
         nn_t nn[] = {
             NN_NONE,
-            // NN_TLD,
-            // NN_ICANN,
-            // NN_PRIVATE
+            #ifdef PARAMETERS_ALL
+            NN_TLD,
+            NN_ICANN,
+            NN_PRIVATE
+            #elif defined(PARAMETERS_MANY)
+            NN_TLD,
+            NN_ICANN,
+            #endif
         };
         __SET(nn);
     }
@@ -80,10 +97,16 @@ ParameterGenerator main_parametergenerator() {
     {
         wl_rank_t wl_rank[] = {
             0,
+            #ifdef PARAMETERS_ALL
             100,
-            // 1000,
-            // 10000,
-            // 100000
+            1000,
+            10000,
+            100000
+            #elif defined(PARAMETERS_MANY)
+            100,
+            1000,
+            10000,
+            #endif
         };
         __SET(wl_rank);
     }
@@ -91,11 +114,16 @@ ParameterGenerator main_parametergenerator() {
     {
         wl_value_t wl_value[] = {
             0,
+            #ifdef PARAMETERS_ALL
             -10,
             -25,
-            // -50,
-            // -100,
-            // -150
+            -50,
+            -100,
+            -150
+            #elif defined(PARAMETERS_MANY)
+            -10,
+            -25,
+            #endif
         };
         __SET(wl_value);
     }
@@ -103,8 +131,12 @@ ParameterGenerator main_parametergenerator() {
     {
         windowing_t windowing[] = {
             WINDOWING_Q,
+            #ifdef PARAMETERS_ALL
             WINDOWING_R,
             WINDOWING_QR
+            #elif defined(PARAMETERS_MANY)
+            WINDOWING_R,
+            #endif
         };
         __SET(windowing);
     }
@@ -113,9 +145,13 @@ ParameterGenerator main_parametergenerator() {
         nx_epsilon_increment_t nx_epsilon_increment[] = {
             0,
             0.05,
+            #ifdef PARAMETERS_ALL
             0.1,
             0.25,
             0.5
+            #elif defined(PARAMETERS_MANY)
+            0.1,
+            #endif
         };
         __SET(nx_epsilon_increment);
     }
@@ -203,13 +239,21 @@ int main (int argc, char* argv[]) {
     
     char rootdir[PATH_MAX];
 
+    const int wsize = 2000;
+    const int nsources = 5;
+
+    if (QM_MAX_SIZE < (wsize * 3)) {
+        printf("Error: wsize too large\n");
+        exit(0);
+    }
+
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/test_configsuite_allsources/");
+        sprintf(rootdir, "/home/princio/Desktop/results/test_configsuite_allsources_%d_%d/", wsize, nsources);
     }
 
-    main_windowing_generate(rootdir, 2000, 5, main_parametergenerator());
+    main_windowing_generate(rootdir, wsize, nsources, main_parametergenerator());
     gatherer_free_all();
 
     RTB2W tb2w = main_windowing_load(rootdir);
