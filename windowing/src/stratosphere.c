@@ -407,7 +407,7 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
     }
     CLOCK_END(memazzo);
 
-    if (1) { //test
+    if (0) { //test
         RWindowing windowing_test = windowings_create(windowing->wsize, source);
 
         CLOCK_START(memazzodavvero);
@@ -455,7 +455,13 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
 void _stratosphere_add(RTB2W tb2, size_t limit) {
     PGresult* pgresult = NULL;
 
-    pgresult = PQexec(conn, "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max FROM pcap JOIN malware as mw ON malware_id = mw.id ORDER BY qr DESC");
+    pgresult = PQexec(
+        conn, 
+        "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max "
+        "FROM pcap JOIN malware as mw ON malware_id = mw.id "
+        "WHERE pcap.qr < 10000"
+        "ORDER BY qr DESC"
+    );
 
     if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
         LOG_ERROR("get pcaps failed: %s.", PQerrorMessage(conn));

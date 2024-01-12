@@ -32,6 +32,8 @@ typedef enum ParametersEnum {
 
 
 typedef struct ParameterGenerator {
+    size_t max_size;
+    
     size_t ninf_n;
     ninf_t ninf[100];
 

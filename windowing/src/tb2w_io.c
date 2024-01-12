@@ -40,15 +40,15 @@ void tb2_io_flag_windowing(IOReadWrite rw, FILE* file, RWindowing windowing, int
 void tb2w_io_sources(IOReadWrite rw, FILE* file, RTB2W tb2) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    MANY(RSource)* sources = &tb2->sources;
+    size_t sources_number = 0;
 
-    FRW(sources->number);
-
-    if (rw == IO_READ) {
-        MANY_INITREF(sources, sources->number, RSource);
+    if (rw == IO_WRITE) {
+        sources_number = tb2->sources.number;
     }
 
-    for (size_t t = 0; t < sources->number; t++) {
+    FRW(sources_number);
+
+    for (size_t t = 0; t < sources_number; t++) {
         RSource source;
 
         tb2_io_flag_source(rw, file, 0, __LINE__);
@@ -56,7 +56,7 @@ void tb2w_io_sources(IOReadWrite rw, FILE* file, RTB2W tb2) {
         if (rw == IO_READ) {
             source = sources_alloc();
         } else {
-            source = sources->_[t];
+            source = tb2->sources._[t];
         }
 
         FRW(source->index);
@@ -70,7 +70,7 @@ void tb2w_io_sources(IOReadWrite rw, FILE* file, RTB2W tb2) {
         FRW(source->fnreq_max);
 
         if (rw == IO_READ) {
-            sources->_[t] = source;
+            tb2w_source_add(tb2, source);
         }
 
         tb2_io_flag_source(rw, file, source->id, __LINE__);
@@ -103,6 +103,8 @@ void tb2w_io_create(IOReadWrite rw, FILE* file, char rootdir[DIR_MAX], RTB2W* tb
         memset(&pg, 0, sizeof(ParameterGenerator));
     }
     {
+        FRW(pg.max_size);
+
         #define __PG(NAME_LW, NAME_UP) \
             tb2_io_flag_config(rw, file, PE_ ## NAME_UP, __LINE__); \
             FRW(pg.NAME_LW ## _n); \
@@ -211,7 +213,7 @@ int tb2w_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W* tb2w) {
     FILE* file;
     file = io_openfile(rw, fpath);
     if (file == NULL) {
-        LOG_DEBUG("[%s] impossible to open file <%s>.", rw == IO_WRITE ? "Writing" : "Reading", rootdir);
+        printf("[%s] impossible to open file <%s>.", rw == IO_WRITE ? "Writing" : "Reading", rootdir);
         return -1;
     }
 

@@ -43,6 +43,7 @@ MANY(RWindow) windows_alloc(size_t windows_number) {
     MANY(RWindow) rwindows;
 
     if (windows_gatherer == NULL) {
+        printf("Gatherer: creating windows.\n");
         gatherer_alloc(&windows_gatherer, "windows", windows_free, 100, sizeof(MANY(__Window0)), 10);
     }
 

@@ -11,7 +11,10 @@
 RGatherer sources_gatherer = NULL;
 
 RSource sources_alloc() {
-    gatherer_alloc(&sources_gatherer, "sources", NULL, 50, sizeof(__Source), 10);
+    if (sources_gatherer == NULL) {
+        printf("Gatherer: creating sources.\n");
+        gatherer_alloc(&sources_gatherer, "sources", NULL, 50, sizeof(__Source), 10);
+    }
 
     return (RSource) gatherer_alloc_item(sources_gatherer);
 }

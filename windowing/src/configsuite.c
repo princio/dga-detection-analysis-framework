@@ -210,6 +210,9 @@ void configsuite_generate(ConfigSuite* cs, ParameterGenerator pg) {
     _configsuite_fill_pr(cs, pg);
     _configsuite_fill_configs(cs);
     cs->pg = pg;
+    if (pg.max_size && pg.max_size < cs->configs.number) {
+        cs->configs.number = pg.max_size;
+    }
 }
 
 void configset_disable(ConfigSuite* cs) {
