@@ -233,6 +233,7 @@ void logger_flush()
 static char getLevelChar(LogLevel level)
 {
     switch (level) {
+        case LogLevel_UTRACE: return 'U';
         case LogLevel_TRACE: return 'T';
         case LogLevel_DEBUG: return 'D';
         case LogLevel_INFO:  return 'I';
@@ -324,7 +325,7 @@ static long vflog(FILE* fp, char levelc, const char* timestamp, long threadID,
     // if ((size = fprintf(fp, "%c %s %ld %s:%d: ", levelc, timestamp, threadID, file, line)) > 0) {
     //     totalsize += size;
     // }
-    if ((size = fprintf(fp, "[%c:%s:%d]: ", levelc, file, line)) > 0) {
+    if ((size = fprintf(fp, "[%c][%s:%d]: ", levelc, file, line)) > 0) {
         totalsize += size;
     }
     if ((size = vfprintf(fp, fmt, arg)) > 0) {

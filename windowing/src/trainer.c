@@ -2,7 +2,7 @@
 
 #include "dataset.h"
 #include "io.h"
-#include "logger.h"
+// #include "logger.h"
 #include "configsuite.h"
 #include "detect.h"
 #include "sources.h"
@@ -31,10 +31,6 @@ MAKEMANY(ResultsTODO);
 
 void trainer_md(char dirname[200], RTrainer trainer);
 int trainer_io_results_file(IOReadWrite rw, char fpath[PATH_MAX], TrainerBy_splits* result);
-
-typedef MANY(double) ThsDataset;
-typedef MANY(Detection) DetectionDataset[3];
-MAKEMANY(ThsDataset);
 
 MANY(ThsDataset) _trainer_ths(RDataset dataset, MANY(ResultsTODO) todo) {
     MANY(ThsDataset) ths;
@@ -93,6 +89,60 @@ MANY(ThsDataset) _trainer_ths(RDataset dataset, MANY(ResultsTODO) todo) {
     }
     
     LOG_TRACE("Ths number: reducer=%d\twn=%-10ld\tmin=%-10ld\tmax=%-10ld\tavg=%-10ld", th_reducer, dataset->windows.all.number, min, max, avg / todo.number);
+
+    return ths;
+}
+
+MANY(ThsDataset) _trainer_ths2(RDataset dataset, const size_t n_configs) {
+    MANY(ThsDataset) ths;
+
+    MANY_INIT(ths, n_configs, ThsDataset);
+
+    size_t min = SIZE_MAX;
+    size_t max = - SIZE_MAX;
+    size_t avg = 0;
+    int th_reducer;
+
+    th_reducer = 100;
+    // if (dataset->windows.all.number < 10000) th_reducer = 25;
+    // else
+    // if (dataset->windows.all.number < 1000) th_reducer = 10;
+    // else
+    // if (dataset->windows.all.number < 100) th_reducer = 5;
+    
+    for (size_t a = 0; a < n_configs; a++) {
+        MANY_INIT(ths._[a], dataset->windows.all.number, ThsDataset);
+
+        size_t n = 0;
+
+        for (size_t w = 0; w < dataset->windows.all.number; w++) {
+            int logit;
+            int exists;
+
+            logit = ((int) floor(dataset->windows.all._[w]->applies._[a].logit))  / th_reducer * th_reducer;
+            exists = 0;
+
+            for (size_t i = 0; i < n; i++) {
+                if (ths._[a]._[i] == logit) {
+                    exists = 1;
+                    break;
+                }
+            }
+
+            if(!exists) {
+                ths._[a]._[n++] = logit;
+            }
+        }
+
+        ths._[a]._ = realloc(ths._[a]._, n * sizeof(double));
+        ths._[a].number = n;
+
+        if (n > max) max = n;
+        if (n < min) min = n;
+        avg += n;
+    }
+    
+    printf("Ths number: reducer=%d\twn=%-10ld\tmin=%-10ld\tmax=%-10ld\tavg=%-10ld", th_reducer, dataset->windows.all.number, min, max, avg / n_configs);
 
     return ths;
 }
@@ -344,6 +394,147 @@ RTrainer trainer_run(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_
 
     return trainer;
 }
+
+RTrainer trainer_run2(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_MAX]) {
+    RTrainer trainer = trainer_create(tb2d, thchoosers);
+    TrainerBy* by = &trainer->by;
+
+    printf("%-7s | ", "fold");
+    printf("%-7s | ", "try");
+    printf("%-7s | ", "wsize");
+    printf("%-7s | ", "splits");
+    printf("%-7s\n", "skipped");
+    int r = 0;
+    BY_FOR((*by), fold) {
+        BY_FOR((*by), try) {
+            TCPC(DatasetSplits) splits = &BY_GET2((*tb2d), try, fold);
+            if (!splits->isok) {
+                printf("Warning: skipping folding for fold=%ld, try=%ld, wsize=%ld", idxfold, idxtry, tb2d->tb2w->wsize);
+                continue;
+            }
+
+            for (size_t k = 0; k < splits->splits.number; k++) {
+                printf("%3ld/%-3ld | ", 1+idxfold, tb2d->n.fold);
+                printf("%3ld/%-3ld | ", 1+idxtry, tb2d->n.try);
+                printf("%3ld/%-3ld | ", 1+k, splits->splits.number);
+
+                // _trainer_ths_2(splits->splits._[k].train, 100);
+
+                DatasetSplit split = splits->splits._[k];
+                MANY(ThsDataset) ths;
+                MANY(Detection) detections[by->n.config];
+                MANY(Detection) best_detections[by->n.config];
+                int best_detections_init[by->n.config][thchoosers.number];
+
+                memset(best_detections_init, 0, sizeof(int) * by->n.config * thchoosers.number);
+                ths = _trainer_ths2(split.train, tb2d->tb2w->configsuite.configs.number);
+
+                BY_FOR((*by), config) {
+                    MANY_INIT(detections[idxconfig], ths._[idxconfig].number, Detection);
+                    MANY_INIT(best_detections[idxconfig], thchoosers.number, Detection);
+                }
+
+                CLOCK_START(calculating_detections_for_all_ths);
+                for (size_t idxwindow = 0; idxwindow < split.train->windows.all.number; idxwindow++) {
+                    RWindow window0 = split.train->windows.all._[idxwindow];
+                    RSource source = window0->windowing->source;
+
+
+                    BY_FOR((*by), config) {
+                        for (size_t idxth = 0; idxth < ths._[idxconfig].number; idxth++) {
+                            double th = ths._[idxconfig]._[idxth];
+                            const int prediction = window0->applies._[idxconfig].logit >= th;
+                            const int infected = window0->windowing->source->wclass.mc > 0;
+                            const int is_true = prediction == infected;
+                            detections[idxconfig]._[idxth].th = th;
+                            detections[idxconfig]._[idxth].windows[source->wclass.mc][is_true]++;
+                            detections[idxconfig]._[idxth].sources[source->wclass.mc][source->index.multi][is_true]++;
+                        }
+                    }
+                } // calculating detections
+                CLOCK_END(calculating_detections_for_all_ths);
+
+
+                CLOCK_START(calculating_performance_train);
+                BY_FOR((*by), config) {
+                    BY_FOR((*by), thchooser) {
+                        for (size_t idxth = 0; idxth < ths._[idxconfig].number; idxth++) {
+                            double current_score = detect_performance(&detections[idxconfig]._[idxth], &thchoosers._[idxthchooser]);
+
+                            int is_better = 0;
+                            if (best_detections_init[idxconfig][idxthchooser] == 1) {
+                                double best_score = detect_performance(&best_detections[idxconfig]._[idxthchooser], &thchoosers._[idxthchooser]);
+                                is_better = detect_performance_compare(&thchoosers._[idxthchooser], current_score, best_score);
+                            } else {
+                                is_better = 1;
+                            }
+
+                            if (is_better) {
+                                best_detections_init[idxconfig][idxthchooser] = 1;
+                                memcpy(&best_detections[idxconfig]._[idxthchooser], &detections[idxconfig]._[idxth], sizeof(Detection));
+                            }
+                        }
+                    }
+                }// calculating performances for each detection and setting the best one
+                CLOCK_END(calculating_performance_train);
+
+                CLOCK_START(calculating_performance_from_train_th_to_test);
+                for (size_t w = 0; w < split.test->windows.all.number; w++) {
+                    RWindow window0 = split.test->windows.all._[w];
+                    RSource source = window0->windowing->source;
+
+                    BY_FOR((*by), config) {
+                        // printf("%ld\t%f\n", );
+
+                        BY_FOR((*by), thchooser) {
+                            TrainerBy_splits* result = &BY_GET4((*by), config, fold, try, thchooser).splits._[k];
+                            Detection* detection = &result->best_test;
+                            double th = best_detections[idxconfig]._[idxthchooser].th;
+
+                            const int prediction = window0->applies._[idxconfig].logit >= th;
+                            const int infected = window0->windowing->source->wclass.mc > 0;
+                            const int is_true = prediction == infected;
+
+                            detection->th = th;
+                            detection->windows[source->wclass.mc][is_true]++;
+                            detection->sources[source->wclass.mc][source->index.multi][is_true]++;
+                        }
+                    }
+                    
+                    BY_FOR((*by), config) {
+                        BY_FOR((*by), thchooser) {
+                            TrainerBy_splits* result = &BY_GET4((*by), config, fold, try, thchooser).splits._[k];
+
+                            result->threshold_chooser = &thchoosers._[idxthchooser];
+
+                            memcpy(&result->best_train, &best_detections[idxconfig]._[idxthchooser], sizeof(Detection));
+                        }
+                    }
+                } // filling Result
+                CLOCK_END(calculating_performance_from_train_th_to_test);
+
+                BY_FOR((*by), config) {
+                    BY_FOR((*by), thchooser) {
+                        TrainerBy_splits* result = &BY_GET4((*by), config, fold, try, thchooser).splits._[k];
+                        {
+                            char fpath[PATH_MAX];
+                            sprintf(fpath, "results_%ld_%ld_%ld_%s__%ld.bin", idxfold, idxtry, idxconfig, thchoosers._[idxthchooser].name, k);
+                            io_path_concat(rootdir, fpath, fpath);
+                            trainer_io_results_file(IO_WRITE, fpath, result);
+                        }
+                    }
+                    FREEMANY(best_detections[idxconfig]);
+                    FREEMANY(detections[idxconfig]);
+                }
+
+                _trainer_ths_free(ths);
+            }
+        }
+    }
+
+    return trainer;
+}
+
 void trainer_free(RTrainer trainer) {
     BY_FOR(trainer->by, config) {
         BY_FOR(trainer->by, fold) {

@@ -15,12 +15,12 @@ typedef struct FoldConfig {
     size_t k_test;
 } FoldConfig;
 
-typedef DatasetSplits RTB2DBy_fold;
-MAKEMANY(RTB2DBy_fold);
+typedef DatasetSplits TB2DBy_fold;
+MAKEMANY(TB2DBy_fold);
 
 typedef struct TB2DBy_try {
     RDataset dataset;
-    MANY(RTB2DBy_fold) byfold;
+    MANY(TB2DBy_fold) byfold;
 } TB2DBy_try;
 MAKEMANY(TB2DBy_try);
 
@@ -39,7 +39,8 @@ typedef struct TB2D {
     MANY(TB2DBy_try) bytry;
 } TB2D;
 
-RTB2D tb2d_generate(RTB2W tb2w, size_t n_try, MANY(FoldConfig) foldconfigs);
+RTB2D tb2d_create(RTB2W tb2w, size_t n_try, MANY(FoldConfig) foldconfigs);
+void tb2d_run(RTB2D tb2d); 
 void tb2d_free(RTB2D);
 
 #endif

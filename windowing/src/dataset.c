@@ -1,7 +1,7 @@
 #include "dataset.h"
 
 #include "gatherer.h"
-#include "logger.h"
+// #include "logger.h"
 #include "sources.h"
 #include "windowing.h"
 
@@ -67,7 +67,7 @@ DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_
         const size_t windows_cl_number = dataset->windows.multi[cl].number;
         const size_t kfold_size = windows_cl_number / _k;
         if (cl != 1 && kfold_size == 0) {
-            printf("Error: impossible to split the dataset with k=%ld (wn[%d]=%ld, ksize=%ld).\n", _k, cl, windows_cl_number, kfold_size);
+            LOG_ERROR("Impossible to split the dataset with k=%ld and k_test=%ld (wn[%d]=%ld, ksize=%ld).\n", _k, _k_test,  cl, windows_cl_number, kfold_size);
             memset(&splits, 0, sizeof(DatasetSplits));
             splits.isok = 0;
             return splits;

@@ -2,8 +2,8 @@
 #include "windowing.h"
 
 #include "gatherer.h"
-#include "common.h"
 #include "io.h"
+// #include "logger.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -21,7 +21,7 @@ void _windowing_free(void* item) {
 
 RWindowing windowings_alloc() {
     if (windowings_gatherer == NULL) {
-        printf("Gatherer: creating windowings.\n");
+        LOG_DEBUG("Gatherer: creating windowings.\n");
         gatherer_alloc(&windowings_gatherer, "windowings", _windowing_free, 100, sizeof(RWindowing*), 10);
     }
 

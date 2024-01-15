@@ -1,6 +1,7 @@
 #include "sources.h"
 
 #include "gatherer.h"
+// #include "logger.h"
 
 #include <assert.h>
 #include <stdint.h>
@@ -12,7 +13,7 @@ RGatherer sources_gatherer = NULL;
 
 RSource sources_alloc() {
     if (sources_gatherer == NULL) {
-        printf("Gatherer: creating sources.\n");
+        LOG_DEBUG("Gatherer: creating sources.\n");
         gatherer_alloc(&sources_gatherer, "sources", NULL, 50, sizeof(__Source), 10);
     }
 

@@ -1,6 +1,6 @@
 
 #include "tb2w_io.h"
-#include "logger.h"
+// #include "logger.h"
 
 #include <errno.h>
 #include <string.h>
@@ -135,7 +135,7 @@ void tb2_io_flag(IOReadWrite rw, FILE* file, char flag_code[TB2_IO_FLAG_LEN], in
         io_freadN(flag_shouldbe, TB2_IO_FLAG_LEN, file);
         if (strcmp(flag_code, flag_shouldbe) != 0) {
             printf("Error[%s:%d][%5s]: flag check failed: code=<%s> read=<%s>\n", __FILE__, line, rw == IO_WRITE ? "write" : "read", flag_code, flag_shouldbe);
-            exit(0);
+            exit(1);
         }
     }
 }
@@ -213,11 +213,11 @@ int tb2w_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W* tb2w) {
     FILE* file;
     file = io_openfile(rw, fpath);
     if (file == NULL) {
-        printf("[%s] impossible to open file <%s>.", rw == IO_WRITE ? "Writing" : "Reading", rootdir);
+        LOG_ERROR("Impossible to %s file <%s>.", rw == IO_WRITE ? "WRITE" : "READ", fpath);
         return -1;
     }
 
-    LOG_TRACE("%s from file %s.", rw == IO_WRITE ? "Writing" : "Reading", rootdir);
+    LOG_TRACE("%s file %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath);
 
     tb2_io_flag_testbed(rw, file, 0, __LINE__);
 

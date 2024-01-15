@@ -1,6 +1,10 @@
 #ifndef __WWCOMMON_H__
 #define __WWCOMMON_H__
 
+#define LOGGING
+
+#include "logger.h"
+
 #include <curses.h>
 #include <linux/limits.h>
 #include <stdint.h>
@@ -22,7 +26,6 @@ WINDOW* cwin;
 char CACHE_DIR[DIR_MAX];
 
 // #define IO_DEBUG
-#define LOGGING
 
 #define N_WINDOWS(FNREQ_MAX, WSIZE) ((FNREQ_MAX + 1) / WSIZE + ((FNREQ_MAX + 1) % WSIZE > 0)) // +1 because it starts from 0
 
@@ -86,7 +89,9 @@ char CACHE_DIR[DIR_MAX];
             (A).size = (N); \
             (A).number = (N); \
             (A).element_size = sizeof(T); \
-            (A)._ = calloc(A.number, sizeof(T)); }
+            (A)._ = calloc(A.number, sizeof(T));\
+            LOG_UTRACE("MANY INIT %s of type %s with %ld.", #A, #T, N);\
+            }
 
 #define MANY_INIT_0(A, N, T) MANY_INIT(A, N, T); (A).number = 0;
 
@@ -107,26 +112,26 @@ char CACHE_DIR[DIR_MAX];
 #define FREEMANY(A) { if (A.number) free(A._); A.number = 0; A.size = 0; }
 #define FREEMANYREF(A) { if (A->number) free(A->_); A->number = 0; A->size = 0; }
 
-#define BY_SETN(BY, NAME, N) memcpy((size_t*) &BY.n.NAME, &N, sizeof(size_t));
+#define BY_SETN(BY, NAME, N) memcpy((size_t*) &(BY).n.NAME, &N, sizeof(size_t));
 
-#define BY_GET(BY, N1) BY.by ## N1._[idx ## N1]
-#define BY_GET2(BY, N1, N2) BY_GET(BY_GET(BY, N1), N2)
-#define BY_GET3(BY, N1, N2, N3) BY_GET2(BY_GET(BY, N1), N2, N3)
-#define BY_GET4(BY, N1, N2, N3, N4) BY_GET3(BY_GET(BY, N1), N2, N3, N4)
-#define BY_GET5(BY, N1, N2, N3, N4, N5) BY_GET4(BY_GET(BY, N1), N2, N3, N4, N5)
+#define BY_GET(BY, N1) (BY).by ## N1._[idx ## N1]
+#define BY_GET2(BY, N1, N2) BY_GET(BY_GET((BY), N1), N2)
+#define BY_GET3(BY, N1, N2, N3) BY_GET2(BY_GET((BY), N1), N2, N3)
+#define BY_GET4(BY, N1, N2, N3, N4) BY_GET3(BY_GET((BY), N1), N2, N3, N4)
+#define BY_GET5(BY, N1, N2, N3, N4, N5) BY_GET4(BY_GET((BY), N1), N2, N3, N4, N5)
 
 #define BY_INIT(BY, BYSUB, NAME, T) \
-    MANY_INIT(BYSUB.by ## NAME, BY.n.NAME, T ## _ ## NAME);
+    MANY_INIT(BYSUB.by ## NAME, (BY).n.NAME, T ## _ ## NAME);
 #define BY_INIT1(BY, N1, T) \
-    MANY_INIT(BY.by ## N1, BY.n.N1, T ## _ ## N1);
+    MANY_INIT((BY).by ## N1, (BY).n.N1, T ## _ ## N1);
 #define BY_INIT2(BY, N1, N2, T) \
-    MANY_INIT(BY_GET(BY, N1).by ## N2, BY.n.N2, T ## _ ## N2);
+    MANY_INIT(BY_GET((BY), N1).by ## N2, (BY).n.N2, T ## _ ## N2);
 #define BY_INIT3(BY, N1, N2, N3, T) \
-    MANY_INIT(BY_GET2(BY, N1, N2).by ## N3, BY.n.N3, T ## _ ## N3);
+    MANY_INIT(BY_GET2((BY), N1, N2).by ## N3, (BY).n.N3, T ## _ ## N3);
 
 #define BY_FOR(BY, NAME)\
-    for (size_t idx ## NAME = 0; idx ## NAME < BY.n.NAME; idx ## NAME++)
-#define BY_INITFOR(BY, BYSUB, NAME, T) BY_INIT(BY, BYSUB, NAME, T); BY_FOR(BY, NAME)
+    for (size_t idx ## NAME = 0; idx ## NAME < (BY).n.NAME; idx ## NAME++)
+#define BY_INITFOR(BY, BYSUB, NAME, T) BY_INIT((BY), BYSUB, NAME, T); BY_FOR(BY, NAME)
 
 
 typedef int32_t IDX;
@@ -240,6 +245,19 @@ MAKEMANY(RFold0);
 MAKEMANY(size_t);
 MAKEMANY(double);
 MAKEMANY(MANY(double));
+
+typedef struct Detection {
+    double th;
+
+    uint16_t windows[N_DGACLASSES][2];
+    uint16_t sources[N_DGACLASSES][100][2];
+} Detection;
+
+MAKEMANY(Detection);
+
+typedef MANY(double) ThsDataset;
+typedef MANY(Detection) DetectionDataset[3];
+MAKEMANY(ThsDataset);
 
 
 #endif

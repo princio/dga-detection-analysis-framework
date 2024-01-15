@@ -5,6 +5,6 @@
 
 #include "tb2d.h"
 
-int tb2d_io(IOReadWrite rw, char dirname[DIR_MAX], RTB2D* tb2);
+int tb2d_io(IOReadWrite rw, char dirname[DIR_MAX], RTB2W tb2w, RTB2D* tb2);
 
 #endif

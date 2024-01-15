@@ -16,6 +16,7 @@ extern "C" {
 
 #ifdef LOGGING
 
+#define LOG_UTRACE(fmt, ...) logger_log(LogLevel_UTRACE, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_TRACE(fmt, ...) logger_log(LogLevel_TRACE, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_DEBUG(fmt, ...) logger_log(LogLevel_DEBUG, __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
 #define LOG_INFO(fmt, ...)  logger_log(LogLevel_INFO , __FILENAME__, __LINE__, fmt, ##__VA_ARGS__)
@@ -25,6 +26,7 @@ extern "C" {
 
 #else
 
+#define LOG_UTRACE(fmt, ...)
 #define LOG_TRACE(fmt, ...)
 #define LOG_DEBUG(fmt, ...)
 #define LOG_INFO(fmt, ...)
@@ -35,6 +37,7 @@ extern "C" {
 #endif
 
 typedef enum {
+    LogLevel_UTRACE,
     LogLevel_TRACE,
     LogLevel_DEBUG,
     LogLevel_INFO,

@@ -4,7 +4,7 @@
 #include "dataset.h"
 #include "gatherer.h"
 #include "io.h"
-#include "logger.h"
+// #include "logger.h"
 #include "stratosphere.h"
 #include "tb2w_io.h"
 

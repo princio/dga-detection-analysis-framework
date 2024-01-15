@@ -2,7 +2,7 @@
 #include "main_training.h"
 
 #include "detect.h"
-#include "logger.h"
+// #include "logger.h"
 #include "performance_defaults.h"
 #include "trainer.h"
 
@@ -126,7 +126,7 @@ MANY(Performance) _main_training_performance() {
     return performances;
 }
 
-int main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d) {
+RTrainer main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d) {
     char trainerdir[DIR_MAX];
     MANY(Performance) performances;
     RTrainer trainer;
@@ -134,7 +134,7 @@ int main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d) {
     {
         io_path_concat(rootdir, "trainer/", trainerdir);
         if (io_makedirs_notoverwrite(trainerdir)) {
-            return -1;
+            return NULL;
         }
     }
 
@@ -147,7 +147,7 @@ int main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d) {
 
     trainer_free(trainer);
 
-    return 0;
+    return trainer;
 }
 
 RTrainer main_training_load(char dirpath[DIR_MAX]) {

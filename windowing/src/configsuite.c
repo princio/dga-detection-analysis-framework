@@ -1,6 +1,6 @@
 #include "configsuite.h"
 
-#include "logger.h"
+// #include "logger.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -222,7 +222,9 @@ void configset_disable(ConfigSuite* cs) {
             disabled = cs->pr[pp]._[cs->configs._[c].parameters[pp]->index].disabled;
             if (disabled) break;
         }
-        if (!disabled) LOG_TRACE("Config %ld enabled", c);
+        if (!disabled) {
+            LOG_TRACE("Config %ld enabled", c);
+        }
         cs->configs._[c].disabled = disabled;
     }
 }

@@ -33,20 +33,21 @@ RTB2W main_windowing_generate(char dirpath[DIR_MAX], const WSize wsize, const si
     RTB2W tb2w;
 
     if (io_direxists(dirpath)) {
-        printf("Error: Directory already exist: %s\n", dirpath);
-        return NULL;
+        printf("Warning: Directory already exist: %s\n", dirpath);
     }
 
     tb2w = main_windowing_create(dirpath, wsize, max_sources_number, pg);
 
-    if (io_makedirs(dirpath)) {
-        printf("Error: impossible to create saving directory: %s\n", dirpath);
-        return NULL;
-    }
+    if (!io_direxists(dirpath)) {
+        if (io_makedirs(dirpath)) {
+            printf("Error: impossible to create saving directory: %s\n", dirpath);
+            return NULL;
+        }
 
-    if (tb2w_io(IO_WRITE, dirpath, &tb2w)) {
-        printf("Impossible to save TB2W at: %s\n", dirpath);
-        return NULL;
+        if (tb2w_io(IO_WRITE, dirpath, &tb2w)) {
+            printf("Impossible to save TB2W at: %s\n", dirpath);
+            return NULL;
+        }
     }
 
     return tb2w;

@@ -1,7 +1,7 @@
 
 #include "stratosphere.h"
 
-#include "logger.h"
+// #include "logger.h"
 #include "configsuite.h"
 #include "tb2w.h"
 #include "wqueue.h"
@@ -459,8 +459,8 @@ void _stratosphere_add(RTB2W tb2, size_t limit) {
         conn, 
         "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max "
         "FROM pcap JOIN malware as mw ON malware_id = mw.id "
-        "WHERE pcap.qr < 10000"
-        "ORDER BY qr DESC"
+        "WHERE pcap.qr > 100000"
+        "ORDER BY qr ASC"
     );
 
     if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {

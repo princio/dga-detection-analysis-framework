@@ -7,15 +7,6 @@
 #define DETECT_TRUERATIO(DET, CL) ((double) (DET.windows)[CL][1]) / ((DET.windows)[CL][0] + (DET.windows)[CL][1])
 #define DETECT_FALSERATIO(DET, CL) ((double) (DET.windows)[CL][0]) / ((DET.windows)[CL][0] + (DET.windows)[CL][1])
 
-typedef struct Detection {
-    double th;
-
-    uint16_t windows[N_DGACLASSES][2];
-    uint16_t sources[N_DGACLASSES][100][2];
-} Detection;
-
-MAKEMANY(Detection);
-
 #define N_PERFORMANCE_DGAHANDLINGs 2
 
 enum PerformanceRange {
