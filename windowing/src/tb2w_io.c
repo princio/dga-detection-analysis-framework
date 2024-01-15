@@ -208,6 +208,13 @@ int tb2w_io_windowing(IOReadWrite rw, RTB2W tb2, RWindowing windowing) {
 int tb2w_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W* tb2w) {
     char fpath[PATH_MAX];
 
+    if (!io_direxists(rootdir)) {
+        if (io_makedirs(rootdir)) {
+            printf("Error: impossible to create saving directory: %s\n", rootdir);
+            return -1;
+        }
+    }
+
     io_path_concat(rootdir, "tb2w.bin", fpath);
 
     FILE* file;

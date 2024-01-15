@@ -70,8 +70,6 @@ int main_windowing_test(char dirpath[DIR_MAX], const WSize wsize, const size_t m
 
     io_path_concat(dirpath, "test/", dirpath);
 
-    printf("dirpath: %s\n", dirpath);
-    
     tb2w_generated = main_windowing_generate(dirpath, wsize, max_sources_number, pg);
     if (NULL == tb2w_generated) {
         exit(-1);
@@ -81,7 +79,7 @@ int main_windowing_test(char dirpath[DIR_MAX], const WSize wsize, const size_t m
         exit(-1);
     }
 
-    #define _TEST(A) printf("%100s -> ", #A); puts(A ? "success." : "failed.");
+    #define _TEST(A) printf("%100s -> ", #A); puts(A ? "success." : "failed."); if (!(A)) return -1;
 
     _TEST(tb2w_generated->sources.number == tb2w_loaded->sources.number);
     _TEST(tb2w_generated->configsuite.configs.number == tb2w_loaded->configsuite.configs.number);
@@ -104,6 +102,8 @@ int main_windowing_test(char dirpath[DIR_MAX], const WSize wsize, const size_t m
         }
     }
     _TEST(diffs == 0);
+
+    #undef _TEST
 
     tb2w_free(tb2w_generated);
     tb2w_free(tb2w_loaded);

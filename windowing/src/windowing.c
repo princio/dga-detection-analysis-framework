@@ -21,7 +21,7 @@ void _windowing_free(void* item) {
 
 RWindowing windowings_alloc() {
     if (windowings_gatherer == NULL) {
-        LOG_DEBUG("Gatherer: creating windowings.\n");
+        LOG_DEBUG("Gatherer: creating windowings.");
         gatherer_alloc(&windowings_gatherer, "windowings", _windowing_free, 100, sizeof(RWindowing*), 10);
     }
 

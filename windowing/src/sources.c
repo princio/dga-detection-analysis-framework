@@ -13,7 +13,7 @@ RGatherer sources_gatherer = NULL;
 
 RSource sources_alloc() {
     if (sources_gatherer == NULL) {
-        LOG_DEBUG("Gatherer: creating sources.\n");
+        LOG_DEBUG("Gatherer: creating sources.");
         gatherer_alloc(&sources_gatherer, "sources", NULL, 50, sizeof(__Source), 10);
     }
 

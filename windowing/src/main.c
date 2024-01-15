@@ -30,17 +30,10 @@
 #include "parameter_generator.h"
 #include "wqueue.h"
 
-// typedef struct Score {
-//     double th;
-//     double score;
-//     Performance performance;
-//     Detection fulldetection[N_DGACLASSES];
-// } Score;
-
-// MANY(Performance) performances;
-
-// #define PARAMETERS_ALL
-// #define PARAMETERS_MANY
+enum BO {
+    BO_LOAD_OR_GENERATE,
+    BO_TEST
+};
 
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
@@ -77,28 +70,26 @@ int main (int argc, char* argv[]) {
         sprintf(rootdir, "/home/princio/Desktop/results/test_configsuite_allsources_%d_%d_%ld/", wsize, nsources, max_configs);
     }
 
-    RTB2W tb2w;
-    RTB2D tb2d;
+    RTB2W tb2w = NULL;
+    RTB2D tb2d = NULL;
 
-    switch (0) {
-        case 0: {
+    enum BO todo = BO_LOAD_OR_GENERATE;
+    
+
+    switch (todo) {
+        case BO_LOAD_OR_GENERATE: {
             tb2w = main_windowing_load(rootdir);
             if (!tb2w) {
                 tb2w =main_windowing_generate(rootdir, wsize, nsources, parametergenerator_default(max_configs));
             }
             break;
         }
-        case 1: {
-            main_windowing_generate(rootdir, wsize, nsources, parametergenerator_default(max_configs));
-            gatherer_free_all();
-
+        case BO_TEST: {
+            if (main_windowing_test(rootdir, wsize, nsources, parametergenerator_default(max_configs))) {
+                LOG_INFO("TB2W test failed.");
+                exit(1);
+            }
             tb2w = main_windowing_load(rootdir);
-            printf("%f\n", tb2w->windowing.bysource._[0]->windows._[0]->applies._[2].logit);
-            tb2w_free(tb2w);
-            break;
-        }
-        case 2: {
-            main_windowing_test(rootdir, wsize, nsources, parametergenerator_default(max_configs));
             break;
         }
         default:
@@ -114,34 +105,29 @@ int main (int argc, char* argv[]) {
     MANY(FoldConfig) foldconfigs_many; {
         FoldConfig foldconfigs[] = {
             { .k = 10, .k_test = 2 },
-            { .k = 10,.k_test = 4, },
-            { .k = 10,.k_test = 6, },
-            { .k = 10,.k_test = 8, },
+            // { .k = 10,.k_test = 4, },
+            // { .k = 10,.k_test = 6, },
+            // { .k = 10,.k_test = 8, },
         };
 
         MANY_INIT(foldconfigs_many, sizeof(foldconfigs) / sizeof(FoldConfig), FoldConfig);
         memcpy(foldconfigs_many._, foldconfigs, sizeof(foldconfigs));
     }
 
-    switch (0) {
-        case 0: {
+    switch (todo) {
+        case BO_LOAD_OR_GENERATE: {
             tb2d = main_dataset_load(rootdir, tb2w);
             if (!tb2d) {
-                tb2d = main_dataset_generate(rootdir, tb2w, 10, foldconfigs_many);
+                tb2d = main_dataset_generate(rootdir, tb2w, 1, foldconfigs_many);
             }
             break;
         }
-        case 1: {
-            main_windowing_generate(rootdir, wsize, nsources, parametergenerator_default(max_configs));
-            gatherer_free_all();
-
-            tb2w = main_windowing_load(rootdir);
-            printf("%f\n", tb2w->windowing.bysource._[0]->windows._[0]->applies._[2].logit);
-            tb2w_free(tb2w);
-            break;
-        }
-        case 2: {
-            main_windowing_test(rootdir, wsize, nsources, parametergenerator_default(max_configs));
+        case BO_TEST: {
+            if (main_dataset_test(rootdir, tb2w, 10, foldconfigs_many)) {
+                LOG_INFO("TB2D test failed.");
+                exit(1);
+            }
+            tb2d = main_dataset_load(rootdir, tb2w);
             break;
         }
         default:
@@ -149,7 +135,7 @@ int main (int argc, char* argv[]) {
     }
 
     if(!tb2d) {
-        printf("Error: TB2D is NULL.");
+        LOG_ERROR("TB2D is NULL.");
         exit(1);
     }
 
@@ -157,8 +143,6 @@ int main (int argc, char* argv[]) {
     tb2w_free(tb2w);
 
     gatherer_free_all();
-
-    FREEMANY(foldconfigs_many);
 
     #ifdef LOGGING
     logger_close();
