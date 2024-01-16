@@ -109,43 +109,16 @@ void _main_training_print(RTrainer trainer) {
     }
 }
 
-MANY(Performance) _main_training_performance() {
-    MANY(Performance) performances;
-
-    MANY_INIT(performances, 10, Performance);
-
-    int i = 0;
-    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_1];
-    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_05];
-    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_01];
-    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_TPR2];
-    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_FPR];
-
-    performances.number = i;
-
-    return performances;
-}
-
-RTrainer main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d) {
+RTrainer main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d, MANY(Performance) thchoosers) {
     char trainerdir[DIR_MAX];
-    MANY(Performance) performances;
     RTrainer trainer;
 
-    {
-        io_path_concat(rootdir, "trainer/", trainerdir);
-        if (io_makedirs_notoverwrite(trainerdir)) {
-            return NULL;
-        }
-    }
+    LOG_DEBUG("Start training...");
 
-    printf("Start training.\n");
-
-    trainer = trainer_run(tb2d, performances, trainerdir);
+    trainer = trainer_run2(tb2d, thchoosers, trainerdir);
     
     // Stat stat = stat_run(trainer, parameters_toignore, fpathstatcsv);
     // stat_free(stat);
-
-    trainer_free(trainer);
 
     return trainer;
 }

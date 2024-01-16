@@ -71,54 +71,6 @@ void _tb2d_io_dataset(IOReadWrite rw, FILE* file, RTB2D tb2d, RDataset* dataset_
     DGAFOR(cl) {
         _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windows.multi[cl]);
     }
-
-    // memset(&walker, 0, sizeof(Index));
-    // for (size_t i = 0; i < windows_counter.all; i++) {
-    //     RWindow* windowing_window_ref;
-    //     RWindow* window_ref = &(*dataset_ref)->windows.all._[i];
-    //     RWindow* window_bin_ref;
-    //     RWindow* window_mul_ref;
-    //     RSource source;
-
-    //     struct {
-    //         uint32_t idxsource;
-    //         uint32_t windowing_idxwindow;
-    //     } windex;
-    //     memset(&windex, 0, sizeof(windex));
-
-    //     if (rw == IO_WRITE) {
-    //         windex.idxsource = (*window_ref)->windowing->source->index.all;
-    //         windex.windowing_idxwindow = (*window_ref)->index;
-    //     }
-
-    //     FRW(windex);
-
-    //     source = tb2d->tb2w->sources._[windex.idxsource];
-    //     const size_t idxsource = windex.idxsource;
-
-    //     windowing_window_ref = &BY_GET(tb2d->tb2w->windowing, source)->windows._[windex.windowing_idxwindow];
-
-    //     window_bin_ref = &(*dataset_ref)->windows.binary[source->wclass.bc]._[walker.binary[source->wclass.bc]++];
-    //     window_mul_ref = &(*dataset_ref)->windows.multi[source->wclass.mc]._[walker.multi[source->wclass.mc]++];
-
-    //     if (rw == IO_READ) {
-    //         const size_t idxsource = windex.idxsource;
-    //         (*window_ref) = BY_GET(tb2d->tb2w->windowing, source)->windows._[windex.windowing_idxwindow];
-    //         (*window_bin_ref) = (*window_ref);
-    //         (*window_mul_ref) = (*window_ref);
-    //     }
-
-    //     LOG_TRACE(
-    //         "ciao#%-10ld\t%-10s\t%8u\t%8u\t%5ld\t%5ld\t%5ld",
-    //         ciao++,
-    //         rw == IO_WRITE ? "W" : "R",
-    //         windex.idxsource,
-    //         windex.windowing_idxwindow,
-    //         (*window_ref)->index,
-    //         (*window_bin_ref)->index,
-    //         (*window_mul_ref)->index
-    //     );
-    // }
 }
 
 void _tb2d_io_datasets(IOReadWrite rw, FILE* file, RTB2D tb2d) {
@@ -132,14 +84,20 @@ void _tb2d_io_datasets(IOReadWrite rw, FILE* file, RTB2D tb2d) {
 
         BY_FOR(*tb2d, fold) {
             tb2_io_flag(rw, file, "tb2d-fold-start", __LINE__);
+            DatasetSplits* splits = &BY_GET2(*tb2d, try, fold);
 
             if (rw == IO_READ) {
-                MANY_INIT(BY_GET2(*tb2d, try, fold).splits, tb2d->folds._[idxfold].k, DatasetSplit);
+                MANY_INIT(splits->splits, tb2d->folds._[idxfold].k, DatasetSplit);
             }
             
-            for (size_t k = 0; k < BY_GET2(*tb2d, try, fold).splits.number; k++) {
-                _tb2d_io_dataset(rw, file, tb2d, &BY_GET2(*tb2d, try, fold).splits._[k].train);
-                _tb2d_io_dataset(rw, file, tb2d, &BY_GET2(*tb2d, try, fold).splits._[k].test);
+            splits->isok = 1;
+            for (size_t k = 0; k < splits->splits.number; k++) {
+                _tb2d_io_dataset(rw, file, tb2d, &splits->splits._[k].train);
+                _tb2d_io_dataset(rw, file, tb2d, &splits->splits._[k].test);
+
+                if (splits->splits._[k].train->windows.binary[0].number == 0 || splits->splits._[k].train->windows.binary[1].number == 0) {
+                    splits->isok = 0;
+                }
             }
 
             tb2_io_flag(rw, file, "tb2d-fold-end", __LINE__);
@@ -171,22 +129,27 @@ void _tb2d_io_create(IOReadWrite rw, FILE* file, RTB2W tb2w, RTB2D* tb2d) {
 
     if (rw == IO_READ) {
         *tb2d = tb2d_create(tb2w, n_tries, foldconfigs);
+
+        FREEMANY(foldconfigs);
     }
 }
 
 int tb2d_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W tb2w, RTB2D* tb2) {
     ciao = 0;
     char fpath[PATH_MAX];
-    int direxists = io_direxists(rootdir);
-    if (rw == IO_WRITE) {
-        if (!direxists && io_makedirs(rootdir)) {
-            LOG_ERROR("Impossible to save file because is impossible to create the directory: %s", rootdir);
+
+    {
+        const int direxists = io_direxists(rootdir);
+        if (rw == IO_WRITE) {
+            if (!direxists && io_makedirs(rootdir)) {
+                LOG_ERROR("Impossible to save file because is impossible to create the directory: %s", rootdir);
+                return -1;
+            } 
+        } else
+        if (!direxists) {
+            LOG_ERROR("Impossible to read file because directory not exists: %s", rootdir);
             return -1;
-        } 
-    } else
-    if (!direxists) {
-        LOG_ERROR("Impossible to read file because directory not exists: %s", rootdir);
-        return -1;
+        }
     }
 
     io_path_concat(rootdir, "tb2d.bin", fpath);

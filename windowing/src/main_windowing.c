@@ -33,7 +33,7 @@ RTB2W main_windowing_generate(char dirpath[DIR_MAX], const WSize wsize, const si
     RTB2W tb2w;
 
     if (io_direxists(dirpath)) {
-        printf("Warning: Directory already exist: %s\n", dirpath);
+        LOG_WARN("Directory already exist: %s.", dirpath);
     }
 
     tb2w = main_windowing_create(dirpath, wsize, max_sources_number, pg);
@@ -57,7 +57,7 @@ RTB2W main_windowing_load(char dirpath[DIR_MAX]) {
     RTB2W tb2w;
 
     if (tb2w_io(IO_READ, dirpath, &tb2w)) {
-        printf("Impossible to load TB2W at: %s.\n", dirpath);
+        LOG_WARN("Impossible to load TB2W at: %s.", dirpath);
         return NULL;
     }
 

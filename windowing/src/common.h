@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define BENCHMARKING
+// #define BENCHMARKING
 
 #define DELLINE "\033[A\033[2K"
 #define DELCHARS(N) { for (int i = 0; i < N; i++) { printf("\b"); }  }
@@ -85,23 +85,23 @@ char CACHE_DIR[DIR_MAX];
 #define CLOCK_END(A)
 #endif
 
-#define MANY_INIT(A, N, T) { if ((N) == 0) printf("Warning[%s::%d]: initializing empty block.\n", __FILE__, __LINE__); \
+#define MANY_INIT(A, N, T) { if ((N) == 0) LOG_WARN("MANY - initializing empty block.\n", __FILE__, __LINE__); \
             (A).size = (N); \
             (A).number = (N); \
             (A).element_size = sizeof(T); \
-            (A)._ = calloc(A.number, sizeof(T));\
+            (A)._ = calloc((A).number, sizeof(T));\
             LOG_UTRACE("MANY INIT %s of type %s with %ld.", #A, #T, N);\
             }
 
 #define MANY_INIT_0(A, N, T) MANY_INIT(A, N, T); (A).number = 0;
 
-#define MANY_INITREF(A, N, T) { if ((N) == 0) printf("Warning[%s::%d]: initializing empty block.\n", __FILE__, __LINE__);\
+#define MANY_INITREF(A, N, T) { if ((N) == 0) LOG_WARN("MANY - initializing empty block.\n", __FILE__, __LINE__);\
             (A)->size = (N); \
             (A)->number = (N); \
             (A)->element_size = sizeof(T); \
             (A)->_ = calloc((A)->number, sizeof(T)); }
 
-#define MANY_INITSIZE(A, N, S) { if ((N) == 0) printf("Warning[%s::%d]: initializing empty block.\n", __FILE__, __LINE__); \
+#define MANY_INITSIZE(A, N, S) { if ((N) == 0) LOG_WARN("MANY - initializing empty block.\n", __FILE__, __LINE__); \
             (A).size = (N); \
             (A).number = (N); \
             (A).element_size = (S); \
@@ -128,6 +128,10 @@ char CACHE_DIR[DIR_MAX];
     MANY_INIT(BY_GET((BY), N1).by ## N2, (BY).n.N2, T ## _ ## N2);
 #define BY_INIT3(BY, N1, N2, N3, T) \
     MANY_INIT(BY_GET2((BY), N1, N2).by ## N3, (BY).n.N3, T ## _ ## N3);
+#define BY_INIT4(BY, N1, N2, N3, N4, T) \
+    MANY_INIT(BY_GET3((BY), N1, N2, N3).by ## N4, (BY).n.N4, T ## _ ## N4);
+#define BY_INIT5(BY, N1, N2, N3, N4, N5, T) \
+    MANY_INIT(BY_GET4((BY), N1, N2, N3, N4).by ## N5, (BY).n.N5, T ## _ ## N5);
 
 #define BY_FOR(BY, NAME)\
     for (size_t idx ## NAME = 0; idx ## NAME < (BY).n.NAME; idx ## NAME++)
@@ -235,8 +239,9 @@ typedef struct __Window0* RWindow;
 typedef struct __Source* RSource;
 typedef struct __Dataset* RDataset;
 typedef struct __Fold* RFold0;
+typedef struct __Trainer* RTrainer;
 typedef struct TB2W* RTB2W;
-typedef struct TB2D* RTB2D;
+typedef struct __TB2D* RTB2D;
 
 MAKEMANY(RWindow);
 MAKEMANY(RDataset);
@@ -254,6 +259,8 @@ typedef struct Detection {
 } Detection;
 
 MAKEMANY(Detection);
+
+MAKEMANYNAME(ManyDetection_Ths, MANY(Detection));
 
 typedef MANY(double) ThsDataset;
 typedef MANY(Detection) DetectionDataset[3];

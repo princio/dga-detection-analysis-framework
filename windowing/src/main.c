@@ -27,13 +27,33 @@
 // #include "logger.h"
 #include "main_dataset.h"
 #include "main_windowing.h"
+#include "main_training.h"
 #include "parameter_generator.h"
 #include "wqueue.h"
+#include "performance_defaults.h"
 
 enum BO {
     BO_LOAD_OR_GENERATE,
     BO_TEST
 };
+
+MANY(Performance) _main_training_performance() {
+    MANY(Performance) performances;
+
+    MANY_INIT(performances, 10, Performance);
+
+    int i = 0;
+    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_1];
+    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_05];
+    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_F1SCORE_01];
+    // performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_TPR2];
+    performances._[i++] = performance_defaults[PERFORMANCEDEFAULTS_FPR];
+
+    performances.number = i;
+
+    return performances;
+}
+
 
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
@@ -57,7 +77,7 @@ int main (int argc, char* argv[]) {
 
     const int wsize = 2000;
     const int nsources = 0;
-    const size_t max_configs = 100;
+    const size_t max_configs = 5;
 
     if (QM_MAX_SIZE < (wsize * 3)) {
         printf("Error: wsize too large\n");
@@ -80,7 +100,7 @@ int main (int argc, char* argv[]) {
         case BO_LOAD_OR_GENERATE: {
             tb2w = main_windowing_load(rootdir);
             if (!tb2w) {
-                tb2w =main_windowing_generate(rootdir, wsize, nsources, parametergenerator_default(max_configs));
+                tb2w = main_windowing_generate(rootdir, wsize, nsources, parametergenerator_default(max_configs));
             }
             break;
         }
@@ -139,8 +159,17 @@ int main (int argc, char* argv[]) {
         exit(1);
     }
 
+    MANY(Performance) thchoosers = _main_training_performance();
+
+    RTrainer trainer = main_training_generate(rootdir, tb2d, thchoosers);
+
+    trainer_free(trainer);
     tb2d_free(tb2d);
     tb2w_free(tb2w);
+
+
+    FREEMANY(foldconfigs_many);
+    FREEMANY(thchoosers);
 
     gatherer_free_all();
 

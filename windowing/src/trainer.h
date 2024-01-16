@@ -57,11 +57,10 @@ typedef struct __Trainer {
     TrainerBy by;
 } __Trainer;
 
-typedef struct __Trainer* RTrainer;
-
 #define RESULT_IDX(BY, CONFIG, FOLD, TRY, SPLIT, THCHOOSER) BY.byconfig._[CONFIG].byfold._[FOLD].bytry._[TRY].bysplits._[SPLIT].bythchooser._[THCHOOSER]
 
 RTrainer trainer_run(RTB2D, MANY(Performance), char rootdir[DIR_MAX]);
+RTrainer trainer_run2(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_MAX]);
 
 void trainer_free(RTrainer results);
 

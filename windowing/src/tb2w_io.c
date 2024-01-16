@@ -208,9 +208,16 @@ int tb2w_io_windowing(IOReadWrite rw, RTB2W tb2, RWindowing windowing) {
 int tb2w_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W* tb2w) {
     char fpath[PATH_MAX];
 
-    if (!io_direxists(rootdir)) {
-        if (io_makedirs(rootdir)) {
-            printf("Error: impossible to create saving directory: %s\n", rootdir);
+    {
+        const int direxists = io_direxists(rootdir);
+        if (rw == IO_WRITE) {
+            if (!direxists && io_makedirs(rootdir)) {
+                LOG_ERROR("Impossible to create the directory: %s", rootdir);
+                return -1;
+            } 
+        } else
+        if (!direxists) {
+            LOG_ERROR("Directory not exists: %s", rootdir);
             return -1;
         }
     }

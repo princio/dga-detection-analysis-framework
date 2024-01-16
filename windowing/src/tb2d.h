@@ -26,7 +26,7 @@ MAKEMANY(TB2DBy_try);
 
 MAKEMANY(FoldConfig);
 
-typedef struct TB2D {
+typedef struct __TB2D {
     RTB2W tb2w;
 
     MANY(FoldConfig) folds;
@@ -37,7 +37,9 @@ typedef struct TB2D {
     } n;
 
     MANY(TB2DBy_try) bytry;
-} TB2D;
+} __TB2D;
+
+typedef const __TB2D TB2D;
 
 RTB2D tb2d_create(RTB2W tb2w, size_t n_try, MANY(FoldConfig) foldconfigs);
 void tb2d_run(RTB2D tb2d); 

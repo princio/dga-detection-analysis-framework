@@ -287,35 +287,6 @@ void* stratosphere_apply_producer(void* argsvoid) {
         window_wcount++;
         row++;
     }
-
-    // for (int idxblock = 0; idxblock < n_blocks; idxblock++) {
-    //     queue_messages* qm;
-    //     int message_first;
-    //     int message_last;
-    //     size_t last_wnum = -1;
-
-    //     qm = calloc(1, sizeof(queue_messages));
-
-    //     message_first = idxblock * args->qm_max_size;
-    //     message_last = (idxblock + 1) * args->qm_max_size;
-
-    //     if (message_last > args->nrows) {
-    //         message_last = args->nrows;
-    //     }
-
-    //     qm->id = idxblock;
-    //     qm->number = message_last - message_first;
-
-    //     for (int i = 0; i < qm->number; i++) {
-    //         const int row = i + message_first;
-    //         parse_message(args->pgresult, row, &qm->messages[i]);
-
-    //         const size_t wnum = qm->messages[i].fn_req / args->wsize;
-    //         if (last_wnum == -1) last_wnum = wnum;
-    //     }
-    //     printf("end: %d\n", idxblock * args->qm_max_size + qm->number);
-    //     queue_enqueue(args->queue, qm, (idxblock + 1) == n_blocks);
-    // }
     return NULL;
 }
 

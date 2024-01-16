@@ -41,6 +41,7 @@ void detect_copy(TCPC(Detection) src, Detection* dst);
 
 void detect_run(MANY(RWindow) ds, const double th, MANY(Detection)* detections_);
 
+MANY(double) detect_many_performance(Detection[N_DGACLASSES], MANY(Performance));
 double detect_performance(Detection[N_DGACLASSES], TCPC(Performance));
 
 int detect_performance_compare(Performance*, double, double);

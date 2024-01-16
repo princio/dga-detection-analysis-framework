@@ -6,6 +6,7 @@
 #include "configsuite.h"
 #include "detect.h"
 #include "sources.h"
+#include "trainer_detections.h"
 
 #include <assert.h>
 #include <float.h>
@@ -211,9 +212,13 @@ RTrainer trainer_create(RTB2D tb2d, MANY(Performance) thchoosers) {
     BY_SETN((*by), try, tb2d->n.try);
     BY_SETN((*by), thchooser, thchoosers.number);
 
+    BY_INIT1(trainer->by, config, TrainerBy);
     BY_FOR((*by), config) {
+        BY_INIT2(trainer->by, config, fold, TrainerBy);
         BY_FOR((*by), fold) {
+            BY_INIT3(trainer->by, config, fold, try, TrainerBy);
             BY_FOR((*by), try) {
+                BY_INIT4(trainer->by, config, fold, try, thchooser, TrainerBy);
                 BY_FOR((*by), thchooser) {
                     MANY_INIT(BY_GET4((*by), config, fold, try, thchooser).splits, tb2d->folds._[idxfold].k, TrainerBy_splits);
                 }
@@ -397,139 +402,11 @@ RTrainer trainer_run(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_
 
 RTrainer trainer_run2(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_MAX]) {
     RTrainer trainer = trainer_create(tb2d, thchoosers);
-    TrainerBy* by = &trainer->by;
 
-    printf("%-7s | ", "fold");
-    printf("%-7s | ", "try");
-    printf("%-7s | ", "wsize");
-    printf("%-7s | ", "splits");
-    printf("%-7s\n", "skipped");
-    int r = 0;
-    BY_FOR((*by), fold) {
-        BY_FOR((*by), try) {
-            TCPC(DatasetSplits) splits = &BY_GET2((*tb2d), try, fold);
-            if (!splits->isok) {
-                printf("Warning: skipping folding for fold=%ld, try=%ld, wsize=%ld", idxfold, idxtry, tb2d->tb2w->wsize);
-                continue;
-            }
+    trainer_detections_context* context = trainer_detections_start(trainer);
 
-            for (size_t k = 0; k < splits->splits.number; k++) {
-                printf("%3ld/%-3ld | ", 1+idxfold, tb2d->n.fold);
-                printf("%3ld/%-3ld | ", 1+idxtry, tb2d->n.try);
-                printf("%3ld/%-3ld | ", 1+k, splits->splits.number);
-
-                // _trainer_ths_2(splits->splits._[k].train, 100);
-
-                DatasetSplit split = splits->splits._[k];
-                MANY(ThsDataset) ths;
-                MANY(Detection) detections[by->n.config];
-                MANY(Detection) best_detections[by->n.config];
-                int best_detections_init[by->n.config][thchoosers.number];
-
-                memset(best_detections_init, 0, sizeof(int) * by->n.config * thchoosers.number);
-                ths = _trainer_ths2(split.train, tb2d->tb2w->configsuite.configs.number);
-
-                BY_FOR((*by), config) {
-                    MANY_INIT(detections[idxconfig], ths._[idxconfig].number, Detection);
-                    MANY_INIT(best_detections[idxconfig], thchoosers.number, Detection);
-                }
-
-                CLOCK_START(calculating_detections_for_all_ths);
-                for (size_t idxwindow = 0; idxwindow < split.train->windows.all.number; idxwindow++) {
-                    RWindow window0 = split.train->windows.all._[idxwindow];
-                    RSource source = window0->windowing->source;
-
-
-                    BY_FOR((*by), config) {
-                        for (size_t idxth = 0; idxth < ths._[idxconfig].number; idxth++) {
-                            double th = ths._[idxconfig]._[idxth];
-                            const int prediction = window0->applies._[idxconfig].logit >= th;
-                            const int infected = window0->windowing->source->wclass.mc > 0;
-                            const int is_true = prediction == infected;
-                            detections[idxconfig]._[idxth].th = th;
-                            detections[idxconfig]._[idxth].windows[source->wclass.mc][is_true]++;
-                            detections[idxconfig]._[idxth].sources[source->wclass.mc][source->index.multi][is_true]++;
-                        }
-                    }
-                } // calculating detections
-                CLOCK_END(calculating_detections_for_all_ths);
-
-
-                CLOCK_START(calculating_performance_train);
-                BY_FOR((*by), config) {
-                    BY_FOR((*by), thchooser) {
-                        for (size_t idxth = 0; idxth < ths._[idxconfig].number; idxth++) {
-                            double current_score = detect_performance(&detections[idxconfig]._[idxth], &thchoosers._[idxthchooser]);
-
-                            int is_better = 0;
-                            if (best_detections_init[idxconfig][idxthchooser] == 1) {
-                                double best_score = detect_performance(&best_detections[idxconfig]._[idxthchooser], &thchoosers._[idxthchooser]);
-                                is_better = detect_performance_compare(&thchoosers._[idxthchooser], current_score, best_score);
-                            } else {
-                                is_better = 1;
-                            }
-
-                            if (is_better) {
-                                best_detections_init[idxconfig][idxthchooser] = 1;
-                                memcpy(&best_detections[idxconfig]._[idxthchooser], &detections[idxconfig]._[idxth], sizeof(Detection));
-                            }
-                        }
-                    }
-                }// calculating performances for each detection and setting the best one
-                CLOCK_END(calculating_performance_train);
-
-                CLOCK_START(calculating_performance_from_train_th_to_test);
-                for (size_t w = 0; w < split.test->windows.all.number; w++) {
-                    RWindow window0 = split.test->windows.all._[w];
-                    RSource source = window0->windowing->source;
-
-                    BY_FOR((*by), config) {
-                        // printf("%ld\t%f\n", );
-
-                        BY_FOR((*by), thchooser) {
-                            TrainerBy_splits* result = &BY_GET4((*by), config, fold, try, thchooser).splits._[k];
-                            Detection* detection = &result->best_test;
-                            double th = best_detections[idxconfig]._[idxthchooser].th;
-
-                            const int prediction = window0->applies._[idxconfig].logit >= th;
-                            const int infected = window0->windowing->source->wclass.mc > 0;
-                            const int is_true = prediction == infected;
-
-                            detection->th = th;
-                            detection->windows[source->wclass.mc][is_true]++;
-                            detection->sources[source->wclass.mc][source->index.multi][is_true]++;
-                        }
-                    }
-                    
-                    BY_FOR((*by), config) {
-                        BY_FOR((*by), thchooser) {
-                            TrainerBy_splits* result = &BY_GET4((*by), config, fold, try, thchooser).splits._[k];
-
-                            result->threshold_chooser = &thchoosers._[idxthchooser];
-
-                            memcpy(&result->best_train, &best_detections[idxconfig]._[idxthchooser], sizeof(Detection));
-                        }
-                    }
-                } // filling Result
-                CLOCK_END(calculating_performance_from_train_th_to_test);
-
-                BY_FOR((*by), config) {
-                    BY_FOR((*by), thchooser) {
-                        TrainerBy_splits* result = &BY_GET4((*by), config, fold, try, thchooser).splits._[k];
-                        {
-                            char fpath[PATH_MAX];
-                            sprintf(fpath, "results_%ld_%ld_%ld_%s__%ld.bin", idxfold, idxtry, idxconfig, thchoosers._[idxthchooser].name, k);
-                            io_path_concat(rootdir, fpath, fpath);
-                            trainer_io_results_file(IO_WRITE, fpath, result);
-                        }
-                    }
-                    FREEMANY(best_detections[idxconfig]);
-                    FREEMANY(detections[idxconfig]);
-                }
-
-                _trainer_ths_free(ths);
-            }
-        }
+    if (trainer_detections_wait(context)) {
+        return NULL;
     }
 
     return trainer;

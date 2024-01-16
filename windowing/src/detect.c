@@ -21,6 +21,15 @@ void detect_copy(TCPC(Detection) src, Detection* dst) {
     memcpy(dst, src, sizeof(Detection));
 }
 
+MANY(double) detect_many_performance(Detection detection[N_DGACLASSES], MANY(Performance) many_performance) {
+    MANY(double) scores;
+    MANY_INIT(scores, many_performance.number, double);
+    for (size_t i = 0; i < many_performance.number; i++) {
+        scores._[i] = many_performance._[i].func(detection, &many_performance._[i]);
+    }
+    return scores;
+}
+
 double detect_performance(Detection detection[N_DGACLASSES], TCPC(Performance) performance) {
     return performance->func(detection, performance);
 }

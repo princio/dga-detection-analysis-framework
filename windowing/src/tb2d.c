@@ -4,14 +4,14 @@
 RTB2D tb2d_create(RTB2W tb2w, size_t n_try, MANY(FoldConfig) foldconfigs) {
     RTB2D tb2d;
 
-    tb2d = calloc(1, sizeof(TB2D));
+    tb2d = calloc(1, sizeof(__TB2D));
 
     tb2d->tb2w = tb2w;
 
     BY_SETN(*tb2d, try, n_try);
     BY_SETN(*tb2d, fold, foldconfigs.number);
 
-    tb2d->folds = foldconfigs;
+    CLONEMANY(tb2d->folds, foldconfigs);
 
     BY_INIT1(*tb2d, try, TB2DBy);
     BY_FOR(*tb2d, try) {
