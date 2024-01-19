@@ -10,31 +10,31 @@
 void tb2w_md(char fpath[PATH_MAX], const RTB2W tb2);
 
 void tb2_io_flag_testbed(IOReadWrite rw, FILE* file, WSize wsize, int line) {
-    char flag_code[TB2_IO_FLAG_LEN];
+    char flag_code[IO_FLAG_LEN];
     memset(flag_code, 0, sizeof(flag_code));
     sprintf(flag_code, "testbed_%ld", wsize);
-    tb2_io_flag(rw, file, flag_code, line);
+    io_flag(rw, file, flag_code, line);
 }
 
 void tb2_io_flag_config(IOReadWrite rw, FILE* file, size_t idxconfig, int line) {
-    char flag_code[TB2_IO_FLAG_LEN];
+    char flag_code[IO_FLAG_LEN];
     memset(flag_code, 0, sizeof(flag_code));
     sprintf(flag_code, "config_%ld", idxconfig);
-    tb2_io_flag(rw, file, flag_code, line);
+    io_flag(rw, file, flag_code, line);
 }
 
 void tb2_io_flag_source(IOReadWrite rw, FILE* file, int id, int line) {
-    char flag_code[TB2_IO_FLAG_LEN];
+    char flag_code[IO_FLAG_LEN];
     memset(flag_code, 0, sizeof(flag_code));
     sprintf(flag_code, "source_%d", id);
-    tb2_io_flag(rw, file, flag_code, line);
+    io_flag(rw, file, flag_code, line);
 }
 
 void tb2_io_flag_windowing(IOReadWrite rw, FILE* file, RWindowing windowing, int line) {
-    char flag_code[TB2_IO_FLAG_LEN];
+    char flag_code[IO_FLAG_LEN];
     memset(flag_code, 0, sizeof(flag_code));
     sprintf(flag_code, "windowing_%ld_%d", windowing->wsize, windowing->source->id);
-    tb2_io_flag(rw, file, flag_code, line);
+    io_flag(rw, file, flag_code, line);
 }
 
 void tb2w_io_sources(IOReadWrite rw, FILE* file, RTB2W tb2) {
@@ -126,20 +126,6 @@ void tb2w_io_create(IOReadWrite rw, FILE* file, char rootdir[DIR_MAX], RTB2W* tb
     }
 }
 
-void tb2_io_flag(IOReadWrite rw, FILE* file, char flag_code[TB2_IO_FLAG_LEN], int line) {
-    if (rw == IO_WRITE) {
-        io_fwriteN(flag_code, TB2_IO_FLAG_LEN, file);
-    } else {
-        char flag_shouldbe[TB2_IO_FLAG_LEN];
-
-        io_freadN(flag_shouldbe, TB2_IO_FLAG_LEN, file);
-        if (strcmp(flag_code, flag_shouldbe) != 0) {
-            printf("Error[%s:%d][%5s]: flag check failed: code=<%s> read=<%s>\n", __FILE__, line, rw == IO_WRITE ? "write" : "read", flag_code, flag_shouldbe);
-            exit(1);
-        }
-    }
-}
-
 void tb2_io_windows(IOReadWrite rw, FILE* file, RTB2W tb2w, MANY(RWindow) windows) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
@@ -169,6 +155,11 @@ int tb2w_io_windowing(IOReadWrite rw, RTB2W tb2, RWindowing windowing) {
 
     char fpath[PATH_MAX];
 
+    if (!io_direxists(tb2->rootdir)) {
+        LOG_ERROR("Directory not exists: %s", tb2->rootdir);
+        return -1;
+    }
+
     tb2w_windowing_path(tb2, windowing, fpath);
 
     if (rw == IO_WRITE) {
@@ -180,6 +171,12 @@ int tb2w_io_windowing(IOReadWrite rw, RTB2W tb2, RWindowing windowing) {
     if (!file) {
         LOG_DEBUG("%s: File not found: %s.", rw == IO_WRITE ? "Writing" : "Reading", fpath);
         return -1;
+    }
+
+    if (rw == IO_WRITE) {
+        LOG_TRACE("Writing: %s", fpath);
+    } else {
+        LOG_TRACE("Reading: %s", fpath);
     }
 
     tb2_io_flag_windowing(rw, file, windowing, __LINE__);
@@ -224,6 +221,11 @@ int tb2w_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W* tb2w) {
 
     io_path_concat(rootdir, "tb2w.bin", fpath);
 
+    if (rw == IO_WRITE && io_fileexists(fpath)) {
+        LOG_INFO("Not saving, TB2W already exists: %s", rootdir);
+        return 0;
+    }
+
     FILE* file;
     file = io_openfile(rw, fpath);
     if (file == NULL) {
@@ -245,10 +247,8 @@ int tb2w_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W* tb2w) {
 
     if (rw == IO_READ) {
         tb2w_windowing(*tb2w);
-    }
     
-    BY_FOR((*tb2w)->windowing, source) {
-        tb2w_io_windowing(rw, (*tb2w), BY_GET((*tb2w)->windowing, source));
+        tb2w_apply(*tb2w);
     }
 
     fclose(file);

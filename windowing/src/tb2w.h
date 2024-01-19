@@ -15,7 +15,7 @@
 
 typedef struct TB2WBy {
     struct {
-        const size_t source;
+        size_t source;
     } n;
     MANY(RWindowing) bysource;
 } TB2WBy;

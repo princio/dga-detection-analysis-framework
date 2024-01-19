@@ -31,7 +31,7 @@ typedef struct ResultsTODO {
 MAKEMANY(ResultsTODO);
 
 void trainer_md(char dirname[200], RTrainer trainer);
-int trainer_io_results_file(IOReadWrite rw, char fpath[PATH_MAX], TrainerBy_splits* result);
+int trainer_io_results_file(IOReadWrite rw, char fpath[PATH_MAX], TrainerBy_config* result);
 
 MANY(ThsDataset) _trainer_ths(RDataset dataset, MANY(ResultsTODO) todo) {
     MANY(ThsDataset) ths;
@@ -190,9 +190,9 @@ ThsDataset _trainer_ths_2(RDataset dataset, size_t n_ths) {
 
 void _trainer_ths_free(MANY(ThsDataset) ths) {
     for (size_t i = 0; i < ths.number; i++) {
-        FREEMANY(ths._[i]);
+        MANY_FREE(ths._[i]);
     }
-    FREEMANY(ths);
+    MANY_FREE(ths);
 }
 
 RTrainer trainer_create(RTB2D tb2d, MANY(Performance) thchoosers) {
@@ -212,15 +212,16 @@ RTrainer trainer_create(RTB2D tb2d, MANY(Performance) thchoosers) {
     BY_SETN((*by), try, tb2d->n.try);
     BY_SETN((*by), thchooser, thchoosers.number);
 
-    BY_INIT1(trainer->by, config, TrainerBy);
-    BY_FOR((*by), config) {
-        BY_INIT2(trainer->by, config, fold, TrainerBy);
-        BY_FOR((*by), fold) {
-            BY_INIT3(trainer->by, config, fold, try, TrainerBy);
-            BY_FOR((*by), try) {
-                BY_INIT4(trainer->by, config, fold, try, thchooser, TrainerBy);
+    BY_INIT1(trainer->by, fold, TrainerBy);
+    BY_FOR((*by), fold) {
+        BY_INIT2(trainer->by, fold, try, TrainerBy);
+        BY_FOR((*by), try) {
+            const size_t k = tb2d->folds._[idxfold].k;
+            MANY_INIT(BY_GET2((*by), fold, try).bysplit, k, TrainerBy_split);
+            for (size_t idxsplit = 0; idxsplit < k; idxsplit++) {
+                MANY_INIT(BY_GET3((*by), fold, try, split).bythchooser, thchoosers.number, TrainerBy);
                 BY_FOR((*by), thchooser) {
-                    MANY_INIT(BY_GET4((*by), config, fold, try, thchooser).splits, tb2d->folds._[idxfold].k, TrainerBy_splits);
+                    MANY_INIT(BY_GET4((*by), fold, try, split, thchooser).byconfig, trainer->by.n.config, TrainerBy_config);
                 }
             }
         }
@@ -229,6 +230,7 @@ RTrainer trainer_create(RTB2D tb2d, MANY(Performance) thchoosers) {
     return trainer;
 }
 
+/*
 RTrainer trainer_run(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_MAX]) {
     RTrainer trainer = trainer_create(tb2d, thchoosers);
     TrainerBy* by = &trainer->by;
@@ -281,7 +283,7 @@ RTrainer trainer_run(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_
                             skipped[1]++;
                         }
                         if (results_todo._[idxconfig].todo == 0) {
-                            FREEMANY(results_todo._[idxconfig].thchoosers);
+                            MANY_FREE(results_todo._[idxconfig].thchoosers);
                         }
                     }
                 }
@@ -386,19 +388,20 @@ RTrainer trainer_run(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_
                             trainer_io_results_file(IO_WRITE, fpath, result);
                         }
                     }
-                    FREEMANY(best_detections[idxconfig]);
-                    FREEMANY(detections[idxconfig]);
-                    FREEMANY(results_todo._[idxconfig].thchoosers);
+                    MANY_FREE(best_detections[idxconfig]);
+                    MANY_FREE(detections[idxconfig]);
+                    MANY_FREE(results_todo._[idxconfig].thchoosers);
                 }
 
                 _trainer_ths_free(ths);
-                FREEMANY(results_todo);
+                MANY_FREE(results_todo);
             }
         }
     }
 
     return trainer;
 }
+*/
 
 RTrainer trainer_run2(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_MAX]) {
     RTrainer trainer = trainer_create(tb2d, thchoosers);
@@ -413,20 +416,20 @@ RTrainer trainer_run2(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR
 }
 
 void trainer_free(RTrainer trainer) {
-    BY_FOR(trainer->by, config) {
-        BY_FOR(trainer->by, fold) {
-            BY_FOR(trainer->by, try) {
-                BY_FOR(trainer->by, thchooser) {
-                    FREEMANY(BY_GET4(trainer->by, config, fold, try, thchooser).splits);
+    BY_FOR1(trainer->by, fold) {
+        BY_FOR2(trainer->by, fold, try) {
+            BY_FOR3(trainer->by, fold, try, split) {
+                BY_FOR4(trainer->by, fold, try, split, thchooser) {
+                    MANY_FREE(BY_GET4(trainer->by, fold, try, split, thchooser).byconfig);
                 }
-                FREEMANY(BY_GET3(trainer->by, config, fold, try).bythchooser);
+                MANY_FREE(BY_GET3(trainer->by, fold, try, split).bythchooser);
             }
-            FREEMANY(BY_GET2(trainer->by, config, fold).bytry);
+            MANY_FREE(BY_GET2(trainer->by, fold, try).bysplit);
         }
-        FREEMANY(BY_GET(trainer->by, config).byfold);
+        MANY_FREE(BY_GET(trainer->by, fold).bytry);
     }
-    FREEMANY(trainer->by.byconfig);
-    FREEMANY(trainer->thchoosers);
+    MANY_FREE(trainer->by.byfold);
+    MANY_FREE(trainer->thchoosers);
     free(trainer);
 }
 
@@ -461,12 +464,12 @@ void trainer_io_results(IOReadWrite rw, FILE* file, RTrainer trainer) {
     FRW(trainer->by.n.fold);
     FRW(trainer->by.n.thchooser);
 
-    BY_FOR(trainer->by, config) {
         BY_FOR(trainer->by, fold) {
             BY_FOR(trainer->by, try) {
-                BY_FOR(trainer->by, thchooser) {
-                    for (size_t k = 0; k < BY_GET4(trainer->by, config, fold, try, thchooser).splits.number; k++) {
-                        TrainerBy_splits* result = &BY_GET4(trainer->by, config, fold, try, thchooser).splits._[k];
+                BY_FOR3(trainer->by, fold, try, split) {
+                    BY_FOR(trainer->by, thchooser) {
+                        BY_FOR(trainer->by, config) {
+                        TrainerBy_config* result = &BY_GET5(trainer->by, fold, try, split, thchooser, config);
 
                         trainer_io_detection(rw, file, &result->best_train);
                         trainer_io_detection(rw, file, &result->best_test);
@@ -481,7 +484,7 @@ void trainer_io_results(IOReadWrite rw, FILE* file, RTrainer trainer) {
     }
 }
 
-int trainer_io_results_file(IOReadWrite rw, char fpath[PATH_MAX], TrainerBy_splits* result) {
+int trainer_io_results_file(IOReadWrite rw, char fpath[PATH_MAX], TrainerBy_config* result) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     FILE* file;
@@ -522,7 +525,7 @@ void trainer_io(IOReadWrite rw, char dirname[200], RTB2D tb2d, RTrainer* trainer
         *trainer = trainer_create(tb2d, thchoosers);
     }
 
-    FREEMANY(thchoosers);
+    MANY_FREE(thchoosers);
 
     trainer_io_results(rw, file, *trainer);
 
@@ -593,11 +596,11 @@ void trainer_md(char dirname[200], RTrainer trainer) {
             BY_FOR(trainer->by, fold) {
                 BY_FOR(trainer->by, try) {
                     BY_FOR(trainer->by, thchooser) {
-                        for (size_t k = 0; k < BY_GET4(trainer->by, config, fold, try, thchooser).splits.number; k++) {
-                            TrainerBy_splits* result = &BY_GET4(trainer->by, config, fold, try, thchooser).splits._[k];
+                        BY_FOR3(trainer->by, fold, try, split) {
+                            TrainerBy_config* result = &BY_GET5(trainer->by, fold, try, split, thchooser, config);
 
                             FP("|%*ld",  len_header, idxconfig);
-                            FP("|%*ld",  len_header, k);
+                            FP("|%*ld",  len_header, idxsplit);
                             FP("|%*s",  len_header, trainer->thchoosers._[idxthchooser].name);
                             DGAFOR(cl) {
                                 FP("|%*.4f",  len_header, TR(result->best_train.windows, cl));

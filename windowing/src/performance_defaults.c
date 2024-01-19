@@ -17,7 +17,7 @@ const Performance performance_defaults[7] = {
 };
 
 double _performancedefaults_f1score_beta(Detection* detection, TCPC(Performance) performance, double beta) {
-    double f1;
+    double f1 = -1;
     switch (performance->dgadet)
     {
         case PERFORMANCE_DGAHANDLING_MERGE_1: {

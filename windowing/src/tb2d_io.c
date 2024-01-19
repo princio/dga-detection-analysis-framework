@@ -10,7 +10,7 @@ size_t ciao = 0;
 void tb2d_io_flag_testbed(IOReadWrite rw, FILE* file, WSize wsize, int line) {
     char flag_code[80];
     sprintf(flag_code, "testbed_%ld", wsize);
-    tb2_io_flag(rw, file, flag_code, line);
+    io_flag(rw, file, flag_code, line);
 }
 
 void _tb2d_io_dataset_windows(IOReadWrite rw, FILE* file, RTB2D tb2d, MANY(RWindow) windows) {
@@ -78,12 +78,12 @@ void _tb2d_io_datasets(IOReadWrite rw, FILE* file, RTB2D tb2d) {
 
     BY_FOR(*tb2d, try) {
 
-        tb2_io_flag(rw, file, "tb2d-dataset-start", __LINE__);
+        io_flag(rw, file, "tb2d-dataset-start", __LINE__);
         _tb2d_io_dataset(rw, file, tb2d, &BY_GET(*tb2d, try).dataset);
-        tb2_io_flag(rw, file, "tb2d-dataset-end", __LINE__);
+        io_flag(rw, file, "tb2d-dataset-end", __LINE__);
 
         BY_FOR(*tb2d, fold) {
-            tb2_io_flag(rw, file, "tb2d-fold-start", __LINE__);
+            io_flag(rw, file, "tb2d-fold-start", __LINE__);
             DatasetSplits* splits = &BY_GET2(*tb2d, try, fold);
 
             if (rw == IO_READ) {
@@ -100,7 +100,7 @@ void _tb2d_io_datasets(IOReadWrite rw, FILE* file, RTB2D tb2d) {
                 }
             }
 
-            tb2_io_flag(rw, file, "tb2d-fold-end", __LINE__);
+            io_flag(rw, file, "tb2d-fold-end", __LINE__);
         }
     }
 }
@@ -130,7 +130,7 @@ void _tb2d_io_create(IOReadWrite rw, FILE* file, RTB2W tb2w, RTB2D* tb2d) {
     if (rw == IO_READ) {
         *tb2d = tb2d_create(tb2w, n_tries, foldconfigs);
 
-        FREEMANY(foldconfigs);
+        MANY_FREE(foldconfigs);
     }
 }
 
@@ -163,15 +163,15 @@ int tb2d_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W tb2w, RTB2D* tb2) {
 
     LOG_DEBUG("%sing file <%s>.\n", rw == IO_WRITE ? "Writ" : "Read", fpath);
 
-    tb2_io_flag(rw, file, "tb2d-create-start", __LINE__);
+    io_flag(rw, file, "tb2d-create-start", __LINE__);
 
     _tb2d_io_create(rw, file, tb2w, tb2);
 
-    tb2_io_flag(rw, file, "tb2d-create-end", __LINE__);
+    io_flag(rw, file, "tb2d-create-end", __LINE__);
 
     _tb2d_io_datasets(rw, file, *tb2);
 
-    tb2_io_flag(rw, file, "tb2d-end", __LINE__);
+    io_flag(rw, file, "tb2d-end", __LINE__);
 
     fclose(file);
 

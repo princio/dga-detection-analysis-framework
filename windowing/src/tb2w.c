@@ -80,18 +80,21 @@ void tb2w_windowing(RTB2W tb2w) {
 }
 
 void tb2w_apply(RTB2W tb2w) {
+
     BY_FOR(tb2w->windowing, source) {
-        printf("Applying %2ld/%-2ld: source#%5d -> ", idxsource, tb2w->windowing.n.source, tb2w->windowing.bysource._[idxsource]->source->id);
-        int c = printf("doing");
-        stratosphere_apply(tb2w, BY_GET(tb2w->windowing, source));
-        DELCHARS(c);
-        printf("%-*s\n", c, "done");
+        if (tb2w_io_windowing(IO_READ, tb2w, BY_GET(tb2w->windowing, source))) {
+            LOG_INFO("Applying %2ld/%-2ld\t#%5d\t%7d", idxsource, tb2w->windowing.n.source, tb2w->windowing.bysource._[idxsource]->source->id, tb2w->windowing.bysource._[idxsource]->source->qr);
+            
+            stratosphere_apply(tb2w, BY_GET(tb2w->windowing, source));
+
+            tb2w_io_windowing(IO_WRITE, tb2w, BY_GET(tb2w->windowing, source));
+        }
     }
 }
 
 void tb2w_free(RTB2W tb2w) {
-    FREEMANY(tb2w->windowing.bysource);
-    FREEMANY(tb2w->sources);
+    MANY_FREE(tb2w->windowing.bysource);
+    MANY_FREE(tb2w->sources);
     configset_free(&tb2w->configsuite);
     free(tb2w);
 }

@@ -14,7 +14,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-// #define BENCHMARKING
+#define BENCHMARKING
 
 #define DELLINE "\033[A\033[2K"
 #define DELCHARS(N) { for (int i = 0; i < N; i++) { printf("\b"); }  }
@@ -24,6 +24,12 @@
 WINDOW* cwin;
 
 char CACHE_DIR[DIR_MAX];
+
+#ifdef DEBUG
+#define PRINTF(F, ...) printf(F, __VA_ARGS__)
+#else 
+#define PRINTF(F, ...)
+#endif
 
 // #define IO_DEBUG
 
@@ -73,7 +79,8 @@ char CACHE_DIR[DIR_MAX];
 } TETRA(T)
 
 #ifdef BENCHMARKING
-#define CLOCK_START(A) printf("%60s: %s\n", "start", #A); struct timeval begin_ ## A; gettimeofday(&begin_ ## A, NULL);
+// #define CLOCK_START(A) printf("%60s: %s\n", "start", #A); struct timeval begin_ ## A; gettimeofday(&begin_ ## A, NULL);
+#define CLOCK_START(A) struct timeval begin_ ## A; gettimeofday(&begin_ ## A, NULL);
 #define CLOCK_END(A) { struct timeval end_ ## A; gettimeofday(&end_ ## A, NULL); \
     printf("%60s: %f ms\n", #A, ((end_ ## A.tv_sec - begin_ ## A.tv_sec) * 1000.0 + (end_ ## A.tv_usec - begin_ ## A.tv_usec) / 1000.0)); }
 #elif BENCHMARKING_CLOCK
@@ -90,6 +97,7 @@ char CACHE_DIR[DIR_MAX];
             (A).number = (N); \
             (A).element_size = sizeof(T); \
             (A)._ = calloc((A).number, sizeof(T));\
+            if ((A)._ == NULL) LOG_ERROR("Many Initialization failed");\
             LOG_UTRACE("MANY INIT %s of type %s with %ld.", #A, #T, N);\
             }
 
@@ -109,8 +117,8 @@ char CACHE_DIR[DIR_MAX];
 
 #define CLONEMANY(A, B) MANY_INITSIZE((A), (B).number, (B).element_size); memcpy((A)._, (B)._, (B).element_size * (B).number);
 
-#define FREEMANY(A) { if (A.number) free(A._); A.number = 0; A.size = 0; }
-#define FREEMANYREF(A) { if (A->number) free(A->_); A->number = 0; A->size = 0; }
+#define MANY_FREE(A) { if (A.number) free(A._); A.number = 0; A.size = 0; }
+#define MANY_FREEREF(A) { if (A->number) free(A->_); A->number = 0; A->size = 0; }
 
 #define BY_SETN(BY, NAME, N) memcpy((size_t*) &(BY).n.NAME, &N, sizeof(size_t));
 
@@ -135,6 +143,19 @@ char CACHE_DIR[DIR_MAX];
 
 #define BY_FOR(BY, NAME)\
     for (size_t idx ## NAME = 0; idx ## NAME < (BY).n.NAME; idx ## NAME++)
+
+
+#define BY_FOR1(BY, NAME)\
+    for (size_t idx ## NAME = 0; idx ## NAME < (BY).by ## NAME.number; idx ## NAME++)
+#define BY_FOR2(BY, N1, NAME)\
+    for (size_t idx ## NAME = 0; idx ## NAME < BY_GET(BY, N1).by ## NAME.number; idx ## NAME++)
+#define BY_FOR3(BY, N1, N2, NAME)\
+    for (size_t idx ## NAME = 0; idx ## NAME < BY_GET2(BY, N1, N2).by ## NAME.number; idx ## NAME++)
+#define BY_FOR4(BY, N1, N2, N3, NAME)\
+    for (size_t idx ## NAME = 0; idx ## NAME < BY_GET3(BY, N1, N2, N3).by ## NAME.number; idx ## NAME++)
+#define BY_FOR5(BY, N1, N2, N3, N4, NAME)\
+    for (size_t idx ## NAME = 0; idx ## NAME < BY_GET4(BY, N1, N2, N3, N4).by ## NAME.number; idx ## NAME++)
+
 #define BY_INITFOR(BY, BYSUB, NAME, T) BY_INIT((BY), BYSUB, NAME, T); BY_FOR(BY, NAME)
 
 
@@ -243,19 +264,30 @@ typedef struct __Trainer* RTrainer;
 typedef struct TB2W* RTB2W;
 typedef struct __TB2D* RTB2D;
 
+
 MAKEMANY(RWindow);
 MAKEMANY(RDataset);
 MAKEMANY(RWindowing);
 MAKEMANY(RFold0);
 MAKEMANY(size_t);
+MAKEMANY(int64_t);
 MAKEMANY(double);
 MAKEMANY(MANY(double));
+
+typedef struct MinMax {
+    double min;
+    double max;
+} MinMax;
+
+MAKEMANY(MinMax);
+
+
 
 typedef struct Detection {
     double th;
 
     uint16_t windows[N_DGACLASSES][2];
-    uint16_t sources[N_DGACLASSES][100][2];
+    uint16_t sources[N_DGACLASSES][50][2];
 } Detection;
 
 MAKEMANY(Detection);

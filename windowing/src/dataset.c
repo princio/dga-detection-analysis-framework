@@ -5,6 +5,8 @@
 #include "sources.h"
 #include "windowing.h"
 
+#include <float.h>
+#include <math.h>
 #include <string.h>
 
 RGatherer datasets_gatherer = NULL;
@@ -12,12 +14,39 @@ RGatherer datasets_gatherer = NULL;
 void dataset_free(void* item) {
     RDataset dataset = (RDataset) item;
     DGAFOR(cl) {
-        FREEMANY(dataset->windows.multi[cl]);
+        MANY_FREE(dataset->windows.multi[cl]);
     }
-    FREEMANY(dataset->windows.binary[0]);
-    FREEMANY(dataset->windows.binary[1]);
-    FREEMANY(dataset->windows.all);
+    MANY_FREE(dataset->windows.binary[0]);
+    MANY_FREE(dataset->windows.binary[1]);
+    MANY_FREE(dataset->windows.all);
+    MANY_FREE(dataset->minmax);
 }
+
+void dataset_minmax(RDataset ds) {
+    int64_t logits[ds->windows.all.number];
+
+    const size_t n_configs = ds->windows.all._[0]->applies.number;
+
+    MANY_INIT(ds->minmax, n_configs, MinMax);
+
+    for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
+        ds->minmax._[idxconfig].max = DBL_MIN;
+        ds->minmax._[idxconfig].min = DBL_MAX;
+    }
+
+    for (size_t idxwindow = 0; idxwindow < ds->windows.all.number; idxwindow++) {
+        for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
+            double *min = &ds->minmax._[idxconfig].min;
+            double *max = &ds->minmax._[idxconfig].max;
+
+            const double logit = ds->windows.all._[idxwindow]->applies._[idxconfig].logit;
+
+            if (*min > logit) *min = logit;
+            if (*max < logit) *max = logit;
+        }
+    }
+}
+
 
 RDataset dataset_alloc() {
     if (datasets_gatherer == NULL) {

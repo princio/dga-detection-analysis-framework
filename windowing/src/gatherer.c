@@ -85,7 +85,7 @@ void gatherer_free_all() {
             }
         }
         *gatherer_of_gatherers._[s].ref = NULL;
-        FREEMANY(gatherer_of_gatherers._[s].many);
+        MANY_FREE(gatherer_of_gatherers._[s].many);
     }
-    FREEMANY(gatherer_of_gatherers);
+    MANY_FREE(gatherer_of_gatherers);
 }

@@ -14,10 +14,8 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
         ninf_t ninf[] = {
             0,
             -10,
-            -25,
-            -100,
+            -50,
             -150
-            -100,
         };
         __SET(ninf);
     }
@@ -26,9 +24,7 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
         pinf_t pinf[] = {
             0,
             10,
-            25,
             50,
-            100,
             150
         };
         __SET(pinf);
@@ -49,7 +45,6 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
             0,
             100,
             1000,
-            10000,
             100000
         };
         __SET(wl_rank);
@@ -59,7 +54,6 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
         wl_value_t wl_value[] = {
             0,
             -10,
-            -25,
             -50,
             -100,
             -150
@@ -81,8 +75,6 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
             0,
             0.05,
             0.1,
-            0.25,
-            0.5
         };
         __SET(nx_epsilon_increment);
     }

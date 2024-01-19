@@ -97,6 +97,9 @@ int io_makedirs_notoverwrite(char dirpath[DIR_MAX]) {
 FILE* io_openfile(IOReadWrite read, char fname[500]) {
     FILE* file;
     file = fopen(fname, read ? "rb+" : "wb+");
+    if (!file) {
+        LOG_ERROR("%s", strerror(errno));
+    }
     return file;
 }
 
@@ -112,7 +115,7 @@ void io_dumphex_file(FILE* file, const void* data, size_t size) {
 void io_dumphex(const void* data, size_t size) {
 	char ascii[17];
 	size_t i, j;
-    size_t row_len = 64;
+    size_t row_len = sizeof(ascii) - 1;
 	ascii[row_len] = '\0';
 	for (i = 0; i < size; ++i) {
 		printf("%02X ", ((unsigned char*)data)[i]);
@@ -178,7 +181,7 @@ void io_freadN(void* v, size_t s, FILE* file) {
     uint64_t be[block64_2read];
     memset(be, 0, block64_2read * 8);
 
-    fread(be, 8, block64_2read, file);
+    int a = fread(be, 8, block64_2read, file);
 
 #ifdef IO_DEBUG
     if (__io__debug) {
@@ -203,14 +206,16 @@ void io_fwrite64(void* n, FILE* file) {
 
 void io_fread32(void *v, FILE* file) {
     uint32_t be;
-    fread(&be, sizeof(uint32_t), 1, file);
+    size_t _n = fread(&be, sizeof(uint32_t), 1, file);
+    assert(_n == sizeof(uint64_t));
     be = be32toh(be);
     memcpy(v, &be, 4);
 }
 
 void io_fread64(void *v, FILE* file) {
     uint64_t be;
-    fread(&be, sizeof(uint64_t), 1, file);
+    size_t _n = fread(&be, sizeof(uint64_t), 1, file);
+    assert(_n == sizeof(uint64_t));
     be = be64toh(be);
     memcpy(v, &be, 8);
 }
@@ -247,4 +252,21 @@ void io_subdigest(void const * const object, const size_t object_size, char subd
     io_hash(object, object_size, digest);
     strncpy(subdigest, digest, IO_SUBDIGEST_LENGTH);
     subdigest[IO_SUBDIGEST_LENGTH - 1] = '\0';
+}
+
+void io_flag(IOReadWrite rw, FILE* file, char flag_code[IO_FLAG_LEN], int line) {
+    char flag_code_memset0[IO_FLAG_LEN];
+    memset(flag_code_memset0, 0, IO_FLAG_LEN);
+    strcpy(flag_code_memset0, flag_code);
+    if (rw == IO_WRITE) {
+        io_fwriteN(flag_code_memset0, IO_FLAG_LEN, file);
+    } else {
+        char flag_shouldbe[IO_FLAG_LEN];
+
+        io_freadN(flag_shouldbe, IO_FLAG_LEN, file);
+        if (strcmp(flag_code, flag_shouldbe) != 0) {
+            printf("Error[%s:%d][%5s]: flag check failed: code=<%s> read=<%s>\n", __FILE__, line, rw == IO_WRITE ? "write" : "read", flag_code, flag_shouldbe);
+            exit(1);
+        }
+    }
 }

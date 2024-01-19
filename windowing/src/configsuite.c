@@ -10,7 +10,7 @@
 
 int parametersdefinition_init_done = 0;
 
-const ParameterDefinition parameters_definition[N_PARAMETERS];
+ParameterDefinition parameters_definition[N_PARAMETERS];
 
 char WINDOWING_NAMES[3][10] = {
     "QUERY",
@@ -231,7 +231,7 @@ void configset_disable(ConfigSuite* cs) {
 
 void configset_free(ConfigSuite* cs) {
     for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-        FREEMANY(cs->pr[pp]);
+        MANY_FREE(cs->pr[pp]);
     }
-    FREEMANY(cs->configs);
+    MANY_FREE(cs->configs);
 }

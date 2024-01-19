@@ -128,7 +128,7 @@ typedef struct ConfigSuite {
 } ConfigSuite;
 
 
-const ParameterDefinition parameters_definition[N_PARAMETERS];
+ParameterDefinition parameters_definition[N_PARAMETERS];
 
 size_t configsuite_pg_count(ParameterGenerator);
 

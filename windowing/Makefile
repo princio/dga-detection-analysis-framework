@@ -51,7 +51,8 @@ END_COLOR=\$(COLOR_PREFIX)[0m
 BINDIR := bin
 SRCDIR := src
 LOGDIR := log
-LIBDIR := lib
+ALLLIBDIR := lib/all
+PRODLIBDIR := lib/prod
 TESTDIR := test
 
 
@@ -79,8 +80,7 @@ INCLUDES := -I/usr/include/postgresql/
 # Flags for compiling
 # CFLAGS := -O3 $(STD) $(STACK) $(WARNS) -I/usr/include/postgresql/
 CFLAGS := $(STD) $(STACK) $(WARNS) $(NOWARNS) -I/usr/include/postgresql/
-
-# Debug options
+PROD_CFLAGS := -O3 $(STD) $(STACK) $(WARNS) $(NOWARNS) -I/usr/include/postgresql/
 DEBUG := -g3 -DDEBUG=1
 
 # Dependency libraries
@@ -94,12 +94,16 @@ TEST_LIBS := -l cmocka -L /usr/lib
 
 # Tests binary file
 TEST_BINARY := $(BINARY)_test_runner
+PROD_BINARY := $(BINARY)_prod
 
 
 
 # %.o file names
 NAMES := $(notdir $(basename $(wildcard $(SRCDIR)/*.$(SRCEXT))))
-OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
+
+ALLOBJECTS :=$(patsubst %,$(ALLLIBDIR)/%.o,$(NAMES))
+
+PRODOBJECTS :=$(patsubst %,$(PRODLIBDIR)/%.o,$(NAMES))
 
 
 #
@@ -133,16 +137,27 @@ start:
 
 
 # Rule for link and generate the binary file
-all: $(OBJECTS)
+all: $(ALLOBJECTS)
 	@echo -en "$(BROWN)LD $(END_COLOR)";
 	$(CC) -o $(BINDIR)/$(BINARY) $+ $(DEBUG) $(CFLAGS) $(LIBS)
 	@echo -en "\n--\nBinary file placed at" \
 			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
 
+prod: $(PRODOBJECTS)
+	@echo -en "$(BROWN)LD $(END_COLOR)";
+	$(CC) -o $(BINDIR)/$(PROD_BINARY) $+ $(PROD_CFLAGS) $(LIBS)
+	@echo -en "\n--\nBinary file placed at" \
+			  "$(BROWN)$(BINDIR)/$(PROD_BINARY)$(END_COLOR)\n";
+
 # Rule for object binaries compilation
-$(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
+$(ALLLIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@echo -en "$(BROWN)CC $(END_COLOR)";
 	$(CC) -c $^ -o $@ $(DEBUG) $(CFLAGS) $(LIBS)
+
+# Rule for object binaries compilation
+$(PRODLIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
+	@echo -en "$(BROWN)CC $(END_COLOR)";
+	$(CC) -c $^ -o $@ $(PROD_CFLAGS) $(LIBS)
 
 
 # Rule for run valgrind tool
@@ -154,6 +169,16 @@ valgrind:
 		--log-file=$(LOGDIR)/$@.log \
 		--main-stacksize=838860800\
 		$(BINDIR)/$(BINARY)
+	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
+
+valgrind_prod:
+	valgrind \
+		--track-origins=yes \
+		--leak-check=full \
+		--leak-resolution=high \
+		--log-file=$(LOGDIR)/$@.log \
+		--main-stacksize=838860800\
+		$(BINDIR)/$(BINARY)_prod
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 
 valgrind2:
@@ -178,7 +203,7 @@ tests:
 
 # Rule for cleaning the project
 clean:
-	@rm -rvf $(BINDIR)/* $(LIBDIR)/* $(LOGDIR)/*;
+	@rm -rvf $(BINDIR)/* $(ALLLIBDIR)/* $(LOGDIR)/* $(PRODLIBDIR)/* ;
 
 ca: clean all
 
@@ -189,6 +214,11 @@ av: all valgrind
 
 cab: clean all
 	clear; bin/binary
+
+cp: clean prod
+
+cpb: clean prod
+	clear; bin/binary_prod
 
 cav: clean all valgrind
 

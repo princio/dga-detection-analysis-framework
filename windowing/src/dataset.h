@@ -13,6 +13,7 @@ typedef struct DatasetRWindow {
 
 typedef struct __Dataset {
     WSize wsize;
+    MANY(MinMax) minmax;
     DatasetRWindow windows;
 } __Dataset;
 
@@ -27,6 +28,9 @@ typedef struct DatasetSplits {
     int isok;
     MANY(DatasetSplit) splits;
 } DatasetSplits;
+
+
+void dataset_minmax(RDataset ds);
 
 RDataset dataset_alloc();
 RDataset dataset_create(WSize wsize, Index counter);

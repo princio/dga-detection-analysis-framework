@@ -164,7 +164,7 @@ int logger_initFileLogger(const char* filename, long maxFileSize, unsigned char 
         assert(0 && "filename must not be NULL");
         return 0;
     }
-    if (strlen(filename) > kMaxFileNameLen) {
+    if (strlen(filename) > kMaxFileNameLen + 1) {
         assert(0 && "filename exceeds the maximum number of characters");
         return 0;
     }
@@ -180,7 +180,7 @@ int logger_initFileLogger(const char* filename, long maxFileSize, unsigned char 
         goto cleanup;
     }
     s_flog.currentFileSize = getFileSize(filename);
-    strncpy(s_flog.filename, filename, sizeof(s_flog.filename));
+    strncpy(s_flog.filename, filename, sizeof(s_flog.filename) - 1);
     s_flog.maxFileSize = (maxFileSize > 0) ? maxFileSize : kDefaultMaxFileSize;
     s_flog.maxBackupFiles = maxBackupFiles;
     s_logger |= kFileLogger;
@@ -266,7 +266,7 @@ static void getBackupFileName(const char* basename, unsigned char index,
     strncpy(backupname, basename, size);
     if (index > 0) {
         sprintf(indexname, ".%d", index);
-        strncat(backupname, indexname, strlen(indexname));
+        strncat(backupname, indexname, kMaxFileNameLen + 1);
     }
 }
 
@@ -286,7 +286,7 @@ static int rotateLogFiles(void)
 {
     int i;
     /* backup filename: <filename>.xxx (xxx: 1-255) */
-    char src[kMaxFileNameLen + 5], dst[kMaxFileNameLen + 5]; /* with null character */
+    char src[kMaxFileNameLen * 2 + 10], dst[kMaxFileNameLen * 2 + 10]; /* with null character */
 
     if (s_flog.currentFileSize < s_flog.maxFileSize) {
         return s_flog.output != NULL;

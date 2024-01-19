@@ -62,16 +62,16 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
         sm->NAME[cl].count++;\
     }
     BY_FOR(stats.by, fold) {
-        BY_FOR(stats.by, thchooser) {
-            BY_FOR(trainer->by, config) {
-                BY_FOR(trainer->by, try) {
-                    for (size_t k = 0; k < BY_GET4(trainer->by, config, fold, try, thchooser).splits.number; k++) {
-                        TrainerBy_splits* result;
+        BY_FOR(trainer->by, try) {
+            BY_FOR3(trainer->by, fold, try, split) {
+                BY_FOR(stats.by, thchooser) {
+                    BY_FOR(trainer->by, config) {
+                        TrainerBy_config* result;
                         Config* config;
 
                         config = &cs->configs._[idxconfig];
                         
-                        result = &BY_GET4(trainer->by, config, fold, try, thchooser).splits._[k];
+                        result = &BY_GET5(trainer->by, fold, try, split, thchooser, config);
 
                         for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
                             StatByPSetItemValue* sm;
@@ -234,10 +234,10 @@ void stat_free(Stat stat) {
     BY_FOR(stat.by, fold) {
         BY_FOR(stat.by, thchooser) {
             for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-                FREEMANY(stat.by.byfold._[idxfold].bythchooser._[idxthchooser][pp]);
+                MANY_FREE(stat.by.byfold._[idxfold].bythchooser._[idxthchooser][pp]);
             }
         }
-        FREEMANY(stat.by.byfold._[idxfold].bythchooser);
+        MANY_FREE(stat.by.byfold._[idxfold].bythchooser);
     }
-    FREEMANY(stat.by.byfold);
+    MANY_FREE(stat.by.byfold);
 }

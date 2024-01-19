@@ -10,21 +10,27 @@
 
 #include <linux/limits.h>
 
-typedef struct TrainerBy_splits {
+typedef struct TrainerBy_config {
     Performance* threshold_chooser;
     Detection best_train;
     Detection best_test;
-} TrainerBy_splits;
+} TrainerBy_config;
 
-MAKEMANY(TrainerBy_splits);
+MAKEMANY(TrainerBy_config);
 
 typedef struct TrainerBy_thchooser {
-    MANY(TrainerBy_splits) splits;
+    MANY(TrainerBy_config) byconfig;
 } TrainerBy_thchooser;
 MAKEMANY(TrainerBy_thchooser);
 
-typedef struct TrainerBy_try {
+typedef struct TrainerBy_split {
     MANY(TrainerBy_thchooser) bythchooser;
+} TrainerBy_split;
+
+MAKEMANY(TrainerBy_split);
+
+typedef struct TrainerBy_try {
+    MANY(TrainerBy_split) bysplit;
 } TrainerBy_try;
 
 MAKEMANY(TrainerBy_try);
@@ -35,23 +41,18 @@ typedef struct TrainerBy_fold {
 
 MAKEMANY(TrainerBy_fold);
 
-typedef struct TrainerBy_config {
-    MANY(TrainerBy_fold) byfold;
-} TrainerBy_config;
-
-MAKEMANY(TrainerBy_config);
-
 typedef struct TrainerBy {
     struct {
-        const size_t config;
-        const size_t fold;
-        const size_t try;
-        const size_t thchooser;
+        size_t fold;
+        size_t try;
+        size_t thchooser;
+        size_t config;
     } n;
-    MANY(TrainerBy_config) byconfig;
+    MANY(TrainerBy_fold) byfold;
 } TrainerBy;
 
 typedef struct __Trainer {
+    char rootdir[DIR_MAX];
     RTB2D tb2d;
     MANY(Performance) thchoosers;
     TrainerBy by;

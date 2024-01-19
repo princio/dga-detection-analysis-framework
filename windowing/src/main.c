@@ -32,6 +32,8 @@
 #include "wqueue.h"
 #include "performance_defaults.h"
 
+#include <math.h>
+
 enum BO {
     BO_LOAD_OR_GENERATE,
     BO_TEST
@@ -52,6 +54,83 @@ MANY(Performance) _main_training_performance() {
     performances.number = i;
 
     return performances;
+}
+
+void _minmax(RTB2D tb2d) {
+    const size_t nblocks = 50;
+    const size_t nlogits_max = 500 + nblocks;
+    uint64_t blocks[nblocks];
+    size_t count_logits = 0;
+    int64_t *logits = calloc(nlogits_max, nlogits_max * sizeof(int64_t));
+
+    int64_t logit_min = INT64_MAX;
+    int64_t logit_max = INT64_MIN;
+
+    int reducer = 100;
+    count_logits = 0;
+    BY_FOR(tb2d->tb2w->windowing, source) {
+        for (size_t idxwindow = 0; idxwindow < BY_GET(tb2d->tb2w->windowing, source)->windows.number; idxwindow++) {
+            for (size_t idxconfig = 0; idxconfig < tb2d->tb2w->configsuite.configs.number; idxconfig++) {
+                // double dlogit = BY_GET(tb2d->tb2w->windowing, source)->windows._[idxwindow]->applies._[idxconfig].logit;
+                // dlogit = dlogit * 100 / tb2d->tb2w->wsize;
+                // int64_t logit = (int64_t) dlogit;
+                // logit = logit / reducer * reducer;
+
+                int64_t logit = (int64_t) (floor(BY_GET(tb2d->tb2w->windowing, source)->windows._[idxwindow]->applies._[idxconfig].logit)) / reducer * reducer;
+
+                if (logit_min > logit) logit_min = logit;
+                if (logit_max < logit) logit_max = logit;
+
+                count_logits++;
+            }
+        }
+    }
+
+    const int64_t begin = logit_min;
+    const int64_t end = logit_max + reducer;
+    const int64_t step = (end - begin) / nblocks;
+
+    {
+        memset(blocks, 0, sizeof(int64_t) * nblocks);
+
+        BY_FOR(tb2d->tb2w->windowing, source) {
+            for (size_t idxwindow = 0; idxwindow < BY_GET(tb2d->tb2w->windowing, source)->windows.number; idxwindow++) {
+                for (size_t idxconfig = 0; idxconfig < tb2d->tb2w->configsuite.configs.number; idxconfig++) {
+                    // double dlogit = BY_GET(tb2d->tb2w->windowing, source)->windows._[idxwindow]->applies._[idxconfig].logit;
+                    // dlogit = dlogit * 100 / tb2d->tb2w->wsize;
+                    // int64_t logit = (int64_t) dlogit;
+                    // logit = logit / reducer * reducer;
+
+                    int64_t logit = (int64_t) (floor(BY_GET(tb2d->tb2w->windowing, source)->windows._[idxwindow]->applies._[idxconfig].logit)) / reducer * reducer;
+
+                    const size_t index = floor(((double) (logit - begin)) / step);
+
+                    if (index >= nblocks) {
+                        printf("Error: %ld > %ld\n", index,  nblocks);
+                    }
+                    blocks[index]++;
+                }
+            }
+        }
+    }
+
+    size_t nlogits = 0;
+    for (size_t i = 0; i < nblocks; i++) {
+        const int64_t block_begin = begin + step * i;
+        const int64_t block_end = block_begin + step;
+
+        const double d_block_nlogits = nlogits_max * ((double) blocks[i]) / count_logits;
+        const size_t block_nlogits = ceil(d_block_nlogits);
+        
+        printf("[ %8ld to %8ld ) = %8ld  ->  %8.4f ~ %ld\n", block_begin, block_end, blocks[i], d_block_nlogits, block_nlogits);
+
+        const int64_t block_step = step / block_nlogits;
+        for (size_t kk = 0; kk < block_nlogits; kk++) {
+            logits[nlogits] = block_begin + block_step * kk;
+            printf("%8ld -> %ld\n", nlogits, logits[nlogits]);
+            nlogits++;
+        }
+    }
 }
 
 
@@ -75,9 +154,9 @@ int main (int argc, char* argv[]) {
     
     char rootdir[PATH_MAX];
 
-    const int wsize = 2000;
+    const int wsize = 500;
     const int nsources = 0;
-    const size_t max_configs = 5;
+    const size_t max_configs = 10;
 
     if (QM_MAX_SIZE < (wsize * 3)) {
         printf("Error: wsize too large\n");
@@ -95,7 +174,6 @@ int main (int argc, char* argv[]) {
 
     enum BO todo = BO_LOAD_OR_GENERATE;
     
-
     switch (todo) {
         case BO_LOAD_OR_GENERATE: {
             tb2w = main_windowing_load(rootdir);
@@ -154,6 +232,15 @@ int main (int argc, char* argv[]) {
             break;
     }
 
+    BY_FOR(*tb2d, try) {
+        BY_FOR(*tb2d, fold) {
+            for (size_t idxsplit = 0; idxsplit < BY_GET2(*tb2d, try, fold).splits.number; idxsplit++) {
+                dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].train);
+                dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].test);
+            }
+        }
+    }
+
     if(!tb2d) {
         LOG_ERROR("TB2D is NULL.");
         exit(1);
@@ -168,8 +255,8 @@ int main (int argc, char* argv[]) {
     tb2w_free(tb2w);
 
 
-    FREEMANY(foldconfigs_many);
-    FREEMANY(thchoosers);
+    MANY_FREE(foldconfigs_many);
+    MANY_FREE(thchoosers);
 
     gatherer_free_all();
 

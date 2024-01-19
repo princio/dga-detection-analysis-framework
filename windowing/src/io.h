@@ -48,6 +48,8 @@ if(__io__debug) {\
 #define FW(A) fwriteN((void*) &A, sizeof(A), file)
 #define FR(A) freadN((void*) &A, sizeof(A), file)
 
+#define IO_FLAG_LEN 80
+
 typedef enum IOReadWrite {
     IO_WRITE,
     IO_READ
@@ -84,5 +86,7 @@ int io_save(TCPC(void), int cache, IOObjectID fnname, IOObjectFunction fn);
 int io_load(char objid[IO_OBJECTID_LENGTH], int cache, IOObjectFunction fn, void* obj);
 
 void io_appendtime(char *str, size_t size);
+
+void io_flag(IOReadWrite rw, FILE* file, char flag_code[IO_FLAG_LEN], int line);
 
 #endif

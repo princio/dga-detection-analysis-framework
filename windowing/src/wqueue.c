@@ -3,7 +3,6 @@
 #include <pthread.h>
 #include <stdio.h>
 
-#define NTHREADS 8
 #define QM_MAX_SIZE 50000
 
 

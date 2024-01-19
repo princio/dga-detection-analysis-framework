@@ -6,7 +6,8 @@
 
 #include <assert.h>
 
-RTB2W main_windowing_create(char dirpath[DIR_MAX], const WSize wsize, const size_t max_sources_number, ParameterGenerator pg) {
+
+RTB2W main_windowing_generate(char dirpath[DIR_MAX], const WSize wsize, const size_t max_sources_number, ParameterGenerator pg) {
     RTB2W tb2w;
 
     {
@@ -22,32 +23,13 @@ RTB2W main_windowing_create(char dirpath[DIR_MAX], const WSize wsize, const size
 
         tb2w_windowing(tb2w);
 
-        printf("Applying for %ld configs.\n",  tb2w->configsuite.configs.number);
-        tb2w_apply(tb2w);
-    }
-
-    return tb2w;
-}
-
-RTB2W main_windowing_generate(char dirpath[DIR_MAX], const WSize wsize, const size_t max_sources_number, ParameterGenerator pg) {
-    RTB2W tb2w;
-
-    if (io_direxists(dirpath)) {
-        LOG_WARN("Directory already exist: %s.", dirpath);
-    }
-
-    tb2w = main_windowing_create(dirpath, wsize, max_sources_number, pg);
-
-    if (!io_direxists(dirpath)) {
-        if (io_makedirs(dirpath)) {
-            printf("Error: impossible to create saving directory: %s\n", dirpath);
-            return NULL;
-        }
-
         if (tb2w_io(IO_WRITE, dirpath, &tb2w)) {
             printf("Impossible to save TB2W at: %s\n", dirpath);
             return NULL;
         }
+
+        printf("Applying for %ld configs.\n",  tb2w->configsuite.configs.number);
+        tb2w_apply(tb2w);
     }
 
     return tb2w;

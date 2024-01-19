@@ -34,8 +34,8 @@ MAKEMANY(StatBy_fold);
 
 typedef struct StatBy {
     struct {
-        const size_t fold;
-        const size_t thchooser;
+        size_t fold;
+        size_t thchooser;
     } n;
     MANY(StatBy_fold) byfold;
 } StatBy;

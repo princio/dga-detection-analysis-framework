@@ -18,10 +18,10 @@ void windows_free(void* item) {
     MANY(__Window0)* windows = (MANY(__Window0)*) item;
 
     for (size_t w = 0; w < windows->number; w++) {
-        FREEMANY(windows->_[w].applies);
+        MANY_FREE(windows->_[w].applies);
     }
 
-    FREEMANY((*windows));
+    MANY_FREE((*windows));
 }
 
 void windows_shuffle(MANY(RWindow) rwindows) {

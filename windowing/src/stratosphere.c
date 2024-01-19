@@ -142,6 +142,8 @@ int32_t get_fnreq_max(int32_t id) {
     char sql[1000];
     sprintf(sql, "SELECT MAX(FN_REQ) FROM MESSAGES_%d", id);
 
+    fnreq_max = 0;
+
     PGresult* res_nrows = PQexec(conn, sql);
     if (PQresultStatus(res_nrows) != PGRES_TUPLES_OK) {
         LOG_WARN("get MAX(FN_REQ) for source %d failed.", id);
@@ -322,24 +324,19 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
 
     fetch_source_messages(source, &nrows, &pgresult);
 
-    printf("\nNROWS: %d\n", nrows);
-
     queue_messages* qm[100];
 	queue_t queue = QUEUE_INITIALIZER(qm);
     int qm_max_size;
     const int qm_min_size = windowing->wsize * 3;
-    const int ideal_block_size = (nrows + NTHREADS - 1) / NTHREADS;
+    const int ideal_block_size = (nrows + WQUEUE_NTHREADS - 1) / WQUEUE_NTHREADS;
 
     if (ideal_block_size < qm_min_size) {
         qm_max_size = qm_min_size;
-        printf("QM SIZE Set to MIN:\t%5d\n", qm_max_size);
     } else
     if (ideal_block_size > QM_MAX_SIZE) {
         qm_max_size = QM_MAX_SIZE;
-        printf("QM SIZE Set to MAX:\t%5d\n", qm_max_size);
     } else {
         qm_max_size = ideal_block_size;
-        printf("QM SIZE Set to IDEAL:\t%5d\n", qm_max_size);
     }
 
     const int n_blocks = nrows / qm_max_size + (nrows % qm_max_size > 0);
@@ -352,16 +349,16 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
         .wsize = windowing->wsize,
     };
 
-    struct stratosphere_apply_consumer_args consumer_args[NTHREADS];
+    struct stratosphere_apply_consumer_args consumer_args[WQUEUE_NTHREADS];
 
     pthread_t producer;
-    pthread_t consumers[NTHREADS];
+    pthread_t consumers[WQUEUE_NTHREADS];
 
     CLOCK_START(memazzo);
     {
         pthread_create(&producer, NULL, stratosphere_apply_producer, &producer_args);
 
-        for (size_t i = 0; i < NTHREADS; ++ i) {
+        for (size_t i = 0; i < WQUEUE_NTHREADS; ++ i) {
             consumer_args[i].id = i;
             consumer_args[i].tb2w = tb2w;
             consumer_args[i].windowing = windowing;
@@ -372,7 +369,7 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
 
         pthread_join(producer, NULL);
 
-        for (size_t i = 0; i < NTHREADS; ++ i) {
+        for (size_t i = 0; i < WQUEUE_NTHREADS; ++ i) {
             pthread_join(consumers[i], NULL);
         }
     }
@@ -430,7 +427,7 @@ void _stratosphere_add(RTB2W tb2, size_t limit) {
         conn, 
         "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max "
         "FROM pcap JOIN malware as mw ON malware_id = mw.id "
-        "WHERE pcap.qr > 100000"
+        "WHERE pcap.qr < 2000000"
         "ORDER BY qr ASC"
     );
 

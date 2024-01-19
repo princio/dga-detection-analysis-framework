@@ -15,7 +15,7 @@ RGatherer windowings_gatherer = NULL;
 
 void _windowing_free(void* item) {
     RWindowing* rwindowing_ref = item;
-    FREEMANY((*rwindowing_ref)->windows);
+    MANY_FREE((*rwindowing_ref)->windows);
     free(*rwindowing_ref);
 }
 

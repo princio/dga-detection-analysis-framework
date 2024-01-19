@@ -36,11 +36,11 @@ void tb2d_run(RTB2D tb2d) {
 void tb2d_free(RTB2D tb2d) {
     BY_FOR((*tb2d), try) {
         BY_FOR((*tb2d), fold) {
-            FREEMANY(BY_GET2((*tb2d), try, fold).splits);
+            MANY_FREE(BY_GET2((*tb2d), try, fold).splits);
         }
-        FREEMANY(BY_GET((*tb2d), try).byfold);
+        MANY_FREE(BY_GET((*tb2d), try).byfold);
     }
-    FREEMANY(tb2d->bytry);
-    FREEMANY(tb2d->folds);
+    MANY_FREE(tb2d->bytry);
+    MANY_FREE(tb2d->folds);
     free(tb2d);
 }

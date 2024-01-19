@@ -24,16 +24,16 @@ void _main_training_csv(char fpath[PATH_MAX], RTrainer trainer) {
     fprintf(file_csv, "caos,caos,caos,wsize,pset,pset,pset,pset,pset,pset,pset,pset,train,train,train,test,test,test\n");
     fprintf(file_csv, "fold,try,k,wsize,ninf,pinf,nn,windowing,wl_rank,wl_value,nx_eps_incr,thchooser,0,1,2,0,1,2\n");
 
-    BY_FOR(trainer->by, config) {
-        BY_FOR(trainer->by, fold) {
-            BY_FOR(trainer->by, try) {
+    BY_FOR(trainer->by, fold) {
+        BY_FOR(trainer->by, try) {
+            BY_FOR3(trainer->by, fold, try, split) {
                 BY_FOR(trainer->by, thchooser) {
-                    for (size_t k = 0; k < BY_GET4(trainer->by, config, fold, try, thchooser).splits.number; k++) {
-                        TrainerBy_splits* result = &BY_GET4(trainer->by, config, fold, try, thchooser).splits._[k];
+                    BY_FOR(trainer->by, config) {
+                        TrainerBy_config* result = &BY_GET5(trainer->by, fold, try, split, thchooser, config);
 
                         fprintf(file_csv, "%ld,", idxfold);
                         fprintf(file_csv, "%ld,", idxtry);
-                        fprintf(file_csv, "%ld,", k);
+                        fprintf(file_csv, "%ld,", idxsplit);
                         fprintf(file_csv, "%ld,", tb2d->tb2w->wsize);
                         fprintf(file_csv, "%f,", tb2d->tb2w->configsuite.configs._[idxconfig].ninf);
                         fprintf(file_csv, "%f,", tb2d->tb2w->configsuite.configs._[idxconfig].pinf);
@@ -71,25 +71,24 @@ void _main_training_print(RTrainer trainer) {
     fprintf(file_csv, ",,,,,,train,train,train,test,test,test");
     fprintf(file_csv, "fold,try,k,wsize,apply,thchooser,0,1,2,0,1,2");
 
-
-    BY_FOR(trainer->by, config) {
-        BY_FOR(trainer->by, fold) {
-            BY_FOR(trainer->by, try) {
+    BY_FOR(trainer->by, fold) {
+        BY_FOR(trainer->by, try) {
+            BY_FOR3(trainer->by, fold, try, split) {
                 BY_FOR(trainer->by, thchooser) {
-                    for (size_t k = 0; k < BY_GET4(trainer->by, config, fold, try, thchooser).splits.number; k++) {
-                        TrainerBy_splits* result = &BY_GET4(trainer->by, config, fold, try, thchooser).splits._[k];
+                    BY_FOR(trainer->by, config) {
+                        TrainerBy_config* result = &BY_GET5(trainer->by, fold, try, split, thchooser, config);
 
                         {
-                            char headers[4][50];
-                            char header[210];
+                            char headers[10][100];
+                            char header[1000];
                             size_t h_idx = 0;
 
                             sprintf(headers[h_idx++], "%3ld", idxfold);
                             sprintf(headers[h_idx++], "%3ld", idxtry);
-                            sprintf(headers[h_idx++], "%3ld", k);
+                            sprintf(headers[h_idx++], "%3ld", idxsplit);
                             sprintf(headers[h_idx++], "%5ld", tb2d->tb2w->wsize);
-                            sprintf(headers[h_idx++], "%3ld", idxconfig);
-                            sprintf(headers[h_idx++], "%12s", trainer->thchoosers._[idxthchooser].name);
+                            sprintf(headers[h_idx++], "%20ld", idxconfig);
+                            sprintf(headers[h_idx++], "%22s", trainer->thchoosers._[idxthchooser].name);
                             sprintf(header, "%s,%s,%s,%s,", headers[0], headers[1], headers[2], headers[3]);
                             printf("%-30s ", header);
                         }
