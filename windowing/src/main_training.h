@@ -9,4 +9,6 @@
 RTrainer main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d, MANY(Performance));
 RTrainer main_training_load(char dirname[DIR_MAX]);
 
+void main_training_stat(RTrainer trainer);
+
 #endif

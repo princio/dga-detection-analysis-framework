@@ -1,4 +1,4 @@
-#include "trainer_detections.h"
+#include "thrange.h"
 
 #include "trainer.h"
 
@@ -14,7 +14,7 @@ typedef struct BestDetection {
     Detection detection;
 } BestDetection;
 
-void tdqueue_enqueue(tdqueue_t *queue, tdqueue_data* value, int is_last) {
+void thr_queue_enqueue(thr_queue_t *queue, thr_queue_data* value, int is_last) {
 	pthread_mutex_lock(&(queue->mutex));
 	while (queue->size == queue->capacity)
 		pthread_cond_wait(&(queue->cond_full), &(queue->mutex));
@@ -33,14 +33,14 @@ void tdqueue_enqueue(tdqueue_t *queue, tdqueue_data* value, int is_last) {
 	pthread_cond_broadcast(&(queue->cond_empty));
 }
 
-tdqueue_data* tdqueue_dequeue(tdqueue_t *queue) {
+thr_queue_data* thr_queue_dequeue(thr_queue_t *queue) {
 	int isover;
 	pthread_mutex_lock(&(queue->mutex));
 	while (queue->size == 0 && !queue->end)
 		pthread_cond_wait(&(queue->cond_empty), &(queue->mutex));
 	// we get here if enqueue happened otherwise if we are over.
 	if (queue->size > 0) {
-		tdqueue_data* value = queue->qm[queue->out];
+		thr_queue_data* value = queue->qm[queue->out];
 		-- queue->size;
 		++ queue->out;
 		queue->out %= queue->capacity;
@@ -59,14 +59,14 @@ tdqueue_data* tdqueue_dequeue(tdqueue_t *queue) {
 	}
 }
 
-void tdqueue_end(tdqueue_t *queue) {
+void thr_queue_end(thr_queue_t *queue) {
 	pthread_mutex_lock(&(queue->mutex));
 	queue->end = 1;
 	pthread_mutex_unlock(&(queue->mutex));
 	pthread_cond_broadcast(&(queue->cond_empty));
 }
 
-int tdqueue_isend(tdqueue_t *queue)
+int thr_queue_isend(thr_queue_t *queue)
 {
 	int end;
 	pthread_mutex_lock(&(queue->mutex));
@@ -78,7 +78,7 @@ int tdqueue_isend(tdqueue_t *queue)
 	return end;
 }
 
-int tdqueue_size(tdqueue_t *queue)
+int thr_queue_size(thr_queue_t *queue)
 {
 	pthread_mutex_lock(&(queue->mutex));
 	int size = queue->size;
@@ -86,7 +86,7 @@ int tdqueue_size(tdqueue_t *queue)
 	return size;
 }
 
-void td_io_detection(IOReadWrite rw, char fpath[PATH_MAX], RTrainer trainer, TrainerBy_split* split) {
+void thr_io_detection(IOReadWrite rw, char fpath[PATH_MAX], RTrainer trainer, TrainerBy_split* split) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     FILE* file = io_openfile(rw, fpath);
@@ -126,8 +126,8 @@ io_path_concat(trainer->rootdir, fpath, fpath);
 
 #define TD_IO_EXISTS(fpath, V) { TD_IO_FPATH(fpath); V = io_fileexists(fpath); }
 
-void* _td_producer(void* argsvoid) {
-    struct td_producer_args* args = argsvoid;
+void* _thr_producer(void* argsvoid) {
+    struct thr_producer_args* args = argsvoid;
 
     const RTrainer trainer = args->trainer;
     TB2D tb2d = *args->trainer->tb2d;
@@ -164,12 +164,12 @@ void* _td_producer(void* argsvoid) {
                 if (file_exists) {;
                     LOG_INFO("Result for %ld,%ld,%ld exists.", idxfold, idxtry, idxsplit);
 
-                    td_io_detection(IO_READ, fpath, trainer, &BY_GET3(trainer->by, fold, try, split));
+                    thr_io_detection(IO_READ, fpath, trainer, &BY_GET3(trainer->by, fold, try, split));
 
                     continue;
                 }
                 
-                tdqueue_data* qm = calloc(1, sizeof(tdqueue_data));
+                thr_queue_data* qm = calloc(1, sizeof(thr_queue_data));
 
                 qm->id = qm_id++;
 
@@ -181,14 +181,14 @@ void* _td_producer(void* argsvoid) {
                 qm->idxtry = idxtry;
                 qm->idxsplit = idxsplit;
 
-                tdqueue_enqueue(args->queue, qm, 0);
+                thr_queue_enqueue(args->queue, qm, 0);
 
                 LOG_TRACE("Enqueued split %ld/%ld", idxsplit, total_splits);
             }
         }
     }
 
-    tdqueue_end(args->queue);
+    thr_queue_end(args->queue);
 
     return NULL;
 }
@@ -200,8 +200,8 @@ typedef struct MinMaxIdx {
 
 MAKEMANY(MinMaxIdx);
 
-void* _td_consumer(void* argsvoid) {
-    struct td_consumer_args* args = argsvoid;
+void* _thr_consumer(void* argsvoid) {
+    struct thr_consumer_args* args = argsvoid;
 
     RTrainer trainer = args->trainer;
     const size_t n_configs = trainer->tb2d->tb2w->configsuite.configs.number;
@@ -222,12 +222,12 @@ void* _td_consumer(void* argsvoid) {
         MANY_INIT(best_detections[idxconfig], thchoosers.number, Detection);
     }
 
-    while(!tdqueue_isend(args->queue)) {
-        tdqueue_data* qm = tdqueue_dequeue(args->queue);
+    while(!thr_queue_isend(args->queue)) {
+        thr_queue_data* qm = thr_queue_dequeue(args->queue);
         
         if (qm == NULL) break;
 
-        CLOCK_START(_td_consumer);
+        CLOCK_START(_thr_consumer);
 
         const size_t idxtry = qm->idxtry;
         const size_t idxfold = qm->idxfold;
@@ -379,11 +379,11 @@ void* _td_consumer(void* argsvoid) {
         {
             char fpath[PATH_MAX];
             TD_IO_FPATH(fpath);
-            td_io_detection(IO_WRITE, fpath, trainer, &BY_GET3(trainer->by, fold, try, split));
+            thr_io_detection(IO_WRITE, fpath, trainer, &BY_GET3(trainer->by, fold, try, split));
         }
 
         free(qm);
-        CLOCK_END(_td_consumer);
+        CLOCK_END(_thr_consumer);
     }
 
     for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
@@ -396,8 +396,8 @@ void* _td_consumer(void* argsvoid) {
     return NULL;
 }
 
-trainer_detections_context* trainer_detections_start(RTrainer trainer) {
-    trainer_detections_context* context = calloc(1, sizeof(trainer_detections_context));
+thrange_context* thrange_start(RTrainer trainer) {
+    thrange_context* context = calloc(1, sizeof(thrange_context));
 
     const size_t nblocks = 50;
     const size_t nlogits_max = 200;
@@ -422,20 +422,20 @@ trainer_detections_context* trainer_detections_start(RTrainer trainer) {
     if (blockconfig_step > n_configs) blockconfig_step = n_configs;
 
     const int buffer_size = 100;
-    context->qm = calloc(buffer_size, sizeof(tdqueue_data));
+    context->qm = calloc(buffer_size, sizeof(thr_queue_data));
 
     context->logits = logits;
 
     {
-        tdqueue_t queue = TDQUEUE_INITIALIZER(context->qm, buffer_size);
-        memcpy(&context->queue, &queue, sizeof(tdqueue_t));
+        thr_queue_t queue = TDQUEUE_INITIALIZER(context->qm, buffer_size);
+        memcpy(&context->queue, &queue, sizeof(thr_queue_t));
     }
 
     context->producer_args.queue = &context->queue;
     context->producer_args.trainer = trainer;
     context->producer_args.ths = logits;
 
-    pthread_create(&context->producer, NULL, _td_producer, &context->producer_args);
+    pthread_create(&context->producer, NULL, _thr_producer, &context->producer_args);
 
     for (size_t i = 0; i < TD_NTHREADS; ++ i) {
         context->consumer_args[i].id = i;
@@ -445,17 +445,17 @@ trainer_detections_context* trainer_detections_start(RTrainer trainer) {
         context->consumer_args[i].blockconfig_step = blockconfig_step;
 
         // if (i == 0) {
-        //     pthread_create(&context->consumers[i], NULL, _td_consumer_old, &context->consumer_args[i]);
+        //     pthread_create(&context->consumers[i], NULL, _thr_consumer_old, &context->consumer_args[i]);
         // } else {
-        //     pthread_create(&context->consumers[i], NULL, _td_consumer, &context->consumer_args[i]);
+        //     pthread_create(&context->consumers[i], NULL, _thr_consumer, &context->consumer_args[i]);
         // }
-        pthread_create(&context->consumers[i], NULL, _td_consumer, &context->consumer_args[i]);
+        pthread_create(&context->consumers[i], NULL, _thr_consumer, &context->consumer_args[i]);
     }
 
     return context;
 }
 
-int trainer_detections_wait(trainer_detections_context* context) {
+int thrange_wait(thrange_context* context) {
     if (!context) {
         LOG_ERROR("Context is NULL.");
         return -1;

@@ -25,10 +25,10 @@ WINDOW* cwin;
 
 char CACHE_DIR[DIR_MAX];
 
-#ifdef DEBUG
+#ifdef PRINTF_DEBUG
 #define PRINTF(F, ...) printf(F, __VA_ARGS__)
 #else 
-#define PRINTF(F, ...)
+#define PRINTF(F, ...) do { } while(0)
 #endif
 
 // #define IO_DEBUG

@@ -4,6 +4,7 @@
 #include "detect.h"
 // #include "logger.h"
 #include "performance_defaults.h"
+#include "stat.h"
 #include "trainer.h"
 
 #include <errno.h>
@@ -124,4 +125,28 @@ RTrainer main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d, MANY(Performa
 
 RTrainer main_training_load(char dirpath[DIR_MAX]) {
     return NULL;
+}
+
+void main_training_stat(RTrainer trainer) {
+    ParameterRealmEnabled pre;
+    memset(pre, 0, sizeof(ParameterRealmEnabled));
+
+    for (size_t idxpd = 0; idxpd < N_PARAMETERS; idxpd++) {
+        const size_t pd_n = trainer->tb2d->tb2w->configsuite.pr[idxpd].number;
+        MANY_INIT(pre[idxpd], pd_n, int);
+        for (size_t idxparameter = 0; idxparameter < pd_n; idxparameter++) {
+            pre[idxpd]._[idxparameter] = 1;
+            trainer->tb2d->tb2w->configsuite.pr[idxpd]._[idxparameter].disabled = 0;
+        }
+    }
+
+    char csvpath[PATH_MAX];
+    io_path_concat(trainer->rootdir, "stat.csv", csvpath);
+    Stat stat = stat_run(trainer, pre, csvpath);
+
+    stat_free(stat);
+
+    for (size_t idxpd = 0; idxpd < N_PARAMETERS; idxpd++) {
+        MANY_FREE(pre[idxpd]);
+    }
 }

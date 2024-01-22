@@ -47,7 +47,7 @@ typedef struct Stat {
 
 #define STAT_IDX(STAT, FOLD, THCHOOSER, PP, PARAMETER) STAT.by.byfold._[FOLD].bythchooser._[THCHOOSER][PP]._[PARAMETER]
 
-Stat stat_run(RTrainer, ParameterRealmEnabled parameterrealmenabled, char fpath[PATH_MAX]);
+Stat stat_run(RTrainer, ParameterRealmEnabled parameterrealmenabled, char csvpath[PATH_MAX]);
 
 void stat_free(Stat results);
 

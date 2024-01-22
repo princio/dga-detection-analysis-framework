@@ -155,8 +155,10 @@ int main (int argc, char* argv[]) {
     char rootdir[PATH_MAX];
 
     const int wsize = 500;
-    const int nsources = 0;
-    const size_t max_configs = 10;
+    const int nsources = 20;
+    const size_t max_configs = 0;
+
+    const ParameterGenerator pg = parametergenerator_default(max_configs);
 
     if (QM_MAX_SIZE < (wsize * 3)) {
         printf("Error: wsize too large\n");
@@ -166,7 +168,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/test_configsuite_allsources_%d_%d_%ld/", wsize, nsources, max_configs);
+        sprintf(rootdir, "/home/princio/Desktop/results/valgrind_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     RTB2W tb2w = NULL;
@@ -178,12 +180,12 @@ int main (int argc, char* argv[]) {
         case BO_LOAD_OR_GENERATE: {
             tb2w = main_windowing_load(rootdir);
             if (!tb2w) {
-                tb2w = main_windowing_generate(rootdir, wsize, nsources, parametergenerator_default(max_configs));
+                tb2w = main_windowing_generate(rootdir, wsize, nsources, pg);
             }
             break;
         }
         case BO_TEST: {
-            if (main_windowing_test(rootdir, wsize, nsources, parametergenerator_default(max_configs))) {
+            if (main_windowing_test(rootdir, wsize, nsources, pg)) {
                 LOG_INFO("TB2W test failed.");
                 exit(1);
             }
@@ -249,6 +251,8 @@ int main (int argc, char* argv[]) {
     MANY(Performance) thchoosers = _main_training_performance();
 
     RTrainer trainer = main_training_generate(rootdir, tb2d, thchoosers);
+
+    main_training_stat(trainer);
 
     trainer_free(trainer);
     tb2d_free(tb2d);

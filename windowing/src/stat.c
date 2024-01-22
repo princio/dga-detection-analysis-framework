@@ -15,7 +15,7 @@
 #include <string.h>
 #include <time.h>
 
-Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, char fpath[PATH_MAX]) {
+Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, char csvpath[PATH_MAX]) {
 
     Stat stats;
     TrainerBy* by = &trainer->by;
@@ -32,7 +32,10 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
         sm->NAME[cl].std = 0;\
         sm->NAME[cl].count = 0;\
     }
+
+    MANY_INIT(stats.by.byfold, trainer->tb2d->n.fold, StatBy_fold);
     BY_FOR(stats.by, fold) {
+        MANY_INIT(BY_GET(stats.by, fold).bythchooser, trainer->thchoosers.number, StatBy_thchooser);
         BY_FOR(stats.by, thchooser) {
             for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
                 MANY_INIT(BY_GET2(stats.by, fold, thchooser)[pp], cs->pr[pp].number, StatByPSetItemValue);
@@ -64,6 +67,10 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
     BY_FOR(stats.by, fold) {
         BY_FOR(trainer->by, try) {
             BY_FOR3(trainer->by, fold, try, split) {
+                if (BY_GET2(trainer->by, fold, try).isok == 0) {
+                    LOG_DEBUG("Skipping splits fold%ld, try%ld", idxfold, idxtry);
+                    continue;
+                }
                 BY_FOR(stats.by, thchooser) {
                     BY_FOR(trainer->by, config) {
                         TrainerBy_config* result;
@@ -72,6 +79,16 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                         config = &cs->configs._[idxconfig];
                         
                         result = &BY_GET5(trainer->by, fold, try, split, thchooser, config);
+
+                        DGAFOR(cl) {
+                            int sum = result->best_train.windows[cl][0] + result->best_train.windows[cl][1];
+                            if (sum == 0) {
+                                LOG_ERROR("No windows fold#%ld try#%ld split#%ld thchooser#%s config#%ld for %ld-class: %5ld\t%5ld",
+                                    idxfold, idxtry, idxsplit, trainer->thchoosers._[idxthchooser].name, idxconfig,
+                                    cl
+                                );
+                            }
+                        }
 
                         for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
                             StatByPSetItemValue* sm;
@@ -173,7 +190,7 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
             fprintf(file, "%d,%d", (int) (item->train[cl].avg * 100), (int) (item->test[cl].avg * 100));\
         }
 
-    FILE* file = fopen(fpath, "w");
+    FILE* file = fopen(csvpath, "w");
     fprintf(file, "fold,wsize,thchooser,psetitem,psetitemvalue");
     DGAFOR(cl) {
         fprintf(file, ",min[%d] train,min[%d] test,max[%d] train,max[%d] test,avg[%d] train, avg[%d] test", cl, cl, cl, cl, cl, cl);

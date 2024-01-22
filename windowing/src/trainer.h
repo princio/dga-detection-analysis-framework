@@ -12,6 +12,7 @@
 
 typedef struct TrainerBy_config {
     Performance* threshold_chooser;
+    float fpr_grt09;
     Detection best_train;
     Detection best_test;
 } TrainerBy_config;
@@ -30,6 +31,7 @@ typedef struct TrainerBy_split {
 MAKEMANY(TrainerBy_split);
 
 typedef struct TrainerBy_try {
+    int isok;
     MANY(TrainerBy_split) bysplit;
 } TrainerBy_try;
 
