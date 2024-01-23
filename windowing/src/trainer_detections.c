@@ -109,6 +109,7 @@ void td_io_detection(IOReadWrite rw, char fpath[PATH_MAX], RTrainer trainer, Tra
                 snprintf(flag, IO_FLAG_LEN, "detection_%s_%ld", trainer->thchoosers._[idxthchooser].name, i);
                 io_flag(rw, file, flag, __LINE__);
                 FRW(dets[i]->th);
+                FRW(dets[i]->alarms);
                 FRW(dets[i]->sources);
                 FRW(dets[i]->windows);
             }
@@ -309,6 +310,11 @@ void* _td_consumer(void* argsvoid) {
                         detections_config->_[idxth].th = th;
                         detections_config->_[idxth].windows[source->wclass.mc][is_true]++;
                         detections_config->_[idxth].sources[source->wclass.mc][source->index.multi][is_true]++;
+                        for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++) {
+                            detections_config->_[idxth].alarms[source->wclass.mc][idxdnbad] += apply->dn_bad[idxdnbad];
+                        }
+                        detections_config->_[idxth].dn_count += apply->wcount;
+                        detections_config->_[idxth].dn_whitelistened_count += apply->whitelistened;
                     }
                 }
                 if (idxwindow % (split.train->windows.all.number / 10) == 0) {
@@ -360,6 +366,11 @@ void* _td_consumer(void* argsvoid) {
                         detection->th = th;
                         detection->windows[source->wclass.mc][is_true]++;
                         detection->sources[source->wclass.mc][source->index.multi][is_true]++;
+                        for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++) {
+                            detection->alarms[source->wclass.mc][idxdnbad] += window0->applies._[apply_idxconfig].dn_bad[idxdnbad];
+                        }
+                        detection->dn_count += window0->applies._[apply_idxconfig].wcount;
+                        detection->dn_whitelistened_count += window0->applies._[apply_idxconfig].whitelistened;
                     }
                 }
                 

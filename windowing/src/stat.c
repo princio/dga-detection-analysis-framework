@@ -15,6 +15,75 @@
 #include <string.h>
 #include <time.h>
 
+#define PF_ASK_CENTER(FILE, ASK, ...) {\
+    char __tmp__kk[200];\
+    sprintf(__tmp__kk, __VA_ARGS__);\
+    int __bb = fprintf(FILE, "%*s", (int) (ASK - strlen(__tmp__kk)) / 2, " ");\
+    fprintf(FILE, "%*s", -1 * (int) (ASK - __bb), __tmp__kk);\
+}
+#define PF_ASK(FILE, ASK, ...) { char __tmp__kk[200]; sprintf(__tmp__kk, __VA_ARGS__); fprintf(FILE, "%*s", ASK, __tmp__kk); }
+// #define PF_ASK(FILE, ASK, ...) PF_ASK_CENTER(FILE, ASK, __VA_ARGS__)
+
+#define update_stat(stat, value) \
+    if (stat.min > value) stat.min = value;\
+    if (stat.max < value) stat.max = value;\
+    stat.avg += value;
+
+#define update_stat(stat, value) \
+    if (stat.min > value) stat.min = value;\
+    if (stat.max < value) stat.max = value;\
+    stat.avg += value;
+
+void _stat_init(StatMetric sm[N_DGACLASSES]) {
+    DGAFOR(cl) {
+        sm[cl].logit.min = DBL_MAX;
+        sm[cl].logit.max = - DBL_MAX;
+        sm[cl].logit.avg = 0;
+        sm[cl].logit.std = 0;
+
+        sm[cl].alarms.windowed.min = SIZE_MAX;
+        sm[cl].alarms.windowed.max = 0;
+        sm[cl].alarms.windowed.avg = 0;
+        sm[cl].alarms.windowed.std = 0;
+        sm[cl].alarms.windowed.count = 0;
+
+        FOR_DNBAD {
+            sm[cl].alarms.unwindowed[idxdnbad].min = SIZE_MAX;
+            sm[cl].alarms.unwindowed[idxdnbad].max = 0;
+            sm[cl].alarms.unwindowed[idxdnbad].avg = 0;
+            sm[cl].alarms.unwindowed[idxdnbad].std = 0;
+        }
+
+        sm[cl].count = 0;
+    }
+}
+
+void _stat_update(Detection* det, StatMetric sm[N_DGACLASSES]) {
+    DGAFOR(cl) {
+        const double tr = DETECT_TRUERATIO(*det, cl);
+        const DetectionValue n_alarms = DETECT_WINDOW_ALARMS(*det, cl);
+
+        update_stat(sm[cl].logit, tr);
+        update_stat(sm[cl].alarms.windowed, n_alarms);
+
+        FOR_DNBAD {
+            update_stat(sm[cl].alarms.unwindowed[idxdnbad], det->alarms[cl][idxdnbad]);
+        }
+    
+        sm[cl].count++;
+    }
+}
+
+void _stat_finalize(StatMetric sm[N_DGACLASSES]) {
+    DGAFOR(cl) {
+        sm[cl].logit.avg /= sm[cl].count;
+        FOR_DNBAD {
+            sm[cl].alarms.unwindowed[idxdnbad].avg /= sm[cl].count;
+        }
+        sm[cl].alarms.windowed.avg /= sm[cl].count;
+    }
+}
+
 Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, char csvpath[PATH_MAX]) {
 
     Stat stats;
@@ -24,14 +93,6 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
     BY_SETN(stats.by, fold, trainer->tb2d->n.fold);
     BY_SETN(stats.by, thchooser, trainer->thchoosers.number);
 
-
-    #define init_statmetric(NAME) {\
-        sm->NAME[cl].min = DBL_MAX;\
-        sm->NAME[cl].max = - DBL_MAX;\
-        sm->NAME[cl].avg = 0;\
-        sm->NAME[cl].std = 0;\
-        sm->NAME[cl].count = 0;\
-    }
 
     MANY_INIT(stats.by.byfold, trainer->tb2d->n.fold, StatBy_fold);
     BY_FOR(stats.by, fold) {
@@ -44,26 +105,14 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                     if (0 == cs->pr[pp]._[idxparameter].disabled) {
                         StatByPSetItemValue* sm;
                         sm = &STAT_IDX(stats, idxfold, idxthchooser, pp, idxparameter);
-                        DGAFOR(cl) {
-                            init_statmetric(train);
-                            init_statmetric(test);
-                        }
+                        _stat_init(sm->train);
+                        _stat_init(sm->test);
                     }
                 }
             }
         }
     }
-    #undef init_statmetric
 
-
-    #define update_statmetric(NAME) \
-    {\
-        const double value = DETECT_TRUERATIO(result->best_ ## NAME, cl);\
-        if (sm->NAME[cl].min > value) sm->NAME[cl].min = value;\
-        if (sm->NAME[cl].max < value) sm->NAME[cl].max = value;\
-        sm->NAME[cl].avg += value;\
-        sm->NAME[cl].count++;\
-    }
     BY_FOR(stats.by, fold) {
         BY_FOR(trainer->by, try) {
             BY_FOR3(trainer->by, fold, try, split) {
@@ -93,20 +142,15 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                         for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
                             StatByPSetItemValue* sm;
                             sm = &STAT_IDX(stats, idxfold, idxthchooser, pp, config->parameters[pp]->index);
-                            DGAFOR(cl) {
-                                update_statmetric(train);
-                                update_statmetric(test);
-                            }
+                            _stat_update(&result->best_train, sm->train);
+                            _stat_update(&result->best_test, sm->test);
                         }
                     }
                 }
             }
         }
     }
-    #undef update_statmetric
 
-
-    #define finalize_statmetric(NAME) DGAFOR(cl) { sm->NAME[cl].avg /= sm->NAME[cl].count; }
     BY_FOR(stats.by, fold) {
         BY_FOR(stats.by, thchooser) {
             for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
@@ -114,40 +158,39 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                     if (cs->pr[pp]._[idxparameter].disabled == 0) {
                         StatByPSetItemValue* sm;
                         sm = &STAT_IDX(stats, idxfold, idxthchooser, pp, idxparameter);
-                        finalize_statmetric(train);
-                        finalize_statmetric(test);
+                        _stat_finalize(sm->train);
+                        _stat_finalize(sm->test);
                     }
                 }
             }
         }
     }
-    #undef finalize_statmetric
 
-
-    #define print_statmetric\
-        DGAFOR(cl) {\
-            printf("%7.2f~%-7.2f", item->train[cl].min, item->test[cl].min);\
-            printf("%7.2f~%-7.2f", item->train[cl].max, item->test[cl].max);\
-            printf("%7.2f~%-7.2f", item->train[cl].avg, item->test[cl].avg);\
-            printf("    ");\
-        }\
-
-    #define print_statmetric_2d\
-        DGAFOR(cl) {\
-            printf("%5d,%-5d", (int) (item->train[cl].min * 100), (int) (item->test[cl].min * 100));\
-            printf("%5d,%-5d", (int) (item->train[cl].max * 100), (int) (item->test[cl].max * 100));\
-            printf("%5d,%-5d", (int) (item->train[cl].avg * 100), (int) (item->test[cl].avg * 100));\
-            printf("    ");\
-        }\
-
-    printf("%-8s ", "fold");
-    printf("%-8s ", "wsize");
-    printf("%-15s ", "thchooser");
-    printf("%-25s ", "psetitem");
-    printf("%-20s ", "psetitem value");
+    PF_ASK(stdout, -8, "fold");
+    PF_ASK(stdout, -8, "wsize");
+    PF_ASK(stdout, -10, "thchooser");
+    PF_ASK(stdout, -10, "psetitem");
+    PF_ASK(stdout, -15, "psetitem value");
+    printf("\n\t\t\t");
     DGAFOR(cl) {
-        printf("  min[%d]     max[%d]     avg[%d]  ", cl, cl, cl);
-        printf("    ");
+        PF_ASK(stdout, -10, "%d#count", cl);
+
+        PF_ASK(stdout, -15, "%d#min logit", cl);
+        PF_ASK(stdout, -15, "%d#max logit", cl);
+        PF_ASK(stdout, -15, "%d#avg logit", cl);
+        PF_ASK(stdout, -5, " ");
+
+        PF_ASK(stdout, -20, "%d#min windowed", cl);
+        PF_ASK(stdout, -20, "%d#max windowed", cl);
+        PF_ASK(stdout, -20, "%d#avg windowed", cl);
+        PF_ASK(stdout, -5, " ");
+    
+        FOR_DNBAD {
+            PF_ASK(stdout, -15, "%d#min >%3.2f", cl, WApplyDNBad_Values[idxdnbad]);
+            PF_ASK(stdout, -15, "%d#max >%3.2f", cl, WApplyDNBad_Values[idxdnbad]);
+            PF_ASK(stdout, -15, "%d#avg >%3.2f", cl, WApplyDNBad_Values[idxdnbad]);
+            PF_ASK(stdout, -5, " ");
+        }
     }
     printf("\n");
     char formats[N_PARAMETERS][10] = {
@@ -167,28 +210,108 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                     StatByPSetItemValue* item;
                     item = &STAT_IDX(stats, idxfold, idxthchooser, pp, idxparameter);
 
-                    printf("%-8ld ", idxfold);
-                    printf("%-8ld ", trainer->tb2d->tb2w->wsize);
-                    printf("%-15s ", trainer->thchoosers._[idxthchooser].name);
-                    printf("%-25s ", parameters_definition[pp].name);
+                    PF_ASK(stdout, -8, "%ld", idxfold);
+                    PF_ASK(stdout, -8, "%ld", trainer->tb2d->tb2w->wsize);
+                    PF_ASK(stdout, -10, "%s", trainer->thchoosers._[idxthchooser].name);
+                    PF_ASK(stdout, -10, "%s", parameters_definition[pp].name);
                     {  
                         char str[20];
-                        parameters_definition[pp].print(cs->pr[pp]._[idxparameter], 7, str);
-                        printf("%-20s ", str);
+                        parameters_definition[pp].print(cs->pr[pp]._[idxparameter], 0, str);
+                        PF_ASK(stdout, -15, "%s", str);
                     }
-                    print_statmetric_2d
+                    PF_ASK(stdout, -10, "%-8ld", item->train[0].count);
+                    
+                    printf("\n");
+
+
+                    PF_ASK(stdout, 55, " ");
+                    PF_ASK(stdout, 2, " ");
+                    PF_ASK(stdout, 1, "|");
+                    PF_ASK(stdout, 2, " ");
+
+                    PF_ASK_CENTER(stdout, 45, "tpr");
+                    PF_ASK(stdout, 2, " ");
+                    PF_ASK(stdout, 1, "|");
+                    PF_ASK(stdout, 2, " ");
+
+                    PF_ASK_CENTER(stdout, 45, "alarms w/w");
+                    PF_ASK(stdout, 2, " ");
+                    PF_ASK(stdout, 1, "|");
+                    PF_ASK(stdout, 2, " ");
+                
+                    FOR_DNBAD {
+                        PF_ASK_CENTER(stdout, 45, "alarms %4.4f", WApplyDNBad_Values[idxdnbad]);
+                    PF_ASK(stdout, 2, " ");
+                    PF_ASK(stdout, 1, "|");
+                    PF_ASK(stdout, 2, " ");
+                    }
+                    printf("\n");
+
+                    PF_ASK(stdout, 55, " ");
+                    PF_ASK(stdout, 2, " ");
+                    PF_ASK(stdout, 1, "|");
+                    PF_ASK(stdout, 2, " ");
+
+                    PF_ASK_CENTER(stdout, 15, "min");
+                    PF_ASK_CENTER(stdout, 15, "max");
+                    PF_ASK_CENTER(stdout, 15, "avg");
+                    PF_ASK(stdout, 2, " ");
+                    PF_ASK(stdout, 1, "|");
+                    PF_ASK(stdout, 2, " ");
+
+                    PF_ASK_CENTER(stdout, 15, "min");
+                    PF_ASK_CENTER(stdout, 15, "max");
+                    PF_ASK_CENTER(stdout, 15, "avg");
+                    PF_ASK(stdout, 2, " ");
+                    PF_ASK(stdout, 1, "|");
+                    PF_ASK(stdout, 2, " ");
+                
+                    FOR_DNBAD {
+                        PF_ASK_CENTER(stdout, 15, "min");
+                        PF_ASK_CENTER(stdout, 15, "max");
+                        PF_ASK_CENTER(stdout, 15, "avg");
+                        PF_ASK(stdout, 2, " ");
+                        PF_ASK(stdout, 1, "|");
+                        PF_ASK(stdout, 2, " ");
+                    }
+                    printf("\n");
+                    
+                    DGAFOR(cl) {
+                        PF_ASK(stdout, 55, "class=%d", cl);
+                        PF_ASK(stdout, 2, " ");
+                        PF_ASK(stdout, 1, "|");
+                        PF_ASK(stdout, 2, " ");
+
+                        PF_ASK_CENTER(stdout, 15, "%3d %-3d", (int) (item->train[cl].logit.min * 100), (int) (item->test[cl].logit.min * 100));
+                        PF_ASK_CENTER(stdout, 15, "%3d %-3d", (int) (item->train[cl].logit.max * 100), (int) (item->test[cl].logit.max * 100));
+                        PF_ASK_CENTER(stdout, 15, "%3.0d %-3.0d", (int) (item->train[cl].logit.avg * 100), (int) (item->test[cl].logit.avg * 100));
+                        PF_ASK(stdout, 2, " ");
+                        PF_ASK(stdout, 1, "|");
+                        PF_ASK(stdout, 2, " ");
+
+                        PF_ASK_CENTER(stdout, 15, "%6ld %-6ld", item->train[cl].alarms.windowed.min, item->test[cl].alarms.windowed.min);
+                        PF_ASK_CENTER(stdout, 15, "%6ld %-6ld", item->train[cl].alarms.windowed.max, item->test[cl].alarms.windowed.max);
+                        PF_ASK_CENTER(stdout, 15, "%6.0f %-6.0f", item->train[cl].alarms.windowed.avg, item->test[cl].alarms.windowed.avg);
+                        PF_ASK(stdout, 2, " ");
+                        PF_ASK(stdout, 1, "|");
+                        PF_ASK(stdout, 2, " ");
+
+                        FOR_DNBAD {
+                            PF_ASK_CENTER(stdout, 15, "%6ld %-6ld", item->train[cl].alarms.unwindowed[idxdnbad].min, item->test[cl].alarms.unwindowed[idxdnbad].min);
+                            PF_ASK_CENTER(stdout, 15, "%6ld %-6ld", item->train[cl].alarms.unwindowed[idxdnbad].max, item->test[cl].alarms.unwindowed[idxdnbad].max);
+                            PF_ASK_CENTER(stdout, 15, "%6.0f %-6.0f", item->train[cl].alarms.unwindowed[idxdnbad].avg, item->test[cl].alarms.unwindowed[idxdnbad].avg);
+                            PF_ASK(stdout, 2, " ");
+                            PF_ASK(stdout, 1, "|");
+                            PF_ASK(stdout, 2, " ");
+                        }
+                        printf("\n");
+                    }
+                    
                     printf("\n");
                 }
             }
         }
     }
-
-    #define fprint_statmetric_csv\
-        DGAFOR(cl) {\
-            fprintf(file, ",%d,%d,", (int) (item->train[cl].min * 100), (int) (item->test[cl].min * 100));\
-            fprintf(file, "%d,%d,", (int) (item->train[cl].max * 100), (int) (item->test[cl].max * 100));\
-            fprintf(file, "%d,%d", (int) (item->train[cl].avg * 100), (int) (item->test[cl].avg * 100));\
-        }
 
     FILE* file = fopen(csvpath, "w");
     fprintf(file, "fold,wsize,thchooser,psetitem,psetitemvalue");
@@ -222,7 +345,23 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                         parameters_definition[pp].print(cs->pr[pp]._[idxparameter], 0, str);
                         // printf("%-20s ", str);
                     }
-                    fprint_statmetric_csv;
+                    
+                    DGAFOR(cl) {
+                        PF_ASK(file, -15, "%-3d %-d", (int) (item->train[cl].logit.min * 100), (int) (item->test[cl].logit.min * 100));
+                        PF_ASK(file, -15, "%-3d %-d", (int) (item->train[cl].logit.max * 100), (int) (item->test[cl].logit.max * 100));
+                        PF_ASK(file, -15, "%-3d %-d", (int) (item->train[cl].logit.avg * 100), (int) (item->test[cl].logit.avg * 100));
+
+                        PF_ASK(file, -20, "%-6ld %-ld", item->train[cl].alarms.windowed.min, item->test[cl].alarms.windowed.min);
+                        PF_ASK(file, -20, "%-6ld %-ld", item->train[cl].alarms.windowed.max, item->test[cl].alarms.windowed.max);
+                        PF_ASK(file, -20, "%-6.0f %-.0f", item->train[cl].alarms.windowed.avg, item->test[cl].alarms.windowed.avg);
+
+                        FOR_DNBAD {
+                            PF_ASK(file, -20, "%-6ld %-ld", item->train[cl].alarms.unwindowed[idxdnbad].min, item->test[cl].alarms.unwindowed[idxdnbad].min);
+                            PF_ASK(file, -20, "%-6ld %-ld", item->train[cl].alarms.unwindowed[idxdnbad].max, item->test[cl].alarms.unwindowed[idxdnbad].max);
+                            PF_ASK(file, -20, "%-6.0f %-.0f", item->train[cl].alarms.unwindowed[idxdnbad].avg, item->test[cl].alarms.unwindowed[idxdnbad].avg);
+                        }
+                    }
+
                     fprintf(file, "\n");
                 }
             }
@@ -232,19 +371,6 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
     fclose(file);
 
     return stats;
-
-#undef init_statmetric
-#undef init_stat
-#undef update_statmetric
-#undef update_stat
-#undef finalize_statmetric
-#undef finalize_stat
-#undef print_statmetric
-#undef print_statmetric_2d
-#undef prin_stat
-#undef fprint_statmetric_csv
-#undef fprint_stat_csv
-#undef pc_free
 }
 
 void stat_free(Stat stat) {

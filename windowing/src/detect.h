@@ -4,8 +4,9 @@
 
 #include "windows.h"
 
-#define DETECT_TRUERATIO(DET, CL) ((double) (DET.windows)[CL][1]) / ((DET.windows)[CL][0] + (DET.windows)[CL][1])
-#define DETECT_FALSERATIO(DET, CL) ((double) (DET.windows)[CL][0]) / ((DET.windows)[CL][0] + (DET.windows)[CL][1])
+#define DETECT_TRUERATIO(DET, CL) ((double) ((DET).windows)[CL][1]) / (((DET).windows)[CL][0] + ((DET).windows)[CL][1])
+#define DETECT_FALSERATIO(DET, CL) ((double) ((DET).windows)[CL][0]) / (((DET).windows)[CL][0] + ((DET).windows)[CL][1])
+#define DETECT_WINDOW_ALARMS(DET, CL) (DET).windows[CL][CL == 0 ? 0 : 0]
 
 #define N_PERFORMANCE_DGAHANDLINGs 2
 

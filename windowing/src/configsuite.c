@@ -47,7 +47,7 @@ void parameters_double_print(ParameterValue ref, int width, char str[20]) {
 
     memcpy(&value, &ref.value, sizeof(double));
     
-    sprintf(str, "%*f", width, value);
+    sprintf(str, "%*.3f", width, value);
 }
 
 void parameters_size_t_print(ParameterValue ref, int width, char str[20]) {
@@ -108,7 +108,7 @@ void _parametersdefinition_init() {
     parameters_notconst[PE_WINDOWING].print = parameters_windowing_print;
 
     strcpy(parameters_notconst[PE_NX_EPSILON_INCREMENT].format, "f");
-    strcpy(parameters_notconst[PE_NX_EPSILON_INCREMENT].name, "nx_epsilon_increment");
+    strcpy(parameters_notconst[PE_NX_EPSILON_INCREMENT].name, "nx_eps");
     parameters_notconst[PE_NX_EPSILON_INCREMENT].size = sizeof(nx_epsilon_increment_t);
     parameters_notconst[PE_NX_EPSILON_INCREMENT].print = parameters_double_print;
 

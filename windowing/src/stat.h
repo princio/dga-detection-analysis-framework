@@ -6,12 +6,29 @@
 
 #include "configsuite.h"
 #include "trainer.h"
+typedef struct StatMetricAlarm {
+    size_t min;
+    size_t max;
+    double avg;
+    double std;
+    size_t count;
+} StatMetricAlarm;
 
-typedef struct StatMetric {
+typedef struct StatMetricAlarms {
+    StatMetricAlarm unwindowed[N_WAPPLYDNBAD];
+    StatMetricAlarm windowed;
+} StatMetricAlarms;
+
+typedef struct StatMetricTrueRatio {
     double min;
     double max;
     double avg;
     double std;
+} StatMetricTrueRatio;
+
+typedef struct StatMetric {
+    StatMetricTrueRatio logit;
+    StatMetricAlarms alarms;
     size_t count;
 } StatMetric;
 

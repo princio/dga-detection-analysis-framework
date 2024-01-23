@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+const double WApplyDNBad_Values[N_WAPPLYDNBAD] = { 0.5, 0.9, 0.99, 0.999 };
+
 void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config) {
     int whitelistened = 0;
     double value, logit;
@@ -49,10 +51,10 @@ void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config) {
     }
 
     ++wapply->wcount;
-    wapply->dn_bad_05 += value >= 0.5;
-    wapply->dn_bad_09 += value >= 0.9;
-    wapply->dn_bad_099 += value >= 0.99;
-    wapply->dn_bad_0999 += value >= 0.999;
+
+    for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++) {
+        wapply->dn_bad[idxdnbad] += (value >= WApplyDNBad_Values[idxdnbad]);
+    }
 
     wapply->logit += logit;
     wapply->whitelistened += whitelistened;

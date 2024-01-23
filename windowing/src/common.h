@@ -209,6 +209,19 @@ typedef struct DNSMessage {
     int32_t rcode;
 } DNSMessage;
 
+#define N_WAPPLYDNBAD 4
+
+#define FOR_DNBAD for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++)
+
+typedef enum WApplyDNBad {
+    WAPPLYDNBAD_05,
+    WAPPLYDNBAD_09,
+    WAPPLYDNBAD_099,
+    WAPPLYDNBAD_0999
+} WApplyDNBad;
+
+extern const double WApplyDNBad_Values[N_WAPPLYDNBAD];
+
 //   P A R A M E T E R S
 
 typedef size_t WSize;
@@ -281,13 +294,18 @@ typedef struct MinMax {
 
 MAKEMANY(MinMax);
 
-
+typedef uint32_t DetectionValue;
+typedef DetectionValue DetectionTrueFalse[2];
 
 typedef struct Detection {
     double th;
 
-    uint16_t windows[N_DGACLASSES][2];
-    uint16_t sources[N_DGACLASSES][50][2];
+    size_t dn_count;
+    size_t dn_whitelistened_count;
+
+    DetectionValue alarms[N_DGACLASSES][N_WAPPLYDNBAD];
+    DetectionTrueFalse windows[N_DGACLASSES];
+    DetectionTrueFalse sources[N_DGACLASSES][50];
 } Detection;
 
 MAKEMANY(Detection);

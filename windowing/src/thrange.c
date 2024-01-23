@@ -177,7 +177,6 @@ void* _thr_consumer(void* argsvoid) {
         
         if (qm == NULL) break;
 
-        CLOCK_START(_thr_consumer);
 
         MANY(RWindow) windows = tb2w->windowing.bysource._[qm->idxsource]->windows;
         RSource source = tb2w->sources._[qm->idxsource];
@@ -207,7 +206,6 @@ void* _thr_consumer(void* argsvoid) {
         } // calculating detections
 
         free(qm);
-        CLOCK_END(_thr_consumer);
     }
 
     return NULL;
