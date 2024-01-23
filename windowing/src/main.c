@@ -31,6 +31,7 @@
 #include "parameter_generator.h"
 #include "wqueue.h"
 #include "performance_defaults.h"
+#include "thrange.h"
 
 #include <math.h>
 
@@ -151,10 +152,9 @@ int main (int argc, char* argv[]) {
     logger_autoFlush(5000);
 #endif
 
-    
     char rootdir[PATH_MAX];
 
-    const int wsize = 500;
+    const int wsize = 1;
     const int nsources = 20;
     const size_t max_configs = 0;
 
@@ -200,7 +200,6 @@ int main (int argc, char* argv[]) {
         printf("Error: TB2W is NULL.");
         exit(1);
     }
-
 
     MANY(FoldConfig) foldconfigs_many; {
         FoldConfig foldconfigs[] = {
@@ -249,6 +248,12 @@ int main (int argc, char* argv[]) {
     }
 
     MANY(Performance) thchoosers = _main_training_performance();
+
+    {
+        thrange_context* context = thrange_start(tb2d->tb2w, thchoosers);
+        thrange_wait(context);
+        thrange_free(context->thrange);
+    }
 
     RTrainer trainer = main_training_generate(rootdir, tb2d, thchoosers);
 

@@ -205,7 +205,7 @@ RTrainer trainer_create(RTB2D tb2d, MANY(Performance) thchoosers) {
     trainer->tb2d = tb2d;
     trainer->thchoosers = thchoosers;
 
-    CLONEMANY(trainer->thchoosers, thchoosers);
+    MANY_CLONE(trainer->thchoosers, thchoosers);
 
     BY_SETN((*by), config, tb2d->tb2w->configsuite.configs.number);
     BY_SETN((*by), fold, tb2d->n.fold);
@@ -516,7 +516,7 @@ void trainer_io(IOReadWrite rw, char dirname[200], RTB2D tb2d, RTrainer* trainer
     file = io_openfile(rw, fpath);
 
     if (rw == IO_WRITE) {
-        CLONEMANY(thchoosers, (*trainer)->thchoosers);
+        MANY_CLONE(thchoosers, (*trainer)->thchoosers);
     }
 
     trainer_io_thchoosers(rw, file, &thchoosers);

@@ -10,23 +10,56 @@
 #include <pthread.h>
 #include <stdio.h>
 
-#define TD_NTHREADS 8
+#define THR_NTHREADS 8
 #define TDQM_MAX_SIZE 500
 
 #define TDQUEUE_INITIALIZER(buffer, buffer_size) { buffer, buffer_size, 0, 0, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, PTHREAD_COND_INITIALIZER }
+
+
+/****************/
+
+typedef double ThRangeBy_th[N_DGACLASSES];
+MAKEMANY(ThRangeBy_th);
+
+typedef struct ThRangeBy_config {
+    MANY(ThRangeBy_th) byth;
+} ThRangeBy_config;
+MAKEMANY(ThRangeBy_config);
+
+typedef struct ThRangeBy_thchooser {
+    MANY(ThRangeBy_config) byconfig;
+} ThRangeBy_thchooser;
+MAKEMANY(ThRangeBy_thchooser);
+
+typedef struct ThRangeBy {
+    struct {
+        size_t thchooser;
+        size_t config;
+        size_t th;
+    } n;
+    MANY(ThRangeBy_thchooser) bythchooser;
+} ThRangeBy;
+
+typedef struct ThRange {
+    char rootdir[DIR_MAX];
+    RTB2W tb2w;
+    MANY(Performance) thchoosers;
+	Reducer reducer;
+    ThRangeBy by;
+} ThRange;
+
+/****************/
 
 
 typedef struct thr_queue_data {
     int id;
     int number;
 
-	size_t n_configs;
+	size_t idxsource;
 
-	size_t idxfold;
-	size_t idxtry;
-	size_t idxsplit;
-
-    DatasetSplit split;
+	size_t idxconfig_start;
+	size_t idxconfig_end;
+	
 } thr_queue_data;
 
 typedef struct thr_queue {
@@ -43,88 +76,34 @@ typedef struct thr_queue {
 
 struct thr_producer_args {
     thr_queue_t* queue;
-    RTrainer trainer;
-	Reducer ths;
+    ThRange* thrange;
+	size_t configs_per_thread;
 };
 
 struct thr_consumer_args {
     int id;
     thr_queue_t* queue;
-    RTrainer trainer;
 	Reducer ths;
-	size_t blockconfig_step;
+	ThRange* thrange;
+	size_t blockconfig_start;
+	size_t blockconfig_end;
 };
 
 typedef struct thrange_context {
 	thr_queue_data** qm;
 	thr_queue_t queue;
 	pthread_t producer;
-	pthread_t consumers[TD_NTHREADS];
+	pthread_t consumers[THR_NTHREADS];
 	struct thr_producer_args producer_args;
-	struct thr_consumer_args consumer_args[TD_NTHREADS];
+	struct thr_consumer_args consumer_args[THR_NTHREADS];
 	Reducer logits;
+	ThRange* thrange;
 } thrange_context;
 
-
-/****************/
-
-typedef double ThRange_Performance_Values;
-
-MAKEMANY(ThRange_Performance_Values);
-
-typedef struct ThRangeBy_config {
-    Performance* threshold_chooser;
-    MANY(ThRange_Performance_Values) values;
-} ThRangeBy_config;
-
-MAKEMANY(ThRangeBy_config);
-
-typedef struct ThRangeBy_thchooser {
-    MANY(ThRangeBy_config) byconfig;
-} ThRangeBy_thchooser;
-MAKEMANY(ThRangeBy_thchooser);
-
-typedef struct ThRangeBy_split {
-    MANY(ThRangeBy_thchooser) bythchooser;
-} ThRangeBy_split;
-
-MAKEMANY(ThRangeBy_split);
-
-typedef struct ThRangeBy_try {
-    int isok;
-    MANY(ThRangeBy_split) bysplit;
-} ThRangeBy_try;
-
-MAKEMANY(ThRangeBy_try);
-
-typedef struct ThRangeBy_fold {
-    MANY(ThRangeBy_try) bytry;
-} ThRangeBy_fold;
-
-MAKEMANY(ThRangeBy_fold);
-
-typedef struct ThRangeBy {
-    struct {
-        size_t fold;
-        size_t try;
-        size_t thchooser;
-        size_t config;
-    } n;
-    MANY(ThRangeBy_fold) byfold;
-} ThRangeBy;
-
-typedef struct __ThRange {
-    char rootdir[DIR_MAX];
-    RTB2D tb2d;
-    MANY(Performance) thchoosers;
-	Reducer reducer;
-    ThRangeBy by;
-} __ThRange;
-
-/****************/
-
-thrange_context* thrange_start(RTrainer trainer);
+thrange_context* thrange_start(RTB2W tb2w, MANY(Performance) thchoosers);
 
 int thrange_wait(thrange_context*);
+
+void thrange_free(ThRange*);
 
 #endif

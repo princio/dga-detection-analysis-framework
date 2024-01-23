@@ -11,7 +11,7 @@ RTB2D tb2d_create(RTB2W tb2w, size_t n_try, MANY(FoldConfig) foldconfigs) {
     BY_SETN(*tb2d, try, n_try);
     BY_SETN(*tb2d, fold, foldconfigs.number);
 
-    CLONEMANY(tb2d->folds, foldconfigs);
+    MANY_CLONE(tb2d->folds, foldconfigs);
 
     BY_INIT1(*tb2d, try, TB2DBy);
     BY_FOR(*tb2d, try) {

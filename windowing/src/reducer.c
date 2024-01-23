@@ -9,7 +9,7 @@ int64_t reducer_logit(double logit, const int reducer) {
     return (int64_t) floor(logit) / reducer * reducer;
 }
 
-Reducer reducer_run(RTB2D tb2d, const size_t nblocks, const size_t nlogits_max, const int64_t reducer) {
+Reducer reducer_run(RTB2W tb2w, const size_t nblocks, const size_t nlogits_max, const int64_t reducer) {
     LOG_INFO("Get all Logits with nblocks#%7ld, nlogits_max$%7ld, reducer#%d", nblocks, nlogits_max, reducer);
     if (nlogits_max < nblocks * 2) {
         LOG_ERROR("Block size too large relatively to nlogits_max (%ldx2 > nlogits_max)");
@@ -31,10 +31,10 @@ Reducer reducer_run(RTB2D tb2d, const size_t nblocks, const size_t nlogits_max, 
         count_logits = 0;
         logit_min = INT64_MAX;
         logit_max = INT64_MIN;
-        BY_FOR(tb2d->tb2w->windowing, source) {
-            for (size_t idxwindow = 0; idxwindow < BY_GET(tb2d->tb2w->windowing, source)->windows.number; idxwindow++) {
-                for (size_t idxconfig = 0; idxconfig < tb2d->tb2w->configsuite.configs.number; idxconfig++) {
-                    const int64_t logit = reducer_logit(BY_GET(tb2d->tb2w->windowing, source)->windows._[idxwindow]->applies._[idxconfig].logit, reducer);
+        BY_FOR(tb2w->windowing, source) {
+            for (size_t idxwindow = 0; idxwindow < BY_GET(tb2w->windowing, source)->windows.number; idxwindow++) {
+                for (size_t idxconfig = 0; idxconfig < tb2w->configsuite.configs.number; idxconfig++) {
+                    const int64_t logit = reducer_logit(BY_GET(tb2w->windowing, source)->windows._[idxwindow]->applies._[idxconfig].logit, reducer);
 
                     if (logit_min > logit) logit_min = logit;
                     if (logit_max < logit) logit_max = logit;
@@ -56,11 +56,11 @@ Reducer reducer_run(RTB2D tb2d, const size_t nblocks, const size_t nlogits_max, 
     { // counting the logits for each block
         memset(blocks, 0, sizeof(int64_t) * nblocks);
 
-        BY_FOR(tb2d->tb2w->windowing, source) {
-            LOG_TRACE("Counting source#%4ld having %7ld windows", idxsource, BY_GET(tb2d->tb2w->windowing, source)->windows.number);
-            for (size_t idxwindow = 0; idxwindow < BY_GET(tb2d->tb2w->windowing, source)->windows.number; idxwindow++) {
-                for (size_t idxconfig = 0; idxconfig < tb2d->tb2w->configsuite.configs.number; idxconfig++) {
-                    const int64_t logit = reducer_logit(BY_GET(tb2d->tb2w->windowing, source)->windows._[idxwindow]->applies._[idxconfig].logit, reducer);
+        BY_FOR(tb2w->windowing, source) {
+            LOG_TRACE("Counting source#%4ld having %7ld windows", idxsource, BY_GET(tb2w->windowing, source)->windows.number);
+            for (size_t idxwindow = 0; idxwindow < BY_GET(tb2w->windowing, source)->windows.number; idxwindow++) {
+                for (size_t idxconfig = 0; idxconfig < tb2w->configsuite.configs.number; idxconfig++) {
+                    const int64_t logit = reducer_logit(BY_GET(tb2w->windowing, source)->windows._[idxwindow]->applies._[idxconfig].logit, reducer);
 
                     const size_t index = floor(((double) (logit - begin)) / step);
 

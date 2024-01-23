@@ -403,7 +403,7 @@ trainer_detections_context* trainer_detections_start(RTrainer trainer) {
     const size_t nlogits_max = 200;
     const int64_t reducer = 100;
 
-    Reducer logits = reducer_run(trainer->tb2d, nblocks, nlogits_max, reducer);
+    Reducer logits = reducer_run(trainer->tb2d->tb2w, nblocks, nlogits_max, reducer);
 
     {
         io_path_concat(trainer->tb2d->tb2w->rootdir, "trainer/", trainer->rootdir);

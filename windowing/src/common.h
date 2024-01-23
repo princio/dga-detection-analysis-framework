@@ -115,7 +115,7 @@ char CACHE_DIR[DIR_MAX];
             (A).element_size = (S); \
             (A)._ = calloc(A.number, (S)); }
 
-#define CLONEMANY(A, B) MANY_INITSIZE((A), (B).number, (B).element_size); memcpy((A)._, (B)._, (B).element_size * (B).number);
+#define MANY_CLONE(DST, SRC) MANY_INITSIZE((DST), (SRC).number, (SRC).element_size); memcpy((DST)._, (SRC)._, (SRC).element_size * (SRC).number);
 
 #define MANY_FREE(A) { if (A.number) free(A._); A.number = 0; A.size = 0; }
 #define MANY_FREEREF(A) { if (A->number) free(A->_); A->number = 0; A->size = 0; }

@@ -13,6 +13,6 @@ typedef struct Reducer {
 
 int64_t reducer_logit(double logit, const int reducer);
 
-Reducer reducer_run(RTB2D tb2d, const size_t nblocks, const size_t nlogits_max, const int64_t reducer);
+Reducer reducer_run(RTB2W tb2w, const size_t nblocks, const size_t nlogits_max, const int64_t reducer);
 
 #endif

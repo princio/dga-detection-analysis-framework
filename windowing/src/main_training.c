@@ -60,55 +60,6 @@ void _main_training_csv(char fpath[PATH_MAX], RTrainer trainer) {
     fclose(file_csv);
 }
 
-void _main_training_print(RTrainer trainer) {
-
-    FILE* file_csv = fopen("results.csv", "w");
-
-    TrainerBy* by = &trainer->by;
-
-    RTB2D tb2d = trainer->tb2d;
-
-
-    fprintf(file_csv, ",,,,,,train,train,train,test,test,test");
-    fprintf(file_csv, "fold,try,k,wsize,apply,thchooser,0,1,2,0,1,2");
-
-    BY_FOR(trainer->by, fold) {
-        BY_FOR(trainer->by, try) {
-            BY_FOR3(trainer->by, fold, try, split) {
-                BY_FOR(trainer->by, thchooser) {
-                    BY_FOR(trainer->by, config) {
-                        TrainerBy_config* result = &BY_GET5(trainer->by, fold, try, split, thchooser, config);
-
-                        {
-                            char headers[10][100];
-                            char header[1000];
-                            size_t h_idx = 0;
-
-                            sprintf(headers[h_idx++], "%3ld", idxfold);
-                            sprintf(headers[h_idx++], "%3ld", idxtry);
-                            sprintf(headers[h_idx++], "%3ld", idxsplit);
-                            sprintf(headers[h_idx++], "%5ld", tb2d->tb2w->wsize);
-                            sprintf(headers[h_idx++], "%20ld", idxconfig);
-                            sprintf(headers[h_idx++], "%22s", trainer->thchoosers._[idxthchooser].name);
-                            sprintf(header, "%s,%s,%s,%s,", headers[0], headers[1], headers[2], headers[3]);
-                            printf("%-30s ", header);
-                        }
-
-                        DGAFOR(cl) {
-                            printf("%1.4f\t", DETECT_TRUERATIO(result->best_train, cl));
-                        }
-                        printf("|\t");
-                        DGAFOR(cl) {
-                            printf("%1.4f\t", DETECT_TRUERATIO(result->best_test, cl));
-                        }
-                        printf("\n");
-                    }
-                }
-            }
-        }
-    }
-}
-
 RTrainer main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d, MANY(Performance) thchoosers) {
     char trainerdir[DIR_MAX];
     RTrainer trainer;
@@ -116,7 +67,7 @@ RTrainer main_training_generate(char rootdir[DIR_MAX], RTB2D tb2d, MANY(Performa
     LOG_DEBUG("Start training...");
 
     trainer = trainer_run2(tb2d, thchoosers, trainerdir);
-    
+
     // Stat stat = stat_run(trainer, parameters_toignore, fpathstatcsv);
     // stat_free(stat);
 
