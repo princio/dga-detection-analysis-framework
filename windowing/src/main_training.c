@@ -46,10 +46,10 @@ void _main_training_csv(char fpath[PATH_MAX], RTrainer trainer) {
                         fprintf(file_csv, "%s", trainer->thchoosers._[idxthchooser].name);
 
                         DGAFOR(cl) {
-                            fprintf(file_csv, ",%1.4f", DETECT_TRUERATIO(result->best_train, cl));
+                            fprintf(file_csv, ",%1.4f", PN_TRUERATIO(result->best_train.windows, cl));
                         }
                         DGAFOR(cl) {
-                            fprintf(file_csv, ",%1.4f", DETECT_TRUERATIO(result->best_test, cl));
+                            fprintf(file_csv, ",%1.4f", PN_TRUERATIO(result->best_test.windows, cl));
                         }
                         fprintf(file_csv, "\n");
                     }

@@ -109,6 +109,8 @@ void td_io_detection(IOReadWrite rw, char fpath[PATH_MAX], RTrainer trainer, Tra
                 snprintf(flag, IO_FLAG_LEN, "detection_%s_%ld", trainer->thchoosers._[idxthchooser].name, i);
                 io_flag(rw, file, flag, __LINE__);
                 FRW(dets[i]->th);
+                FRW(dets[i]->dn_count);
+                FRW(dets[i]->dn_whitelistened_count);
                 FRW(dets[i]->alarms);
                 FRW(dets[i]->sources);
                 FRW(dets[i]->windows);
@@ -303,18 +305,7 @@ void* _td_consumer(void* argsvoid) {
                     WApply * const apply = &window0->applies._[apply_idxconfig];
                     MANY(Detection) const * const detections_config = &detections[idxconfig];
                     for (size_t idxth = idxth_start; idxth < idxth_end; idxth++) {
-                        const double th = ths.many._[idxth];
-                        const int prediction = apply->logit >= th;
-                        const int infected = window0->windowing->source->wclass.mc > 0;
-                        const int is_true = prediction == infected;
-                        detections_config->_[idxth].th = th;
-                        detections_config->_[idxth].windows[source->wclass.mc][is_true]++;
-                        detections_config->_[idxth].sources[source->wclass.mc][source->index.multi][is_true]++;
-                        for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++) {
-                            detections_config->_[idxth].alarms[source->wclass.mc][idxdnbad] += apply->dn_bad[idxdnbad];
-                        }
-                        detections_config->_[idxth].dn_count += apply->wcount;
-                        detections_config->_[idxth].dn_whitelistened_count += apply->whitelistened;
+                        detect_run(apply, window0->windowing->source, ths.many._[idxth], &detections_config->_[idxth]);
                     }
                 }
                 if (idxwindow % (split.train->windows.all.number / 10) == 0) {
@@ -355,22 +346,13 @@ void* _td_consumer(void* argsvoid) {
                 FOR_CONFIG {
                     size_t apply_idxconfig = idxconfig + idxconfigstart;
                     BY_FOR(trainer->by, thchooser) {
-                    TrainerBy_config* result = &BY_GET4(trainer->by, fold, try, split, thchooser).byconfig._[apply_idxconfig];
-                        Detection* detection = &result->best_test;
-                        double th = best_detections[idxconfig]._[idxthchooser].th;
+                        detect_run(
+                            &window0->applies._[apply_idxconfig],
+                            window0->windowing->source,
+                            best_detections[idxconfig]._[idxthchooser].th,
+                            &BY_GET4(trainer->by, fold, try, split, thchooser).byconfig._[apply_idxconfig].best_test
+                        );
 
-                        const int prediction = window0->applies._[apply_idxconfig].logit >= th;
-                        const int infected = window0->windowing->source->wclass.mc > 0;
-                        const int is_true = prediction == infected;
-
-                        detection->th = th;
-                        detection->windows[source->wclass.mc][is_true]++;
-                        detection->sources[source->wclass.mc][source->index.multi][is_true]++;
-                        for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++) {
-                            detection->alarms[source->wclass.mc][idxdnbad] += window0->applies._[apply_idxconfig].dn_bad[idxdnbad];
-                        }
-                        detection->dn_count += window0->applies._[apply_idxconfig].wcount;
-                        detection->dn_whitelistened_count += window0->applies._[apply_idxconfig].whitelistened;
                     }
                 }
                 

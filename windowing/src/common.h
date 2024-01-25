@@ -295,20 +295,36 @@ typedef struct MinMax {
 MAKEMANY(MinMax);
 
 typedef uint32_t DetectionValue;
-typedef DetectionValue DetectionTrueFalse[2];
+typedef DetectionValue DetectionPN[2];
 
 typedef struct Detection {
     double th;
 
-    size_t dn_count;
-    size_t dn_whitelistened_count;
+    size_t dn_count[N_DGACLASSES];
+    size_t dn_whitelistened_count[N_DGACLASSES];
 
     DetectionValue alarms[N_DGACLASSES][N_WAPPLYDNBAD];
-    DetectionTrueFalse windows[N_DGACLASSES];
-    DetectionTrueFalse sources[N_DGACLASSES][50];
+    DetectionPN windows[N_DGACLASSES];
+    DetectionPN sources[N_DGACLASSES][50];
 } Detection;
 
 MAKEMANY(Detection);
+
+#define PN_TRUES(DTF, CL) ((DTF[CL])[CL > 0]) // 0: 0, 1-2: 1
+#define PN_FALSES(DTF, CL) ((DTF[CL])[CL == 0]) // 0: 1, 1-2: 0
+#define PN_TOTAL(DTF, CL) ((DTF[CL])[0] + (DTF[CL])[1])
+
+#define PN_TRUERATIO(DET, CL) ((double) PN_TRUES((DET), CL)) / PN_TOTAL((DET), CL)
+#define PN_FALSERATIO(DET, CL) ((double) PN_FALSES((DET), CL)) / PN_TOTAL((DET), CL)
+
+#define PN_FP(DET) PN_FALSES(DET, 0)
+#define PN_TN(DET) PN_TRUES(DET, 0)
+
+#define PN_FN_CL(DET, CL) PN_FALSES(DET, CL)
+#define PN_TP_CL(DET, CL) PN_TRUES(DET, CL)
+
+#define PN_FN(DET) (PN_FALSES(DET, 1) + PN_FALSES(DET, 2))
+#define PN_TP(DET) (PN_TRUES(DET, 1) + PN_TRUES(DET, 2))
 
 MAKEMANYNAME(ManyDetection_Ths, MANY(Detection));
 

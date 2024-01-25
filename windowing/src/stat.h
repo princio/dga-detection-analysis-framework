@@ -6,28 +6,35 @@
 
 #include "configsuite.h"
 #include "trainer.h"
-typedef struct StatMetricAlarm {
+typedef struct StatMetricPN {
     size_t min;
     size_t max;
     double avg;
     double std;
+
+    size_t min_over;
+    size_t max_over;
+    double avg_over;
+
     size_t count;
-} StatMetricAlarm;
+} StatMetricPN;
 
-typedef struct StatMetricAlarms {
-    StatMetricAlarm unwindowed[N_WAPPLYDNBAD];
-    StatMetricAlarm windowed;
-} StatMetricAlarms;
-
-typedef struct StatMetricTrueRatio {
+typedef struct StatMetricRatio {
     double min;
     double max;
     double avg;
     double std;
-} StatMetricTrueRatio;
+} StatMetricRatio;
+
+typedef struct StatMetricAlarms {
+    StatMetricPN unwindowed[N_WAPPLYDNBAD];
+    StatMetricPN windowed;
+    StatMetricPN sources;
+} StatMetricAlarms;
+
 
 typedef struct StatMetric {
-    StatMetricTrueRatio logit;
+    StatMetricRatio ratio;
     StatMetricAlarms alarms;
     size_t count;
 } StatMetric;
@@ -45,6 +52,10 @@ typedef MANY(StatByPSetItemValue) StatBy_thchooser[N_PARAMETERS];
 MAKEMANY(StatBy_thchooser);
 
 typedef struct StatBy_fold {
+    struct {
+        size_t train;
+        size_t test;
+    } wcount[N_DGACLASSES];
     MANY(StatBy_thchooser) bythchooser;
 } StatBy_fold;
 MAKEMANY(StatBy_fold);

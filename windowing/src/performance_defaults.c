@@ -21,24 +21,24 @@ double _performancedefaults_f1score_beta(Detection* detection, TCPC(Performance)
     switch (performance->dgadet)
     {
         case PERFORMANCE_DGAHANDLING_MERGE_1: {
-            double fp = detection->windows[0][0];
-            double fn = detection->windows[2][0] + detection->windows[1][0];
-            double tp = detection->windows[2][1] + detection->windows[1][1];
+            const double fp = PN_FP(detection->windows);
+            const double fn = PN_FN(detection->windows);
+            const double tp = PN_TP(detection->windows);
 
-            double beta_2 = beta * beta;
+            const double beta_2 = beta * beta;
 
-            f1 = ((double) (1 + beta_2) * tp) / (((1 + beta_2) * tp) + beta_2 * fp + fn);
+            f1 = ((1 + beta_2) * tp) / (((1 + beta_2) * tp) + beta_2 * fp + fn);
             break;
         }
 
         case PERFORMANCE_DGAHANDLING_IGNORE_1: {
-            double fp = detection->windows[0][0];
-            double fn = detection->windows[2][0];
-            double tp = detection->windows[2][1];
+            const double fp = PN_FP(detection->windows);
+            const double fn = PN_FN_CL(detection->windows, 2);
+            const double tp = PN_TP_CL(detection->windows, 2);;
 
             double beta_2 = beta * beta;
 
-            f1 = ((double) (1 + beta_2) * tp) / (((1 + beta_2) * tp) + beta_2 * fp + fn);
+            f1 = ((1 + beta_2) * tp) / (((1 + beta_2) * tp) + beta_2 * fp + fn);
             break;
         }
     }
@@ -59,37 +59,20 @@ double performancedefaults_f1score_01(Detection* detection, TCPC(Performance) pe
 }
 
 double performancedefaults_fpr(Detection* detection, TCPC(Performance) performance) {
-    UNUSED(performance);
-
-    double fp = detection->windows[0][0];
-    double tn = detection->windows[0][1];
-
-    return ((double) fp) / (fp + tn);
+    return PN_FALSERATIO(detection->windows, 0);
 }
 
 double performancedefaults_tpr1(Detection* detection, TCPC(Performance) performance) {
-    double fn, tp;
-
-    fn = detection->windows[1][0];
-    tp = detection->windows[1][1];
-
-    return ((double) tp) / (fn + tp);
+    return PN_TRUERATIO(detection->windows, 1);
 }
 
 double performancedefaults_tpr2(Detection* detection, TCPC(Performance) performance) {
-    double fn, tp;
-
-    fn = detection->windows[2][0];
-    tp = detection->windows[2][1];
-
-    return ((double) tp) / (fn + tp);
+    return PN_TRUERATIO(detection->windows, 2);
 }
 
 double performancedefaults_tpr12(Detection* detection, TCPC(Performance) performance) {
-    double fn, tp;
-
-    fn = detection->windows[2][0]+ detection->windows[1][0];
-    tp = detection->windows[2][1]+ detection->windows[1][1];
+    const double fn = PN_FN(detection->windows);
+    const double tp = PN_TP(detection->windows);
 
     return ((double) tp) / (fn + tp);
 }

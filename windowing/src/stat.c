@@ -29,45 +29,78 @@
     if (stat.max < value) stat.max = value;\
     stat.avg += value;
 
-#define update_stat(stat, value) \
-    if (stat.min > value) stat.min = value;\
-    if (stat.max < value) stat.max = value;\
-    stat.avg += value;
+void _stat_init_ratio(StatMetricRatio*smr) {
+    smr->min = DBL_MAX;
+    smr->max = - DBL_MAX;
+    smr->avg = 0;
+    smr->std = 0;
+}
+
+void _stat_init_truefalse(StatMetricPN* smtf) {
+   smtf->min = SIZE_MAX;
+   smtf->max = 0;
+   smtf->avg = 0;
+   smtf->std = 0;
+   smtf->count = 0;
+}
 
 void _stat_init(StatMetric sm[N_DGACLASSES]) {
     DGAFOR(cl) {
-        sm[cl].logit.min = DBL_MAX;
-        sm[cl].logit.max = - DBL_MAX;
-        sm[cl].logit.avg = 0;
-        sm[cl].logit.std = 0;
-
-        sm[cl].alarms.windowed.min = SIZE_MAX;
-        sm[cl].alarms.windowed.max = 0;
-        sm[cl].alarms.windowed.avg = 0;
-        sm[cl].alarms.windowed.std = 0;
-        sm[cl].alarms.windowed.count = 0;
-
+        _stat_init_ratio(&sm[cl].ratio);
+        _stat_init_truefalse(&sm[cl].alarms.windowed);
         FOR_DNBAD {
-            sm[cl].alarms.unwindowed[idxdnbad].min = SIZE_MAX;
-            sm[cl].alarms.unwindowed[idxdnbad].max = 0;
-            sm[cl].alarms.unwindowed[idxdnbad].avg = 0;
-            sm[cl].alarms.unwindowed[idxdnbad].std = 0;
+            _stat_init_truefalse(&sm[cl].alarms.unwindowed[idxdnbad]);
         }
-
+        _stat_init_truefalse(&sm[cl].alarms.sources);
         sm[cl].count = 0;
     }
 }
 
+void _stat_update_ratio(StatMetricRatio* smr, const double ratio) {
+    if (smr->min > ratio) smr->min = ratio;
+    if (smr->max < ratio) smr->max = ratio;
+    smr->avg += ratio;
+}
+
+void _stat_update_pn(StatMetricPN* smtf, const DetectionPN pn) {
+    if (smtf->min_over == 0) {
+        smtf->min_over = pn[1] + pn[0];
+        smtf->max_over = pn[1] + pn[0];
+    }
+    if (smtf->min > pn[1]) {
+        smtf->min = pn[1];
+        smtf->min_over = pn[1] + pn[0];
+    }
+    if (smtf->max < pn[1]) {
+        smtf->max = pn[1];
+        smtf->max_over = pn[1] + pn[0];
+    }
+    smtf->avg += pn[1];
+    smtf->avg_over += pn[1] + pn[0];
+}
+
 void _stat_update(Detection* det, StatMetric sm[N_DGACLASSES]) {
     DGAFOR(cl) {
-        const double tr = DETECT_TRUERATIO(*det, cl);
-        const DetectionValue n_alarms = DETECT_WINDOW_ALARMS(*det, cl);
+        const double tr = PN_TRUERATIO(det->windows, cl);
 
-        update_stat(sm[cl].logit, tr);
-        update_stat(sm[cl].alarms.windowed, n_alarms);
+        _stat_update_ratio(&sm[cl].ratio, tr);
+
+        _stat_update_pn(&sm[cl].alarms.windowed, det->windows[cl]);
+
+        DetectionPN pn_sources = { 0, 0 };
+        for (size_t idxsource = 0; idxsource < 50; idxsource++) {
+            if (det->sources[cl][idxsource][0] + det->sources[cl][idxsource][1] == 0) {
+                break;
+            }
+            pn_sources[det->sources[cl][idxsource][1] > 0]++;
+        }
+        _stat_update_pn(&sm[cl].alarms.sources, pn_sources);
 
         FOR_DNBAD {
-            update_stat(sm[cl].alarms.unwindowed[idxdnbad], det->alarms[cl][idxdnbad]);
+            DetectionPN pn_alarms;
+            pn_alarms[0] = det->dn_count[cl] - det->alarms[cl][idxdnbad];
+            pn_alarms[1] = det->alarms[cl][idxdnbad];
+            _stat_update_pn(&sm[cl].alarms.unwindowed[idxdnbad], pn_alarms);
         }
     
         sm[cl].count++;
@@ -76,12 +109,27 @@ void _stat_update(Detection* det, StatMetric sm[N_DGACLASSES]) {
 
 void _stat_finalize(StatMetric sm[N_DGACLASSES]) {
     DGAFOR(cl) {
-        sm[cl].logit.avg /= sm[cl].count;
+        if (sm[cl].count == 0) {
+            continue;
+        }
+        sm[cl].ratio.avg /= sm[cl].count;
         FOR_DNBAD {
             sm[cl].alarms.unwindowed[idxdnbad].avg /= sm[cl].count;
+            sm[cl].alarms.unwindowed[idxdnbad].avg_over /= sm[cl].count;
         }
         sm[cl].alarms.windowed.avg /= sm[cl].count;
+        sm[cl].alarms.windowed.avg_over /= sm[cl].count;
+
+        sm[cl].alarms.sources.avg /= sm[cl].count;
+        sm[cl].alarms.sources.avg_over /= sm[cl].count;
     }
+}
+
+const char* append_k(double value, char* format) {
+    static char tmp[100];
+    sprintf(tmp, format, value);
+    strcat(tmp, "k");
+    return tmp;
 }
 
 Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, char csvpath[PATH_MAX]) {
@@ -114,6 +162,12 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
     }
 
     BY_FOR(stats.by, fold) {
+        if (idxfold == 0) {
+            DGAFOR(cl) {
+                BY_GET(stats.by, fold).wcount[cl].train = trainer->tb2d->bytry._[0].byfold._[idxfold].splits._[0].train->windows.multi[cl].number;
+                BY_GET(stats.by, fold).wcount[cl].test = trainer->tb2d->bytry._[0].byfold._[idxfold].splits._[0].test->windows.multi[cl].number;
+            }
+        }
         BY_FOR(trainer->by, try) {
             BY_FOR3(trainer->by, fold, try, split) {
                 if (BY_GET2(trainer->by, fold, try).isok == 0) {
@@ -171,37 +225,10 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
     PF_ASK(stdout, -10, "thchooser");
     PF_ASK(stdout, -10, "psetitem");
     PF_ASK(stdout, -15, "psetitem value");
+    PF_ASK(stdout, -15, "dn count #0");
+    PF_ASK(stdout, -15, "dn count #1");
+    PF_ASK(stdout, -15, "dn count #2");
     printf("\n\t\t\t");
-    DGAFOR(cl) {
-        PF_ASK(stdout, -10, "%d#count", cl);
-
-        PF_ASK(stdout, -15, "%d#min logit", cl);
-        PF_ASK(stdout, -15, "%d#max logit", cl);
-        PF_ASK(stdout, -15, "%d#avg logit", cl);
-        PF_ASK(stdout, -5, " ");
-
-        PF_ASK(stdout, -20, "%d#min windowed", cl);
-        PF_ASK(stdout, -20, "%d#max windowed", cl);
-        PF_ASK(stdout, -20, "%d#avg windowed", cl);
-        PF_ASK(stdout, -5, " ");
-    
-        FOR_DNBAD {
-            PF_ASK(stdout, -15, "%d#min >%3.2f", cl, WApplyDNBad_Values[idxdnbad]);
-            PF_ASK(stdout, -15, "%d#max >%3.2f", cl, WApplyDNBad_Values[idxdnbad]);
-            PF_ASK(stdout, -15, "%d#avg >%3.2f", cl, WApplyDNBad_Values[idxdnbad]);
-            PF_ASK(stdout, -5, " ");
-        }
-    }
-    printf("\n");
-    char formats[N_PARAMETERS][10] = {
-        "%7.2f",
-        "%7.2f",
-        "%s",
-        "%ld",
-        "%7.2f",
-        "%s",
-        "%7.2f"
-    };
     BY_FOR(stats.by, fold) {
         BY_FOR(stats.by, thchooser) {
             for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
@@ -219,12 +246,15 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                         parameters_definition[pp].print(cs->pr[pp]._[idxparameter], 0, str);
                         PF_ASK(stdout, -15, "%s", str);
                     }
-                    PF_ASK(stdout, -10, "%-8ld", item->train[0].count);
+
+                    DGAFOR(cl) {
+                        PF_ASK_CENTER(stdout, 25, "%8ld %-8ld", BY_GET(stats.by, fold).wcount[cl].train, BY_GET(stats.by, fold).wcount[cl].test);
+                    }
                     
                     printf("\n");
 
 
-                    PF_ASK(stdout, 55, " ");
+                    PF_ASK(stdout, 30, " ");
                     PF_ASK(stdout, 2, " ");
                     PF_ASK(stdout, 1, "|");
                     PF_ASK(stdout, 2, " ");
@@ -234,42 +264,54 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                     PF_ASK(stdout, 1, "|");
                     PF_ASK(stdout, 2, " ");
 
-                    PF_ASK_CENTER(stdout, 45, "alarms w/w");
+                    PF_ASK_CENTER(stdout, 90, "sources w/w");
+                    PF_ASK(stdout, 2, " ");
+                    PF_ASK(stdout, 1, "|");
+                    PF_ASK(stdout, 2, " ");
+
+                    PF_ASK_CENTER(stdout, 90, "alarms w/w");
                     PF_ASK(stdout, 2, " ");
                     PF_ASK(stdout, 1, "|");
                     PF_ASK(stdout, 2, " ");
                 
                     FOR_DNBAD {
-                        PF_ASK_CENTER(stdout, 45, "alarms %4.4f", WApplyDNBad_Values[idxdnbad]);
-                    PF_ASK(stdout, 2, " ");
-                    PF_ASK(stdout, 1, "|");
-                    PF_ASK(stdout, 2, " ");
+                        PF_ASK_CENTER(stdout, 120, "alarms %4.3f", WApplyDNBad_Values[idxdnbad]);
+                        PF_ASK(stdout, 2, " ");
+                        PF_ASK(stdout, 1, "|");
+                        PF_ASK(stdout, 2, " ");
                     }
                     printf("\n");
 
-                    PF_ASK(stdout, 55, " ");
+                    PF_ASK(stdout, 30, " ");
                     PF_ASK(stdout, 2, " ");
                     PF_ASK(stdout, 1, "|");
                     PF_ASK(stdout, 2, " ");
 
-                    PF_ASK_CENTER(stdout, 15, "min");
-                    PF_ASK_CENTER(stdout, 15, "max");
-                    PF_ASK_CENTER(stdout, 15, "avg");
+                    PF_ASK_CENTER(stdout, 15, "min"); // tpr
+                    PF_ASK_CENTER(stdout, 15, "max"); // tpr
+                    PF_ASK_CENTER(stdout, 15, "avg"); // tpr
                     PF_ASK(stdout, 2, " ");
                     PF_ASK(stdout, 1, "|");
                     PF_ASK(stdout, 2, " ");
 
-                    PF_ASK_CENTER(stdout, 15, "min");
-                    PF_ASK_CENTER(stdout, 15, "max");
-                    PF_ASK_CENTER(stdout, 15, "avg");
+                    PF_ASK_CENTER(stdout, 30, "min");
+                    PF_ASK_CENTER(stdout, 30, "max");
+                    PF_ASK_CENTER(stdout, 30, "avg");
+                    PF_ASK(stdout, 2, " ");
+                    PF_ASK(stdout, 1, "|");
+                    PF_ASK(stdout, 2, " ");
+
+                    PF_ASK_CENTER(stdout, 30, "min");
+                    PF_ASK_CENTER(stdout, 30, "max");
+                    PF_ASK_CENTER(stdout, 30, "avg");
                     PF_ASK(stdout, 2, " ");
                     PF_ASK(stdout, 1, "|");
                     PF_ASK(stdout, 2, " ");
                 
                     FOR_DNBAD {
-                        PF_ASK_CENTER(stdout, 15, "min");
-                        PF_ASK_CENTER(stdout, 15, "max");
-                        PF_ASK_CENTER(stdout, 15, "avg");
+                        PF_ASK_CENTER(stdout, 40, "min");
+                        PF_ASK_CENTER(stdout, 40, "max");
+                        PF_ASK_CENTER(stdout, 40, "avg");
                         PF_ASK(stdout, 2, " ");
                         PF_ASK(stdout, 1, "|");
                         PF_ASK(stdout, 2, " ");
@@ -277,41 +319,82 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                     printf("\n");
                     
                     DGAFOR(cl) {
-                        PF_ASK(stdout, 55, "class=%d", cl);
+                        PF_ASK(stdout, 30, "class=%d", cl);
                         PF_ASK(stdout, 2, " ");
                         PF_ASK(stdout, 1, "|");
                         PF_ASK(stdout, 2, " ");
 
-                        PF_ASK_CENTER(stdout, 15, "%3d %-3d", (int) (item->train[cl].logit.min * 100), (int) (item->test[cl].logit.min * 100));
-                        PF_ASK_CENTER(stdout, 15, "%3d %-3d", (int) (item->train[cl].logit.max * 100), (int) (item->test[cl].logit.max * 100));
-                        PF_ASK_CENTER(stdout, 15, "%3.0d %-3.0d", (int) (item->train[cl].logit.avg * 100), (int) (item->test[cl].logit.avg * 100));
+                        PF_ASK_CENTER(stdout, 15, "%3d %-3d", (int) (item->train[cl].ratio.min * 100), (int) (item->test[cl].ratio.min * 100));
+                        PF_ASK_CENTER(stdout, 15, "%3d %-3d", (int) (item->train[cl].ratio.max * 100), (int) (item->test[cl].ratio.max * 100));
+                        PF_ASK_CENTER(stdout, 15, "%3.0d %-3.0d", (int) (item->train[cl].ratio.avg * 100), (int) (item->test[cl].ratio.avg * 100));
                         PF_ASK(stdout, 2, " ");
                         PF_ASK(stdout, 1, "|");
                         PF_ASK(stdout, 2, " ");
 
-                        PF_ASK_CENTER(stdout, 15, "%6ld %-6ld", item->train[cl].alarms.windowed.min, item->test[cl].alarms.windowed.min);
-                        PF_ASK_CENTER(stdout, 15, "%6ld %-6ld", item->train[cl].alarms.windowed.max, item->test[cl].alarms.windowed.max);
-                        PF_ASK_CENTER(stdout, 15, "%6.0f %-6.0f", item->train[cl].alarms.windowed.avg, item->test[cl].alarms.windowed.avg);
+                        PF_ASK_CENTER(stdout, 30, "%6ld/%-6ld %6ld/%-6ld", item->train[cl].alarms.sources.min, item->train[cl].alarms.sources.min_over, item->test[cl].alarms.sources.min, item->test[cl].alarms.sources.min_over);
+                        PF_ASK_CENTER(stdout, 30, "%6ld/%-6ld %6ld/%-6ld", item->train[cl].alarms.sources.max, item->train[cl].alarms.sources.max_over, item->test[cl].alarms.sources.max, item->test[cl].alarms.sources.max_over);
+                        PF_ASK_CENTER(stdout, 30, "%6.2f %-6.2f", item->train[cl].alarms.sources.avg, item->test[cl].alarms.sources.avg);
+                        PF_ASK(stdout, 2, " ");
+                        PF_ASK(stdout, 1, "|");
+                        PF_ASK(stdout, 2, " ");
+
+                        PF_ASK_CENTER(stdout, 30, "%6ld/%-6ld %6ld/%-6ld", item->train[cl].alarms.windowed.min, item->train[cl].alarms.windowed.min_over, item->test[cl].alarms.windowed.min, item->test[cl].alarms.windowed.min_over);
+                        PF_ASK_CENTER(stdout, 30, "%6ld/%-6ld %6ld/%-6ld", item->train[cl].alarms.windowed.min, item->train[cl].alarms.windowed.min_over, item->test[cl].alarms.windowed.min, item->test[cl].alarms.windowed.min_over);
+                        PF_ASK_CENTER(stdout, 30, "%6.2f/%6.2f %-6.2f/%6.2f",
+                            item->train[cl].alarms.windowed.avg,
+                            item->train[cl].alarms.windowed.avg_over,
+                            item->test[cl].alarms.windowed.avg,
+                            item->test[cl].alarms.windowed.avg_over
+                        );
                         PF_ASK(stdout, 2, " ");
                         PF_ASK(stdout, 1, "|");
                         PF_ASK(stdout, 2, " ");
 
                         FOR_DNBAD {
-                            PF_ASK_CENTER(stdout, 15, "%6ld %-6ld", item->train[cl].alarms.unwindowed[idxdnbad].min, item->test[cl].alarms.unwindowed[idxdnbad].min);
-                            PF_ASK_CENTER(stdout, 15, "%6ld %-6ld", item->train[cl].alarms.unwindowed[idxdnbad].max, item->test[cl].alarms.unwindowed[idxdnbad].max);
-                            PF_ASK_CENTER(stdout, 15, "%6.0f %-6.0f", item->train[cl].alarms.unwindowed[idxdnbad].avg, item->test[cl].alarms.unwindowed[idxdnbad].avg);
+                            PF_ASK_CENTER(stdout, 40, "%8ld/%-8s %8ld/%-8s",
+                                item->train[cl].alarms.unwindowed[idxdnbad].min,
+                                append_k((double) item->train[cl].alarms.unwindowed[idxdnbad].min_over/1000, "%.1f"),
+                                item->test[cl].alarms.unwindowed[idxdnbad].min,
+                                append_k((double) item->test[cl].alarms.unwindowed[idxdnbad].min_over/1000, "%.1f")
+                            );
+                            PF_ASK_CENTER(stdout, 40, "%8ld/%-8s %8ld/%-8s",
+                                item->train[cl].alarms.unwindowed[idxdnbad].max,
+                                append_k((double) item->train[cl].alarms.unwindowed[idxdnbad].max_over/1000, "%.1f"),
+                                item->test[cl].alarms.unwindowed[idxdnbad].max,
+                                append_k((double) item->test[cl].alarms.unwindowed[idxdnbad].max_over/1000, "%.1f")
+                            );
+                            PF_ASK_CENTER(stdout, 40, "%8.0f/%-8s %8.0f/%-8s",
+                                item->train[cl].alarms.unwindowed[idxdnbad].avg,
+                                append_k((double) item->train[cl].alarms.unwindowed[idxdnbad].avg_over / 1000, "%.1f"),
+                                item->test[cl].alarms.unwindowed[idxdnbad].avg,
+                                // item->test[cl].alarms.unwindowed[idxdnbad].avg_over / 1000
+                                append_k((double) item->test[cl].alarms.unwindowed[idxdnbad].avg_over / 1000, "%.1f")
+                            );
                             PF_ASK(stdout, 2, " ");
                             PF_ASK(stdout, 1, "|");
                             PF_ASK(stdout, 2, " ");
                         }
                         printf("\n");
                     }
-                    
+
                     printf("\n");
                 }
             }
         }
     }
+
+    // BY_FOR1(*trainer->tb2d, try) {
+    //     BY_FOR2(*trainer->tb2d, try, fold) {
+    //         for (size_t idxsplit = 0; idxsplit < BY_GET2(*trainer->tb2d, try, fold).splits.number; idxsplit++) {
+    //             DatasetSplit ds = BY_GET2(*trainer->tb2d, try, fold).splits._[idxsplit];
+
+    //             DGAFOR(cl) {
+    //                 printf("%7ld %-7ld\t", ds.train->windows.multi[cl].number, ds.test->windows.multi[cl].number);
+    //             }
+    //             printf("\n");
+    //         }
+    //     }
+    // }
 
     FILE* file = fopen(csvpath, "w");
     fprintf(file, "fold,wsize,thchooser,psetitem,psetitemvalue");
@@ -340,16 +423,17 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                     fprintf(file, "%ld,", trainer->tb2d->tb2w->wsize);
                     fprintf(file, "%s,", trainer->thchoosers._[idxthchooser].name);
                     fprintf(file, "%s,", item->name);
+
                     {  
                         char str[20];
                         parameters_definition[pp].print(cs->pr[pp]._[idxparameter], 0, str);
                         // printf("%-20s ", str);
                     }
-                    
+
                     DGAFOR(cl) {
-                        PF_ASK(file, -15, "%-3d %-d", (int) (item->train[cl].logit.min * 100), (int) (item->test[cl].logit.min * 100));
-                        PF_ASK(file, -15, "%-3d %-d", (int) (item->train[cl].logit.max * 100), (int) (item->test[cl].logit.max * 100));
-                        PF_ASK(file, -15, "%-3d %-d", (int) (item->train[cl].logit.avg * 100), (int) (item->test[cl].logit.avg * 100));
+                        PF_ASK(file, -15, "%-3d %-d", (int) (item->train[cl].ratio.min * 100), (int) (item->test[cl].ratio.min * 100));
+                        PF_ASK(file, -15, "%-3d %-d", (int) (item->train[cl].ratio.max * 100), (int) (item->test[cl].ratio.max * 100));
+                        PF_ASK(file, -15, "%-3d %-d", (int) (item->train[cl].ratio.avg * 100), (int) (item->test[cl].ratio.avg * 100));
 
                         PF_ASK(file, -20, "%-6ld %-ld", item->train[cl].alarms.windowed.min, item->test[cl].alarms.windowed.min);
                         PF_ASK(file, -20, "%-6ld %-ld", item->train[cl].alarms.windowed.max, item->test[cl].alarms.windowed.max);

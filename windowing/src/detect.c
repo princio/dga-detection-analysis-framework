@@ -21,13 +21,16 @@ void detect_copy(TCPC(Detection) src, Detection* dst) {
     memcpy(dst, src, sizeof(Detection));
 }
 
-MANY(double) detect_many_performance(Detection detection[N_DGACLASSES], MANY(Performance) many_performance) {
-    MANY(double) scores;
-    MANY_INIT(scores, many_performance.number, double);
-    for (size_t i = 0; i < many_performance.number; i++) {
-        scores._[i] = many_performance._[i].func(detection, &many_performance._[i]);
+void detect_run(WApply const * const apply, RSource source, const double th, Detection* detection) {
+    const DetectionValue tp = apply->logit >= th;
+    detection->th = th;
+    detection->windows[source->wclass.mc][tp]++;
+    detection->sources[source->wclass.mc][source->index.multi][tp]++;
+    for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++) {
+        detection->alarms[source->wclass.mc][idxdnbad] += apply->dn_bad[idxdnbad];
     }
-    return scores;
+    detection->dn_count[source->wclass.mc] += apply->wcount;
+    detection->dn_whitelistened_count[source->wclass.mc] += apply->whitelistened;
 }
 
 double detect_performance(Detection detection[N_DGACLASSES], TCPC(Performance) performance) {
@@ -39,8 +42,6 @@ int detect_performance_compare(Performance* performance, double new, double old)
     
     if (!performance->greater_is_better)
         diff *= -1;
-
-    // printf("%30s\t%5.4f %s %5.4f? %s\n", performance->name, new, performance->greater_is_better ? ">" : "<", old, diff > 0 ? "better" : "not");
 
     return diff > 0;
 }

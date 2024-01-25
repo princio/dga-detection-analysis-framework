@@ -78,7 +78,7 @@ int main (int argc, char* argv[]) {
 
     const int wsize = 400;
     const int nsources = 20;
-    const size_t max_configs = 0;
+    const size_t max_configs = 100;
 
     const ParameterGenerator pg = parametergenerator_default(max_configs);
 
@@ -90,7 +90,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/alarms_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/princio/Desktop/results/valgrind_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     RTB2W tb2w = NULL;
@@ -171,11 +171,13 @@ int main (int argc, char* argv[]) {
 
     MANY(Performance) thchoosers = _main_training_performance();
 
-    {
-        thrange_context* context = thrange_start(tb2d->tb2w, thchoosers);
-        thrange_wait(context);
-        thrange_free(context->thrange);
-    }
+    // {
+    //     ThRange* thrange;
+    //     thrange_context* context = thrange_start(tb2d->tb2w, thchoosers);
+    //     thrange = context->thrange;
+    //     thrange_wait(context);
+    //     thrange_free(context->thrange);
+    // }
 
     RTrainer trainer = main_training_generate(rootdir, tb2d, thchoosers);
 
