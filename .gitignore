@@ -2,6 +2,8 @@
 
 venv
 
+nohup-runs/
+
 pslregex/__pycache__/*
 Y/*
 X/*
