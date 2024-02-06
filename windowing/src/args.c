@@ -81,11 +81,11 @@ get_file_name (int argc, char* argv[], options_t* options)
 
     /* If there is more arguments, probably, it is an input file */
     if (optind < argc) {
-        strncpy(options->file_name, argv[optind++], FILE_NAME_SIZE);
+        strncpy(options->file_name, argv[optind++], FILE_NAME_SIZE - 1);
 
     /* Otherwise, assumes stdin as the input file */
     } else {
-        strncpy(options->file_name, "-", FILE_NAME_SIZE);
+        strncpy(options->file_name, "-", FILE_NAME_SIZE - 1);
     }
 }
 

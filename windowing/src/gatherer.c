@@ -40,7 +40,7 @@ void gatherer_many_finalize(__MANY* many, size_t element_size) {
     }
 }
 
-void gatherer_alloc(RGatherer* gatherer_ref, char name[50], GathererFreeFn freefn, size_t initial_size, size_t element_size, size_t size_realloc_increment) {
+void gatherer_alloc(RGatherer* gatherer_ref, char* name, GathererFreeFn freefn, size_t initial_size, size_t element_size, size_t size_realloc_increment) {
     RGatherer gatherer;
     {
         if (gatherer_of_gatherers.size == 0) {
@@ -52,7 +52,7 @@ void gatherer_alloc(RGatherer* gatherer_ref, char name[50], GathererFreeFn freef
     gatherer = &gatherer_of_gatherers._[gatherer_of_gatherers.number];
     gatherer_of_gatherers.number++;
     
-    strcpy(gatherer->name, name);
+    strncpy(gatherer->name, name, 50);
 
     gatherer->ref = gatherer_ref;
     gatherer->freefn = freefn;

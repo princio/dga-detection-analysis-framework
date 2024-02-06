@@ -132,7 +132,7 @@ const char* append_k(double value, char* format) {
     return tmp;
 }
 
-Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, char csvpath[PATH_MAX]) {
+Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, char* csvpath) {
 
     Stat stats;
     TrainerBy* by = &trainer->by;

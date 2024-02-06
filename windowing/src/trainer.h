@@ -67,6 +67,6 @@ RTrainer trainer_run2(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR
 
 void trainer_free(RTrainer results);
 
-void trainer_io(IOReadWrite rw, char dirname[200], RTB2D, RTrainer* results);
+void trainer_io(IOReadWrite rw, char* dirname, RTB2D, RTrainer* results);
 
 #endif

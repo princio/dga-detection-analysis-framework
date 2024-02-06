@@ -292,7 +292,7 @@ int thrange_wait(thrange_context* context) {
         pthread_join(context->consumers[i], NULL);
     }
 
-    FILE* file = fopen("/home/princio/Desktop/thrange.csv", "w");
+    FILE* file = fopen("/home/oem/Desktop/thrange.csv", "w");
     if (file) {
         ThRange* thrange = context->thrange;
         BY_FOR1(thrange->by, thchooser) {

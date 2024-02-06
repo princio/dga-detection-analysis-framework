@@ -21,7 +21,7 @@
 #define FWR(R, A) { if (R) freadN((void*) &A, sizeof(A), file); else fwriteN((void*) &A, sizeof(A), file); }
 
 
-int __io__debug;
+extern int __io__debug;
 #ifdef IO_DEBUG
 FILE* __io__log;
 
@@ -36,7 +36,7 @@ if(__io__debug) {\
 }\
 
 #define IOLOGPATH(rw, N) { char __io__log__path[PATH_MAX]; \
-    sprintf(__io__log__path, "/home/princio/Desktop/results/%s.%s", #N, rw ? "read" : "write");\
+    sprintf(__io__log__path, "/home/oem/Desktop/results/%s.%s", #N, rw ? "read" : "write");\
     __io__log = fopen(__io__log__path, "w");\
 }
 #else
@@ -60,15 +60,15 @@ typedef void (*FRWNPtr)(void* v, size_t s, FILE* file);
 typedef void (*IOObjectID)(TCPC(void), char[IO_OBJECTID_LENGTH]);
 typedef void (*IOObjectFunction)(IOReadWrite, FILE*, void*);
 
-FILE* io_openfile(IOReadWrite read, char fname[500]);
+FILE* io_openfile(IOReadWrite read, char* fname);
 
 int io_direxists(char* dir);
 int io_fileexists(char* dir);
 
-int io_makedir(char dir[PATH_MAX], int append_time);
-int io_makedirs(char dir[PATH_MAX]);
-void io_path_concat(char path1[PATH_MAX], char path2[PATH_MAX], char res[PATH_MAX]);
-int io_makedirs_notoverwrite(char dirpath[DIR_MAX]);
+int io_makedir(char* dir, int append_time);
+int io_makedirs(char* dir);
+void io_path_concat(char* path1, char* path2, char* res);
+int io_makedirs_notoverwrite(char* dirpath);
 
 void io_dumphex_file(FILE* file, const void* data, size_t size);
 void io_dumphex(const void* data, size_t size);
@@ -87,6 +87,6 @@ int io_load(char objid[IO_OBJECTID_LENGTH], int cache, IOObjectFunction fn, void
 
 void io_appendtime(char *str, size_t size);
 
-void io_flag(IOReadWrite rw, FILE* file, char flag_code[IO_FLAG_LEN], int line);
+void io_flag(IOReadWrite rw, FILE* file, char* flag_code, int line);
 
 #endif

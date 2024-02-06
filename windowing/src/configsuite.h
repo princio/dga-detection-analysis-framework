@@ -98,8 +98,6 @@ typedef struct Config {
 
 MAKEMANY(Config);
 
-
-
 typedef void (ParameterPreFunc)(ParameterValue ref, int width, char str[20]);
 
 typedef struct ParameterDefinition {
@@ -117,18 +115,15 @@ typedef struct ConfigApplied {
 
 MAKEMANY(ConfigApplied);
 
-char WINDOWING_NAMES[3][10];
-char NN_NAMES[11][10];
-
+extern char WINDOWING_NAMES[3][10];
+extern char NN_NAMES[11][10];
+extern ParameterDefinition parameters_definition[N_PARAMETERS];
 
 typedef struct ConfigSuite {
     ParameterGenerator pg;
     ParameterRealm pr;
     MANY(Config) configs;
 } ConfigSuite;
-
-
-ParameterDefinition parameters_definition[N_PARAMETERS];
 
 size_t configsuite_pg_count(ParameterGenerator);
 

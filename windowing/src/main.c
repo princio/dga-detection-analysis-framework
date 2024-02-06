@@ -78,7 +78,7 @@ int main (int argc, char* argv[]) {
 
     const int wsize = 400;
     const int nsources = 20;
-    const size_t max_configs = 100;
+    const size_t max_configs = 0;
 
     const ParameterGenerator pg = parametergenerator_default(max_configs);
 
@@ -90,7 +90,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/valgrind_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/oem/Desktop/results/test1_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     RTB2W tb2w = NULL;

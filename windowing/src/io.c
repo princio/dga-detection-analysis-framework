@@ -8,7 +8,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
-#include <openssl/sha.h>
+#include <openssl/evp.h>
 
 int io_direxists(char* dir) {
     struct stat st = {0};
@@ -20,7 +20,7 @@ int io_fileexists(char* dir) {
     return stat(dir, &st) == 0 && S_ISREG(st.st_mode);
 }
 
-int io_makedir(char dir[PATH_MAX], int append_time) {
+int io_makedir(char* dir, int append_time) {
     if (append_time) {
         if (strlen(dir) + 50 > PATH_MAX) {
             printf("Warning: dirlen + 50 > dirlen");
@@ -37,7 +37,7 @@ int io_makedir(char dir[PATH_MAX], int append_time) {
     return 0;
 }
 
-void io_path_concat(char path1[PATH_MAX], char path2[PATH_MAX], char res[PATH_MAX]) {
+void io_path_concat(char *path1, char *path2, char *res) {
     assert(strlen(path1) + strlen(path2) < PATH_MAX);
     assert(path1[strlen(path1) - 1] == '/');
 
@@ -50,7 +50,7 @@ void io_path_concat(char path1[PATH_MAX], char path2[PATH_MAX], char res[PATH_MA
     snprintf(res, PATH_MAX, "%s%s", a, b);
 }
 
-int io_makedirs(char dir[PATH_MAX]) {
+int io_makedirs(char* dir) {
     char tmp[PATH_MAX];
     char *p = NULL;
     size_t len;
@@ -79,7 +79,7 @@ int io_makedirs(char dir[PATH_MAX]) {
     return error;
 }
 
-int io_makedirs_notoverwrite(char dirpath[DIR_MAX]) {
+int io_makedirs_notoverwrite(char* dirpath) {
 
     if (io_direxists(dirpath)) {
         printf("Directory already exist: %s\n", dirpath);
@@ -94,7 +94,7 @@ int io_makedirs_notoverwrite(char dirpath[DIR_MAX]) {
     return 0;
 }
 
-FILE* io_openfile(IOReadWrite read, char fname[500]) {
+FILE* io_openfile(IOReadWrite read, char* fname) {
     FILE* file;
     file = fopen(fname, read ? "rb+" : "wb+");
     if (!file) {
@@ -226,9 +226,33 @@ void io_hash(void const * const object, const size_t object_size, char digest[IO
 
     memset(out, 0, SHA256_DIGEST_LENGTH);
 
-    SHA256_Init(&sha);
-    SHA256_Update(&sha, object, sizeof(object_size));
-    SHA256_Final(out, &sha);
+    {
+        EVP_MD_CTX *mdctx;
+        unsigned char **digest = NULL;
+        unsigned int digest_len;
+
+        if((mdctx = EVP_MD_CTX_new()) == NULL) {
+            // error
+            LOG_ERROR("Error hash");
+        }
+        if(1 != EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL)) {
+            // error
+            LOG_ERROR("Error hash");
+        }
+        if(1 != EVP_DigestUpdate(mdctx, object, object_size)) {
+            // error
+            LOG_ERROR("Error hash");
+        }
+        if((*digest = (unsigned char *)OPENSSL_malloc(EVP_MD_size(EVP_sha256()))) == NULL) {
+            // error
+            LOG_ERROR("Error hash");
+        }
+        if(1 != EVP_DigestFinal_ex(mdctx, *digest, &digest_len)) {
+            // error
+            LOG_ERROR("Error hash");
+        }
+        EVP_MD_CTX_free(mdctx);
+    }
 
     char hex[16] = {
         '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
@@ -254,7 +278,7 @@ void io_subdigest(void const * const object, const size_t object_size, char subd
     subdigest[IO_SUBDIGEST_LENGTH - 1] = '\0';
 }
 
-void io_flag(IOReadWrite rw, FILE* file, char flag_code[IO_FLAG_LEN], int line) {
+void io_flag(IOReadWrite rw, FILE* file, char *flag_code, int line) {
     char flag_code_memset0[IO_FLAG_LEN];
     memset(flag_code_memset0, 0, IO_FLAG_LEN);
     strcpy(flag_code_memset0, flag_code);

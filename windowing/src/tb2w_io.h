@@ -5,7 +5,7 @@
 
 #include "tb2w.h"
 
-void io_flag(IOReadWrite rw, FILE* file, char flag_code[IO_FLAG_LEN], int line);
+// void io_flag(IOReadWrite rw, FILE* file, char* flag_code, int line);
 void tb2_io_windows(IOReadWrite rw, FILE* file, RTB2W tb2, MANY(RWindow) windows);
 
 int tb2w_io_windowing(IOReadWrite rw, RTB2W tb2, RWindowing windowing);

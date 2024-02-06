@@ -5,7 +5,6 @@
 
 #include "logger.h"
 
-#include <curses.h>
 #include <linux/limits.h>
 #include <stdint.h>
 #include <time.h>
@@ -21,9 +20,7 @@
 
 #define DIR_MAX (PATH_MAX - 100)
 
-WINDOW* cwin;
-
-char CACHE_DIR[DIR_MAX];
+extern char CACHE_DIR[DIR_MAX];
 
 #ifdef PRINTF_DEBUG
 #define PRINTF(F, ...) printf(F, __VA_ARGS__)

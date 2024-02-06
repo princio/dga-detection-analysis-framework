@@ -504,14 +504,14 @@ int trainer_io_results_file(IOReadWrite rw, char fpath[PATH_MAX], TrainerBy_conf
     return fclose(file);
 }
 
-void trainer_io(IOReadWrite rw, char dirname[200], RTB2D tb2d, RTrainer* trainer) {
+void trainer_io(IOReadWrite rw, char* dirname, RTB2D tb2d, RTrainer* trainer) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    char fpath[210];
+    char fpath[PATH_MAX];
     FILE* file;
     MANY(Performance) thchoosers;
 
-    sprintf(fpath, "%s/trainer.bin", dirname);
+    snprintf(fpath, PATH_MAX, "%s/trainer.bin", dirname);
 
     file = io_openfile(rw, fpath);
 

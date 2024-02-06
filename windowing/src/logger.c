@@ -259,7 +259,7 @@ static void getTimestamp(const struct timeval* time, char* timestamp, size_t siz
 static void getBackupFileName(const char* basename, unsigned char index,
         char* backupname, size_t size)
 {
-    char indexname[5];
+    char indexname[20];
 
     assert(size >= strlen(basename) + sizeof(indexname));
 

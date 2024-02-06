@@ -33,7 +33,7 @@ int _stratosphere_connect() {
     if (conn != NULL) {
         return 0;
     }
-    conn = PQconnectdb("postgresql://princio:postgres@localhost/dns");
+    conn = PQconnectdb("postgresql://postgres:postgres@localhost/dns");
 
     if (PQstatus(conn) == CONNECTION_OK) {
         return 0;

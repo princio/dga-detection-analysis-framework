@@ -460,7 +460,7 @@ int trainer_detections_wait(trainer_detections_context* context) {
         pthread_join(context->consumers[i], NULL);
     }
 
-    FILE* file = fopen("/home/princio/Desktop/trainer.csv", "w");
+    FILE* file = fopen("/home/oem/Desktop/trainer.csv", "w");
     if (file) {
         RTrainer trainer = context->producer_args.trainer;
         BY_FOR1(trainer->by, fold) {
