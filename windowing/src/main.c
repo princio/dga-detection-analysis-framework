@@ -76,7 +76,7 @@ int main (int argc, char* argv[]) {
 
     char rootdir[PATH_MAX];
 
-    const int wsize = 100;
+    const int wsize = 1000;
     const int nsources = 0;
     const size_t max_configs = 0;
     const size_t n_try = 5;
