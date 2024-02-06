@@ -76,9 +76,10 @@ int main (int argc, char* argv[]) {
 
     char rootdir[PATH_MAX];
 
-    const int wsize = 400;
-    const int nsources = 20;
+    const int wsize = 100;
+    const int nsources = 0;
     const size_t max_configs = 0;
+    const size_t n_try = 5;
 
     const ParameterGenerator pg = parametergenerator_default(max_configs);
 
@@ -90,7 +91,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/oem/Desktop/results/test1_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/oem/Desktop/results/test_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     RTB2W tb2w = NULL;
@@ -126,9 +127,9 @@ int main (int argc, char* argv[]) {
     MANY(FoldConfig) foldconfigs_many; {
         FoldConfig foldconfigs[] = {
             { .k = 10, .k_test = 2 },
-            // { .k = 10,.k_test = 4, },
-            // { .k = 10,.k_test = 6, },
-            // { .k = 10,.k_test = 8, },
+            { .k = 10, .k_test = 5, },
+            { .k = 20, .k_test = 16, },
+            { .k = 20, .k_test = 10, }
         };
 
         MANY_INIT(foldconfigs_many, sizeof(foldconfigs) / sizeof(FoldConfig), FoldConfig);
@@ -139,12 +140,12 @@ int main (int argc, char* argv[]) {
         case BO_LOAD_OR_GENERATE: {
             tb2d = main_dataset_load(rootdir, tb2w);
             if (!tb2d) {
-                tb2d = main_dataset_generate(rootdir, tb2w, 1, foldconfigs_many);
+                tb2d = main_dataset_generate(rootdir, tb2w, n_try, foldconfigs_many);
             }
             break;
         }
         case BO_TEST: {
-            if (main_dataset_test(rootdir, tb2w, 10, foldconfigs_many)) {
+            if (main_dataset_test(rootdir, tb2w, n_try, foldconfigs_many)) {
                 LOG_INFO("TB2D test failed.");
                 exit(1);
             }
