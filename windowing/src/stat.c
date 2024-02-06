@@ -16,7 +16,7 @@
 #include <time.h>
 
 #define PF_ASK_CENTER(FILE, ASK, ...) {\
-    char __tmp__kk[200];\
+    char __tmp__kk[500];\
     sprintf(__tmp__kk, __VA_ARGS__);\
     int __bb = fprintf(FILE, "%*s", (int) (ASK - strlen(__tmp__kk)) / 2, " ");\
     fprintf(FILE, "%*s", -1 * (int) (ASK - __bb), __tmp__kk);\
