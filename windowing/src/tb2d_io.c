@@ -16,34 +16,31 @@ void tb2d_io_flag_testbed(IOReadWrite rw, FILE* file, WSize wsize, int line) {
 void _tb2d_io_dataset_windows(IOReadWrite rw, FILE* file, RTB2D tb2d, MANY(RWindow) windows) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    for (size_t i = 0; i < windows.number; i++) {
-        struct {
-            uint32_t idxsource;
-            uint32_t windowing_idxwindow;
-        } windex;
-        memset(&windex, 0, sizeof(windex));
+    struct __windex {
+        uint32_t idxsource;
+        uint32_t windowing_idxwindow;
+    };
 
-        if (rw == IO_WRITE) {
-            windex.idxsource = windows._[i]->windowing->source->index.all;
-            windex.windowing_idxwindow = windows._[i]->index;
+    struct __windex* windexes = calloc(windows.number, sizeof(struct __windex));
+
+    if (rw == IO_WRITE) {
+        for (size_t i = 0; i < windows.number; i++) {
+            windexes[i].idxsource = windows._[i]->windowing->source->index.all;
+            windexes[i].windowing_idxwindow = windows._[i]->index;
         }
-
-        FRW(windex);
-
-        if (rw == IO_READ) {
-            const size_t idxsource = windex.idxsource;
-            const RWindow* windowing_window_ref = &BY_GET(tb2d->tb2w->windowing, source)->windows._[windex.windowing_idxwindow];
-            windows._[i] = BY_GET(tb2d->tb2w->windowing, source)->windows._[windex.windowing_idxwindow];
-        }
-
-        // LOG_TRACE("ciao#%-10ld\t%-10s\t%8u\t%8u\t%5ld",
-        //     ciao++,
-        //     rw == IO_WRITE ? "W" : "R",
-        //     windex.idxsource,
-        //     windex.windowing_idxwindow,
-        //     windows._[i]->index
-        // );
     }
+
+    FRW_SIZE((*windexes), windows.number * sizeof(struct __windex));
+
+    if (rw == IO_READ) {
+        for (size_t i = 0; i < windows.number; i++) {
+            const size_t idxsource = windexes[i].idxsource;
+            const RWindow* windowing_window_ref = &BY_GET(tb2d->tb2w->windowing, source)->windows._[windexes[i].windowing_idxwindow];
+            windows._[i] = BY_GET(tb2d->tb2w->windowing, source)->windows._[windexes[i].windowing_idxwindow];
+        }
+    }
+
+    free(windexes);
 }
 
 void _tb2d_io_dataset(IOReadWrite rw, FILE* file, RTB2D tb2d, RDataset* dataset_ref) {
@@ -51,18 +48,26 @@ void _tb2d_io_dataset(IOReadWrite rw, FILE* file, RTB2D tb2d, RDataset* dataset_
 
     Index windows_counter;
     WSize wsize;
+    size_t n_configs;
     Index walker;
 
     if (rw == IO_WRITE) {
-        windows_counter = dataset_counter(*dataset_ref);
+        n_configs = (*dataset_ref)->n_configs;
         wsize = (*dataset_ref)->wsize;
+        windows_counter = dataset_counter(*dataset_ref);
     }
 
+    FRW(n_configs);
     FRW(wsize);
     FRW(windows_counter);
 
     if (rw == IO_READ) {
-        (*dataset_ref) = dataset_create(tb2d->tb2w->wsize, windows_counter);
+        (*dataset_ref) = dataset_create(tb2d->tb2w->wsize, windows_counter, n_configs);
+    }
+
+    for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
+        FRW((*dataset_ref)->minmax._[idxconfig].min);
+        FRW((*dataset_ref)->minmax._[idxconfig].max);
     }
 
     _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windows.all);
@@ -101,6 +106,8 @@ void _tb2d_io_datasets(IOReadWrite rw, FILE* file, RTB2D tb2d) {
             }
 
             io_flag(rw, file, "tb2d-fold-end", __LINE__);
+
+            LOG_TRACE("%s:\tTry=%ld\tFold=%ld", rw == IO_WRITE ? "Written" : "Read", idxtry, idxfold);
         }
     }
 }

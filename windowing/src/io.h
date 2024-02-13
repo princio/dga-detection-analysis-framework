@@ -42,7 +42,8 @@ if(__io__debug) {\
 #else
 #define IOLOGPATH(rw, N)
 #define IOPRINT(...)
-#define FRW(A) (*__FRW)((void*) &A, sizeof(A), file);
+#define FRW_SIZE(A, SIZE) (*__FRW)((void*) &(A), (SIZE), file);
+#define FRW(A) FRW_SIZE(A, sizeof(A));
 #endif
 
 #define FW(A) fwriteN((void*) &A, sizeof(A), file)

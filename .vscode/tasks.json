@@ -5,7 +5,7 @@
             "type": "shell",
             "command": "make ca",
             "options": {
-                "cwd": "/home/princio/Repo/princio/malware_detection_preditc_file/windowing"
+                "cwd": "/home/oem/malware-detection-predict-file/windowing"
             }
         },
         {

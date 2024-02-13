@@ -124,7 +124,7 @@ void td_io_detection(IOReadWrite rw, char fpath[PATH_MAX], RTrainer trainer, Tra
 }
 
 #define TD_IO_FPATH(fpath) \
-sprintf(fpath, "results_%ld_%ld_%ld___%ld_%ld_%ld.bin", args->ths.n_blocks, args->ths.n_logit_max, args->ths.reducer, idxfold, idxtry, idxsplit);\
+sprintf(fpath, "results_%ld_%ld_%ld___%ld_%ld_%ld.bin", args->ths.n_blocks, args->ths.n_logit_max, args->ths.reducer, idxtry, idxfold, idxsplit);\
 io_path_concat(trainer->rootdir, fpath, fpath);
 
 #define TD_IO_EXISTS(fpath, V) { TD_IO_FPATH(fpath); V = io_fileexists(fpath); }
@@ -135,24 +135,26 @@ void* _td_producer(void* argsvoid) {
     const RTrainer trainer = args->trainer;
     TB2D tb2d = *args->trainer->tb2d;
 
-    size_t total_splits = 0;
-    BY_FOR(args->trainer->by, fold) {
-        BY_FOR(args->trainer->by, try) {
+    size_t count_splits = 0;
+    BY_FOR(args->trainer->by, try) {
+        BY_FOR(args->trainer->by, fold) {
             TCPC(DatasetSplits) splits = &BY_GET2(tb2d, try, fold);
             for (size_t idxsplit = 0; idxsplit < splits->splits.number; idxsplit++) {
-                total_splits++;
+                count_splits++;
             }
         }
     }
 
+    const size_t total_splits = count_splits;
+    count_splits = 0;
     int qm_id = 0;
-    BY_FOR(args->trainer->by, fold) {
-        BY_FOR(args->trainer->by, try) {
+    BY_FOR(args->trainer->by, try) {
+        BY_FOR(args->trainer->by, fold) {
             TCPC(DatasetSplits) splits = &BY_GET2(tb2d, try, fold);
 
             if (!splits->isok) {
                 BY_GET2(trainer->by, fold, try).isok = 0;
-                LOG_WARN("Fold [fold=%ld, try=%ld] is not healthy.", idxfold, idxtry);
+                LOG_WARN("Fold [try=%ld, fold=%ld] is not healthy.", idxfold, idxtry);
                 continue;
             }
 
@@ -186,7 +188,7 @@ void* _td_producer(void* argsvoid) {
 
                 tdqueue_enqueue(args->queue, qm, 0);
 
-                LOG_TRACE("Enqueued split %ld/%ld", idxsplit, total_splits);
+                LOG_TRACE("Enqueued split %ld/%ld", count_splits++, total_splits);
             }
         }
     }
@@ -215,7 +217,7 @@ void* _td_consumer(void* argsvoid) {
 
     MANY_INIT(minmax, n_configs, MinMax);
 
-    #define FOR_CONFIG for (size_t idxconfig = 0; idxconfig < idxconfigsize; idxconfig++)
+    #define TD_FOR_CONFIG for (size_t idxconfig = 0; idxconfig < idxconfigsize; idxconfig++)
 
     MANY(Detection) detections[trainer->by.n.config];
     MANY(Detection) best_detections[n_configs];
@@ -291,31 +293,44 @@ void* _td_consumer(void* argsvoid) {
             for (size_t idxconfig = 0; idxconfig < idxconfigsize; idxconfig++) {
                 memset(detections[idxconfig]._, 0, detections[idxconfig].number * sizeof(Detection));
                 memset(best_detections[idxconfig]._, 0, best_detections[idxconfig].number * sizeof(Detection));
+                const size_t idxth_start = minmax._[idxconfig].min;
+                const size_t idxth_end = minmax._[idxconfig].max;
+                for (size_t idxth = idxth_start; idxth < idxth_end; idxth++) {
+                    detections[idxconfig]._[idxth].th = ths.many._[idxth];
+                }
             }
 
             int progress_print = 0;
-            for (size_t idxwindow = 0; idxwindow < split.train->windows.all.number; idxwindow++) {
-                RWindow window0 = split.train->windows.all._[idxwindow];
-                RSource source = window0->windowing->source;
 
-                FOR_CONFIG {
-                    size_t const apply_idxconfig = idxconfig + idxconfigstart;
-                    const size_t idxth_start = minmax._[idxconfig].min;
-                    const size_t idxth_end = minmax._[idxconfig].max;
-                    WApply * const apply = &window0->applies._[apply_idxconfig];
-                    MANY(Detection) const * const detections_config = &detections[idxconfig];
-                    for (size_t idxth = idxth_start; idxth < idxth_end; idxth++) {
-                        detect_run(apply, window0->windowing->source, ths.many._[idxth], &detections_config->_[idxth]);
+            if (args->id % 2) {
+                for (size_t idxwindow = 0; idxwindow < split.train->windows.all.number; idxwindow++) {
+                    RWindow window0 = split.train->windows.all._[idxwindow];
+                    RSource source = window0->windowing->source;
+
+                    TD_FOR_CONFIG {
+                        size_t const apply_idxconfig = idxconfig + idxconfigstart;
+                        const size_t idxth_start = minmax._[idxconfig].min;
+                        const size_t idxth_end = minmax._[idxconfig].max;
+                        WApply * const apply = &window0->applies._[apply_idxconfig];
+                        MANY(Detection) const * const detections_config = &detections[idxconfig];
+                        for (size_t idxth = idxth_start; idxth < idxth_end; idxth++) {
+                            detect_run(apply, window0->windowing->source, &detections_config->_[idxth]);
+                        }
                     }
+                    if (idxwindow % (split.train->windows.all.number / 10) == 0) {
+                        LOG_TRACE("Consumer#%d - Window#%7ld%% - done", args->id, 10 * (idxwindow / (split.train->windows.all.number / 10)));
+                    }
+                } // calculating detections
+            } else {
+                TD_FOR_CONFIG {
+                    size_t const apply_idxconfig = idxconfig + idxconfigstart;
+                    MANY(Detection) const * const detections_config = &detections[idxconfig];
                 }
-                if (idxwindow % (split.train->windows.all.number / 10) == 0) {
-                    LOG_TRACE("Consumer#%d - Window#%7ld%% - done", args->id, 10 * (idxwindow / (split.train->windows.all.number / 10)));
-                }
-            } // calculating detections
+            }
 
             LOG_TRACE("Consumer#%d - [%7ld, %7ld, %7ld] - find better", args->id, idxconfigstart, idxconfigend, n_configs);
 
-            FOR_CONFIG {
+            TD_FOR_CONFIG {
                 size_t apply_idxconfig = idxconfig + idxconfigstart;
                 BY_FOR(trainer->by, thchooser) {
                     for (size_t idxth = minmax._[idxconfig].min; idxth < minmax._[idxconfig].max; idxth++) {
@@ -339,24 +354,28 @@ void* _td_consumer(void* argsvoid) {
 
             LOG_TRACE("Consumer#%d - [%7ld, %7ld, %7ld] - start test", args->id, idxconfigstart, idxconfigend, n_configs);
 
+            TD_FOR_CONFIG {
+                BY_FOR(trainer->by, thchooser) {
+                    BY_GET4(trainer->by, fold, try, split, thchooser).byconfig._[idxconfig + idxconfigstart].best_test.th = best_detections[idxconfig]._[idxthchooser].th;
+                }
+            }
+
             for (size_t w = 0; w < split.test->windows.all.number; w++) {
                 RWindow window0 = split.test->windows.all._[w];
                 RSource source = window0->windowing->source;
 
-                FOR_CONFIG {
+                TD_FOR_CONFIG {
                     size_t apply_idxconfig = idxconfig + idxconfigstart;
                     BY_FOR(trainer->by, thchooser) {
                         detect_run(
                             &window0->applies._[apply_idxconfig],
                             window0->windowing->source,
-                            best_detections[idxconfig]._[idxthchooser].th,
                             &BY_GET4(trainer->by, fold, try, split, thchooser).byconfig._[apply_idxconfig].best_test
                         );
-
                     }
                 }
                 
-                FOR_CONFIG {
+                TD_FOR_CONFIG {
                     size_t apply_idxconfig = idxconfig + idxconfigstart;
                     BY_FOR(trainer->by, thchooser) {
                         TrainerBy_config* result = &BY_GET4(trainer->by, fold, try, split, thchooser).byconfig._[apply_idxconfig];
@@ -411,7 +430,7 @@ trainer_detections_context* trainer_detections_start(RTrainer trainer) {
     // trainer->tb2d->tb2w->configsuite.configs.number = a;
 
     size_t n_configs = trainer->tb2d->tb2w->configsuite.configs.number;
-    size_t blockconfig_step = (9e9 / TD_NTHREADS) / (sizeof(Detection) * logits.many.number);
+    size_t blockconfig_step = (25e9 / TD_NTHREADS) / (sizeof(Detection) * logits.many.number);
     if (blockconfig_step > n_configs) blockconfig_step = n_configs;
 
     const int buffer_size = 100;

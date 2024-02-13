@@ -127,9 +127,9 @@ int main (int argc, char* argv[]) {
     MANY(FoldConfig) foldconfigs_many; {
         FoldConfig foldconfigs[] = {
             { .k = 10, .k_test = 2 },
-            { .k = 10, .k_test = 5, },
-            { .k = 20, .k_test = 16, },
-            { .k = 20, .k_test = 10, }
+            { .k = 10, .k_test = 5 },
+            { .k = 20, .k_test = 16 },
+            { .k = 20, .k_test = 10 }
         };
 
         MANY_INIT(foldconfigs_many, sizeof(foldconfigs) / sizeof(FoldConfig), FoldConfig);
@@ -154,15 +154,6 @@ int main (int argc, char* argv[]) {
         }
         default:
             break;
-    }
-
-    BY_FOR(*tb2d, try) {
-        BY_FOR(*tb2d, fold) {
-            for (size_t idxsplit = 0; idxsplit < BY_GET2(*tb2d, try, fold).splits.number; idxsplit++) {
-                dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].train);
-                dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].test);
-            }
-        }
     }
 
     if(!tb2d) {

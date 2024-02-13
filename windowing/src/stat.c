@@ -162,11 +162,9 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
     }
 
     BY_FOR(stats.by, fold) {
-        if (idxfold == 0) {
-            DGAFOR(cl) {
-                BY_GET(stats.by, fold).wcount[cl].train = trainer->tb2d->bytry._[0].byfold._[idxfold].splits._[0].train->windows.multi[cl].number;
-                BY_GET(stats.by, fold).wcount[cl].test = trainer->tb2d->bytry._[0].byfold._[idxfold].splits._[0].test->windows.multi[cl].number;
-            }
+        DGAFOR(cl) {
+            BY_GET(stats.by, fold).wcount[cl].train = trainer->tb2d->bytry._[0].byfold._[idxfold].splits._[0].train->windows.multi[cl].number;
+            BY_GET(stats.by, fold).wcount[cl].test = trainer->tb2d->bytry._[0].byfold._[idxfold].splits._[0].test->windows.multi[cl].number;
         }
         BY_FOR(trainer->by, try) {
             BY_FOR3(trainer->by, fold, try, split) {
@@ -230,6 +228,7 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
     PF_ASK(stdout, -15, "dn count #2");
     printf("\n\t\t\t");
     BY_FOR(stats.by, fold) {
+        PF_ASK(stdout, -50, "FOLD: %ld with k=%ld, k_test=%ld", idxfold, trainer->tb2d->folds._[idxfold].k, trainer->tb2d->folds._[idxfold].k_test);
         BY_FOR(stats.by, thchooser) {
             for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
                 for (size_t idxparameter = 0; idxparameter < cs->pr[pp].number; idxparameter++) {\
@@ -237,9 +236,9 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
                     StatByPSetItemValue* item;
                     item = &STAT_IDX(stats, idxfold, idxthchooser, pp, idxparameter);
 
-                    PF_ASK(stdout, -8, "%ld", idxfold);
-                    PF_ASK(stdout, -8, "%ld", trainer->tb2d->tb2w->wsize);
-                    PF_ASK(stdout, -10, "%s", trainer->thchoosers._[idxthchooser].name);
+                    // PF_ASK(stdout, -8, "%ld", idxfold);
+                    // PF_ASK(stdout, -8, "%ld", trainer->tb2d->tb2w->wsize);
+                    // PF_ASK(stdout, -10, "%s", trainer->thchoosers._[idxthchooser].name);
                     PF_ASK(stdout, -10, "%s", parameters_definition[pp].name);
                     {  
                         char str[20];

@@ -22,31 +22,25 @@ void dataset_free(void* item) {
     MANY_FREE(dataset->minmax);
 }
 
+void _dataset_minmax(RDataset ds, size_t idxwindow, size_t idxconfig) {
+    double *min = &ds->minmax._[idxconfig].min;
+    double *max = &ds->minmax._[idxconfig].max;
+
+    const double logit = ds->windows.all._[idxwindow]->applies._[idxconfig].logit;
+
+    if (*min > logit) *min = logit;
+    if (*max < logit) *max = logit;
+}
+
 void dataset_minmax(RDataset ds) {
-    int64_t logits[ds->windows.all.number];
-
     const size_t n_configs = ds->windows.all._[0]->applies.number;
-
-    MANY_INIT(ds->minmax, n_configs, MinMax);
-
-    for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
-        ds->minmax._[idxconfig].max = DBL_MIN;
-        ds->minmax._[idxconfig].min = DBL_MAX;
-    }
 
     for (size_t idxwindow = 0; idxwindow < ds->windows.all.number; idxwindow++) {
         for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
-            double *min = &ds->minmax._[idxconfig].min;
-            double *max = &ds->minmax._[idxconfig].max;
-
-            const double logit = ds->windows.all._[idxwindow]->applies._[idxconfig].logit;
-
-            if (*min > logit) *min = logit;
-            if (*max < logit) *max = logit;
+            _dataset_minmax(ds, idxwindow, idxconfig);
         }
     }
 }
-
 
 RDataset dataset_alloc() {
     if (datasets_gatherer == NULL) {
@@ -55,22 +49,34 @@ RDataset dataset_alloc() {
     return (RDataset) gatherer_alloc_item(datasets_gatherer);;
 }
 
-RDataset dataset_create(WSize wsize, Index counter) {
+RDataset dataset_create(WSize wsize, Index counter, const size_t n_configs) {
     RDataset dataset;
 
     dataset = dataset_alloc();
 
+    dataset->n_configs = n_configs;
     dataset->wsize = wsize;
+
+    MANY_INIT(dataset->minmax, n_configs, MinMax);
+    for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
+        dataset->minmax._[idxconfig].max = DBL_MIN;
+        dataset->minmax._[idxconfig].min = DBL_MAX;
+    }
     
-    if (counter.all)
+    if (counter.all) {
         MANY_INIT(dataset->windows.all, counter.all, RWindow);
-    if (counter.binary[0])
+    }
+    if (counter.binary[0]) {
         MANY_INIT(dataset->windows.binary[0], counter.binary[0], RWindow);
-    if (counter.binary[1])
+    }
+    if (counter.binary[1]) {
         MANY_INIT(dataset->windows.binary[1], counter.binary[1], RWindow);
+    }
     DGAFOR(cl) {
-        if (counter.multi[cl])
+        if (counter.multi[cl]) {
             MANY_INIT(dataset->windows.multi[cl], counter.multi[cl], RWindow);
+            MANY_INIT(dataset->windows.multi_sorted[cl], counter.multi[cl], RWindow);
+        }
     }
 
     return dataset;
@@ -112,14 +118,16 @@ DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_
     MANY_INIT(splits.splits, KFOLDs, DatasetSplit);
 
     {
+        if (dataset->n_configs == 0) {
+            LOG_ERROR("Dataset n_configs should not be zero.");
+        }
         Index counter;
         memset(&counter, 0, sizeof(Index));
         for (size_t k = 0; k < KFOLDs; k++) {
-            splits.splits._[k].train = dataset_create(dataset->wsize, counter);
-            splits.splits._[k].test = dataset_create(dataset->wsize, counter);
+            splits.splits._[k].train = dataset_create(dataset->wsize, counter, dataset->n_configs);
+            splits.splits._[k].test = dataset_create(dataset->wsize, counter, dataset->n_configs);
         }
     }
-
 
     Index train_counter[KFOLDs];
     Index test_counter[KFOLDs];
@@ -221,6 +229,12 @@ DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_
         }
     }
 
+    for (size_t k = 0; k < KFOLDs; k++) {
+        dataset_minmax(splits.splits._[k].train);
+        dataset_minmax(splits.splits._[k].test);
+    }
+
+
     return splits;
 }
 
@@ -237,7 +251,7 @@ Index dataset_counter(RDataset ds) {
     return counter;
 }
 
-RDataset dataset_from_windowings(MANY(RWindowing) windowings) {
+RDataset dataset_from_windowings(MANY(RWindowing) windowings, const size_t n_configs) {
     RDataset ds;
     Index counter;
     memset(&counter, 0, sizeof(Index));
@@ -248,7 +262,7 @@ RDataset dataset_from_windowings(MANY(RWindowing) windowings) {
         counter.multi[windowing->source->wclass.mc] += windowing->windows.number;
     }
 
-    ds = dataset_create(windowings._[0]->wsize, counter);
+    ds = dataset_create(windowings._[0]->wsize, counter, n_configs);
 
     memset(&counter, 0, sizeof(Index));
     for (size_t w = 0; w < windowings.number; w++) {
@@ -264,6 +278,8 @@ RDataset dataset_from_windowings(MANY(RWindowing) windowings) {
         counter.binary[wc.bc] += nw;
         counter.multi[wc.mc] += nw;
     }
+
+    dataset_minmax(ds);
 
     return ds;
 }

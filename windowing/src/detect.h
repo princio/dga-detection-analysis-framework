@@ -32,7 +32,7 @@ MAKEMANY(Performance);
 
 void detect_reset(Detection*);
 void detect_copy(TCPC(Detection) src, Detection* dst);
-void detect_run(WApply const * const apply, RSource source, const double th, Detection* detection);
+void detect_run(WApply const * const apply, RSource source, Detection* detection);
 double detect_performance(Detection[N_DGACLASSES], TCPC(Performance));
 int detect_performance_compare(Performance* performance, double new, double old);
 

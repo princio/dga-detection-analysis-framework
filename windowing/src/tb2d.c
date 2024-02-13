@@ -23,7 +23,7 @@ RTB2D tb2d_create(RTB2W tb2w, size_t n_try, MANY(FoldConfig) foldconfigs) {
 
 void tb2d_run(RTB2D tb2d) {
     BY_FOR(*tb2d, try) {
-        BY_GET(*tb2d, try).dataset = dataset_from_windowings(tb2d->tb2w->windowing.bysource);
+        BY_GET(*tb2d, try).dataset = dataset_from_windowings(tb2d->tb2w->windowing.bysource, tb2d->tb2w->configsuite.configs.number);
 
         dataset_shuffle(BY_GET(*tb2d, try).dataset);
 

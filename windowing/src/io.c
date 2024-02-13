@@ -176,12 +176,13 @@ void io_fwriteN(void* v, size_t s, FILE* file) {
 }
 
 void io_freadN(void* v, size_t s, FILE* file) {
-    const int block64_2read = s / 8 + (s % 8 > 0);
+    const int block64_oversize = (s % 8 > 0);
+    const int block64_number = s / 8;
 
-    uint64_t be[block64_2read];
-    memset(be, 0, block64_2read * 8);
+    uint64_t* be = v;
+    memset(be, 0, 8 * block64_number);
 
-    int a = fread(be, 8, block64_2read, file);
+    int a = fread(be, 8, block64_number, file);
 
 #ifdef IO_DEBUG
     if (__io__debug) {
@@ -190,11 +191,20 @@ void io_freadN(void* v, size_t s, FILE* file) {
     }
 #endif
 
-    for (int i = 0; i < block64_2read; ++i) {
+    for (int i = 0; i < block64_number; ++i) {
         be[i] = be64toh(be[i]);
     }
 
-    memcpy(v, be, s);
+    if (block64_oversize) {
+        uint64_t be_oversize;
+
+        memset(&be_oversize, 0, 8);
+        int b = fread(&be_oversize, 8, 1, file);
+
+        be_oversize = be64toh(be_oversize);
+
+        memcpy(&be[block64_number], &be_oversize, s - (8 * block64_number));
+    }
 }
 
 void io_fwrite64(void* n, FILE* file) {
