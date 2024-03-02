@@ -36,7 +36,7 @@
 // Get a four byte little endian u_int at base B and offset O.
 #define LE_U_INT(B,O) (uint32_t)((B[O]<<24)+(B[O+1]<<16)+(B[O+2]<<8)+B[O+3])
 // Get the DNS tcp length prepended field.
-#define TCP_DNS_LEN(P,O) ((P[O]<<8) + P[O+1])
+#define TCP_DNS_LEN(P,O) ((uint32_t)((P[O]<<8) + P[O+1]))
 
 // Pre-declarations.
 struct tcp_info;

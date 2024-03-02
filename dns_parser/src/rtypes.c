@@ -300,16 +300,14 @@ rr_parser_container rr_parsers[] = {{1, 1, A, "A", A_DOC, 0},
                                     {0, 255, escape, "ANY", NULL_DOC, 0}
                                    };
 
-inline int count_parsers() {
-    return sizeof(rr_parsers)/sizeof(rr_parser_container);
-}
+#define COUNT_PARSER (sizeof(rr_parsers)/sizeof(rr_parser_container))
 
 // We occasionally sort the parsers according to how they're used in order
 // to speed up lookups.
 void sort_parsers() {
     int m,n;
     int change = 1;
-    int pcount = count_parsers();
+    int pcount = COUNT_PARSER;
     rr_parser_container tmp;
     for (m = 0; m < pcount - 1 && change == 1; m++) {
         change = 0;
@@ -333,7 +331,7 @@ unsigned int PACKETS_SEEN = 0;
 // Find the parser that corresponds to the given cls and rtype.
 rr_parser_container * find_parser(uint16_t cls, uint16_t rtype) {
 
-    unsigned int i=0, pcount = count_parsers();
+    unsigned int i=0, pcount = COUNT_PARSER;
     rr_parser_container * found = NULL;
    
     // Re-arrange the order of the parsers according to how often things are 
@@ -363,7 +361,7 @@ rr_parser_container * find_parser(uint16_t cls, uint16_t rtype) {
 }
 
 void print_parsers() {
-    int i;
+    size_t i;
     printf("What follows is a list of handled DNS classes and resource \n"
            "record types. \n"
            " - The class # may be listed as 'any', though anything \n"
@@ -373,7 +371,7 @@ void print_parsers() {
            " - Unhandled resource records are simply string escaped.\n"
            " - Some resource records share parsers and documentation.\n\n"
            "class, rtype, name: documentation\n");
-    for (i=0; i < count_parsers(); i++) {
+    for (i=0; i < COUNT_PARSER; i++) {
         rr_parser_container cont = rr_parsers[i];
         if (cont.cls == 0) printf("any,");
         else printf("%d,", cont.cls);
@@ -383,11 +381,11 @@ void print_parsers() {
 }
 
 void print_parser_usage() {
-    int i;
+    size_t i;
     rr_parser_container pc;
 
     fprintf(stderr, "parser usage:\n");
-    for (i=0; i < count_parsers(); i++) {
+    for (i=0; i < COUNT_PARSER; i++) {
         pc = rr_parsers[i];
         fprintf(stderr, "  %s - %llu\n", pc.name, pc.count);
     }

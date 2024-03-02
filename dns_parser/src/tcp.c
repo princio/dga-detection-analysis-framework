@@ -581,7 +581,7 @@ void tcp_save_state(config * conf) {
             curr_pkt->next_sess = NULL;
             curr_pkt->next_pkt = NULL;
             // All we need to know is whether there is a prev. packet.
-            curr_pkt->prev_pkt = (prev_pkt == NULL) ? (NULL+1) : NULL;
+            curr_pkt->prev_pkt = (prev_pkt == NULL) ? (void*)1 : NULL;
             curr_pkt->data = NULL;
             written = fwrite(curr_pkt, sizeof(tcp_info), 1, outfile);
             if (written != 1) {
@@ -673,7 +673,7 @@ void tcp_print(tcp_info * tcp) {
     if (tcp == NULL) {
         printf("NULL tcp object\n");
     } else {
-        printf("%p %s:%d ", tcp, iptostr(&tcp->src), tcp->srcport);
+        printf("%p %s:%d ", (void*) tcp, iptostr(&tcp->src), tcp->srcport);
         printf("-> %s:%d, seq: %x, safr: %d%d%d%d, len: %u\n", 
                iptostr(&tcp->dst), tcp->dstport,
                tcp->sequence, tcp->syn, tcp->ack,

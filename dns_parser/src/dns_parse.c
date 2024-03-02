@@ -121,6 +121,7 @@ int main(int argc, char **argv) {
                     fprintf(stderr, "Unknown option -%c.\n",optopt); 
                 else 
                     fprintf(stderr, "Invalid option char: 0x%x.\n", optopt);
+                break;
             case 'h':
             default:
                 arg_failure = 1;
@@ -564,7 +565,7 @@ void print_rr_section(dns_rr * next, char * name, config * conf, rr_text *text, 
 // See dns_parse.h
 void print_packet(uint32_t max_len, uint8_t *packet,
                   uint32_t start, uint32_t end, u_int wrap) {
-    int i=0;
+    uint32_t i=0;
     while (i < end - start && (i + start) < max_len) {
         printf("%02x ", packet[i+start]);
         i++;
@@ -671,7 +672,7 @@ uint32_t parse_rr(uint32_t pos, uint32_t id_pos, struct pcap_pkthdr *header,
     int i;
     uint32_t rr_start = pos;
     rr_parser_container * parser;
-    rr_parser_container opts_cont = {0,0, opts};
+    rr_parser_container opts_cont = {0,0, opts,"","",0};
 
     rr->name = NULL;
     rr->data = NULL;

@@ -5,7 +5,7 @@
 #include <string.h>
 
 char * escape_data(const uint8_t * packet, uint32_t start, uint32_t end) { 
-    int i,o;
+    uint32_t i,o;
     uint8_t c;
     unsigned int length=1;
 
