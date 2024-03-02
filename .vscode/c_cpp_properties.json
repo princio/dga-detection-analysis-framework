@@ -6,9 +6,10 @@
                 "${workspaceFolder}/**",
                 "${workspaceFolder}/pslregex/pslregex/c",
                 "/usr/include/postgresql/",
-                "/usr/include/",
+                "/usr/include/arpa",
+                "/usr/include/"
             ],
-            "defines": [],
+            "defines": ["__USE_MISC"],
             "compilerPath": "/usr/bin/gcc",
             "cStandard": "c99",
             "cppStandard": "c++14",
@@ -19,7 +20,8 @@
             ],
             "browse": {
                 "path": [
-                    "${workspaceFolder}/windowing/src/**"
+                    "${workspaceFolder}/windowing/src/**",
+                    "${workspaceFolder}/dns_parser/src/**"
                 ]
             }
         }

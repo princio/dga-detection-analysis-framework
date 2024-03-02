@@ -20,3 +20,9 @@ old_trash/windowing
 comunque sarò sincero, la storia che fai.md
 
 Gasdotto.txt
+dns_parser/bin/binary
+dns_parser/lib/all/dns_parse.o
+dns_parser/lib/all/network.o
+dns_parser/lib/all/rtypes.o
+dns_parser/lib/all/strutils.o
+dns_parser/lib/all/tcp.o
