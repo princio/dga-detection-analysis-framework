@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "(gdb) Launch",
+            "name": "windowing",
             "type": "cppdbg",
             "request": "launch",
             "program": "/home/princio/Repo/princio/malware_detection_preditc_file/windowing/bin/binary",
@@ -16,6 +16,38 @@
             "externalConsole": false,
             "MIMode": "gdb",
             "preLaunchTask": "Make windowing",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "dns_parse",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/home/princio/Repo/princio/malware_detection_preditc_file/dns_parse/bin/dns_parse",
+            "args": [
+                "/media/princio/ssd512/dns detection datasets/ctu-sme-11/CTU-SME-11_Experiment-VM-Microsoft-Windows7AD-1_v1.0.0/CTU-SME-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-20/raw/2023-02-20-00-00-03-192.168.1.108.dns.pcap"
+            ],
+            "stopAtEntry": false,
+            "cwd": "/home/princio/Repo/princio/malware_detection_preditc_file/dns_parse/bin/",
+            "environment": [
+                {
+                    "name": "LD_LIBRARY_PATH",
+                    "value": "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/export/lib/:$LD_LIBRARY_PATH"
+                }
+            ],
+            "externalConsole": false,
+            "MIMode": "gdb",
+            "preLaunchTask": "Make DNS Parse",
             "setupCommands": [
                 {
                     "description": "Enable pretty-printing for gdb",

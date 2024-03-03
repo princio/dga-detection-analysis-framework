@@ -9,6 +9,20 @@
             }
         },
         {
+            "label": "Make DNS Parse",
+            "type": "shell",
+            "command": "make ca",
+            "dependsOn": "Set LDLIBRARY",
+            "options": {
+                "cwd": "/home/princio/Repo/princio/malware_detection_preditc_file/dns_parse"
+            }
+        },
+        {
+            "label": "Set LDLIBRARY",
+            "type": "shell",
+            "command": "export LD_LIBRARY_PATH=/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/export/lib/:$LD_LIBRARY_PATH",
+        },
+        {
             "type": "cppbuild",
             "label": "C/C++: gcc-9 build active file",
             "command": "/usr/bin/gcc-9",

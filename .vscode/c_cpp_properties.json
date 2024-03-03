@@ -4,7 +4,6 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/pslregex/pslregex/c",
                 "/usr/include/postgresql/",
                 "/usr/include/arpa",
                 "/usr/include/"
@@ -21,7 +20,7 @@
             "browse": {
                 "path": [
                     "${workspaceFolder}/windowing/src/**",
-                    "${workspaceFolder}/dns_parser/src/**"
+                    "${workspaceFolder}/dns_parse/**"
                 ]
             }
         }
