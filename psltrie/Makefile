@@ -55,6 +55,8 @@ LIBDIR := lib
 TESTDIR := test
 EXPORTDIR := export
 
+DIRS := 
+
 
 # Source code file extension
 SRCEXT := c
@@ -74,7 +76,7 @@ STD := -std=gnu99 # See man gcc for more options
 WARNS := -Wall -Wextra -pedantic # -pedantic warns on language standards
 
 # Flags for compiling
-CFLAGS := -O3 $(STD) $(STACK) $(WARNS)
+CFLAGS := -O3 $(STD) $(STACK) $(WARNS) -fpic
 
 # Debug options
 DEBUG := -g3 -DDEBUG=1
@@ -90,12 +92,10 @@ TEST_LIBS := -l cmocka -L /usr/lib
 # Tests binary file
 TEST_BINARY := $(BINARY)_test_runner
 
-
-
 # %.o file names
-SUBDIRS := $(wildcard */.)
 NAMES := $(notdir $(basename $(wildcard $(SRCDIR)/*.$(SRCEXT))))
-LIB := $(PROJECT_NAME).a
+SHAREDLIB := lib$(PROJECT_NAME).so
+STATICLIB := lib$(PROJECT_NAME).a
 OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
 
 #
@@ -127,23 +127,29 @@ start:
 	@echo "Then execute it: bin/$(BINARY) --help"
 	@echo "Happy hacking o/"
 
+EXPORTDIRS := $(EXPORTDIR)/lib $(EXPORTDIR)/include/$(PROJECT_NAME)
 
 # Rule for link and generate the binary file
-all: $(LIB)
+all: $(EXPORTDIRS) $(SHAREDLIB) $(STATICLIB)
 	@echo -en "$(BROWN)LD $(END_COLOR)";
-	$(CC) -o $(BINDIR)/$(BINARY) $(LIBDIR)/$+ $(DEBUG) $(CFLAGS) $(LIBS)
-	mkdir -p $(EXPORTDIR)/$(PROJECT_NAME)
-	cp $(SRCDIR)/*.h $(EXPORTDIR)/$(PROJECT_NAME)
-	cp $(LIBDIR)/*.a $(EXPORTDIR)/$(PROJECT_NAME)
+	$(CC) -o $(BINDIR)/$(BINARY) $(OBJECTS) $(DEBUG) $(CFLAGS) $(LIBS)
+	cp $(SRCDIR)/*.h $(EXPORTDIR)/include/$(PROJECT_NAME)
 	@echo -en "\n--\nBinary file placed at" \
 			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
 
-$(LIB): $(OBJECTS)
-	@echo -en "$(BROWN)ar rcs $(END_COLOR)";
+$(EXPORTDIRS):
+	mkdir -p $@;
+
+$(SHAREDLIB): $(OBJECTS)
+	@echo -en "$(BROWN)CC $(END_COLOR)";
+	gcc -shared -o $(LIBDIR)/$@ $(OBJECTS)
+	cp $(LIBDIR)/$@ $(EXPORTDIR)/lib
+
+$(STATICLIB): $(OBJECTS)
+	@echo -en "$(BROWN)AR $(END_COLOR)";
 	ar rcs $(LIBDIR)/$@ $^
+	cp $(LIBDIR)/$@ $(EXPORTDIR)/lib
 
-
-# Rule for object binaries compilation
 $(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@echo -en "$(BROWN)CC $(END_COLOR)";
 	$(CC) -c $^ -o $@ $(DEBUG) $(CFLAGS) $(LIBS)
@@ -182,7 +188,7 @@ tests:
 
 # Rule for cleaning the project
 clean:
-	@rm -rvf $(BINDIR)/* $(LIBDIR)/* $(LOGDIR)/*;
+	@rm -rvf $(BINDIR)/* $(LIBDIR)/* $(LOGDIR)/* $(EXPORTDIR)/*;
 
 ca: clean all
 
