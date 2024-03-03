@@ -53,6 +53,7 @@ SRCDIR := src
 LOGDIR := log
 LIBDIR := lib
 TESTDIR := test
+EXPORTDIR := export
 
 
 # Source code file extension
@@ -94,8 +95,8 @@ TEST_BINARY := $(BINARY)_test_runner
 # %.o file names
 SUBDIRS := $(wildcard */.)
 NAMES := $(notdir $(basename $(wildcard $(SRCDIR)/*.$(SRCEXT))))
+LIB := $(PROJECT_NAME).a
 OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
-
 
 #
 # COMPILATION RULES
@@ -128,11 +129,19 @@ start:
 
 
 # Rule for link and generate the binary file
-all: $(OBJECTS)
+all: $(LIB)
 	@echo -en "$(BROWN)LD $(END_COLOR)";
-	$(CC) -o $(BINDIR)/$(BINARY) $+ $(DEBUG) $(CFLAGS) $(LIBS)
+	$(CC) -o $(BINDIR)/$(BINARY) $(LIBDIR)/$+ $(DEBUG) $(CFLAGS) $(LIBS)
+	mkdir -p $(EXPORTDIR)/$(PROJECT_NAME)
+	cp $(SRCDIR)/*.h $(EXPORTDIR)/$(PROJECT_NAME)
+	cp $(LIBDIR)/*.a $(EXPORTDIR)/$(PROJECT_NAME)
 	@echo -en "\n--\nBinary file placed at" \
 			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
+
+$(LIB): $(OBJECTS)
+	@echo -en "$(BROWN)ar rcs $(END_COLOR)";
+	ar rcs $(LIBDIR)/$@ $^
+
 
 # Rule for object binaries compilation
 $(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)

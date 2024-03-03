@@ -110,16 +110,22 @@ typedef struct PSLTSuffixSearchResult {
     struct PSLTNode *private;
 } PSLTSuffixSearchResult;
 
-
+typedef struct PSLT {
+    PSLTSuffixes suffixes;
+    PSLTNode* trie;
+} PSLT;
 
 int pslt_count_domain_labels(PSLTDomainFull domain);
 int pslt_domain_labels(PSLTDomainFull domain, PSLTDomainLabels labels);
 int pslt_domain_invert(PSLTDomainFull domain, PSLTDomainFull inverted);
 
 PSLTError pslt_suffixes_parse(char[PATH_MAX], PSLTSuffixes*);
+PSLTError plst_build(PSLTSuffixes suffixes, PSLTNode** root);
 
-PSLTSuffixSearchResult pslt_search(PSLTNode *root, PSLTDomainFull domain);
-PSLTError plst_generate(PSLTSuffixes suffixes, PSLTNode**);
-void pslt_free(PSLTNode* crawl);
+PSLTSuffixSearchResult pslt_search(PSLT* pslt, PSLTDomainFull domain);
+
+PSLT* pslt_load(char suffixlistpath[PATH_MAX]);
+void pslt_free(PSLT* pslt);
+
 
 #endif
