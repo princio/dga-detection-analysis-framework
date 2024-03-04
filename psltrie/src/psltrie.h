@@ -9,7 +9,7 @@
 #define PSLT_MAX_LABEL_SIZE 63
 
 #define PSLT_MAX_DOMAIN_LABEL_NUM 20
-#define PSLT_MAX_SUFFIX_LABEL_NUM 6
+#define PSLT_MAX_SUFFIX_LABEL_NUM 10 // max is 6
 
 #define PSLT_MAX_DOMAIN_SIZE PSLT_MAX_DOMAIN_LABEL_NUM * PSLT_MAX_LABEL_SIZE + PSLT_MAX_DOMAIN_LABEL_NUM
 #define PSLT_MAX_SUFFIX_SIZE PSLT_MAX_SUFFIX_LABEL_NUM * PSLT_MAX_LABEL_SIZE + PSLT_MAX_SUFFIX_LABEL_NUM
@@ -21,9 +21,10 @@ typedef enum PSLTError {
     PSLT_ERROR_SUFFIXLIST_FOPEN_ERROR,
 } PSLTError;
 
-typedef char PSLTDomainFull[PSLT_MAX_DOMAIN_SIZE];
-typedef char DomainLabel[PSLT_MAX_LABEL_SIZE];
+typedef char PSLTDomain[PSLT_MAX_DOMAIN_SIZE];
+typedef char PSLTDomainLabel[PSLT_MAX_LABEL_SIZE];
 typedef char PSLTDomainSuffix[PSLT_MAX_SUFFIX_SIZE];
+typedef char PSLTDomainSuffixLabeled[PSLT_MAX_SUFFIX_LABEL_NUM][PSLT_MAX_LABEL_SIZE];
 typedef char PSLTDomainLabels[PSLT_MAX_DOMAIN_LABEL_NUM][PSLT_MAX_LABEL_SIZE];
 
 typedef enum PSLTSuffixType {
@@ -84,7 +85,7 @@ typedef struct PSLTDomainSuffixes {
 } PSLTDomainSuffixes;
 
 struct PSLTDomain {
-    PSLTDomainFull domain;
+    PSLTDomain domain;
     int is_malware;
     int is_dga;
 
@@ -110,19 +111,26 @@ typedef struct PSLTSuffixSearchResult {
     struct PSLTNode *private;
 } PSLTSuffixSearchResult;
 
+typedef struct PSLTDomainProcessed {
+    PSLTDomain tld;
+    PSLTDomain icann;
+    PSLTDomain private;
+} PSLTDomainProcessed;
+
 typedef struct PSLT {
     PSLTSuffixes suffixes;
     PSLTNode* trie;
 } PSLT;
 
-int pslt_count_domain_labels(PSLTDomainFull domain);
-int pslt_domain_labels(PSLTDomainFull domain, PSLTDomainLabels labels);
-int pslt_domain_invert(PSLTDomainFull domain, PSLTDomainFull inverted);
+int pslt_count_domain_labels(PSLTDomain domain);
+int pslt_domain_labels(PSLTDomain domain, PSLTDomainLabels labels);
+int pslt_domain_invert(PSLTDomain domain, PSLTDomain inverted);
 
+PSLTDomainProcessed pslt_domain_without_suffixes(PSLTDomain domain, PSLTSuffixSearchResult search);
 PSLTError pslt_suffixes_parse(char[PATH_MAX], PSLTSuffixes*);
 PSLTError plst_build(PSLTSuffixes suffixes, PSLTNode** root);
 
-PSLTSuffixSearchResult pslt_search(PSLT* pslt, PSLTDomainFull domain);
+PSLTSuffixSearchResult pslt_search(PSLT* pslt, PSLTDomain domain);
 
 PSLT* pslt_load(char suffixlistpath[PATH_MAX]);
 void pslt_free(PSLT* pslt);

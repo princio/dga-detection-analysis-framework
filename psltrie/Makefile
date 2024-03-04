@@ -193,12 +193,12 @@ clean:
 ca: clean all
 
 ab: all
-	clear; bin/binary
+	clear; bin/binary iframe.csv google.co.uk
 
 av: all valgrind
 
 cab: clean all
-	clear; bin/binary
+	clear; bin/binary iframe.csv google.co.uk
 
 cp: clean prod
 

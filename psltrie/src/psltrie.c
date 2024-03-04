@@ -60,7 +60,7 @@ void _pslt_free_trie(PSLTNode* crawl) {
     free(crawl);
 }
 
-int pslt_count_domain_labels(PSLTDomainFull domain) {
+int pslt_count_domain_labels(PSLTDomain domain) {
     const char* begin;
     const char* end;
 
@@ -75,7 +75,7 @@ int pslt_count_domain_labels(PSLTDomainFull domain) {
     return nlabels + 1;
 }
 
-int pslt_domain_labels(PSLTDomainFull domain, PSLTDomainLabels labels) {
+int pslt_domain_labels(PSLTDomain domain, PSLTDomainLabels labels) {
     const char* begin;
     const char* end;
 
@@ -95,7 +95,7 @@ int pslt_domain_labels(PSLTDomainFull domain, PSLTDomainLabels labels) {
     return nlabels;
 }
 
-int pslt_domain_invert(PSLTDomainFull domain, PSLTDomainFull inverted) {
+int pslt_domain_invert(PSLTDomain domain, PSLTDomain inverted) {
     memset(inverted, 0, strlen(domain) + 1);
 
     int len = strlen(domain);
@@ -124,6 +124,43 @@ int pslt_domain_invert(PSLTDomainFull domain, PSLTDomainFull inverted) {
     return 0;
 }
 
+PSLTDomainProcessed pslt_domain_without_suffixes(PSLTDomain domain, PSLTSuffixSearchResult search) {
+    PSLTDomainProcessed processed;
+    memset(&processed, 0, sizeof(PSLTDomainProcessed));
+
+    PSLTSuffix* suffixes[3];
+
+    if (search.tld) {
+        suffixes[0] = search.tld->suffix;
+    } else {
+        suffixes[0] = NULL;
+    }
+    if (search.icann) {
+        suffixes[1] = search.icann->suffix;
+    } else {
+        suffixes[1] = suffixes[0];
+    }
+    if (search.private) {
+        suffixes[2] = search.private->suffix;
+    } else {
+        suffixes[2] = suffixes[1];
+    }
+
+    char* domains_processed[3] = {
+        processed.tld,
+        processed.icann,
+        processed.private
+    };
+    for (size_t s = 0; s < 3; s++) {
+        if (suffixes[s]) {
+            const size_t l = strlen(domain) - strlen(suffixes[s]->suffix);
+            strcpy(domains_processed[s], domain);
+            domains_processed[s][l-1] = '\0';
+        }
+    }
+    return processed;
+}
+
 PSLTError plst_build(PSLTSuffixes suffixes, PSLTNode** root) {
     *root = _trie_new_node();
  
@@ -145,11 +182,11 @@ PSLTError plst_build(PSLTSuffixes suffixes, PSLTNode** root) {
     return PSLT_ERROR_NO;
 }
 
-PSLTSuffixSearchResult pslt_search(PSLT* pslt, PSLTDomainFull domain) {
+PSLTSuffixSearchResult pslt_search(PSLT* pslt, PSLTDomain domain) {
     struct PSLTNode *crawl;
     size_t level;
     size_t length;
-    PSLTDomainFull inverted;
+    PSLTDomain inverted;
     
     PSLTSuffixSearchResult result;
     result.tld = NULL;
