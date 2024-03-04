@@ -161,6 +161,39 @@ PSLTDomainProcessed pslt_domain_remove_suffixes(PSLTDomain domain, PSLTSuffixSea
     return processed;
 }
 
+int pslt_basedomain(PSLTDomain domain, PSLTSuffixSearchResult search, PSLTDomain basedomain) {
+    char* biggest = NULL;
+    
+    if (search.private) {
+        biggest = search.private->suffix->suffix;
+    } else if (search.icann) {
+        biggest = search.icann->suffix->suffix;
+    } else if (search.icann) {
+        biggest = search.tld->suffix->suffix;
+    }
+    if (biggest == NULL) {
+        strcpy(basedomain, domain);
+        return 0;
+    }
+
+    PSLTDomain tmp;
+    strcpy(tmp, domain);
+    char* pos = strstr(tmp, biggest);
+    if (pos > tmp) {
+        --pos;
+    }
+    *pos = '\0';
+
+    char *pos2 = strrchr(tmp, '.');
+    if (pos2) {
+        strcpy(basedomain, pos2 + 1);
+    } else {
+        strcpy(basedomain, tmp);
+    }
+
+    return 0;
+}
+
 PSLTError plst_build(PSLTSuffixes suffixes, PSLTNode** root) {
     *root = _trie_new_node();
  

@@ -127,6 +127,8 @@ int pslt_domain_labels(PSLTDomain domain, PSLTDomainLabels labels);
 int pslt_domain_invert(PSLTDomain domain, PSLTDomain inverted);
 
 PSLTDomainProcessed pslt_domain_remove_suffixes(PSLTDomain domain, PSLTSuffixSearchResult search);
+int pslt_basedomain(PSLTDomain domain, PSLTSuffixSearchResult search, PSLTDomain basedomain);
+
 PSLTError pslt_suffixes_parse(char[PATH_MAX], PSLTSuffixes*);
 PSLTError plst_build(PSLTSuffixes suffixes, PSLTNode** root);
 

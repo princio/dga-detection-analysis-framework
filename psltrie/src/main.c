@@ -44,11 +44,24 @@ int main (int argc, char* argv[]) {
     printf("  icann: %s\n", result.icann ? result.icann->suffix->suffix : "-");
     printf("private: %s\n", result.private ? result.private->suffix->suffix : "-");
 
-    PSLTDomainProcessed processed = pslt_domain_without_suffixes(argv[2], result);
+    PSLTDomainProcessed processed = pslt_domain_remove_suffixes(argv[2], result);
 
     printf("    tld: %s\n", processed.tld);
     printf("  icann: %s\n", processed.icann);
     printf("private: %s\n", processed.private);
+
+    {
+        PSLTDomain tmp = "google.co.uk";
+        PSLTDomain bdn;
+        pslt_basedomain(tmp, result, bdn);
+        printf("    bdn: %s -> %s\n", bdn, bdn);
+    }
+    {
+        PSLTDomain tmp = "gmail.aksoak.aosk.google.co.uk";
+        PSLTDomain bdn;
+        pslt_basedomain(tmp, result, bdn);
+        printf("    bdn: %s -> %s\n", bdn, bdn);
+    }
 
     pslt_free(pslt);
 
