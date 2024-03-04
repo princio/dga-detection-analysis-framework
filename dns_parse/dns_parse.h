@@ -70,6 +70,7 @@ typedef struct {
     uint32_t dedup_pos;
     FILE* file;
     PSLT* pslt;
+    size_t num;
     size_t fnreq;
 } config;
 

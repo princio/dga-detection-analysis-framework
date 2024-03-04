@@ -437,13 +437,11 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     else if (ip->proto == 6) proto = 't';
     else return;
 
+    conf->num++;
     if (dns->qr == 0) {
         conf->fnreq++;
     }
     
-    sprintf(ts, "%d.%06d", (int)header->ts.tv_sec, (int)header->ts.tv_usec);
-    char rcode_str[3] = "";
-    sprintf(rcode_str, "%c", dns->rcode);
     sprintf(ts, "%d.%06d", (int)header->ts.tv_sec, (int)header->ts.tv_usec);
     fprintf(conf->file, "%s,", ts);
     fprintf(conf->file, "%d,", trns->length);
