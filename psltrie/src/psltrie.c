@@ -124,7 +124,7 @@ int pslt_domain_invert(PSLTDomain domain, PSLTDomain inverted) {
     return 0;
 }
 
-PSLTDomainProcessed pslt_domain_without_suffixes(PSLTDomain domain, PSLTSuffixSearchResult search) {
+PSLTDomainProcessed pslt_domain_remove_suffixes(PSLTDomain domain, PSLTSuffixSearchResult search) {
     PSLTDomainProcessed processed;
     memset(&processed, 0, sizeof(PSLTDomainProcessed));
 
