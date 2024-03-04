@@ -152,11 +152,9 @@ PSLTDomainProcessed pslt_domain_remove_suffixes(PSLTDomain domain, PSLTSuffixSea
         processed.private
     };
     for (size_t s = 0; s < 3; s++) {
-        if (suffixes[s]) {
-            const size_t l = strlen(domain) - strlen(suffixes[s]->suffix);
-            strcpy(domains_processed[s], domain);
-            domains_processed[s][l-1] = '\0';
-        }
+        const size_t l = strlen(domain) - strlen(suffixes[s]->suffix);
+        strcpy(domains_processed[s], domain);
+        domains_processed[s][l-1] = '\0';
     }
     return processed;
 }
