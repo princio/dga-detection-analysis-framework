@@ -20,7 +20,8 @@
             "browse": {
                 "path": [
                     "${workspaceFolder}/windowing/src/**",
-                    "${workspaceFolder}/dns_parse/**"
+                    "${workspaceFolder}/dns_parse/**",
+                    "${workspaceFolder}/psltrie/export/include/**"
                 ]
             }
         }

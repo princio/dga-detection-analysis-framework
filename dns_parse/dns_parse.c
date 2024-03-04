@@ -255,7 +255,8 @@ int main(int argc, char **argv) {
 
     conf.file = fopen("./dnsparse.csv", "w");
 
-    fprintf(conf.file, "time,size,protocol,server,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,dn,qcode,tld,icann,private,answer\n");
+    fprintf(conf.file, "time,size,protocol,server,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,dn,bnd,");
+    fprintf(conf.file, "dn_tld,dn_icann,dn_private,tld,icann,private,answer\n");
 
     // Load and prior TCP session info
     conf.tcp_sessions_head = NULL; 
@@ -465,15 +466,30 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
         fprintf(conf->file, "%u,", dns->nscount);
         fprintf(conf->file, "%u,",  dns->arcount);
 
-        char first_name[10000];
-        memset(first_name, 0, 10000);
+        PSLTDomain first_domain;
+        memset(first_domain, 0, sizeof(PSLTDomain));
         dns_question *qnext = dns->queries;
         uint16_t first_qtype = 1;
         while (qnext != NULL) {
-            if (!strlen(first_name)) {
-                memccpy(first_name, qnext->name, '\0', 10000);
-                fprintf(conf->file, "%s,%u,", qnext->name, qnext->type);
-                PSLTSuffixSearchResult result = pslt_search(conf->pslt, first_name);
+            PSLTSuffixSearchResult result;
+            PSLTDomainProcessed processed;
+            if (!strlen(first_domain)) {
+                memccpy(first_domain, qnext->name, '\0', 10000);
+                PSLTDomain basedomain;
+
+                result = pslt_search(conf->pslt, first_domain);
+                processed = pslt_domain_remove_suffixes(first_domain, result);
+                pslt_basedomain(first_domain, result, basedomain);
+
+                fprintf(conf->file, "%u,", qnext->type);
+
+                fprintf(conf->file, "%s,", qnext->name);
+                fprintf(conf->file, "%s,", basedomain);
+
+                fprintf(conf->file, "%s,", processed.tld);
+                fprintf(conf->file, "%s,", processed.icann);
+                fprintf(conf->file, "%s,", processed.private);
+
                 fprintf(conf->file, "%s,", result.tld ? result.tld->suffix->suffix : "");
                 fprintf(conf->file, "%s,", result.icann ? result.icann->suffix->suffix : "");
                 fprintf(conf->file, "%s,", result.private ? result.private->suffix->suffix : "");
@@ -487,7 +503,7 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
         {
             rr_text text;
             memset(&text, 0, sizeof(text));
-            print_rr_section(dns->answers, first_name, conf, &text, first_qtype, dns->id);
+            print_rr_section(dns->answers, first_domain, conf, &text, first_qtype, dns->id);
             fprintf(conf->file, "\"%s\",", text.A);
         }
     }
