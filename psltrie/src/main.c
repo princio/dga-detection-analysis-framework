@@ -54,13 +54,13 @@ int main (int argc, char* argv[]) {
         PSLTDomain tmp = "google.co.uk";
         PSLTDomain bdn;
         pslt_basedomain(tmp, result, bdn);
-        printf("    bdn: %s -> %s\n", bdn, bdn);
+        printf("    bdn: %s -> %s\n", tmp, bdn);
     }
     {
         PSLTDomain tmp = "gmail.aksoak.aosk.google.co.uk";
         PSLTDomain bdn;
         pslt_basedomain(tmp, result, bdn);
-        printf("    bdn: %s -> %s\n", bdn, bdn);
+        printf("    bdn: %s -> %s\n", tmp, bdn);
     }
 
     pslt_free(pslt);

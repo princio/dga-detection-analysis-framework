@@ -186,9 +186,9 @@ int pslt_basedomain(PSLTDomain domain, PSLTSuffixSearchResult search, PSLTDomain
 
     char *pos2 = strrchr(tmp, '.');
     if (pos2) {
-        strcpy(basedomain, pos2 + 1);
+        strcpy(basedomain, domain + (pos2 - tmp + 1));
     } else {
-        strcpy(basedomain, tmp);
+        strcpy(basedomain, domain);
     }
 
     return 0;
