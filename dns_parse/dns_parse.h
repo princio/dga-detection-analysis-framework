@@ -68,10 +68,12 @@ typedef struct {
     struct ip_fragment * ip_fragment_head;
     unsigned long long * dedup_hashes;
     uint32_t dedup_pos;
-    FILE* file;
     PSLT* pslt;
     size_t num;
     size_t fnreq;
+    char pslt_iframe_path[PATH_MAX];
+    char csv_path[PATH_MAX];
+    FILE* csv_file;
 } config;
 
 // Holds the information for a dns question.

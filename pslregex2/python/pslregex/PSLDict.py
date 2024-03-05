@@ -15,11 +15,11 @@ class PSLdict:
         self.dicter = None
         pass
 
-    def init(self, download=False, update=False):
-        self.etld.init(download=download, update=update)
+    def init(self, redo=False, downloadIfExist=False):
+        self.etld.init(downloadIfExist=downloadIfExist, redo=redo)
         
         dicter_path = os.path.join(DIR, 'dicter.json')
-        if not update and os.path.exists(dicter_path):
+        if not redo and os.path.exists(dicter_path):
             with open(dicter_path) as f:
                 self.dicter = json.load(f)
         else:

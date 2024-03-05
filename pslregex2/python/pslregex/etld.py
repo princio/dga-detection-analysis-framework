@@ -2,6 +2,7 @@
 import pandas as pd
 import requests
 import re, os
+from io import StringIO
 
 codes = {
     'type': {
@@ -53,15 +54,15 @@ class ETLD:
         
         return dfi.sort_values(by=dfi.columns.tolist()).copy()
 
-    def init(self, download=False, update=False):
+    def init(self, redo=False, downloadIfExist=False):
 
-        if not update and os.path.exists(os.path.join(self.dir, 'etld.csv')):
+        if not redo and os.path.exists(os.path.join(self.dir, 'etld.csv')):
             self.frame = pd.read_csv(os.path.join(self.dir, 'etld.csv'), index_col=0)
             return
 
         self.files = {}
 
-        if download or not os.path.exists(os.path.join(self.dir, 'public_suffix_list.dat')):
+        if downloadIfExist or not os.path.exists(os.path.join(self.dir, 'public_suffix_list.dat')):
             self.files['psl'] = requests.get(
                 'https://publicsuffix.org/list/public_suffix_list.dat',
                 verify=False,
@@ -72,12 +73,16 @@ class ETLD:
             with open(os.path.join(self.dir, 'public_suffix_list.dat'), 'w') as f:
                 f.writelines(self.files['psl'])
 
-        if download or not os.path.exists(os.path.join(self.dir, 'iana.csv')):
+        if downloadIfExist or not os.path.exists(os.path.join(self.dir, 'iana.csv')):
             self.files['iana'] = pd.read_html('https://www.iana.org/domains/root/db', attrs = {'id': 'tld-table'})[0]
             self.files['iana'].to_csv(os.path.join(self.dir, 'iana.csv'))
 
-        if download or not os.path.exists(os.path.join(self.dir, 'tldlist.csv')):
-            self.files['tldlist'] = pd.read_csv('https://tld-list.com/df/tld-list-details.csv')
+        if downloadIfExist or not os.path.exists(os.path.join(self.dir, 'tldlist.csv')):
+            url = "https://tld-list.com/df/tld-list-details.csv"
+            headers = {"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.14; rv:66.0) Gecko/20100101 Firefox/66.0"}
+            req = requests.get(url, headers=headers)
+            data = StringIO(req.text)
+            self.files['tldlist'] = pd.read_csv(data)
             self.files['tldlist'].to_csv(os.path.join(self.dir, 'tldlist.csv'))
 
 
@@ -96,7 +101,7 @@ class ETLD:
             df['tld'] = df.tld.str.replace('\u200e', '', n=1, regex=False)
             
             if (df.tld.apply(lambda tld: tld.count('.') > 1)).sum() > 0:
-                raise 'Unexpected: TLDs should have only one point each.'
+                raise Exception('Unexpected: TLDs should have only one point each.')
             
             df = df.fillna('-').sort_values(by='tld').reset_index(drop=True).reset_index()
             
@@ -275,6 +280,8 @@ class ETLD:
             return df.copy()
         
         self.frame = parse()
+
+        self.frame.to_csv(os.path.join(self.dir, 'etld.csv'))
 
         pass
 

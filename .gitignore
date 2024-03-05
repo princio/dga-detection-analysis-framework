@@ -42,3 +42,8 @@ dnsparser/src/strutils.c
 dnsparser/src/strutils.h
 dnsparser/src/tcp.c
 dnsparser/src/tcp.h
+outdirs/2023-02-20-00-00-03-192.168.1.108/2023-02-20-00-00-03-192.168.1.108.onlydns.pcap
+outdirs/2023-02-20-00-00-03-192.168.1.108/logs/binaries.log
+outdirs/2023-02-20-00-00-03-192.168.1.108/logs/dns_parse.log
+outdirs/2023-02-20-00-00-03-192.168.1.108/logs/pslregex2.log
+outdirs/pslregex2/public_suffix_list.dat

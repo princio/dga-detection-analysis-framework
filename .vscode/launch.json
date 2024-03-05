@@ -5,6 +5,17 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name":"Python Debugger: Current File with Arguments",
+            "type":"debugpy",
+            "request":"launch",
+            "program":"./run.py",
+            "console":"integratedTerminal",
+            "args": [
+                "./outdirs",
+                "/media/princio/ssd512/dns detection datasets/ctu-sme-11/CTU-SME-11_Experiment-VM-Microsoft-Windows7AD-1_v1.0.0/CTU-SME-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-20/raw/2023-02-20-00-00-03-192.168.1.108.pcap"
+            ]
+        },
+        {
             "name": "windowing",
             "type": "cppdbg",
             "request": "launch",

@@ -40,9 +40,7 @@ int main(int argc, char **argv) {
     int c;
     int arg_failure = 0;
 
-    const char * OPTIONS = "cdfhm:MnrtD:x:s:S";
-
-    PSLT* pslt = pslt_load("/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/iframe.csv");
+    const char * OPTIONS = "cdfhi:m:o:MnrtD:x:s:S";
 
     // Setting configuration defaults.
     uint8_t TCP_SAVE_STATE = 1;
@@ -59,7 +57,6 @@ int main(int argc, char **argv) {
     conf.DEDUPS = 10;
     conf.dedup_pos = 0;
     conf.fnreq = -1;
-    conf.pslt = pslt;
 
     c = getopt(argc, argv, OPTIONS);
     while (c != -1) {
@@ -73,6 +70,9 @@ int main(int argc, char **argv) {
             case 'f':
                 print_parsers();
                 return 0;
+            case 'i':
+                strcpy(conf.pslt_iframe_path, optarg);
+                break;
             case 'm':
                 conf.RECORD_SEP = optarg;
                 conf.SEP = '\n';
@@ -82,6 +82,9 @@ int main(int argc, char **argv) {
                 break;
             case 'n':
                 conf.NS_ENABLED = 1;
+                break;
+            case 'o':
+                strcpy(conf.csv_path, optarg);
                 break;
             case 'r':
                 conf.PRINT_RR_NAME = 1;
@@ -161,7 +164,7 @@ int main(int argc, char **argv) {
     
     if (arg_failure) {
         fprintf(stderr,
-        "Usage: dns_parse [-dnthf] [-m<query sep.>] [-x<rtype>] [-s<path>]\n"
+        "Usage: dns_parse [-dnthfio] [-m<query sep.>] [-x<rtype>] [-s<path>]\n"
         "                 <pcap file>\n"
         "dns_parse parses a pcap file and gives a nicely "
         "formatted ascii string for each dns request.\n"
@@ -205,6 +208,8 @@ int main(int argc, char **argv) {
         "-f\n"
         "   Print out documentation on the various resource \n"
         "   record parsers.\n"
+        "-i\n"
+        "   PSL data frame.\n"
         "-n\n"
         "   Enable the parsing and output of the Name Server\n"
         "   Records section. Disabled by default.\n"
@@ -215,6 +220,8 @@ int main(int argc, char **argv) {
         "-M \n"
         "   Print a message for each occurance of a missing class,type\n"
         "   parser.\n"
+        "-o\n"
+        "   CSV output file.\n"
         "-r \n"
         "   Changes the resource record format to: \n"
         "   <section> <name> <rr_type_name> <rdata>\n"
@@ -253,10 +260,22 @@ int main(int argc, char **argv) {
 
     conf.ip_fragment_head = NULL;
 
-    conf.file = fopen("./dnsparse.csv", "w");
 
-    fprintf(conf.file, "time,size,protocol,server,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,dn,bnd,");
-    fprintf(conf.file, "dn_tld,dn_icann,dn_private,tld,icann,private,answer\n");
+    conf.pslt = pslt_load(conf.pslt_iframe_path);
+    if (conf.pslt == NULL) {
+        fprintf(stderr, "Impossible to load PSLT.");
+        exit(1);
+    }
+
+    conf.csv_file = fopen(conf.csv_path, "w");
+    if (conf.csv_file == NULL) {
+        fprintf(stderr, "Impossible to open CSV file.");
+        exit(1);
+    }
+
+
+    fprintf(conf.csv_file, "time,size,protocol,server,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,dn,bnd,");
+    fprintf(conf.csv_file, "dn_tld,dn_icann,dn_private,tld,icann,private,answer\n");
 
     // Load and prior TCP session info
     conf.tcp_sessions_head = NULL; 
@@ -286,7 +305,7 @@ int main(int argc, char **argv) {
     } VERBOSE( else fprintf(stderr, "pcap_dispatch: %d packets processed\n", read); )
 
     pcap_close(pcap_file);
-    fclose(conf.file);
+    fclose(conf.csv_file);
 
     return 0;
 }
@@ -443,14 +462,14 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     }
     
     sprintf(ts, "%d.%06d", (int)header->ts.tv_sec, (int)header->ts.tv_usec);
-    fprintf(conf->file, "%s,", ts);
-    fprintf(conf->file, "%d,", trns->length);
-    fprintf(conf->file, "%c,", proto);
-    fprintf(conf->file, "%s,", dns->qr ? iptostr(&ip->src) : iptostr(&ip->dst));
-    fprintf(conf->file, "%c,", dns->qr ? 'r' : 'q');
-    fprintf(conf->file, "%s,", dns->qr ? (dns->AA ? "1" : "") : "");
-    fprintf(conf->file, "%d,", dns->rcode);
-    fprintf(conf->file, "%ld,", conf->fnreq);
+    fprintf(conf->csv_file, "%s,", ts);
+    fprintf(conf->csv_file, "%d,", trns->length);
+    fprintf(conf->csv_file, "%c,", proto);
+    fprintf(conf->csv_file, "%s,", dns->qr ? iptostr(&ip->src) : iptostr(&ip->dst));
+    fprintf(conf->csv_file, "%c,", dns->qr ? 'r' : 'q');
+    fprintf(conf->csv_file, "%s,", dns->qr ? (dns->AA ? "1" : "") : "");
+    fprintf(conf->csv_file, "%d,", dns->rcode);
+    fprintf(conf->csv_file, "%ld,", conf->fnreq);
 
     {
 
@@ -459,10 +478,10 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
             printf("WARNING: more than one question (%d)", dns->qdcount);
         }
 
-        fprintf(conf->file, "%u,", dns->qdcount);
-        fprintf(conf->file, "%u,", dns->ancount);
-        fprintf(conf->file, "%u,", dns->nscount);
-        fprintf(conf->file, "%u,",  dns->arcount);
+        fprintf(conf->csv_file, "%u,", dns->qdcount);
+        fprintf(conf->csv_file, "%u,", dns->ancount);
+        fprintf(conf->csv_file, "%u,", dns->nscount);
+        fprintf(conf->csv_file, "%u,",  dns->arcount);
 
         PSLTDomain first_domain;
         memset(first_domain, 0, sizeof(PSLTDomain));
@@ -479,18 +498,18 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
                 processed = pslt_domain_remove_suffixes(first_domain, result);
                 pslt_basedomain(first_domain, result, basedomain);
 
-                fprintf(conf->file, "%u,", qnext->type);
+                fprintf(conf->csv_file, "%u,", qnext->type);
 
-                fprintf(conf->file, "%s,", qnext->name);
-                fprintf(conf->file, "%s,", basedomain);
+                fprintf(conf->csv_file, "%s,", qnext->name);
+                fprintf(conf->csv_file, "%s,", basedomain);
 
-                fprintf(conf->file, "%s,", processed.tld);
-                fprintf(conf->file, "%s,", processed.icann);
-                fprintf(conf->file, "%s,", processed.private);
+                fprintf(conf->csv_file, "%s,", processed.tld);
+                fprintf(conf->csv_file, "%s,", processed.icann);
+                fprintf(conf->csv_file, "%s,", processed.private);
 
-                fprintf(conf->file, "%s,", result.tld ? result.tld->suffix->suffix : "");
-                fprintf(conf->file, "%s,", result.icann ? result.icann->suffix->suffix : "");
-                fprintf(conf->file, "%s,", result.private ? result.private->suffix->suffix : "");
+                fprintf(conf->csv_file, "%s,", result.tld ? result.tld->suffix->suffix : "");
+                fprintf(conf->csv_file, "%s,", result.icann ? result.icann->suffix->suffix : "");
+                fprintf(conf->csv_file, "%s,", result.private ? result.private->suffix->suffix : "");
 
                 first_qtype = qnext->type;
             }
@@ -502,17 +521,17 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
             rr_text text;
             memset(&text, 0, sizeof(text));
             print_rr_section(dns->answers, first_domain, conf, &text, first_qtype, dns->id);
-            fprintf(conf->file, "\"%s\",", text.A);
+            fprintf(conf->csv_file, "\"%s\",", text.A);
         }
     }
 
-    fprintf(conf->file, "\n");
+    fprintf(conf->csv_file, "\n");
 
     dns_question_free(dns->queries);
     dns_rr_free(dns->answers);
     dns_rr_free(dns->name_servers);
     dns_rr_free(dns->additional);
-    fflush(conf->file); 
+    fflush(conf->csv_file); 
     fflush(stdout); 
     fflush(stderr);
 }
