@@ -70,7 +70,7 @@ PSLTError pslt_suffixes_parse(char filepath[PATH_MAX], PSLTSuffixes* suffixes) {
     line_number = 0;
     unused = fgets(buffer, MAXROWSIZE, fp); // skip the header (one line)
     while(fgets(buffer, MAXROWSIZE, fp)) {
-        #define PARSE_FIELD(NAME) { \
+        #define PARSE_FIELD { \
             cursor_end = _suffixes_get_field_end(buffer, cursor); \
             memset(field, 0, MAXFIELDSIZE); \
             memcpy(field, &buffer[cursor], cursor_end - cursor); \
@@ -81,37 +81,32 @@ PSLTError pslt_suffixes_parse(char filepath[PATH_MAX], PSLTSuffixes* suffixes) {
         int cursor_end = 0;
 
         {
-            PARSE_FIELD(index);
+            PARSE_FIELD;
             suffix->index = (size_t) atoi(field);
         }
 
-        { // skip single labels
-            suffix->nlabels = 0;
-            for (int i = 0; i < 5; ++i) {
-                cursor_end = _suffixes_get_field_end(buffer, cursor);
-                suffix->nlabels += ((cursor_end - cursor) > 1);
-                cursor = cursor_end + 1;
-            }
+        { // code
+            PARSE_FIELD;
+            memcpy(&suffix->code.section, field, strlen(field));
         }
 
         { // suffix
-            PARSE_FIELD(suffix);
+            PARSE_FIELD;
             memcpy(suffix->suffix, field, strlen(field));
             suffix->suffix[strlen(field)] = '\0';
         }
 
-        { // code
-            PARSE_FIELD(code);
-            memcpy(&suffix->code.section, field, strlen(field));
+        { // tld
+            PARSE_FIELD;
         }
 
         { // punycode
-            PARSE_FIELD(punycode);
+            PARSE_FIELD;
             suffix->is_punycode = strlen(field) > 0;
         }
 
         { // type
-            PARSE_FIELD(type);
+            PARSE_FIELD;
             if(strcmp(field, "country-code") == 0) {
                 suffix->type = PSLT_SUFFIXTYPE_COUNTRYCODE;
             } else
@@ -133,7 +128,7 @@ PSLTError pslt_suffixes_parse(char filepath[PATH_MAX], PSLTSuffixes* suffixes) {
         }
 
         { // origin
-            PARSE_FIELD(origin);
+            PARSE_FIELD;
             if(strcmp(field, "both") == 0) {
                 suffix->origin = PSLT_SUFFIXORIGIN_BOTH;
             }
@@ -148,7 +143,7 @@ PSLTError pslt_suffixes_parse(char filepath[PATH_MAX], PSLTSuffixes* suffixes) {
         }
 
         { // section
-            PARSE_FIELD(section);
+            PARSE_FIELD;
             if(strcmp(field, "icann") == 0) {
                 suffix->section = PSLT_SUFFIXSECTION_ICANN;
             }
@@ -162,10 +157,32 @@ PSLTError pslt_suffixes_parse(char filepath[PATH_MAX], PSLTSuffixes* suffixes) {
             }
         }
 
-        { // isprivate
-            PARSE_FIELD(isprivate);
-            suffix->is_private = strcmp(field, "icann") != 0;
+        { // newGLTD
+            PARSE_FIELD;
+            suffix->is_newGLTD = 0 == strcmp(field, "True");
         }
+
+        { // exception
+            PARSE_FIELD;
+            suffix->is_exception = 0 == strcmp(field, "True");
+        }
+
+        { // isprivate
+            PARSE_FIELD;
+            suffix->is_private = 0 != strcmp(field, "icann");
+        }
+
+
+        // printf("        index: %ld\n", suffix->index);
+        // printf("         code: %s%c%s\n", suffix->code.index, suffix->code.section, suffix->code.type);
+        // printf("       suffix: %s\n", suffix->suffix);
+        // printf("  is_punycode: %d\n", suffix->is_punycode);
+        // printf("         type: %d\n", suffix->type);
+        // printf("       origin: %d\n", suffix->origin);
+        // printf("      section: %d\n", suffix->section);
+        // printf("   is_newGLTD: %d\n", suffix->is_newGLTD);
+        // printf(" is_exception: %d\n", suffix->is_exception);
+        // printf("   is_private: %d\n\n", suffix->is_private);
 
         ++line_number;
 

@@ -68,6 +68,7 @@ typedef struct PSLTSuffix {
     SuffixSection section;
 
     int is_punycode;
+    int is_newGLTD;
     int is_private;
     int is_exception;
     int nlabels;
@@ -134,6 +135,7 @@ PSLTError plst_build(PSLTSuffixes suffixes, PSLTNode** root);
 
 PSLTSuffixSearchResult pslt_search(PSLT* pslt, PSLTDomain domain);
 
+void pslt_print(PSLT* pslt);
 PSLT* pslt_load(char suffixlistpath[PATH_MAX]);
 void pslt_free(PSLT* pslt);
 

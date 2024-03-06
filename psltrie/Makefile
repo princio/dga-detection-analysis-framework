@@ -45,7 +45,7 @@ BROWN=\$(COLOR_PREFIX)[0;33m
 BLUE=\$(COLOR_PREFIX)[1;34m
 END_COLOR=\$(COLOR_PREFIX)[0m
 
-
+PSLTSUFFIXFILE := /home/princio/Repo/princio/malware_detection_preditc_file/outdirs/pslregex2/etld.csv
 
 # Source code directory structure
 BINDIR := bin
@@ -162,7 +162,7 @@ valgrind:
 		--leak-check=full \
 		--leak-resolution=high \
 		--log-file=$(LOGDIR)/$@.log \
-		$(BINDIR)/$(BINARY) ./iframe.csv google.co.uk
+		$(BINDIR)/$(BINARY) $(PSLTSUFFIXFILE) google.co.uk
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 
 valgrind2:
@@ -173,9 +173,13 @@ valgrind2:
 		--show-leak-kinds=all \
 		--log-file=$(LOGDIR)/$@.log \
 		--main-stacksize=838860800\
-		$(BINDIR)/$(BINARY) ./iframe.csv google.co.uk
+		$(BINDIR)/$(BINARY) $(PSLTSUFFIXFILE) google.co.uk
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 
+install:
+	cp $(EXPORTDIR)/lib/$(SHAREDLIB) /usr/local/lib/$(SHAREDLIB)
+	chmod 0755 /usr/local/lib/$(SHAREDLIB)
+	cp -r $(EXPORTDIR)/include/$(PROJECT_NAME) /usr/local/include/$(PROJECT_NAME)
 
 # Compile tests and run the test binary
 tests:
@@ -193,12 +197,12 @@ clean:
 ca: clean all
 
 ab: all
-	clear; bin/binary iframe.csv google.co.uk
+	clear; bin/binary $(PSLTSUFFIXFILE) google.co.uk
 
 av: all valgrind
 
 cab: clean all
-	clear; bin/binary iframe.csv google.co.uk
+	clear; bin/binary $(PSLTSUFFIXFILE) google.co.uk
 
 cp: clean prod
 

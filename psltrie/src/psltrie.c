@@ -5,6 +5,7 @@
 #include <errno.h>
 
 #define CHAR_TO_INDEX(c) ((int) c - (int) '!')
+#define INDEX_TO_CHAR(i) (char) (i + (int) '!')
 
 PSLTNode* _trie_new_node() {
     PSLTNode *node = NULL;
@@ -152,9 +153,11 @@ PSLTDomainProcessed pslt_domain_remove_suffixes(PSLTDomain domain, PSLTSuffixSea
         processed.private
     };
     for (size_t s = 0; s < 3; s++) {
-        const size_t l = strlen(domain) - strlen(suffixes[s]->suffix);
-        strcpy(domains_processed[s], domain);
-        domains_processed[s][l-1] = '\0';
+        if (suffixes[s]) {
+            const size_t l = strlen(domain) - strlen(suffixes[s]->suffix);
+            strcpy(domains_processed[s], domain);
+            domains_processed[s][l-1] = '\0';
+        }
     }
     return processed;
 }
@@ -269,7 +272,7 @@ PSLT* pslt_load(char suffixlistpath[PATH_MAX]) {
     error = pslt_suffixes_parse(suffixlistpath, &pslt->suffixes);
 
     if (error) {
-        fprintf(stderr, "Error during opening file: %s", strerror(errno));
+        fprintf(stderr, "Error during opening file[%s]: %s", suffixlistpath, strerror(errno));
         return NULL;
     }
 
@@ -281,6 +284,32 @@ PSLT* pslt_load(char suffixlistpath[PATH_MAX]) {
     }
 
     return pslt;
+}
+
+
+void _pslt_print(PSLTNode* crawl, char path[1000], int level) {
+    if (!crawl) {
+        printf("END\n");
+        return;
+    }
+
+    for (size_t i = 0; i < PSLT_DOMAIN_ALPHABET_SIZE; i++) {
+        if (crawl->children[i]) {
+            path[level] = INDEX_TO_CHAR(i);
+            path[level + 1] = '\0';
+            printf("%*s%2d/%s\n", 4*level, " ", level, path);
+            if (crawl->children[i]->isEndOfSuffix) {
+                printf("%*s\t%s\n", 4*level + 2, " ", crawl->children[i]->suffix->suffix);
+            } else {
+                _pslt_print(crawl->children[i], path, level + 1);
+            }
+        }
+    }
+}
+
+void pslt_print(PSLT* pslt) {
+    char path[1000];
+    _pslt_print(pslt->trie, path, 0);
 }
 
 void pslt_free(PSLT* pslt) {

@@ -33,6 +33,8 @@ int main (int argc, char* argv[]) {
 
     pslt = pslt_load(argv[1]);
 
+    pslt_print(pslt);
+
     if (pslt == NULL) {
         fprintf(stderr, "Something went wrong.");
         exit(1);
