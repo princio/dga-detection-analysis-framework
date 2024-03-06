@@ -25,6 +25,8 @@ class Paths:
         self.path_pslregex2: str = os.path.join(self.dir_pslregex2, "etld.csv")
         self.path_pslregex2: str = str(Path(self.path_pslregex2).absolute())
 
+        self.dir_lstm: str = os.path.join(self.root_outdir, "lstm")
+
         self.path_pcapfile: str = str(Path(pcapfile).absolute())
 
         self.basename = os.path.basename(self.path_pcapfile)
@@ -66,6 +68,12 @@ class Paths:
             os.mkdir(paths.dir_pslregex2)
             pass
         pass
+
+        if not os.path.exists(paths.dir_lstm):
+            print(f"[info]: making lstm directory: {paths.dir_lstm}")
+            os.mkdir(paths.dir_lstm)
+            pass
+        pass
     pass
 
 
@@ -82,6 +90,10 @@ class Binaries:
                 raise Exception("No python field")
             self.python: str = conf['python']
 
+            if 'python_tf' not in conf:
+                raise Exception("No python_tf field")
+            self.python_tf: str = conf['python_tf']
+
             if 'pslregex2' not in conf:
                 raise Exception("No pslregex2 field")
             self.pslregex2: str = conf['pslregex2']
@@ -89,6 +101,10 @@ class Binaries:
             if 'dns_parse' not in conf:
                 raise Exception("No dns_parse field")
             self.dns_parse = conf['dns_parse']
+
+            if 'lstm' not in conf:
+                raise Exception("No lstm field")
+            self.lstm = conf['lstm']
 
             self.paths: Paths = paths
         pass
@@ -251,6 +267,7 @@ if __name__ == "__main__":
             rename_file_if_error(p.returncode != 0, paths.path_csvfile)
 
             if p.returncode != 0:
+                print(output)
                 print(errors)
                 raise Exception("dns_parse execution failed")
 
@@ -258,5 +275,43 @@ if __name__ == "__main__":
         pass
     else:
         print("[info]: skipping dns_parse, file already exists.")
+
+    pass
+
+
+
+    # lstm
+
+    if True or not os.path.exists(paths.path_csvfile):
+        print("[info]: lstm step...")
+        with open(os.path.join(paths.dir_logs, "lstm.log"), "w") as fplog:
+            p = subprocess.Popen(
+                [
+                    binaries.python_tf,
+                    binaries.lstm,
+                    paths.dir_lstm,
+                    paths.path_csvfile
+                ],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+
+            output, errors = p.communicate(timeout=100)
+
+            fplog.writelines(output)
+            fplog.writelines(errors)
+
+            rename_file_if_error(p.returncode != 0, paths.path_csvfile)
+
+            if p.returncode != 0:
+                print(output)
+                print(errors)
+                raise Exception("lstm execution failed")
+
+            pass
+        pass
+    else:
+        print("[info]: skipping lstm, file already exists.")
 
     pass

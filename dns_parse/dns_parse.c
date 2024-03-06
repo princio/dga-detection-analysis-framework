@@ -35,8 +35,6 @@ int main(int argc, char **argv) {
     int read;
     config conf;
 
-    // tshark -r 2023-02-20-00-00-03-192.168.1.108.pcap  -Y 'dns && !_ws.malformed && !icmp' -w output.pcap
-
     int c;
     int arg_failure = 0;
 
@@ -260,12 +258,17 @@ int main(int argc, char **argv) {
 
     conf.ip_fragment_head = NULL;
 
+    if (!strlen(conf.pslt_iframe_path)) {
+        fprintf(stderr, "PSLT Suffix list path required.");
+        exit(1);
+    }
 
     conf.pslt = pslt_load(conf.pslt_iframe_path);
     if (conf.pslt == NULL) {
         fprintf(stderr, "Impossible to load PSLT.");
         exit(1);
     }
+
 
     conf.csv_file = fopen(conf.csv_path, "w");
     if (conf.csv_file == NULL) {

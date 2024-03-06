@@ -24,10 +24,10 @@ tar: clean
 
 OBJ=rtypes.o strutils.o network.o tcp.o
 
-PSLTRIEDIR := /home/princio/Repo/princio/malware_detection_preditc_file/psltrie/export/
+# PSLTRIEDIR := /home/princio/Repo/princio/malware_detection_preditc_file/psltrie/export/
 
-LIBSEARCH := -L$(PSLTRIEDIR)/lib
-LIBINCLUDE := -I$(PSLTRIEDIR)/include
+# LIBSEARCH := -L$(PSLTRIEDIR)/lib
+# LIBINCLUDE := -I$(PSLTRIEDIR)/include
 
 LIBS := -lpcap -lpsltrie
 

@@ -1,6 +1,8 @@
 {
-    "tshark": "tshark",
-    "python": "python",
     "dns_parse": "/home/princio/Repo/princio/malware_detection_preditc_file/dns_parse/bin/dns_parse",
-    "pslregex2": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/python/run.py"
+    "lstm": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/predict_dns_parse_output.py",
+    "python": "python",
+    "python_tf": "/home/princio/anaconda3/envs/mwdb/bin/python",
+    "pslregex2": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/python/run.py",
+    "tshark": "tshark"
 }
