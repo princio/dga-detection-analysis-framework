@@ -4,16 +4,14 @@ import os, argparse
 from pathlib import Path
 import shutil
 
-def rename_file_if_error(test: bool, path_oldfile: str):
+def rename_file_if_error(test: bool, path_currentfile: str):
     if test:
-        path_errorfile = f"{path_oldfile}.error"
-        if os.path.exists(path_oldfile):
-            if os.path.exists(path_oldfile):
-                os.remove(path_errorfile)
-                pass
-            os.rename(path_oldfile, path_errorfile)
+        path_errorfile = f"{path_currentfile}.error"
+        if os.path.exists(path_currentfile):
+            os.rename(path_currentfile, path_errorfile)
             pass
         pass
+    pass
 
 class Paths:
     def __init__(self, root_outdir, pcapfile) -> None:
@@ -25,7 +23,6 @@ class Paths:
         self.path_pslregex2: str = os.path.join(self.dir_pslregex2, "etld.csv")
         self.path_pslregex2: str = str(Path(self.path_pslregex2).absolute())
 
-        self.dir_lstm: str = os.path.join(self.root_outdir, "lstm")
 
         self.path_pcapfile: str = str(Path(pcapfile).absolute())
 
@@ -40,6 +37,7 @@ class Paths:
         self.path_dnspcap = str(Path(os.path.join(self.outdir, self.name_dnspcap)).absolute())
 
         self.path_csvfile = str(Path(os.path.join(self.outdir, f"{self.noext}.csv")).absolute())
+        self.path_lstmcsvfile = str(Path(os.path.join(self.outdir, f"{self.noext}.lstm.csv")).absolute())
 
         pass
 
@@ -68,12 +66,6 @@ class Paths:
             os.mkdir(paths.dir_pslregex2)
             pass
         pass
-
-        if not os.path.exists(paths.dir_lstm):
-            print(f"[info]: making lstm directory: {paths.dir_lstm}")
-            os.mkdir(paths.dir_lstm)
-            pass
-        pass
     pass
 
 
@@ -90,9 +82,13 @@ class Binaries:
                 raise Exception("No python field")
             self.python: str = conf['python']
 
-            if 'python_tf' not in conf:
-                raise Exception("No python_tf field")
-            self.python_tf: str = conf['python_tf']
+            if 'python_lstm' not in conf:
+                raise Exception("No python_lstm field")
+            self.python_lstm: str = conf['python_lstm']
+
+            if 'python_pslregex2' not in conf:
+                raise Exception("No python_pslregex2 field")
+            self.python_pslregex2: str = conf['python_pslregex2']
 
             if 'pslregex2' not in conf:
                 raise Exception("No pslregex2 field")
@@ -106,11 +102,30 @@ class Binaries:
                 raise Exception("No lstm field")
             self.lstm = conf['lstm']
 
+            if 'nndir' not in conf:
+                raise Exception("No nndir field")
+            self.nndir = conf['nndir']
+
             self.paths: Paths = paths
         pass
 
+    def check_python(self, python_path, fplog):
+        p = subprocess.Popen(
+            [self.python, "-V"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+            )
+        output, errors = p.communicate(timeout=1)
+        fplog.write("# Python\n\n")
+        fplog.writelines(output)
+        fplog.writelines(errors)
+        if p.returncode != 0:
+            print(f"Python not installed at: {python_path}")
+        return p.returncode != 0
+
     def test(self):
-        error = ""
+        error = False
         with open(os.path.join(self.paths.dir_logs, "binaries.log"), "w") as fplog:
             if True:
                 p = subprocess.Popen(
@@ -124,31 +139,26 @@ class Binaries:
                 fplog.writelines(output)
                 fplog.writelines(errors)
                 if p.returncode != 0:
-                    error = f"{error}TShark not installed\n"
-                    pass
-            if True:
-                p = subprocess.Popen(
-                    [self.python, "-V"],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
-                    )
-                output, errors = p.communicate(timeout=1)
-                fplog.write("# Python\n\n")
-                fplog.writelines(output)
-                fplog.writelines(errors)
-                if p.returncode != 0:
-                    error = f"{error}Python not installed\n"
-                    pass
-            if not os.path.exists(self.pslregex2):
-                error = f"{error}PSLRegex script not exists: {self.pslregex2}\n"
-                pass
-            if not os.path.exists(self.dns_parse):
-                error = f"{error}DNS Parse binary not exists: {self.dns_parse}\n"
+                    print(f"{error}TShark not installed")
+                    error = True
                 pass
 
-            if len(error) > 0:
-                raise Exception(error)
+            error = error or self.check_python(self.python, fplog)
+            error = error or self.check_python(self.python_pslregex2, fplog)
+            error = error or self.check_python(self.python_lstm, fplog)
+
+            if not os.path.exists(self.pslregex2):
+                print(f"{error}PSLRegex script not exists: {self.pslregex2}")
+                pass
+            if not os.path.exists(self.dns_parse):
+                print(f"{error}DNS Parse binary not exists: {self.dns_parse}")
+                pass
+            if not os.path.exists(self.nndir):
+                print(f"{error}NNs dir not exists: {self.nndir}")
+                pass
+
+            if error:
+                raise Exception()
             pass
         pass
 
@@ -180,7 +190,7 @@ if __name__ == "__main__":
         with open(os.path.join(paths.dir_logs, "pslregex2.log"), "w") as fplog:
             p = subprocess.Popen(
                 [
-                    binaries.python,
+                    binaries.python_pslregex2,
                     binaries.pslregex2,
                     paths.dir_pslregex2
                 ],
@@ -197,6 +207,8 @@ if __name__ == "__main__":
             rename_file_if_error(p.returncode != 0, paths.path_pslregex2)
 
             if p.returncode != 0:
+                print(errors)
+                print(output)
                 raise Exception("pslregex2 execution failed")
 
             pass
@@ -281,15 +293,15 @@ if __name__ == "__main__":
 
 
     # lstm
-
-    if True or not os.path.exists(paths.path_csvfile):
+    if not os.path.exists(paths.path_lstmcsvfile):
         print("[info]: lstm step...")
         with open(os.path.join(paths.dir_logs, "lstm.log"), "w") as fplog:
             p = subprocess.Popen(
                 [
-                    binaries.python_tf,
+                    binaries.python_lstm,
                     binaries.lstm,
-                    paths.dir_lstm,
+                    binaries.nndir,
+                    paths.outdir,
                     paths.path_csvfile
                 ],
                 stdout=subprocess.PIPE,
@@ -302,7 +314,7 @@ if __name__ == "__main__":
             fplog.writelines(output)
             fplog.writelines(errors)
 
-            rename_file_if_error(p.returncode != 0, paths.path_csvfile)
+            rename_file_if_error(p.returncode != 0, paths.path_lstmcsvfile)
 
             if p.returncode != 0:
                 print(output)

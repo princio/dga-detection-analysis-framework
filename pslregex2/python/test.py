@@ -4,14 +4,12 @@ import re
 import unittest
 import pandas
 
-from publicsuffixlist import PublicSuffixList, b, encode_idn, u
-
 from pslregex import PSLdict
 
 if __name__ == "__main__":
     psl = PSLdict()
 
-    psl.init(False, False)
+    psl.init(True, True)
     
     ts = []
     

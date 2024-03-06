@@ -101,6 +101,19 @@
                     "ignoreFailures": true
                 }
             ]
-        }
+        },
+        {
+            "name":"Python LSTM",
+            "type":"debugpy",
+            "request":"launch",
+            "program":"lstm_dga/predict_dns_parse_output.py",
+            "console":"integratedTerminal",
+            "python": "lstm_dga/venv/bin/python",
+            "args": [
+                "lstm_dga/nns",
+                "lstm_dga/tmp",
+                "/home/princio/Repo/princio/malware_detection_preditc_file/outdirs/2023-02-20-00-00-03-192.168.1.108/2023-02-20-00-00-03-192.168.1.108.csv"
+            ]
+        },
     ]
 }
