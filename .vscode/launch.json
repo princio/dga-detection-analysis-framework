@@ -5,7 +5,7 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name":"Python Debugger: Current File with Arguments",
+            "name":"Root RUN",
             "type":"debugpy",
             "request":"launch",
             "program":"./run.py",
@@ -46,6 +46,8 @@
             "request": "launch",
             "program": "/home/princio/Repo/princio/malware_detection_preditc_file/dns_parse/bin/dns_parse",
             "args": [
+                "-i", "/home/princio/Repo/princio/malware_detection_preditc_file/outdirs/pslregex2/etld.csv",
+                "-o", "/tmp/dns_parse.csv",
                 "/media/princio/ssd512/dns detection datasets/ctu-sme-11/CTU-SME-11_Experiment-VM-Microsoft-Windows7AD-1_v1.0.0/CTU-SME-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-20/raw/2023-02-20-00-00-03-192.168.1.108.dns.pcap"
             ],
             "stopAtEntry": false,
@@ -78,7 +80,7 @@
             "request": "launch",
             "program": "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/bin/binary",
             "args": [
-                "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/iframe.csv",
+                "/home/princio/Repo/princio/malware_detection_preditc_file/outdirs/pslregex2/etld.csv",
                 "google.co.uk", //e13678.dscb.akamaiedge.net
             ],
             "stopAtEntry": false,
