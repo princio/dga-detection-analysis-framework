@@ -23,8 +23,8 @@ class Paths:
         self.path_pslregex2: str = os.path.join(self.dir_pslregex2, "etld.csv")
         self.path_pslregex2: str = str(Path(self.path_pslregex2).absolute())
 
-
         self.path_pcapfile: str = str(Path(pcapfile).absolute())
+        self.path_malware: str = str(Path(self.path_pcapfile).parent.absolute().joinpath("malware.json"))
 
         self.basename = os.path.basename(self.path_pcapfile)
 
@@ -34,10 +34,10 @@ class Paths:
         self.dir_logs: str = str(Path(self.outdir, "logs").absolute())
     
         self.name_dnspcap = f"{self.noext}.onlydns.pcap"
-        self.path_dnspcap = str(Path(os.path.join(self.outdir, self.name_dnspcap)).absolute())
+        self.path_tshark_output = str(Path(os.path.join(self.outdir, self.name_dnspcap)).absolute())
 
-        self.path_csvfile = str(Path(os.path.join(self.outdir, f"{self.noext}.csv")).absolute())
-        self.path_lstmcsvfile = str(Path(os.path.join(self.outdir, f"{self.noext}.lstm.csv")).absolute())
+        self.path_dns_parse_output = str(Path(os.path.join(self.outdir, f"{self.noext}.csv")).absolute())
+        self.path_lstm_output = str(Path(os.path.join(self.outdir, f"{self.noext}.lstm.csv")).absolute())
 
         pass
 
@@ -74,37 +74,23 @@ class Binaries:
         with open("conf.json", 'r') as fp_conf:
             conf = json.load(fp_conf)
 
-            if 'tshark' not in conf:
-                raise Exception("No tshark field")
-            self.tshark: str = conf['tshark']
+            self.postgre = conf['postgre']
+                
+            self.tshark: str = conf['bin']['tshark']
 
-            if 'python' not in conf:
-                raise Exception("No python field")
-            self.python: str = conf['python']
+            self.python: str = conf['bin']['python']
 
-            if 'python_lstm' not in conf:
-                raise Exception("No python_lstm field")
-            self.python_lstm: str = conf['python_lstm']
+            self.python_pslregex2: str = conf['bin']['python_lstm']
 
-            if 'python_pslregex2' not in conf:
-                raise Exception("No python_pslregex2 field")
-            self.python_pslregex2: str = conf['python_pslregex2']
+            self.python_lstm: str = conf['bin']['python_lstm']
 
-            if 'pslregex2' not in conf:
-                raise Exception("No pslregex2 field")
-            self.pslregex2: str = conf['pslregex2']
+            self.dns_parse: str = conf['bin']['dns_parse']
 
-            if 'dns_parse' not in conf:
-                raise Exception("No dns_parse field")
-            self.dns_parse = conf['dns_parse']
+            self.script_pslregex2: str = conf['pyscript']['pslregex2']
 
-            if 'lstm' not in conf:
-                raise Exception("No lstm field")
-            self.lstm = conf['lstm']
+            self.script_lstm: str = conf['pyscript']['lstm']
 
-            if 'nndir' not in conf:
-                raise Exception("No nndir field")
-            self.nndir = conf['nndir']
+            self.nndir: str = conf['nndir']
 
             self.paths: Paths = paths
         pass
@@ -147,8 +133,8 @@ class Binaries:
             error = error or self.check_python(self.python_pslregex2, fplog)
             error = error or self.check_python(self.python_lstm, fplog)
 
-            if not os.path.exists(self.pslregex2):
-                print(f"{error}PSLRegex script not exists: {self.pslregex2}")
+            if not os.path.exists(self.script_pslregex2):
+                print(f"{error}PSLRegex script not exists: {self.script_pslregex2}")
                 pass
             if not os.path.exists(self.dns_parse):
                 print(f"{error}DNS Parse binary not exists: {self.dns_parse}")
@@ -159,6 +145,36 @@ class Binaries:
 
             if error:
                 raise Exception()
+            pass
+        pass
+
+    def launch(self, file_output, name, args):
+        if not os.path.exists(file_output):
+            print(f"[info]: {name} step...")
+            with open(os.path.join(paths.dir_logs, f"{name}.log"), "w") as fplog:
+                p = subprocess.Popen(
+                    args,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+
+                output, errors = p.communicate(timeout=100)
+
+                fplog.writelines(output)
+                fplog.writelines(errors)
+
+                rename_file_if_error(p.returncode != 0, file_output)
+
+                if p.returncode != 0:
+                    print(output)
+                    print(errors)
+                    raise Exception(f"{name} execution failed")
+
+                pass
+            pass
+        else:
+            print(f"[info]: skipping {name}, file already exists.")
             pass
         pass
 
@@ -185,145 +201,160 @@ if __name__ == "__main__":
 
     # pslregex2
 
-    if not os.path.exists(paths.path_pslregex2):
-        print("[info]: pslregex2 step...")
-        with open(os.path.join(paths.dir_logs, "pslregex2.log"), "w") as fplog:
-            p = subprocess.Popen(
-                [
-                    binaries.python_pslregex2,
-                    binaries.pslregex2,
-                    paths.dir_pslregex2
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-
-            output, errors = p.communicate(timeout=600)
-
-            fplog.writelines(output)
-            fplog.writelines(errors)
-
-            rename_file_if_error(p.returncode != 0, paths.path_pslregex2)
-
-            if p.returncode != 0:
-                print(errors)
-                print(output)
-                raise Exception("pslregex2 execution failed")
-
-            pass
-        pass
-    else:
-        print("[info]: skipping pslregex2, file already exists.")
-        pass
-
-
+    binaries.launch(paths.path_pslregex2, "pslregex2", [
+        binaries.python_pslregex2,
+        binaries.script_pslregex2,
+        paths.dir_pslregex2
+    ])
 
     # tshark
 
-    if not os.path.exists(paths.path_dnspcap):
-        print("[info]: tshark step...")
-        with open(os.path.join(paths.dir_logs, "tshark.log"), "w") as fplog:
-            p = subprocess.Popen(
-                [
-                    binaries.tshark,
-                    "-r", paths.path_pcapfile,
-                    "-Y", "dns && !_ws.malformed && !icmp",
-                    "-w", paths.path_dnspcap
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-
-            output, errors = p.communicate()
-
-            fplog.writelines(output)
-            fplog.writelines(errors)
-
-            rename_file_if_error(p.returncode != 0, paths.path_dnspcap)
-
-            if p.returncode != 0:
-                print(errors)
-                raise Exception("tshark execution failed")
-
-            pass
-        pass
-    else:
-        print("[info]: skipping tshark, file already exists.")
-
-
+    binaries.launch(paths.path_tshark_output, "tshark", [
+        binaries.tshark,
+        "-r", paths.path_pcapfile,
+        "-Y", "dns && !_ws.malformed && !icmp",
+        "-w", paths.path_tshark_output
+    ])
 
     # dns_parse
 
-    if not os.path.exists(paths.path_csvfile):
-        print("[info]: dns_parse step...")
-        with open(os.path.join(paths.dir_logs, "dns_parse.log"), "w") as fplog:
-            p = subprocess.Popen(
-                [
-                    binaries.dns_parse,
-                    "-i", paths.path_pslregex2,
-                    "-o", paths.path_csvfile,
-                    paths.path_dnspcap
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-
-            output, errors = p.communicate(timeout=100)
-
-            fplog.writelines(output)
-            fplog.writelines(errors)
-
-            rename_file_if_error(p.returncode != 0, paths.path_csvfile)
-
-            if p.returncode != 0:
-                print(output)
-                print(errors)
-                raise Exception("dns_parse execution failed")
-
-            pass
-        pass
-    else:
-        print("[info]: skipping dns_parse, file already exists.")
-
-    pass
-
-
+    binaries.launch(paths.path_dns_parse_output, "dns_parse", [
+        binaries.dns_parse,
+        "-i", paths.path_pslregex2,
+        "-o", paths.path_dns_parse_output,
+        paths.path_tshark_output
+    ])
 
     # lstm
-    if not os.path.exists(paths.path_lstmcsvfile):
-        print("[info]: lstm step...")
-        with open(os.path.join(paths.dir_logs, "lstm.log"), "w") as fplog:
-            p = subprocess.Popen(
-                [
-                    binaries.python_lstm,
-                    binaries.lstm,
-                    binaries.nndir,
-                    paths.outdir,
-                    paths.path_csvfile
-                ],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
 
-            output, errors = p.communicate(timeout=100)
+    binaries.launch(paths.path_lstm_output, "lstm", [
+        binaries.python_lstm,
+        binaries.script_pslregex2,
+        binaries.nndir,
+        paths.outdir,
+        paths.path_dns_parse_output
+    ])
 
-            fplog.writelines(output)
-            fplog.writelines(errors)
+    # postgres
 
-            rename_file_if_error(p.returncode != 0, paths.path_lstmcsvfile)
+    import pandas as pd
+    from sqlalchemy import create_engine
+    from sqlalchemy.engine import URL
+    import psycopg2 as psy
 
-            if p.returncode != 0:
-                print(output)
-                print(errors)
-                raise Exception("lstm execution failed")
+    psyconn = psy.connect("host=%s dbname=%s user=%s password=%s" % (binaries.postgre['host'], binaries.postgre['user'], binaries.postgre['dbname'], binaries.postgre['password']))
 
+    url = URL.create(
+        drivername="postgresql",
+        host=binaries.postgre['host'],
+        username=binaries.postgre['user'],
+        database=binaries.postgre['dbname'],
+        password=binaries.postgre['password']
+    )
+    engine = create_engine(url)
+    connection = engine.connect()
+
+    df = pd.read_csv(paths.path_lstm_output)
+
+    # malware
+    # malware
+    # malware
+
+    malware_notinfected_id = 28
+    malware_id = 28
+
+    with open(paths.path_malware, 'r') as fp:
+        malware = json.load(fp)
+        if not "name" in malware:
+            raise Exception("Name field missing in malware.json")
             pass
+        if malware['name'] == "no-infection":
+            malware_id = 28
+            pass
+        if not "sha256" in malware:
+            malware["sha256"] = ""
+            pass
+        if not "family" in malware:
+            malware["family"] = ""
+            pass
+    
+        print("%10s:\t%s" % ("name", malware['name']))
+        print("%10s:\t%s" % ("family", malware['family']))
+        print("%10s:\t%s" % ("sha256", malware['sha256']))
         pass
-    else:
-        print("[info]: skipping lstm, file already exists.")
+
+    if malware_id != malware_notinfected_id:
+        n_nx = (df.rcode == 3).sum()
+        n = df.shape[0]
+
+        df_uniques = df.drop_duplicates(subset='dn')
+
+        df['nx'] = df.rcode == 3
+        u_nx = df[['dn', 'nx']].groupby("dn").sum()
+        u = df_uniques.shape[0]
+
+        u_ratio = u_nx / u
+        n_ratio = n_nx / n
+        nx_ratio = (u_ratio + n_ratio) / 2
+        pass
+
+    df_mw = pd.read_sql("SELECT * FROM malware", connection)
+
+    if malware['sha256'] != "" and malware['sha256'] in set(df_mw['sha256']):
+        cursor = psyconn.cursor()
+        cursor.execute(
+            """INSERT INTO public.malware(
+                id, name, sha256, dga, family)
+                VALUES (NULL, ?, ?, ?, ?, ?);""",
+            [malware["name"], malware["sha256"], malware["dga"]],
+        )
+        malware_id = cursor.lastrowid
+        cursor.close()
+        pass
+
+
+    # malware - end
+    # malware - end
+    # malware - end
+
+    #######################
+    
+    cursor = psyconn.cursor()
+
+    import hashlib
+
+    hash_rawpcap = hashlib.sha256(open(paths.path_pcapfile,'rb').read()).hexdigest()
+
+    qr = df.shape[0]
+    q = df[df.qr == "q"].shape[0]
+    r = qr - q
+    u = df.dn.drop_duplicates().shape[0]
+    cursor.execute(
+        """
+        INSERT INTO pcap
+            (name, hash, infected, qr, q, r, "unique", unique_norm, dga_ratio)
+        VALUES
+            (%s,%s,%s::boolean,%s::bigint,%s::bigint,%s::bigint,%s::bigint,%s::real, %s::integer)
+        RETURNING id
+        """,
+        [paths.basename, hash_rawpcap, malware_id != 28, qr, q, r, u, u / qr, 1],
+    )
+
+    dn_unique = df.drop_duplicates(subset='dn')
+
+    for _, row in dn_unique.iterrows():
+        cursor.execute("""SELECT * FROM dn WHERE dn = %s""", [row["dn"]])
+
+        dbrow = cursor.fetchone()
+        if not dbrow:
+            cursor.execute(
+                """
+                INSERT INTO public.dn(
+                    id, dn, bdn, top10m, tld, icann, private, invalid, dyndns)
+                    id, dn, bdn, top10m, tld, icann, private, invalid, dyndns)
+                VALUES (NULL, %s, %s, %s, %s, %s, %s, %s, %s);
+                """, [row["dn"], row["bdn"], row[""], row["tld"], row["icann"], row["private"]])
+
+
 
     pass
