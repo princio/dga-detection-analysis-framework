@@ -277,7 +277,7 @@ int main(int argc, char **argv) {
     }
 
 
-    fprintf(conf.csv_file, "time,size,protocol,server,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,dn,bnd,");
+    fprintf(conf.csv_file, "time,size,protocol,server,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,dn,bdn,is_valid,");
     fprintf(conf.csv_file, "dn_tld,dn_icann,dn_private,tld,icann,private,answer\n");
 
     // Load and prior TCP session info
@@ -500,11 +500,14 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
                 result = pslt_search(conf->pslt, first_domain);
                 processed = pslt_domain_remove_suffixes(first_domain, result);
                 pslt_basedomain(first_domain, result, basedomain);
+                int is_valid = pslt_count_domain_labels(first_domain) > 1;
 
                 fprintf(conf->csv_file, "%u,", qnext->type);
 
                 fprintf(conf->csv_file, "%s,", qnext->name);
                 fprintf(conf->csv_file, "%s,", basedomain);
+                fprintf(conf->csv_file, "%d,", is_valid);
+
 
                 fprintf(conf->csv_file, "%s,", processed.tld);
                 fprintf(conf->csv_file, "%s,", processed.icann);
