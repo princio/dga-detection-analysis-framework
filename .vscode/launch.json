@@ -115,5 +115,18 @@
                 "/home/princio/Repo/princio/malware_detection_preditc_file/outdirs/2023-02-20-00-00-03-192.168.1.108/2023-02-20-00-00-03-192.168.1.108.csv"
             ]
         },
+        {
+            "name":"Python Suite",
+            "type":"debugpy",
+            "request":"launch",
+            "program":"suite/suite/__init__.py",
+            "console":"integratedTerminal",
+            "python": "suite/venv/bin/python",
+            "args": [
+                "/home/princio/Repo/princio/malware_detection_preditc_file/conf.json",
+                "/home/princio/Repo/princio/malware_detection_preditc_file/workdir/test",
+                "/media/princio/ssd512/dns detection datasets/ctu-sme-11/CTU-SME-11_Experiment-VM-Microsoft-Windows7AD-1_v1.0.0/CTU-SME-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-20/raw/2023-02-20-00-00-03-192.168.1.108.pcap"
+            ]
+        },
     ]
 }

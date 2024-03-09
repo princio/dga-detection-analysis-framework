@@ -6,6 +6,9 @@
         "python_lstm": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/venv/bin/python",
         "python_pslregex2": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/venv/bin/python"
     },
+    "json": {
+        "pcap": "/media/princio/ssd512/dns detection datasets/ctu-sme-11/CTU-SME-11_Experiment-VM-Microsoft-Windows7AD-1_v1.0.0/CTU-SME-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-20/raw/pcap.json"
+    },
     "pyscript": {
         "lstm": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/predict_dns_parse_output.py",
         "pslregex2": "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/python/run.py"
@@ -13,7 +16,7 @@
     "nndir": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/nns",
     "postgre": {
         "host": "localhost", 
-        "dbname": "dns",
+        "dbname": "dns2",
         "user": "postgres",
         "password": "postgres"
     }
