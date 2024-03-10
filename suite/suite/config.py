@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+from typing import List
 import psycopg2
 
 import sqlalchemy
@@ -46,6 +47,7 @@ class ConfigMalware:
 
 @dataclass
 class ConfigPCAP:
+    path: Path = Path()
     name: str = ""
     infected: bool = True
     dataset: str = ""
@@ -54,12 +56,6 @@ class ConfigPCAP:
     days: int = 0
     sha256: str = ""
     malware: ConfigMalware = ConfigMalware()
-    pass
-
-@dataclass
-class ConfigJSON:
-    config: Path = Path()
-    pcap: Path = Path()
     pass
 
 @dataclass
@@ -98,9 +94,6 @@ class Config:
     def __init__(self, configjson: Path, workdir: Path):
         self.workdir = ConfigWorkdir(workdir)
 
-        self.json = ConfigJSON(configjson)
-        self.json.config = configjson
-
         with open(configjson, 'r') as fp_conf:
             conf = json.load(fp_conf)
 
@@ -121,25 +114,7 @@ class Config:
             self.pyscript.pslregex2 = conf['pyscript']['pslregex2']
             self.pyscript.lstm = conf['pyscript']['lstm']
 
-            self.json.pcap = conf["json"]["pcap"]
-            self.pcap = ConfigPCAP()
-            with open(self.json.pcap, 'r') as fp_pcap:
-                pcap = json.load(fp_pcap)
-                self.pcap.name = pcap['name']
-                self.pcap.infected = pcap['infected']
-                self.pcap.dataset = pcap['dataset']
-                self.pcap.terminal = pcap['terminal']
-                self.pcap.day = pcap['day']
-                self.pcap.days = pcap['days']
-                self.pcap.sha256 = pcap['sha256']
-                if self.pcap.infected:
-                    self.pcap.malware.name = pcap['malware']['name']
-                    self.pcap.malware.year = pcap['malware']['year']
-                    self.pcap.malware.md5 = pcap['malware']['md5']
-                    self.pcap.malware.sha256 = pcap['malware']['sha256']
-                    self.pcap.malware.binary = pcap['malware']['binary']
-                    self.pcap.malware.dga = pcap['malware']['dga']
-                pass
+            self.pcaps: List[Path] = [Path(pcappath) for pcappath in conf["pcaps"]]
 
             self.nndir = conf['nndir']
 

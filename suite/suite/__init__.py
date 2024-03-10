@@ -13,20 +13,19 @@ if __name__ == "__main__":
 
     parser.add_argument('configjson')
     parser.add_argument('workdir')
-    parser.add_argument('pcapfile')
 
     args = parser.parse_args()
 
     configjson = Path(args.configjson)
     workdir = Path(args.workdir)
-    pcapfile = Path(args.pcapfile)
 
     config = Config(configjson, workdir)
 
     malwares = Malwares(config)
 
-    pcap = PCAP(config, malwares, pcapfile)
-
-    pcap.run()
+    for pcappath in config.pcaps:
+        pcap = PCAP(config, malwares, pcappath)
+        pcap.run()
+        pass
 
     pass
