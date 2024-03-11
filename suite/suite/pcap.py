@@ -1,9 +1,10 @@
+from dataclasses import dataclass, asdict
 import math
 from pathlib import Path
 from typing import OrderedDict, Union
 
 import numpy as np
-import psycopg2
+from psycopg2.extras import Json
 
 from malware import Malwares
 from config import Config, ConfigPCAP
@@ -11,6 +12,34 @@ from subprocess_utils import subprocess_launch
 
 import pandas as pd
 import json
+
+
+@dataclass
+class DBPCAPBatches:
+    done: int
+    size: int
+    total: int
+    def complete(self):
+        return self.done == self.total
+    pass
+@dataclass
+class DBPCAP:
+    id: int
+    name: str
+    malware_id: int
+    sha256: str
+    infected: int
+    dataset: str
+    day: int
+    days: int
+    terminal: str
+    qr: int
+    q: int
+    r: int
+    u: int
+    fnreq_max: int
+    nx_ratio: float
+    batches: Union[DBPCAPBatches,None]
 
 
 def parse_config_pcap(pcapfile: Path):
@@ -43,9 +72,9 @@ class PCAP:
     def __init__(self, config: Config, malwares: Malwares, pcapfile: Path) -> None:
         self.config: Config = config
         self.configpcap: ConfigPCAP = parse_config_pcap(pcapfile)
+        self.dbpcap: Union[DBPCAP,None] = None
         
         self.pcapfile = pcapfile
-        self.id: Union[int,None] = None
 
         self.malwares = malwares
     
@@ -66,7 +95,6 @@ class PCAP:
                               self.config.workdir.pslregex2
                         ])
         pass
-
 
     def run_tshark(self):
         subprocess_launch(self.config,
@@ -90,19 +118,52 @@ class PCAP:
                         ])
         pass
 
-    def run_postgres_pcap(self, df: pd.DataFrame):
+    def run_fetch(self):
+        with self.config.psyconn.cursor() as cursor:
+            cursor.execute("""SELECT * FROM pcap WHERE sha256 = %s""", (self.configpcap.sha256,))
+
+            if cursor.rowcount == 0:
+                return
+        
+            pcap = cursor.fetchall()[0]
+
+            dbpcapbatches = None
+            if not pcap[15] is None:
+                dbpcapbatches = DBPCAPBatches(pcap[15]['done'], pcap[15]['size'], pcap[15]['total'])
+
+            self.dbpcap = DBPCAP(
+                pcap[0],
+                pcap[1],
+                pcap[2],
+                pcap[3],
+                pcap[4],
+                pcap[5],
+                pcap[6],
+                pcap[7],
+                pcap[8],
+                pcap[9],
+                pcap[10],
+                pcap[11],
+                pcap[12],
+                pcap[13],
+                pcap[14],
+                dbpcapbatches
+            )
+
+        pass
+
+    def run_insert(self, df: pd.DataFrame):
         malware = self.malwares.get_or_insert(self.configpcap)
         
-        self.qr = df.shape[0]
+        qr = df.shape[0]
         q = df[df.qr == "q"].shape[0]
-        r = self.qr - q
+        r = qr - q
         u = df.dn.drop_duplicates().shape[0]
         nx_ratio = self.nx_ratio(df)
 
         fnreq_max = int(df.fnreq.max())
 
-        cursor = self.config.psyconn.cursor()
-        try:
+        with self.config.psyconn.cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO pcap (
@@ -121,36 +182,20 @@ class PCAP:
                 (
                     self.pcapfile.name, malware.id, self.configpcap.sha256, self.configpcap.infected,
                     self.configpcap.dataset, self.configpcap.day, self.configpcap.days, self.configpcap.terminal,
-                    self.qr, q, r, u,
+                    qr, q, r, u,
                     fnreq_max, nx_ratio 
                 )
             )
 
-            lastrow = cursor.fetchone()
-            if lastrow is None:
-                raise Exception("Impossible to retrieve the pcap id")
-            if lastrow[0] == 0:
-                raise Exception("Retrieved pcap id is 0 something si wrong")
-            self.id = lastrow[0]
+            self.run_fetch()
+            if self.dbpcap is None: raise Exception("DB pcap is None")
 
-            print("[info]: pcap successfully inserted with id %s" % self.id)
+            print("[info]: pcap successfully inserted with id %s" % self.dbpcap.id) # ignore
 
-            cursor.execute("""CREATE TABLE IF NOT EXISTS public.message_%s PARTITION OF public.message FOR VALUES IN (%s);""", (self.id, self.id, ))
-
-            cursor.close()
+            cursor.execute("""CREATE TABLE IF NOT EXISTS public.message_%s PARTITION OF public.message FOR VALUES IN (%s);""", (self.dbpcap.id, self.dbpcap.id, ))
             cursor.connection.commit()
-        except psycopg2.errors.UniqueViolation:
-            cursor.execute("ROLLBACK")
-            cursor.execute("""SELECT * FROM pcap WHERE sha256=%s;""", (self.configpcap.sha256, ))
-            lastrow = cursor.fetchone()
-            if lastrow is None:
-                raise Exception("Impossible to retrieve the pcap id")
-            self.id = lastrow[0]
-
-            print("[info]: pcap successfully loaded having id %s" % self.id)
 
             pass
-
         pass
     pass
 
@@ -188,12 +233,14 @@ class PCAP:
 
 
     def run_postgres_message(self, df: pd.DataFrame):
+        if self.dbpcap is None:
+            raise Exception("DB pcap cannot be none")
 
         cursor = self.config.psyconn.cursor()
 
         values = [
             [
-                x["fn"], self.id, x["time"], x["fn"],
+                x["fn"], self.dbpcap.id, x["time"], x["fn"],
                 x["fnreq"], x["dn_id"], x["qcode"],
                 x["qr"] == "r", x["rcode"], x["server"],
                 x["answer"]
@@ -202,7 +249,7 @@ class PCAP:
         ]
         args_str = b",".join([cursor.mogrify("(%s, %s,%s,%s, %s,%s,%s, %s,%s,%s, %s)", x) for x in values])
         cursor.execute(f"""
-            INSERT INTO public.message_{self.id}(
+            INSERT INTO public.message_{self.dbpcap.id}(
 	            id, pcap_id, time_s, fn,
                 fn_req, dn_id, qcode,
                 is_r, rcode, server,
@@ -229,6 +276,11 @@ class PCAP:
         return (u_ratio + n_ratio) / 2
 
     def run(self):
+        self.run_fetch()
+
+        if self.dbpcap and self.dbpcap.batches and self.dbpcap.batches.complete():
+            print("PCAP already processed in database with id %s" % self.dbpcap.id)
+            return
 
         self.run_plsregex2()
         self.run_tshark()
@@ -245,33 +297,33 @@ class PCAP:
         df.index.set_names("fn", inplace=True)
         df = df.reset_index()
         
-        self.run_postgres_pcap(df)
+        if not self.dbpcap:
+            self.run_insert(df)
+            if self.dbpcap is None:
+                raise Exception("DB pcap is None")
 
-        skip_insert_message = False
-        with self.config.psyconn.cursor() as cursor:
-            cursor.execute("""SELECT COUNT(*) FROM message_%s""", (self.id,))
-            rowcount = cursor.fetchone()
-            if rowcount is None:
-                raise Exception("Row count fetch result is None")
-            if self.qr == rowcount[0]:
-                skip_insert_message = True
+        if not self.dbpcap.batches:
+            self.dbpcap.batches = DBPCAPBatches(0, 2000, math.ceil(df.shape[0] / 2000))
+            pass
+    
+        for batch in range(self.dbpcap.batches.done, self.dbpcap.batches.total):
+            batch_start = self.dbpcap.batches.size * batch
+            batch_end = self.dbpcap.batches.size * (batch + 1) if (batch + 1) < self.dbpcap.batches.total else df.shape[0]
 
-
-        batch_size = 2000
-        batch_num = math.ceil(df.shape[0] / batch_size)
-        for batch in range(0, batch_num):
-            batch_start = batch_size * batch
-            batch_end = batch_size * (batch + 1) if (batch + 1) < batch_num else df.shape[0]
-
-            print("[info]: processing batch %s/%s..." % (batch + 1, batch_num))
+            print("[info]: processing batch %s/%s..." % (batch + 1, self.dbpcap.batches.total))
 
             df_batch = df.iloc[batch_start:batch_end]
 
             df_batch = self.run_postgres_dn(df_batch)
 
-            if skip_insert_message is False:
-                self.run_postgres_message(df_batch)
+            self.run_postgres_message(df_batch)
 
+            self.dbpcap.batches.done += 1
+
+            with self.config.psyconn.cursor() as cursor:
+                cursor.execute("""UPDATE pcap SET batches = %s WHERE id = %s""", (Json(asdict(self.dbpcap.batches)), self.dbpcap.id, ))
+                self.config.psyconn.commit()
+                pass
             pass
 
         pass

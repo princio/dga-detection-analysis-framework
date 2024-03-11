@@ -80,18 +80,21 @@ class LSTM:
 
                 df = pd.DataFrame.from_records(rows, columns=["id", "dn", "tld", "icann", "private", "invalid", "nn_id"])
 
+                df["icann"].fillna(value=df["tld"], inplace=True)
+                df["private"].fillna(value=df["icann"], inplace=True)
+
                 self.run_lstm(df, nn)
-        pass
+                pass # while true
+            pass # for nns
+        pass # def
 
     def run_lstm(self, df: pd.DataFrame, nn: NN):
-        if nn.extractor != Extractor.NONE:
-            dn_extracted = [ row["dn"].replace("." + row[nn.extractor.name.lower()], "") for _, row in df.iterrows() ]
+        if nn.extractor == Extractor.NONE:
+            dn_extracted_reversed = [ ".".join(row["dn"].split('.')[::-1]) for _, row in df.iterrows() ]
         else:
-            dn_extracted = [ row["dn"] for _, row in df.iterrows() ]
+            df["suffix"] = df[nn.extractor.name.lower()]
+            dn_extracted_reversed = [ ".".join(row["dn"].split('.')[::-1][row["suffix"].count(".") + 1:]) for _, row in df.iterrows() ]
 
-
-        dn_extracted_reversed = [ '.'.join(dn.split('.')[::-1]) for dn in dn_extracted ]
-    
         Xtf = self.layer(tf.strings.bytes_split(tf.strings.substr(dn_extracted_reversed, 0, max_len)))
         Xtf = pad_sequences(
             Xtf.numpy(), maxlen=max_len, padding='post', dtype="int32",
