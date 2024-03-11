@@ -121,7 +121,7 @@
             "request":"launch",
             "program":"suite/suite/__init__.py",
             "console":"integratedTerminal",
-            "python": "suite/venv/bin/python",
+            "python": "lstm_dga/venv/bin/python",
             "args": [
                 "/home/princio/Repo/princio/malware_detection_preditc_file/conf.json",
                 "/home/princio/Repo/princio/malware_detection_preditc_file/workdir/test"

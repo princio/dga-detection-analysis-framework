@@ -4,7 +4,6 @@ import json
 import os
 from pathlib import Path
 import shutil
-import subprocess
 from typing import List
 import psycopg2
 
@@ -94,29 +93,30 @@ class Config:
     def __init__(self, configjson: Path, workdir: Path):
         self.workdir = ConfigWorkdir(workdir)
 
-        with open(configjson, 'r') as fp_conf:
+        with open(configjson, "r") as fp_conf:
             conf = json.load(fp_conf)
 
             self.postgre = ConfigPostgre()
-            self.postgre.user = conf['postgre']['user']
-            self.postgre.dbname = conf['postgre']['dbname']
-            self.postgre.host = conf['postgre']['host']
-            self.postgre.password = conf['postgre']['password']
+            self.postgre.user = conf["postgre"]["user"]
+            self.postgre.dbname = conf["postgre"]["dbname"]
+            self.postgre.host = conf["postgre"]["host"]
+            self.postgre.password = conf["postgre"]["password"]
+            self.lstm_batch_size = conf["lstm_batch_size"]
                 
             self.bin = ConfigBin()
-            self.bin.tshark = Path(conf['bin']['tshark'])
-            self.bin.python = Path(conf['bin']['python'])
-            self.bin.python_pslregex2 = Path(conf['bin']['python_pslregex2'])
-            self.bin.python_lstm = Path(conf['bin']['python_lstm'])
-            self.bin.dns_parse = conf['bin']['dns_parse']
+            self.bin.tshark = Path(conf["bin"]["tshark"])
+            self.bin.python = Path(conf["bin"]["python"])
+            self.bin.python_pslregex2 = Path(conf["bin"]["python_pslregex2"])
+            self.bin.python_lstm = Path(conf["bin"]["python_lstm"])
+            self.bin.dns_parse = conf["bin"]["dns_parse"]
 
             self.pyscript = ConfigPyScript()
-            self.pyscript.pslregex2 = conf['pyscript']['pslregex2']
-            self.pyscript.lstm = conf['pyscript']['lstm']
+            self.pyscript.pslregex2 = conf["pyscript"]["pslregex2"]
+            self.pyscript.lstm = conf["pyscript"]["lstm"]
 
             self.pcaps: List[Path] = [Path(pcappath) for pcappath in conf["pcaps"]]
 
-            self.nndir = conf['nndir']
+            self.nndir = conf["nndir"]
 
             url = sqlalchemy.URL.create(
                 drivername="postgresql",

@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import OrderedDict, Union
 
 import numpy as np
+import psycopg2
 
 from malware import Malwares
 from config import Config, ConfigPCAP
@@ -52,6 +53,8 @@ class PCAP:
         self.tshark_path: Path = self.config.workdir.path.joinpath(self.pcapfile.with_suffix(".dns.pcap").name)
         self.dns_parse_path: Path = self.config.workdir.path.joinpath(self.pcapfile.with_suffix(".csv").name)
 
+        self.qr = None
+
         pass
 
     def run_plsregex2(self):
@@ -90,52 +93,65 @@ class PCAP:
     def run_postgres_pcap(self, df: pd.DataFrame):
         malware = self.malwares.get_or_insert(self.configpcap)
         
-        qr = df.shape[0]
+        self.qr = df.shape[0]
         q = df[df.qr == "q"].shape[0]
-        r = qr - q
+        r = self.qr - q
         u = df.dn.drop_duplicates().shape[0]
         nx_ratio = self.nx_ratio(df)
 
         fnreq_max = int(df.fnreq.max())
 
         cursor = self.config.psyconn.cursor()
-
-        cursor.execute(
-            """
-            INSERT INTO pcap (
-                name, malware_id, sha256, infected, 
-                dataset, day, days, terminal, 
-                qr, q, r, u, 
-                fnreq_max, dga_ratio
-            ) VALUES (
-                %s, %s, %s, %s::boolean,
-                %s, %s, %s, %s, 
-                %s::bigint,%s::bigint,%s::bigint,%s::bigint,
-                %s::bigint, %s::real
+        try:
+            cursor.execute(
+                """
+                INSERT INTO pcap (
+                    name, malware_id, sha256, infected, 
+                    dataset, day, days, terminal, 
+                    qr, q, r, u, 
+                    fnreq_max, dga_ratio
+                ) VALUES (
+                    %s, %s, %s, %s::boolean,
+                    %s, %s, %s, %s, 
+                    %s::bigint,%s::bigint,%s::bigint,%s::bigint,
+                    %s::bigint, %s::real
+                )
+                RETURNING id;
+                """,
+                (
+                    self.pcapfile.name, malware.id, self.configpcap.sha256, self.configpcap.infected,
+                    self.configpcap.dataset, self.configpcap.day, self.configpcap.days, self.configpcap.terminal,
+                    self.qr, q, r, u,
+                    fnreq_max, nx_ratio 
+                )
             )
-            RETURNING id;
-            """,
-            (
-                self.pcapfile.name, malware.id, self.configpcap.sha256, self.configpcap.infected,
-                self.configpcap.dataset, self.configpcap.day, self.configpcap.days, self.configpcap.terminal,
-                qr, q, r, u,
-                fnreq_max, nx_ratio 
-            )
-        )
 
-        lastrow = cursor.fetchone()
-        if lastrow is None:
-            raise Exception("Impossible to retrieve the pcap id")
-        if lastrow[0] == 0:
-            raise Exception("Retrieved pcap id is 0 something si wrong")
-        self.id = lastrow[0]
+            lastrow = cursor.fetchone()
+            if lastrow is None:
+                raise Exception("Impossible to retrieve the pcap id")
+            if lastrow[0] == 0:
+                raise Exception("Retrieved pcap id is 0 something si wrong")
+            self.id = lastrow[0]
 
-        print("[info]: pcap successfully inserted with id %s" % self.id)
+            print("[info]: pcap successfully inserted with id %s" % self.id)
 
-        cursor.execute("""CREATE TABLE IF NOT EXISTS public.message_%s PARTITION OF public.message FOR VALUES IN (%s);""", (self.id, self.id, ))
+            cursor.execute("""CREATE TABLE IF NOT EXISTS public.message_%s PARTITION OF public.message FOR VALUES IN (%s);""", (self.id, self.id, ))
 
-        cursor.close()
-        cursor.connection.commit()
+            cursor.close()
+            cursor.connection.commit()
+        except psycopg2.errors.UniqueViolation:
+            cursor.execute("ROLLBACK")
+            cursor.execute("""SELECT * FROM pcap WHERE sha256=%s;""", (self.configpcap.sha256, ))
+            lastrow = cursor.fetchone()
+            if lastrow is None:
+                raise Exception("Impossible to retrieve the pcap id")
+            self.id = lastrow[0]
+
+            print("[info]: pcap successfully loaded having id %s" % self.id)
+
+            pass
+
+        pass
     pass
 
     def run_postgres_dn(self, df: pd.DataFrame):
@@ -220,16 +236,26 @@ class PCAP:
 
         df = pd.read_csv(self.dns_parse_path, index_col=False)
 
-        df.tld.fillna("", inplace=True)
-        df.icann.fillna("", inplace=True)
-        df.private.fillna("", inplace=True)
-        df.server.fillna("", inplace=True)
-        df.answer.fillna("", inplace=True)
+        df.tld.replace([np.nan], [None], inplace=True)
+        df.icann.replace([np.nan], [None], inplace=True)
+        df.private.replace([np.nan], [None], inplace=True)
+        df.server.replace([np.nan], [None], inplace=True)
+        df.answer.replace([np.nan], [None], inplace=True)
 
         df.index.set_names("fn", inplace=True)
         df = df.reset_index()
         
         self.run_postgres_pcap(df)
+
+        skip_insert_message = False
+        with self.config.psyconn.cursor() as cursor:
+            cursor.execute("""SELECT COUNT(*) FROM message_%s""", (self.id,))
+            rowcount = cursor.fetchone()
+            if rowcount is None:
+                raise Exception("Row count fetch result is None")
+            if self.qr == rowcount[0]:
+                skip_insert_message = True
+
 
         batch_size = 2000
         batch_num = math.ceil(df.shape[0] / batch_size)
@@ -243,7 +269,8 @@ class PCAP:
 
             df_batch = self.run_postgres_dn(df_batch)
 
-            self.run_postgres_message(df_batch)
+            if skip_insert_message is False:
+                self.run_postgres_message(df_batch)
 
             pass
 

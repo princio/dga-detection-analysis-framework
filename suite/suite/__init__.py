@@ -5,6 +5,7 @@ from config import Config
 
 from malware import Malwares
 from pcap import PCAP
+from lstm import LSTM
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -22,6 +23,10 @@ if __name__ == "__main__":
     config = Config(configjson, workdir)
 
     malwares = Malwares(config)
+
+    lstm = LSTM(config)
+
+    lstm.run()
 
     for pcappath in config.pcaps:
         pcap = PCAP(config, malwares, pcappath)
