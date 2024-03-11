@@ -245,7 +245,6 @@ class PCAP:
 
             self.run_postgres_message(df_batch)
 
-
             pass
 
         pass
