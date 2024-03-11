@@ -495,6 +495,9 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
             PSLTDomainProcessed processed;
             if (!strlen(first_domain)) {
                 memccpy(first_domain, qnext->name, '\0', 10000);
+                for (size_t c = 0; c < strlen(first_domain); c++) {
+                    first_domain[c] = tolower(first_domain[c]);
+                }
                 PSLTDomain basedomain;
 
                 result = pslt_search(conf->pslt, first_domain);

@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import os
 
+
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3' 
 import tensorflow as tf
 from keras.utils import pad_sequences
@@ -58,18 +59,40 @@ class LSTM:
         self.df_nns: pd.DataFrame = pd.read_sql("SELECT * FROM nn", config.sqlalchemyconnection)
 
         self.nns: List[NN] = []
-
         for _, row in self.df_nns.iterrows():
             self.nns.append(NN(row["id"], row["name"], Extractor[row["extractor"].upper()], Path(row["directory"])))
-            self.nns[-1].model = load_model_json(
-                self.nns[-1].dir.joinpath("model.json"),
-                self.nns[-1].dir.joinpath("model.h5")
-            )
             pass
+        pass
+
+
+    def count(self, nn: NN):
+        cursor = self.config.psyconn.cursor()
+        
+        cursor.execute("""SELECT COUNT(DN.ID) FROM DN;""")
+
+        dn_count = cursor.fetchone()[0]
+
+        cursor.execute("""SELECT COUNT(DN_NN.DN_ID) FROM DN_NN WHERE DN_NN.NN_ID=%s;""", (nn.id,))
+
+        dn_nn_count = cursor.fetchone()[0]
+        
+        return dn_count - dn_nn_count
+
+    def load_model(self, nn: NN):
+        nn.model = load_model_json(
+            nn.dir.joinpath("model.json"),
+            nn.dir.joinpath("model.h5")
+        )
         pass
 
     def run(self):
         for nn in self.nns:
+            if self.count(nn) == 0:
+                print("DN completed for %s" % nn.name)
+                continue
+
+            self.load_model(nn)
+
             cursor = self.config.psyconn.cursor()
             cursor.execute("""SELECT DN.ID, DN, TLD, ICANN, PRIVATE, INVALID, NN_ID FROM DN LEFT JOIN DN_NN ON (DN.ID = DN_NN.DN_ID AND DN_NN.NN_ID = %s)  WHERE NN_ID is null""", (nn.id,))
 
@@ -89,11 +112,13 @@ class LSTM:
         pass # def
 
     def run_lstm(self, df: pd.DataFrame, nn: NN):
+        df["reversed"] = [ ".".join(row["dn"].split('.')[::-1]) for _, row in df.iterrows() ]
         if nn.extractor == Extractor.NONE:
-            dn_extracted_reversed = [ ".".join(row["dn"].split('.')[::-1]) for _, row in df.iterrows() ]
+            dn_extracted_reversed = [ row["reversed"] for _, row in df.iterrows() ]
         else:
-            df["suffix"] = df[nn.extractor.name.lower()]
-            dn_extracted_reversed = [ ".".join(row["dn"].split('.')[::-1][row["suffix"].count(".") + 1:]) for _, row in df.iterrows() ]
+            df["suffix"] = df[nn.extractor.name.lower()].fillna("")
+            dn_extracted_reversed = [ row["reversed"][len(row["suffix"]) if len(row["suffix"]) > 0 else 0:]  for _, row in df.iterrows() ]
+            pass
 
         Xtf = self.layer(tf.strings.bytes_split(tf.strings.substr(dn_extracted_reversed, 0, max_len)))
         Xtf = pad_sequences(

@@ -34,11 +34,9 @@ if __name__ == "__main__":
     with config.psyconn.cursor() as cursor:
         df = pd.read_sql("""select * from dn where tld is null""", config.sqlalchemyconnection)
         if df.shape[0] > 0:
-            print("TLD check failed: fix following DN to proceed the LSTM step.")
+            print("[warn]: TLD check failed, fix following DN to proceed the LSTM step.")
             print(df.to_markdown())
-            exit(1)
-        else:
-            print("TLD check: success.")
+            pass
         pass
 
     from lstm import LSTM
