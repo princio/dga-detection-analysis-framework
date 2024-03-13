@@ -76,7 +76,8 @@ STD := -std=gnu99 # See man gcc for more options
 WARNS := -Wall -Wextra -pedantic # -pedantic warns on language standards
 
 # Flags for compiling
-CFLAGS := -O3 $(STD) $(STACK) $(WARNS) -fpic
+CFLAGS_OPT := -O3
+CFLAGS := $(STD) $(STACK) $(WARNS) -fpic
 
 # Debug options
 DEBUG := -g3 -DDEBUG=1
@@ -154,6 +155,13 @@ $(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@echo -en "$(BROWN)CC $(END_COLOR)";
 	$(CC) -c $^ -o $@ $(DEBUG) $(CFLAGS) $(LIBS)
 
+ARGS_TEST := test google.co.uk
+ARGS_CSV := csv \
+		0 \
+		/home/princio/Repo/princio/malware_detection_preditc_file/top_10m.csv \
+  		/tmp/top_10m.psltrie.csv
+
+ARGSS := $(ARGS_CSV)
 
 # Rule for run valgrind tool
 valgrind:
@@ -162,7 +170,7 @@ valgrind:
 		--leak-check=full \
 		--leak-resolution=high \
 		--log-file=$(LOGDIR)/$@.log \
-		$(BINDIR)/$(BINARY) $(PSLTSUFFIXFILE) google.co.uk
+		$(BINDIR)/$(BINARY) $(PSLTSUFFIXFILE) $(ARGSS)
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 
 valgrind2:

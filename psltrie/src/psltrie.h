@@ -4,6 +4,17 @@
 #include <stdlib.h>
 #include <linux/limits.h>
 
+
+#define PSLT_LIST_ROW_FIELDS_NUMBER 7
+
+// suffix               54
+// code                 10
+// punycode             24
+// type                 18
+// origin               5
+// section              14
+// isprivate            7
+
 #define PSLT_DOMAIN_ALPHABET_SIZE 484
 
 #define PSLT_MAX_LABEL_SIZE 63
@@ -106,11 +117,11 @@ typedef struct PSLTNode {
     PSLTSuffix inverted;
 } PSLTNode;
 
-typedef struct PSLTSuffixSearchResult {
+typedef struct PSLTTriesSuffixes {
     struct PSLTNode *tld;
     struct PSLTNode *icann;
     struct PSLTNode *private;
-} PSLTSuffixSearchResult;
+} PSLTTriesSuffixes;
 
 typedef struct PSLTDomainProcessed {
     PSLTDomain tld;
@@ -118,26 +129,45 @@ typedef struct PSLTDomainProcessed {
     PSLTDomain private;
 } PSLTDomainProcessed;
 
+typedef struct PSLTResult {
+    PSLTDomain domain;
+    PSLTDomain basedomain;
+    PSLTTriesSuffixes suffixes;
+    PSLTDomainProcessed processed;
+} PSLTResult;
+
 typedef struct PSLT {
     PSLTSuffixes suffixes;
     PSLTNode* trie;
 } PSLT;
 
-int pslt_count_domain_labels(PSLTDomain domain);
+
+typedef struct PSLTObject {
+    PSLT* pslt;
+    PSLTDomain domain;
+
+    int searched;
+
+    PSLTDomain basedomain;
+    PSLTTriesSuffixes suffixes;
+    struct {
+        PSLTDomain tld;
+        PSLTDomain icann;
+        PSLTDomain private;
+    } wo_suffixes;
+} PSLTObject;
+
+
+int pslt_domain_count_labels(PSLTDomain domain);
 int pslt_domain_labels(PSLTDomain domain, PSLTDomainLabels labels);
 int pslt_domain_invert(PSLTDomain domain, PSLTDomain inverted);
 
-PSLTDomainProcessed pslt_domain_remove_suffixes(PSLTDomain domain, PSLTSuffixSearchResult search);
-int pslt_basedomain(PSLTDomain domain, PSLTSuffixSearchResult search, PSLTDomain basedomain);
+PSLT* pslt_trie_load(char suffixlistpath[PATH_MAX]);
+void pslt_trie_print(PSLT* pslt);
+void pslt_trie_free(PSLT* pslt);
+int pslt_domain_run(PSLT* pslt, PSLTObject* obj);
 
-PSLTError pslt_suffixes_parse(char[PATH_MAX], PSLTSuffixes*);
-PSLTError plst_build(PSLTSuffixes suffixes, PSLTNode** root);
-
-PSLTSuffixSearchResult pslt_search(PSLT* pslt, PSLTDomain domain);
-
-void pslt_print(PSLT* pslt);
-PSLT* pslt_load(char suffixlistpath[PATH_MAX]);
-void pslt_free(PSLT* pslt);
+int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_path[PATH_MAX]);
 
 
 #endif
