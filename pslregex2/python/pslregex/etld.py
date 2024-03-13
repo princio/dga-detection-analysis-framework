@@ -1,24 +1,14 @@
 
+from dataclasses import dataclass
+import enum
+from pathlib import Path
+from typing import Any, Dict, List, Union
 import pandas as pd
 import requests
 import re, os
 from io import StringIO
 
-codes = {
-    'type': {
-        'country-code': 'cc',
-        'sponsored': 'sp',
-        'infrastructure': 'in',
-        'generic-restricted': 'gr',
-        'generic': 'ge',
-        'test': 'te'
-    },
-    'section': {
-        'icann': 'i',
-        'icann-new': 'n',
-        'private-domain': 'p'
-    }
-}
+import pslregex.common
 
 ### Coding:
 ###
@@ -31,28 +21,125 @@ codes = {
 ### - 1: the number of labels
 
 
-inv_codes = {}
-for t in [ 'type', 'section' ]:
-    inv_codes[t] = {v: k for k, v in codes[t].items() }
+@dataclass
+class Suffix:
+    suffix: str
+    nlabels: int
+
+    tldlist: Union[None, pslregex.common.TLDLIST_FIELDS]
+    iana: Union[None, pslregex.common.IANA_FIELDS]
+    psl: Union[None, pslregex.common.PSL_FIELDS]
+
+    group: pslregex.common.SuffixGroup = pslregex.common.SuffixGroup.unknown
+    from_tldlist: int = 0
+    from_iana: int = 0
+    from_psl: int = 0
+
+    pass
 
 class ETLD:
     def __init__(self, dir) -> None:
         self.files = {}
         self.dir = dir
         self.frame = None
+        self.suffixes: Dict[str, Suffix] = {}
         pass
 
-    def iframe(self):
-        dfi = pd.DataFrame(self.frame.suffix.str.split('.').apply(lambda x: x[::-1]).to_list(), index=self.frame.index).fillna('')
-        dfi['suffix'] = self.frame['suffix']
-        dfi['code'] = self.frame['code']
-        dfi['punycode'] = self.frame['punycode']
-        dfi['type'] = self.frame['type']
-        dfi['origin'] = self.frame['origin']
-        dfi['section'] = self.frame['section']
-        dfi['isprivate'] = self.frame['isprivate']
+    def add(self, suffix: str, origin: pslregex.common.Origin, fields: Union[pslregex.common.TLDLIST_FIELDS, pslregex.common.IANA_FIELDS, pslregex.common.PSL_FIELDS]):
+        suffix_found = self.suffixes.get(suffix)
+        if suffix_found is None:
+            suffix_found = Suffix(suffix, (suffix.count(".") + 1), None, None, None)
+            pass
+
+        if origin is pslregex.common.Origin.tldlist:
+            suffix_found.from_tldlist += 1
+            if not suffix_found.tldlist is None:
+                print("Warning: tldlist is not none")
+                pass
+            suffix_found.tldlist = fields
+            pass
+        elif origin is pslregex.common.Origin.iana:
+            suffix_found.from_iana += 1
+            if not suffix_found.iana is None:
+                print("Warning: iana is not none")
+                pass
+            suffix_found.iana = fields
+            pass
+        elif origin is pslregex.common.Origin.psl:
+            suffix_found.from_psl += 1
+            if not suffix_found.psl is None:
+                print("Warning: psl is not none")
+                pass
+            suffix_found.psl = fields
+            pass
+
+        self.suffixes[suffix] = suffix_found
+        pass
+
+    def determine_suffix_group(self, suffix: Suffix):
+        if suffix.nlabels == 1:
+            return pslregex.common.SuffixGroup.tld
+        if suffix.psl:
+            if suffix.psl.section is pslregex.common.PSLSection.private:
+                return pslregex.common.SuffixGroup.private
+            else:
+                return pslregex.common.SuffixGroup.icann
+        return pslregex.common.SuffixGroup.unknown
+
+    def tolist(self):
+        suffixes = []
+        for k in self.suffixes:
+            suffix = self.suffixes[k]
+            suffix_list = []
+            suffix_list += [ suffix.suffix, self.determine_suffix_group(suffix).name, suffix.nlabels, suffix.from_psl, suffix.from_tldlist, suffix.from_iana ]
+            if suffix.psl:
+                suffix_list += [ suffix.psl.type.name ]
+                suffix_list += [ suffix.psl.punycode ]
+                suffix_list += [ suffix.psl.section.name ]
+                pass
+            else:
+                [ suffix_list.append(None) for _ in pslregex.common.PSL_COLUMNS ]
+                pass
+            if suffix.tldlist:
+                suffix_list += [ suffix.tldlist.type.name ]
+                suffix_list += [ suffix.tldlist.punycode ]
+                suffix_list += [ suffix.tldlist.language_code ]
+                suffix_list += [ suffix.tldlist.translation ]
+                suffix_list += [ suffix.tldlist.romanized ]
+                suffix_list += [ suffix.tldlist.rtl ]
+                suffix_list += [ suffix.tldlist.sponsor ]
+                pass
+            else:
+                [ suffix_list.append(None) for _ in pslregex.common.TLDLIST_COLUMNS ]
+                pass
+            if suffix.iana:
+                suffix_list += [ suffix.iana.type.name ]
+                suffix_list += [ suffix.iana.tld_manager_code ]
+                pass
+            else:
+                [ suffix_list.append(None) for _ in pslregex.common.IANA_COLUMNS ]
+                pass
+            suffixes += [suffix_list]
+            pass
+        return suffixes
+
+    def to_csv(self, output: Path):
+        suffixes = self.tolist()
+
+        columns = [ ("", "suffix"), ("", "group"), ("", "nlabels"), ("", "psl"), ("", "tldlist"), ("", "iana") ]
+        for n, columns_def in [ ( "psl", pslregex.common.PSL_COLUMNS), ( "tldlist", pslregex.common.TLDLIST_COLUMNS), ( "iana", pslregex.common.IANA_COLUMNS) ]:
+            for column_def in columns_def:
+                columns += [ ( n, column_def[0]) ]
+                pass
+            pass
+
+        df = pd.DataFrame(suffixes, columns=pd.MultiIndex.from_tuples(columns))
+        df = df.sort_values(by=("","suffix"))
+        df = df.reset_index(drop=True)
+        df.to_csv(output)
         
-        return dfi.sort_values(by=dfi.columns.tolist()).copy()
+        return df
+
 
     def init(self, redo=False, downloadIfExist=False):
 
@@ -284,68 +371,4 @@ class ETLD:
         self.frame.to_csv(os.path.join(self.dir, 'etld.csv'))
 
         pass
-
-def getCountry(df):
-    # TODO: problem with ISO Codes GRE, USSR and regex
-    import wptools
-    import wikipedia
-
-    cctld = df[(df.type == 'country-code') & (df.country == '-')].sort_values(by='country').tld
-
-    ibreg = re.compile(r'Entities connected with.*?\{\{(?:(?:\w+\|)?)?(?:(?P<ISO>[A-Z]+)|(?P<Normal>[\w, ]+))\}\}(?:\s+\[\[(?P<link>[\w, ]+)\|?(?P<name>[\w, ]+)\]\])?')
-
-    def try_infobox(page):
-        so = page.get_parse()
-        infobox = so.data['infobox']['intendeduse']
-        m = ibreg.match(infobox)
-        if m is not None:
-            return m.groupdict()
-        return None
-
-
-    def try_page(pageid):
-        p = wikipedia.page(pageid=pageid).html()
-        p = p[p.find('Entities connected with'):]
-        p = p[:p.find('</tr>')].replace('\n', '')
-        m = preg.match(p)
-        if m is not None:
-            return m.groups()[0]
-        return None
-
-
-    cc = {}
-    a = True
-    for tld in cctld:
-        if tld == tldk:
-            a = False
-            continue
-        if a: continue
-        
-        country = None
-        
-        try:
-            page = wptools.page(f'.{tld}', silent=True)
-        except Exception as e:
-            print(e)
-            pass
-        
-        query = page.get_query().data
-        
-        print('title=' + query['title'])
-        
-        if page is not None:
-            if query['title'][0] == '.':
-                country = try_infobox(page)
-                if country.upper() == country:
-                    print(wikipedia.search(f'country {country}'))
-            else:
-                country = query['title']
-        else:
-            q = wikipedia.search(tld)
-            country = q[0]
-            
-            
-        print(country)
-                
-        cc[tld] = country
-    return cc
+    pass

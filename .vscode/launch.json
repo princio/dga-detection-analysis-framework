@@ -81,7 +81,16 @@
             "program": "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/bin/binary",
             "args": [
                 "/home/princio/Repo/princio/malware_detection_preditc_file/outdirs/pslregex2/etld.csv",
-                "google.co.uk", //e13678.dscb.akamaiedge.net
+
+                // "print"
+
+                // "test",
+                // "google.com"
+
+                "csv",
+                "0",
+                "/home/princio/Repo/princio/malware_detection_preditc_file/top_10m.csv",
+                "/tmp/top_10m.psltrie.csv"
             ],
             "stopAtEntry": false,
             "cwd": "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/bin/",
@@ -127,5 +136,13 @@
                 "/home/princio/Repo/princio/malware_detection_preditc_file/workdir/test"
             ]
         },
+        {
+            "name":"Python PSLRegex",
+            "type":"debugpy",
+            "request":"launch",
+            "program":"pslregex2/python/bo.py",
+            "console":"integratedTerminal",
+            "python": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/venv/bin/python"
+        }
     ]
 }

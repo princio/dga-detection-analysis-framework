@@ -1,5 +1,6 @@
-from .PSLDict import PSLdict
-from .etld import ETLD
-
-# __package__ = ''
-__all__ = ['PSLdict', 'ETLD']
+import argparse
+from . import common
+from . import etld
+from . import tldlist
+from . import iana
+from . import psl
