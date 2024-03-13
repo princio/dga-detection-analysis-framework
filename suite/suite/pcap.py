@@ -204,8 +204,6 @@ class PCAP:
 
         cursor = self.config.psyconn.cursor()
 
-        tuples = tuple( row["dn"] for _, row in df_u.iterrows() )
-
         values = [ [ x["dn"], x["bdn"], x["tld"], x["icann"], x["private"], not bool(x["is_valid"]) ] for _, x in df_u.iterrows() ]
         args_str = b",".join([cursor.mogrify("(%s,%s,%s,%s,%s,%s)", x) for x in values])
         cursor.execute(b"""
@@ -218,6 +216,7 @@ class PCAP:
         cursor.connection.commit()
 
         if cursor.rowcount < df_u.shape[0]:
+            tuples = tuple( row["dn"] for _, row in df_u.iterrows() )
             cursor.execute("""SELECT id from dn WHERE dn.dn IN %s""", (tuples, ))
             pass
 
