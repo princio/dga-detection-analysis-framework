@@ -224,6 +224,10 @@ cav: clean all valgrind
 
 cav2: clean all valgrind2
 
+cap: clean all
+	clear;
+	./bin/binary $(PSLTSUFFIXFILE) print > bin/log.log;
+
 cat: clean all
 	clear;
-	./bin/binary /home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/psllist.csv print > bin/log.log;
+	./bin/binary $(PSLTSUFFIXFILE) test google.co.uk > bin/log.log;

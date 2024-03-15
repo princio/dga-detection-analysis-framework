@@ -11,12 +11,20 @@
 #define ROOT_DEPTH -1
 #define IS_ROOT(crawl) ((crawl)->depth == ROOT_DEPTH)
 
+#ifdef DEBUG
+#define PRINTF(F, ...) printf(F, ##__VA_ARGS__ )
+#else
+#define PRINTF(F, ...) { }
+#endif
+
 
 char PSLT_GROUP_STR[N_PSLTSUFFIXGROUP][30] = {
     "tld",
     "icann",
     "private"
 };
+
+FILE* pslt_logger_file = NULL;
 
 int _pslt_csv_parse_field(char *row, const size_t cursor_start, const size_t max_field_size, char field[max_field_size]) {
     size_t cursor_end;
@@ -28,17 +36,24 @@ int _pslt_csv_parse_field(char *row, const size_t cursor_start, const size_t max
             cursor_end = location_end - row;
         } else {
             cursor_end = strlen(row);
+            if (row[cursor_end - 1] == '\n') {
+                --cursor_end;
+            }
         }
 
         if (cursor_end > strlen(row)) {
-            printf("Something is wrong: %ld > %zu [str len]\n%s\n", cursor_end, strlen(row), row);
+            LOG_ERROR("something is wrong: %ld > %zu [str len]\n%s\n", cursor_end, strlen(row), row);
             cursor_end = strlen(row);
         }
     }
 
     if (field) {
         memset(field, 0, max_field_size);
-        memcpy(field, &row[cursor_start], cursor_end - cursor_start);
+        if (cursor_end - cursor_start > max_field_size) {
+            LOG_ERROR("Something went wrong: %ld\n", cursor_end - cursor_start);
+        } else {
+            memcpy(field, &row[cursor_start], cursor_end - cursor_start);
+        }
     }
 
     return cursor_end + 1;
@@ -82,28 +97,38 @@ int pslt_domain_labels(PSLTDomain domain, PSLTDomainLabels labels) {
 int pslt_domain_invert(PSLTDomain domain, PSLTDomain inverted) {
     memset(inverted, 0, strlen(domain) + 1);
 
-    int len = strlen(domain);
+    PSLTDomain tmp;
+    strcpy(tmp, domain);
 
-    for(int i = len - 1; i >=0; ) {
-        int dot_position;
-        int domain_cursor;
-        int inv_cursor;
-        int label_len;
-        
-        dot_position = i - 1;
-        while(domain[dot_position] != '.' && dot_position > 0) { --dot_position; }
-
-        domain_cursor = dot_position + (dot_position > 0);
-        inv_cursor = (len - i - 1);
-        label_len = i - dot_position + (dot_position== 0);
-
-        strncpy(inverted + inv_cursor, domain + domain_cursor, label_len);
-
-        if (dot_position > 0)
-            inverted[inv_cursor + label_len] = '.';
-
-        i = dot_position - 1;
+    char* dot;
+    char* last_dot = &tmp[strlen(tmp)];
+    while ((dot = strrchr(tmp, '.'))) {
+        strncat(inverted, dot + 1, last_dot - dot);
+        inverted[strlen(inverted)] = '.';
+        dot[0] = '\0';
+        last_dot = dot;
     }
+    strncat(inverted, tmp, last_dot - tmp);
+    // for(int i = len - 1; i >=0; ) {
+    //     int dot_position;
+    //     int domain_cursor;
+    //     int inv_cursor;
+    //     int label_len;
+        
+    //     dot_position = i - 1;
+    //     while(domain[dot_position] != '.' && dot_position > 0) { --dot_position; }
+
+    //     domain_cursor = dot_position + (dot_position > 0);
+    //     inv_cursor = (len - i - 1);
+    //     label_len = i - dot_position + (dot_position== 0);
+
+    //     strncpy(inverted + inv_cursor, domain + domain_cursor, label_len);
+
+    //     if (dot_position > 0)
+    //         inverted[inv_cursor + label_len] = '.';
+
+    //     i = dot_position - 1;
+    // }
 
     return 0;
 }
@@ -149,7 +174,7 @@ int _pslt_suffixes_parse(char filepath[PATH_MAX], PSLTSuffixes* suffixes) {
 
         { // index
             cursor = _pslt_csv_parse_field(buffer, cursor, MAXFIELDSIZE, field);
-            suffix->index = (size_t) atoi(field);
+            suffix->index = (size_t) atoll(field);
         }
 
         { // suffix
@@ -161,15 +186,16 @@ int _pslt_suffixes_parse(char filepath[PATH_MAX], PSLTSuffixes* suffixes) {
         { // group
             cursor = _pslt_csv_parse_field(buffer, cursor, MAXFIELDSIZE, field);
 
-            if(strcmp(field, "tld") == 0) {
-                suffix->group = PSLT_GROUP_TLD;
-            } else
-            if(strcmp(field, "icann") == 0) {
-                suffix->group = PSLT_GROUP_ICANN;
-            } else
-            if(strcmp(field, "private") == 0) {
-                suffix->group = PSLT_GROUP_PRIVATE;
+            for (suffix->group = PSLT_GROUP_TLD; suffix->group < N_PSLTSUFFIXGROUP; suffix->group++) {
+                if (!strcmp(field, PSLT_GROUP_STR[suffix->group])) {
+                    break;
+                }
             }
+        }
+
+        { // is_ascii
+            cursor = _pslt_csv_parse_field(buffer, cursor, MAXFIELDSIZE, field);
+            suffix->is_ascii = atoi(field);
         }
 
         ++line_number;
@@ -232,13 +258,13 @@ void _trie_insert(PSLTNode* root, PSLTSuffix* suffix) {
     char inverted[strlen(suffix->suffix) + 1];
     pslt_domain_invert(suffix->suffix, inverted);
 
-    printf("[info] Inserting suffix: '%s'\n", suffix->suffix);
+    LOG_INFO("inserting [%s] suffix: '%s' [inv][%s]", suffix->is_ascii ? "ascii" : "utf8", suffix->suffix, inverted);
     
     for (level = 0; level < length; level++) {
         index = CHAR_TO_INDEX(inverted[level]);
 
         if (index > PSLT_DOMAIN_ALPHABET_SIZE) {
-            printf("[warn]: char2index oversized skipping suffix %s\n", suffix->suffix);
+            LOG_WARN("char2index oversized (%d|%c) skipping suffix %s", index, inverted[level], suffix->suffix);
             return;
         }
 
@@ -274,10 +300,8 @@ void _pslt_trie_compact_2(PSLTNode* crawl) {
     }
 
     if (crawl->parent->nbranches == 1 && crawl->parent->suffix == NULL) {
-        printf("Compacting: ");
-        printf("%s & %s\n", crawl->parent->path, crawl->path);
+        // LOG_TRACE("Compacting %s & %s:\t", crawl->parent->path, crawl->path);
             
-
         PSLTDomainSuffix tmp;
         PSLTNode* to_remove;
         PSLTNode* substitutor;
@@ -285,12 +309,12 @@ void _pslt_trie_compact_2(PSLTNode* crawl) {
         to_remove = crawl->parent;
         substitutor = crawl;
 
-        printf("from\n\t%p[%d]->%p[%d]->%p\n",
-            (void*) to_remove->parent,
-            to_remove->abc_index,
-            (void*) to_remove,
-            substitutor->abc_index,
-            (void*) substitutor);
+        // LOG_TRACE("from\t%p[%d]->%p[%d]->%p\t",
+        //     (void*) to_remove->parent,
+        //     to_remove->abc_index,
+        //     (void*) to_remove,
+        //     substitutor->abc_index,
+        //     (void*) substitutor);
 
         substitutor->parent = to_remove->parent;
 
@@ -308,71 +332,11 @@ void _pslt_trie_compact_2(PSLTNode* crawl) {
 
         to_remove->compacted = substitutor;
 
-        printf("to\n\t%p[%d]->(%p == %p)\n\n",
-            (void*) to_remove->parent,
-            to_remove->abc_index,
-            (void*) to_remove->parent->children[to_remove->abc_index],
-            (void*) substitutor);
-    }
-}
-
-void _pslt_trie_compact_merge(PSLTNode* parent, PSLTNode* child) {
-    assert(parent && child);
-    assert(parent->nbranches == 1);
-
-    parent->path[strlen(parent->path)] = INDEX_TO_CHAR(child->abc_index);
-
-    for (size_t i = 0; i < PSLT_DOMAIN_ALPHABET_SIZE; i++) {
-        if (parent->children[i]) { if (parent->children[i] != child) { printf("%ld) noooo\n", i); } }
-        
-        parent->children[i] = child->children[i];
-        if (parent->children[i]) {
-            parent->children[i]->parent = parent;
-        }
-    }
-
-    parent->suffix = child->suffix;
-    if (child->nchildren == 0) {
-        parent->nchildren = 0;
-    }
-
-    parent->nbranches = child->nbranches;
-    parent->children[child->abc_index] = NULL;
-
-    free(child);
-}
-
-void _pslt_trie_compact(PSLTNode* current) {
-    if (!current) {
-        printf("END\n");
-    }
-
-    printf("\n");
-    printf("current: path      %s\n", current->path);
-    printf("         pointer   %p\n", (void*) current);
-    printf("         branches  %ld\n", current->nbranches);
-
-    if (current->depth >= 0 && current->nbranches == 1) {
-        size_t i;
-        for (i = 0; i < PSLT_DOMAIN_ALPHABET_SIZE; i++) {
-            if (current->children[i]) break;
-        }
-
-        printf("tomerge: path      %s\n", current->children[i]->path);
-        printf("         pointer   %p\n", (void*) current->children[i]);
-        printf("         branches  %ld\n", current->children[i]->nbranches);
-
-        _pslt_trie_compact_merge(current, current->children[i]);
-
-        printf("merged:  path      %s\n", current->path);
-        printf("         pointer   %p\n", (void*) current);
-        printf("         branches  %ld\n", current->nbranches);
-    }
-
-    for (size_t i = 0; i < PSLT_DOMAIN_ALPHABET_SIZE; i++) {
-        if (current->children[i]) {
-            _pslt_trie_compact(current->children[i]);
-        }
+        // LOG_TRACE("to\t%p[%d]->(%p == %p)\n",
+        //     (void*) to_remove->parent,
+        //     to_remove->abc_index,
+        //     (void*) to_remove->parent->children[to_remove->abc_index],
+        //     (void*) substitutor);
     }
 }
 
@@ -380,11 +344,9 @@ int _pslt_trie_load_build(PSLTSuffixes suffixes, PSLTNode** root) {
     *root = _trie_new_node(0, NULL);
  
     for (size_t i = 0; i < suffixes.n; i++) {
-
-        // if (suffixes._[i].is_punycode) {
-        //     continue;
-        // }
-
+        if (!suffixes._[i].is_ascii) {
+            printf("is not ascii: %s\n", suffixes._[i].suffix);
+        }
         _trie_insert(*root, &suffixes._[i]);
     }
 
@@ -402,14 +364,14 @@ PSLT* pslt_trie_load(char suffixlistpath[PATH_MAX]) {
     error = _pslt_suffixes_parse(suffixlistpath, &pslt->suffixes);
 
     if (error) {
-        fprintf(stderr, "Error during opening file[%s]: %s", suffixlistpath, strerror(errno));
+        LOG_ERROR("failed to open file '%s': %s", suffixlistpath, strerror(errno));
         return NULL;
     }
 
     _pslt_trie_load_build(pslt->suffixes, &pslt->trie);
 
     if (pslt->trie == NULL) {
-        fprintf(stderr, "Impossible to load the prefix tree.\n");
+        LOG_ERROR("impossible to load the prefix trie.");
         return NULL;
     }
 
@@ -427,11 +389,21 @@ void _pslt_trie_print(PSLTNode* crawl, int n_indent) {
 
     }
 
-    int depth = crawl->depth + 1;
     char indent[1000];
     sprintf(indent, "%*s", n_indent * 4, " ");
 
-    printf("%s(%c|%d) b%-2ld \'%s\' \'%s\' %s\n", indent, INDEX_TO_CHAR(crawl->abc_index), crawl->abc_index, crawl->nbranches, crawl->key, crawl->path, crawl->suffix ? crawl->suffix->suffix : "-");
+    printf("%s(%c|%d) ",
+        indent,
+        INDEX_TO_CHAR(crawl->abc_index),
+        crawl->abc_index);
+    printf("b%-2ld ", crawl->nbranches);
+    printf("k'%s' ", crawl->key);
+    printf("p'%s' ", crawl->path);
+    if (crawl->suffix) {
+        printf("'%s' ", crawl->suffix ? crawl->suffix->suffix : "-");
+        printf("[%s]", crawl->suffix->is_ascii ? "ascii" : "utf-8");
+    }
+    printf("\n");
 
     for (size_t i = 0; i < PSLT_DOMAIN_ALPHABET_SIZE; i++) {
         if (crawl->children[i]) {
@@ -459,64 +431,108 @@ void pslt_trie_free(PSLT* pslt) {
     free(pslt);
 }
 
-int _pslt_domain_suffixes(PSLT* pslt, PSLTObject* obj) {
+int _pslt_domain_suffixes_search(PSLT* pslt, PSLTObject* obj) {
 
     if (!pslt) {
-        fprintf(stderr, "PSLT is NULL\n");
+        LOG_ERROR("PSLT is NULL");
         return 1;
     }
 
     struct PSLTNode *crawl;
-    size_t level;
-    size_t length;
     PSLTDomain inverted;
+    size_t cursor;
+    int suffixes_found;
     
     PSLT_FOR_GROUP(g) {
         obj->suffixes[g] = NULL;
     }
 
     crawl = pslt->trie;
-    length = strlen(obj->domain);
 
     pslt_domain_invert(obj->domain, inverted);
- 
-    size_t first_label = 1;
-    for (level = 0; level < length; level++) {
 
-        int index = CHAR_TO_INDEX(inverted[level]);
-
-        if (first_label && level > 0 && inverted[level - 1] == '.') {
-            first_label = 0;
+    { // remove last label from inverted
+        char *last_dot = strrchr(inverted, '.');
+        if (last_dot == NULL) {
+            return -1;
         }
+        last_dot[0] = '\0';
+    }
 
-        if (index > PSLT_DOMAIN_ALPHABET_SIZE || index < 0) {
-            continue;
-        }
- 
-        if (!crawl->children[index]) {
+    suffixes_found = 0;
+    cursor = 0;
+    while(cursor < strlen(inverted)) {
+        int index;
+    
+        if (strncmp(crawl->path, inverted, cursor)) {
+            char tmp[cursor+1];
+            strncpy(tmp, inverted, cursor);
+            tmp[cursor] = '\0';
+            LOG_ERROR("path and current search string not correspond: %s <> %s\n", crawl->path, tmp);
             break;
         }
- 
-        crawl = crawl->children[index];
-        if (crawl->suffix) { // } && (level + 1 == strlen(inverted) || inverted[level + 1] == '.')) {
-            if (obj->suffixes[crawl->suffix->group]) {
-                printf("Warning: already set fro group %s", PSLT_GROUP_STR[crawl->suffix->group]);
-            }
-            obj->suffixes[crawl->suffix->group] = crawl;
-            // if (first_label) {
-            //     obj->suffixes.tld = crawl;
-            // }
-            // if (crawl->suffix->section == PSLT_SUFFIXSECTION_PRIVATEDOMAIN) {
-            //     obj->suffixes.private = crawl;
-            // } else {
-            //     obj->suffixes.icann = crawl;
-            // }
+
+        int is_endoflabel = (inverted[cursor + 1] == '.') || (cursor + 1 == strlen(inverted));
+        if (is_endoflabel) {
+            LOG_TRACE("Is end of label: '%s'\n", inverted);
+            LOG_TRACE("                  %*s\n", (int) cursor + 1, "^");
         }
+        if (crawl->suffix && is_endoflabel) {
+            if (obj->suffixes[crawl->suffix->group]) {
+                LOG_WARN("already set for group '%s': replacing '%s' with '%s'", PSLT_GROUP_STR[crawl->suffix->group], obj->suffixes[crawl->suffix->group]->suffix->suffix, crawl->suffix->suffix);
+            }
+            LOG_INFO("found suffix '%s' of group %s for '%s'['%s']\n", crawl->suffix->suffix, PSLT_GROUP_STR[crawl->suffix->group], obj->domain, inverted);
+            obj->suffixes[crawl->suffix->group] = crawl;
+            suffixes_found++;
+        }
+
+        if (crawl->nbranches == 0) {
+            LOG_INFO("no further suffixes, search is over for domain '%s'\n", inverted);
+            LOG_INFO("                                                %*c\n", (int) cursor, '^');
+            break;
+        }
+
+        index = CHAR_TO_INDEX(inverted[cursor]);
+    
+        if (index > PSLT_DOMAIN_ALPHABET_SIZE || index < 0) {
+            LOG_WARN("abc-index out of range, suffix not found for domain '%s'\n", obj->domain);
+            LOG_WARN("                                                     %*c\n", (int) cursor, '^');
+            break;
+        }
+
+        if (!crawl->children[index]) {
+            LOG_INFO("abc-index out of range, search over for domain '%s'\n", inverted);
+            LOG_INFO("                                                %*c\n", (int) cursor, '^');
+            break;
+        }
+
+        {
+            char tmp[10000] = "";
+            sprintf(tmp + strlen(tmp), "[trace]: '%s' :: cur=[%ld] path=[%s] ", obj->domain, cursor, crawl->path);
+            sprintf(tmp + strlen(tmp), "\tsuffix=[%s]", crawl->suffix ? crawl->suffix->suffix : "");
+            sprintf(tmp + strlen(tmp), "\tbranches=[%ld]", crawl->nbranches);
+            sprintf(tmp + strlen(tmp), "\tindex=[%c]", INDEX_TO_CHAR(index));
+            sprintf(tmp + strlen(tmp), "newpath=[%s]", crawl->children[index]->path);
+            LOG_TRACE("%s", tmp);
+        }
+
+        crawl = crawl->children[index];
+
+        cursor = strlen(crawl->path);
+    }
+
+    if (crawl->suffix) {
+        if (obj->suffixes[crawl->suffix->group]) {
+            LOG_WARN("already set for group %s: replacing %s with %s", PSLT_GROUP_STR[crawl->suffix->group], obj->suffixes[crawl->suffix->group]->suffix->suffix, crawl->suffix->suffix);
+        }
+        LOG_INFO("found suffix %s of group %s for %s[%s]\n", crawl->suffix->suffix, PSLT_GROUP_STR[crawl->suffix->group], obj->domain, inverted);
+        obj->suffixes[crawl->suffix->group] = crawl;
+        suffixes_found++;
     }
 
     obj->searched = 1;
 
-    return 0;
+    return suffixes_found;
 }
 
 int _pslt_domain_remove_suffixes(PSLT* pslt, PSLTObject* obj) {
@@ -524,7 +540,7 @@ int _pslt_domain_remove_suffixes(PSLT* pslt, PSLTObject* obj) {
     PSLTSuffix* prev;
 
     if (!obj->searched) {
-        _pslt_domain_suffixes(pslt, obj);
+        _pslt_domain_suffixes_search(pslt, obj);
     }
 
     prev = NULL;
@@ -555,7 +571,7 @@ int _pslt_domain_basedomain(PSLT* pslt, PSLTObject* object) {
     char* biggest = NULL;
 
     if (!object->searched) {
-        _pslt_domain_suffixes(pslt, object);
+        _pslt_domain_suffixes_search(pslt, object);
     }
 
     if (strlen(object->domain) == 0) {
@@ -605,7 +621,7 @@ int pslt_domain_run(PSLT* pslt, PSLTObject* obj) {
         return 1;
     }
 
-    _pslt_domain_suffixes(pslt, obj);
+    _pslt_domain_suffixes_search(pslt, obj);
     _pslt_domain_basedomain(pslt, obj);
     _pslt_domain_remove_suffixes(pslt, obj);
 
@@ -673,6 +689,100 @@ int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_pa
 
     fclose(fp);
     fclose(fp_write);
+
+    (void)(unused);
+
+    return 0;
+}
+
+int pslt_csv_test(PSLT* pslt, char csvtest_path[PATH_MAX]) {
+    char* unused;
+    const int MAXROWSIZE = sizeof(PSLTDomain) * 5;
+    const int MAXFIELDSIZE = sizeof(PSLTDomain);
+
+    FILE *fp, *fpw;
+    PSLTObject obj;
+    int cursor;
+    char buffer[MAXROWSIZE];
+    char field[MAXFIELDSIZE];
+
+    fp = fopen(csvtest_path, "r");
+    if (!fp){
+        fprintf(stderr, "Impossible to open list file\n");
+        exit(1);
+    }
+
+    fpw = fopen("/tmp/pslregex.test.log", "w");
+    if (!fpw){
+        fprintf(stderr, "Impossible to open test file\n");
+        exit(1);
+    }
+
+    while(fgets(buffer, MAXROWSIZE, fp)) {
+        size_t index;
+        PSLTDomainSuffix suffix;
+        PSLTSuffixGroup group;
+        
+        cursor = 0;
+
+        { // index
+            cursor = _pslt_csv_parse_field(buffer, cursor, MAXFIELDSIZE, field);
+            index = (size_t) atoll(field);
+        }
+
+        { // suffix
+            cursor = _pslt_csv_parse_field(buffer, cursor, MAXFIELDSIZE, field);
+            memcpy(suffix, field, strlen(field));
+            suffix[strlen(field)] = '\0';
+        }
+
+        { // group
+            cursor = _pslt_csv_parse_field(buffer, cursor, MAXFIELDSIZE, field);
+
+            for (group = PSLT_GROUP_TLD; group < N_PSLTSUFFIXGROUP; group++) {
+                if (!strcmp(field, PSLT_GROUP_STR[group])) {
+                    break;
+                }
+            }
+        }
+
+        fprintf(fpw, "%5ld\t", index);
+        fprintf(fpw, "'%10s'\t", suffix);
+        fprintf(fpw, "'%10s'", PSLT_GROUP_STR[group]);
+
+        for (size_t i = 0; i < 3; i++) {
+            memset(&obj, 0, sizeof(PSLTObject));
+            cursor = _pslt_csv_parse_field(buffer, cursor, sizeof(PSLTDomain), obj.domain);
+
+            fprintf(fpw, "\t");
+            switch (_pslt_domain_suffixes_search(pslt, &obj)) {
+                case -1:
+                    fprintf(fpw, "%10s\t", "invalid");
+                    break;
+                case 0:
+                    fprintf(fpw, "%10s\t", "not-found");
+                    break;
+                default: {
+                    if (obj.suffixes[group] && obj.suffixes[group]->suffix) {
+                        if (strcmp(suffix, obj.suffixes[group]->suffix->suffix)) {
+                            fprintf(fpw, "%10s\t", "disequal");
+                        } else
+                        if (!strcmp(suffix, obj.suffixes[group]->suffix->suffix)) {
+                            fprintf(fpw, "%10s\t", "OK");
+                        }
+                    } else {
+                        fprintf(fpw, "%10s\t", "other-group");
+                    }
+                    break;
+                }
+            }
+        }
+        fprintf(fpw, "\n");
+        fflush(fpw);
+    }
+
+    fclose(fp);
+    fclose(fpw);
 
     (void)(unused);
 

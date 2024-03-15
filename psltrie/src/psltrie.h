@@ -1,6 +1,7 @@
 #ifndef __PSLREGEX2_COMMON__
 #define __PSLREGEX2_COMMON__
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <linux/limits.h>
 
@@ -75,6 +76,7 @@ typedef enum PSLTSuffixGroup {
 
 typedef struct PSLTSuffix {
     size_t index;
+    int is_ascii;
     PSLTDomainSuffix suffix;
     int nlabels;
     PSLTSuffixGroup group;
@@ -134,6 +136,15 @@ void pslt_trie_free(PSLT* pslt);
 int pslt_domain_run(PSLT* pslt, PSLTObject* obj);
 
 int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_path[PATH_MAX]);
+int pslt_csv_test(PSLT* pslt, char csvtest_path[PATH_MAX]);
 
+
+extern FILE* pslt_logger_file;
+
+#define LOG_ERROR(F, ...) fprintf(pslt_logger_file, "[erro]: "); fprintf(pslt_logger_file, (F), ##__VA_ARGS__); fprintf(pslt_logger_file, "\n");
+#define LOG_WARN(F, ...) fprintf(pslt_logger_file, "[warn]: "); fprintf(pslt_logger_file, (F), ##__VA_ARGS__); fprintf(pslt_logger_file, "\n");
+#define LOG_INFO(F, ...) fprintf(pslt_logger_file, "[info]: "); fprintf(pslt_logger_file, (F), ##__VA_ARGS__); fprintf(pslt_logger_file, "\n");
+#define LOG_DEBUG(F, ...) fprintf(pslt_logger_file, "[debug]: "); fprintf(pslt_logger_file, (F), ##__VA_ARGS__); fprintf(pslt_logger_file, "\n");
+#define LOG_TRACE(F, ...) fprintf(pslt_logger_file, "[trace]: "); fprintf(pslt_logger_file, (F), ##__VA_ARGS__); fprintf(pslt_logger_file, "\n");
 
 #endif

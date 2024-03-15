@@ -22,7 +22,15 @@
 #include <string.h>
 #include <errno.h>
 
+struct PSLTTestFile {
+    size_t index;
+    PSLTDomainSuffix suffix;
+    PSLTSuffixGroup group;
+    PSLTDomain tests[3];
+};
+
 char* unused;
+
 
 void _print_test_domain(PSLT* pslt, PSLTDomain domain) {
     PSLTObject object;
@@ -52,6 +60,8 @@ int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
     
     PSLT* pslt;
+
+    pslt_logger_file = fopen("/tmp/psltrie.log", "w");
 
     if (argc < 3) {
         fprintf(stderr, "Not enough arguments.\n");
@@ -95,6 +105,9 @@ int main (int argc, char* argv[]) {
         strcpy(domain, "gmail.aksoak.aosk.google.co.uk");
         _print_test_domain(pslt, domain);
     }
+
+    pslt_trie_print(pslt);
+    pslt_csv_test(pslt, "/home/princio/Desktop/psllist2.csv");
 
     pslt_trie_free(pslt);
 
