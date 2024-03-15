@@ -76,11 +76,7 @@ STD := -std=gnu99 # See man gcc for more options
 WARNS := -Wall -Wextra -pedantic # -pedantic warns on language standards
 
 # Flags for compiling
-CFLAGS_OPT := -O3
 CFLAGS := $(STD) $(STACK) $(WARNS) -fpic
-
-# Debug options
-DEBUG := -g3 -DDEBUG=1
 
 # Dependency libraries
 LIBS := # -lm  -I some/path/to/library
@@ -88,16 +84,9 @@ LIBS := # -lm  -I some/path/to/library
 # Test libraries
 TEST_LIBS := -l cmocka -L /usr/lib
 
-
-
 # Tests binary file
 TEST_BINARY := $(BINARY)_test_runner
 
-# %.o file names
-NAMES := $(notdir $(basename $(wildcard $(SRCDIR)/*.$(SRCEXT))))
-SHAREDLIB := lib$(PROJECT_NAME).so
-STATICLIB := lib$(PROJECT_NAME).a
-OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
 
 #
 # COMPILATION RULES
@@ -128,32 +117,59 @@ start:
 	@echo "Then execute it: bin/$(BINARY) --help"
 	@echo "Happy hacking o/"
 
-EXPORTDIRS := $(EXPORTDIR)/lib $(EXPORTDIR)/include/$(PROJECT_NAME)
+SHAREDLIB := lib$(PROJECT_NAME).so
+STATICLIB := lib$(PROJECT_NAME).a
 
-# Rule for link and generate the binary file
-all: $(EXPORTDIRS) $(SHAREDLIB) $(STATICLIB)
-	@echo -en "$(BROWN)LD $(END_COLOR)";
-	$(CC) -o $(BINDIR)/$(BINARY) $(OBJECTS) $(DEBUG) $(CFLAGS) $(LIBS)
-	cp $(SRCDIR)/*.h $(EXPORTDIR)/include/$(PROJECT_NAME)
-	@echo -en "\n--\nBinary file placed at" \
-			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
+NAMES := $(notdir $(basename $(wildcard $(SRCDIR)/*.$(SRCEXT))))
+OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
 
-$(EXPORTDIRS):
-	mkdir -p $@;
+dirs:
+	mkdir -p $(LIBDIR)/;
+	mkdir -p $(EXPORTDIR)/bin/;
+	mkdir -p $(EXPORTDIR)/lib;
+	mkdir -p $(EXPORTDIR)/include/$(PROJECT_NAME)
+
+$(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
+	@echo -en "$(BROWN)CC $(END_COLOR)";
+	$(CC) -c $^ -o $@ $(CFLAGS_OPT) $(CFLAGS) $(LIBS);
 
 $(SHAREDLIB): $(OBJECTS)
 	@echo -en "$(BROWN)CC $(END_COLOR)";
-	gcc -shared -o $(LIBDIR)/$@ $(OBJECTS)
-	cp $(LIBDIR)/$@ $(EXPORTDIR)/lib
+	gcc -shared -o $(LIBDIR)/$@ $^
+	cp $(LIBDIR)/$@ $(EXPORTDIR)/lib;
 
 $(STATICLIB): $(OBJECTS)
 	@echo -en "$(BROWN)AR $(END_COLOR)";
 	ar rcs $(LIBDIR)/$@ $^
-	cp $(LIBDIR)/$@ $(EXPORTDIR)/lib
+	cp $(LIBDIR)/$@ $(EXPORTDIR)/lib;
 
-$(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
-	@echo -en "$(BROWN)CC $(END_COLOR)";
-	$(CC) -c $^ -o $@ $(DEBUG) $(CFLAGS) $(LIBS)
+bin/binary: dirs $(SHAREDLIB) $(STATICLIB)
+	@echo -en "$(BROWN)LD $(END_COLOR)";
+	$(CC) -o $(BINDIR)/$(BINARY) $(OBJECTS) $(CFLAGS_OPT) $(CFLAGS) $(LIBS)
+	cp $(SRCDIR)/*.h $(EXPORTDIR)/include/$(PROJECT_NAME)
+	@echo -en "\n--\nBinary file placed at" \
+			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
+	cp $@ $@_$(SUFFIX)
+	@rm $@
+
+main: dirs $(SHAREDLIB) $(STATICLIB) bin/binary
+
+debug: SUFFIX := debug
+debug: CFLAGS_OPT := -g3 -DDEBUG=1
+debug: main
+
+prod: SUFFIX := prod
+prod: CFLAGS_OPT := -O3
+prod: main
+
+install: clean prod
+	@rm -rvf /usr/local/lib/$(SHAREDLIB) /usr/local/include/$(PROJECT_NAME)
+	cp $(EXPORTDIR)/lib/$(SHAREDLIB) /usr/local/lib/$(SHAREDLIB)
+	chmod 0755 /usr/local/lib/$(SHAREDLIB)
+	cp -r $(EXPORTDIR)/include/$(PROJECT_NAME) /usr/local/include/$(PROJECT_NAME)
+
+
+#########################################
 
 PSLTSUFFIXFILE := /home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/psllist.csv
 PSLTSUFFIXFILE_TEST := /home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/psllist.test.csv
@@ -184,13 +200,8 @@ valgrind2:
 		--show-leak-kinds=all \
 		--log-file=$(LOGDIR)/$@.log \
 		--main-stacksize=838860800\
-		$(BINDIR)/$(BINARY) $(PSLTSUFFIXFILE) google.co.uk
+		$(BINDIR)/$(BINARY) $(PSLTSUFFIXFILE) $(ARGSS)
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
-
-install:
-	cp $(EXPORTDIR)/lib/$(SHAREDLIB) /usr/local/lib/$(SHAREDLIB)
-	chmod 0755 /usr/local/lib/$(SHAREDLIB)
-	cp -r $(EXPORTDIR)/include/$(PROJECT_NAME) /usr/local/include/$(PROJECT_NAME)
 
 # Compile tests and run the test binary
 tests:
@@ -205,29 +216,31 @@ tests:
 clean:
 	@rm -rvf $(BINDIR)/* $(LIBDIR)/* $(LOGDIR)/* $(EXPORTDIR)/*;
 
-ca: clean all
+cd: clean debug
+db: debug
+	clear;
+	bin/binary $(PSLTSUFFIXFILE) google.co.uk
+dv: debug valgrind
+cdb: clean debug
+	clear;
+	bin/binary $(PSLTSUFFIXFILE) google.co.uk
+cdv: clean debug valgrind
+cdv2: clean debug valgrind2
+cat: clean debug
+	clear;
+	./bin/binary $(PSLTSUFFIXFILE) test google.co.uk > bin/log.log;
 
-ab: all
-	clear; bin/binary $(PSLTSUFFIXFILE) google.co.uk
-
-av: all valgrind
-
-cab: clean all
-	clear; bin/binary $(PSLTSUFFIXFILE) google.co.uk
 
 cp: clean prod
-
-cpb: clean prod
-	clear; bin/binary_prod
-
-cav: clean all valgrind
-
-cav2: clean all valgrind2
-
-cap: clean all
+pb: prod
 	clear;
-	./bin/binary $(PSLTSUFFIXFILE) print > bin/log.log;
-
-cat: clean all
+	bin/binary $(PSLTSUFFIXFILE) google.co.uk
+pv: prod valgrind
+cpb: clean prod
+	clear;
+	bin/binary $(PSLTSUFFIXFILE) google.co.uk
+cpv: clean prod valgrind
+cpv2: clean prod valgrind2
+cpt: clean prod
 	clear;
 	./bin/binary $(PSLTSUFFIXFILE) test google.co.uk > bin/log.log;

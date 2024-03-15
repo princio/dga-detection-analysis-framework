@@ -58,7 +58,7 @@ int _parse_int(const char *str, int base, int *value) {
 
 int main (int argc, char* argv[]) {
     setbuf(stdout, NULL);
-    
+
     PSLT* pslt;
 
     pslt_logger_file = fopen("/tmp/psltrie.log", "w");

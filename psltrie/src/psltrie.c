@@ -549,20 +549,16 @@ int _pslt_domain_remove_suffixes(PSLT* pslt, PSLTObject* obj) {
         prev = suffixes[g];
     }
 
-    int a = 0;
     PSLT_FOR_GROUP(g) {
         if (suffixes[g]) {
             const size_t l = strlen(obj->domain) - strlen(suffixes[g]->suffix);
             strcpy(obj->suffixless[g], obj->domain);
             obj->suffixless[g][l-1] = '\0';
         } else {
-            printf("no suffix for %ld: %s\n", g, obj->domain);
+            LOG_INFO("no suffix for group %s: '%s'", PSLT_GROUP_STR[g], obj->domain);
             strcpy(obj->suffixless[g], obj->domain);
-            a=1;
         }
     }
-    if (a) 
-    printf("\n");
 
     return 0;
 }
@@ -575,6 +571,7 @@ int _pslt_domain_basedomain(PSLT* pslt, PSLTObject* object) {
     }
 
     if (strlen(object->domain) == 0) {
+        LOG_ERROR("domain length is zero.");
         return 1;
     }
     
@@ -592,22 +589,6 @@ int _pslt_domain_basedomain(PSLT* pslt, PSLTObject* object) {
 
     object->basedomain[strlen(object->domain) - strlen(biggest) - 1] = '\0';
 
-    // PSLTDomain tmp;
-    // strcpy(tmp, object->domain);
-
-    // char* pos = strstr(tmp, biggest);
-    // if (pos > tmp) {
-    //     --pos;
-    // }
-    // *pos = '\0';
-
-    // char *pos2 = strrchr(tmp, '.');
-    // if (pos2) {
-    //     strcpy(object->basedomain, object->domain + (pos2 - tmp + 1));
-    // } else {
-    //     strcpy(object->basedomain, object->domain);
-    // }
-
     return 0;
 }
 
@@ -621,11 +602,18 @@ int pslt_domain_run(PSLT* pslt, PSLTObject* obj) {
         return 1;
     }
 
-    _pslt_domain_suffixes_search(pslt, obj);
-    _pslt_domain_basedomain(pslt, obj);
-    _pslt_domain_remove_suffixes(pslt, obj);
+    int found = _pslt_domain_suffixes_search(pslt, obj);
+    if (!found) {
+        strcpy(obj->basedomain, obj->domain);
+        PSLT_FOR_GROUP(g) {
+            strcpy(obj->suffixless[g], obj->domain);
+        }
+    } else {
+        _pslt_domain_basedomain(pslt, obj);
+        _pslt_domain_remove_suffixes(pslt, obj);
+    }
 
-    return 0;
+    return found;
 }
 
 int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_path[PATH_MAX]) {
@@ -747,8 +735,8 @@ int pslt_csv_test(PSLT* pslt, char csvtest_path[PATH_MAX]) {
         }
 
         fprintf(fpw, "%5ld\t", index);
-        fprintf(fpw, "'%10s'\t", suffix);
-        fprintf(fpw, "'%10s'", PSLT_GROUP_STR[group]);
+        fprintf(fpw, "'%s'\t", suffix);
+        fprintf(fpw, "'%s'", PSLT_GROUP_STR[group]);
 
         for (size_t i = 0; i < 3; i++) {
             memset(&obj, 0, sizeof(PSLTObject));
