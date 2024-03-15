@@ -29,7 +29,7 @@ class Origin(enum.Enum):
 
 IANA_COLUMNS = [
         ("type", ETLDType, "Type"),
-        ("tld_manager_code", str, "TLD Manager Code")
+        ("tld_manager", str, "TLD Manager Code")
     ]
 
 IANA_FIELDS = make_dataclass("IANA_FIELDS", IANA_COLUMNS, init=True)

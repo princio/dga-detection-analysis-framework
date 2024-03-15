@@ -90,8 +90,11 @@ class PSL:
         df = pd.DataFrame(values, columns=[ 'suffix', 'tld', 'punycode', 'section'])
 
         for _, row in df.iterrows():
+            suffix = row["suffix"]
+
             fields = PSL_FIELDS(ETLDType.generic, row["punycode"], PSLSection.from_string(row["section"]))
-            etld.add(row["suffix"], Origin.psl, fields)
+
+            etld.add(suffix, Origin.psl, fields)
             pass
 
 

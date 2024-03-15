@@ -9,7 +9,7 @@ import pslregex.etld
 
 IANA_COLUMNS = [
         ("type", ETLDType, "Type"),
-        ("tld_manager_code", str, "TLD Manager")
+        ("tld_manager", str, "TLD Manager")
     ]
 
 TYPE_CONVERTER = {
@@ -65,11 +65,14 @@ class IANA:
             suffix = suffix.replace('.', '', 1)
             suffix = suffix.replace('\u200f', '', 1)
             suffix = suffix.replace('\u200e', '', 1)
-
+    
             if suffix.count('.') > 1:
                 raise Exception('Unexpected: TLDs should have only one point each.')
             
-            fields = IANA_FIELDS(**{field_name : row[col] for field_name,_,col in IANA_COLUMNS})
+            fields = IANA_FIELDS(**{
+                field_name: row[col].replace("\n", "--") if type(row[col]) == str else row[col]
+                for field_name,_,col in IANA_COLUMNS
+                })
             
             etld.add(suffix, Origin.iana, fields)
         

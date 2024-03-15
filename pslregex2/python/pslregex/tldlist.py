@@ -62,7 +62,10 @@ class TLDLIST:
 
             row[self.TYPE_COLUMN] = TYPE_CONVERTER[row[self.TYPE_COLUMN]]
 
-            fields = TLDLIST_FIELDS(**{field_name : row[col] for field_name,_,col in TLDLIST_COLUMNS})
+            fields = TLDLIST_FIELDS(**{
+                field_name: row[col].replace("\n", "---") if type(row[col]) == str else row[col]
+                for field_name,_,col in TLDLIST_COLUMNS
+                })
 
             etld.add(suffix, Origin.tldlist, fields)
 

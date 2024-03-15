@@ -114,7 +114,7 @@ class ETLD:
                 pass
             if suffix.iana:
                 suffix_list += [ suffix.iana.type.name ]
-                suffix_list += [ suffix.iana.tld_manager_code ]
+                suffix_list += [ suffix.iana.tld_manager ]
                 pass
             else:
                 [ suffix_list.append(None) for _ in pslregex.common.IANA_COLUMNS ]
@@ -136,6 +136,11 @@ class ETLD:
         df = pd.DataFrame(suffixes, columns=pd.MultiIndex.from_tuples(columns))
         df = df.sort_values(by=("","suffix"))
         df = df.reset_index(drop=True)
+
+        ascii = df[('', 'suffix')].apply(lambda s: 1 if s.isascii() else 0)
+
+        df.insert(2, ('', 'ascii'), ascii)
+
         df.to_csv(output)
         
         return df
