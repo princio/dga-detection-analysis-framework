@@ -31,9 +31,9 @@ void _print_test_domain(PSLT* pslt, PSLTDomain domain) {
 
     pslt_domain_run(pslt, &object);
 
-    printf("%10s\t%-20s\t%-10s\t%s\n", "tld", object.suffixes.tld ? object.suffixes.tld->suffix->suffix : "-", "", object.wo_suffixes.tld);
-    printf("%10s\t%-20s\t%-10s\t%s\n", "icann", object.suffixes.icann ? object.suffixes.icann->suffix->suffix : "-", "", object.wo_suffixes.icann);
-    printf("%10s\t%-20s\t%-10s\t%s\n\n", "private", object.suffixes.private ? object.suffixes.private->suffix->suffix : "-", "", object.wo_suffixes.private);
+    PSLT_FOR_GROUP(g) {
+        printf("%10s\t%-20s\t%-10s\t%s\n", "tld", object.suffixes[g] ? object.suffixes[g]->suffix->suffix : "-", "", object.suffixless[g]);
+    }
 }
 
 int _parse_int(const char *str, int base, int *value) {

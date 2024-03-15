@@ -155,13 +155,16 @@ $(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@echo -en "$(BROWN)CC $(END_COLOR)";
 	$(CC) -c $^ -o $@ $(DEBUG) $(CFLAGS) $(LIBS)
 
+PSLTSUFFIXFILE := /home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/psllist.csv
+PSLTSUFFIXFILE_TEST := /home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/psllist.test.csv
+ARGS_PRINT := print > bin/log.log
 ARGS_TEST := test google.co.uk
 ARGS_CSV := csv \
 		0 \
 		/home/princio/Repo/princio/malware_detection_preditc_file/top_10m.csv \
   		/tmp/top_10m.psltrie.csv
 
-ARGSS := $(ARGS_CSV)
+ARGSS := $(ARGS_PRINT)
 
 # Rule for run valgrind tool
 valgrind:
@@ -220,3 +223,7 @@ cpb: clean prod
 cav: clean all valgrind
 
 cav2: clean all valgrind2
+
+cat: clean all
+	clear;
+	./bin/binary /home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/psllist.csv print > bin/log.log;

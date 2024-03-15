@@ -27,11 +27,6 @@
 
 #define PSLT_N_MAX_SUFFIXES 100000
 
-typedef enum PSLTError {
-    PSLT_ERROR_NO = 0,
-    PSLT_ERROR_SUFFIXLIST_FOPEN_ERROR,
-} PSLTError;
-
 typedef char PSLTDomain[PSLT_MAX_DOMAIN_SIZE];
 typedef char PSLTDomainLabel[PSLT_MAX_LABEL_SIZE];
 typedef char PSLTDomainSuffix[PSLT_MAX_SUFFIX_SIZE];
@@ -68,21 +63,21 @@ typedef struct PSLTSuffixCode { // A code like: "S00000TTE1"
     char nlabels; // 1: the number of labels
 } PSLTSuffixCode;
 
+
+#define N_PSLTSUFFIXGROUP 3
+#define PSLT_FOR_GROUP(V) for (size_t (V) = 0; (V) < N_PSLTSUFFIXGROUP; (V)++)
+
+typedef enum PSLTSuffixGroup {
+    PSLT_GROUP_TLD,
+    PSLT_GROUP_ICANN,
+    PSLT_GROUP_PRIVATE
+} PSLTSuffixGroup;
+
 typedef struct PSLTSuffix {
     size_t index;
-
     PSLTDomainSuffix suffix;
-
-    PSLTSuffixCode code;
-    PSLTSuffixType type;
-    PSLTSuffixOrigin origin;
-    SuffixSection section;
-
-    int is_punycode;
-    int is_newGLTD;
-    int is_private;
-    int is_exception;
     int nlabels;
+    PSLTSuffixGroup group;
 } PSLTSuffix;
 
 typedef struct PSLTSuffixes {
@@ -90,57 +85,29 @@ typedef struct PSLTSuffixes {
     PSLTSuffix* _;
 } PSLTSuffixes;
 
-typedef struct PSLTDomainSuffixes {
-    PSLTSuffix tld;
-    PSLTSuffix icann;
-    PSLTSuffix private;
-} PSLTDomainSuffixes;
-
-struct PSLTDomain {
-    PSLTDomain domain;
-    int is_malware;
-    int is_dga;
-
-    PSLTDomainSuffixes suffixes;
-};
-
-typedef enum PSLTSuffixSearchHow {
-    SuffixSearchHow_TLD,
-    SuffixSearchHow_ICANN,
-    SuffixSearchHow_PRIVATE
-} PSLTSuffixSearchHow;
-
 typedef struct PSLTNode { 
-    struct PSLTNode *children[PSLT_DOMAIN_ALPHABET_SIZE];
-    int isEndOfSuffix;
+    struct PSLTNode* parent;
+    
+    size_t nbranches; // just for the next level
+    size_t nchildren; // for all sublevels
+    struct PSLTNode* children[PSLT_DOMAIN_ALPHABET_SIZE];
+
+    int abc_index;
+    int depth;
+
+    PSLTDomainSuffix path;
+    PSLTDomainSuffix key;
+
     PSLTSuffix* suffix;
     PSLTSuffix inverted;
+
+    void* compacted;
 } PSLTNode;
-
-typedef struct PSLTTriesSuffixes {
-    struct PSLTNode *tld;
-    struct PSLTNode *icann;
-    struct PSLTNode *private;
-} PSLTTriesSuffixes;
-
-typedef struct PSLTDomainProcessed {
-    PSLTDomain tld;
-    PSLTDomain icann;
-    PSLTDomain private;
-} PSLTDomainProcessed;
-
-typedef struct PSLTResult {
-    PSLTDomain domain;
-    PSLTDomain basedomain;
-    PSLTTriesSuffixes suffixes;
-    PSLTDomainProcessed processed;
-} PSLTResult;
 
 typedef struct PSLT {
     PSLTSuffixes suffixes;
     PSLTNode* trie;
 } PSLT;
-
 
 typedef struct PSLTObject {
     PSLT* pslt;
@@ -149,12 +116,11 @@ typedef struct PSLTObject {
     int searched;
 
     PSLTDomain basedomain;
-    PSLTTriesSuffixes suffixes;
-    struct {
-        PSLTDomain tld;
-        PSLTDomain icann;
-        PSLTDomain private;
-    } wo_suffixes;
+
+    PSLTNode* suffixes[N_PSLTSUFFIXGROUP];
+
+    PSLTDomain suffixless[N_PSLTSUFFIXGROUP];
+
 } PSLTObject;
 
 
