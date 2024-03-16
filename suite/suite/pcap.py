@@ -78,7 +78,7 @@ class PCAP:
 
         self.malwares = malwares
     
-        self.pslregex2_path: Path = self.config.workdir.pslregex2.joinpath("etld.csv")
+        self.psl_list_path: Path = self.config.workdir.psl_list.joinpath("psl_list.csv")
         self.tshark_path: Path = self.config.workdir.path.joinpath(self.pcapfile.with_suffix(".dns.pcap").name)
         self.dns_parse_path: Path = self.config.workdir.path.joinpath(self.pcapfile.with_suffix(".csv").name)
 
@@ -86,13 +86,14 @@ class PCAP:
 
         pass
 
-    def run_plsregex2(self):
+    def run_psl_list(self):
         subprocess_launch(self.config,
-                          self.pslregex2_path,
-                          "pslregex2", [
-                              self.config.bin.python_pslregex2,
-                              self.config.pyscript.pslregex2,
-                              self.config.workdir.pslregex2
+                          self.psl_list_path,
+                          "psl_list", [
+                              self.config.bin.python_psl_list,
+                              self.config.pyscript.psl_list,
+                              "-w", self.config.workdir.psl_list,
+                              self.psl_list_path
                         ])
         pass
 
@@ -112,7 +113,7 @@ class PCAP:
                           self.dns_parse_path,
                           "dns_parse", [
                               self.config.bin.dns_parse,
-                              "-i", self.pslregex2_path,
+                              "-i", self.psl_list_path,
                               "-o", self.dns_parse_path,
                               self.tshark_path
                         ])
@@ -281,7 +282,7 @@ class PCAP:
             print("PCAP already processed in database with id %s" % self.dbpcap.id)
             return
 
-        self.run_plsregex2()
+        self.run_psl_list()
         self.run_tshark()
         self.run_dns_parse()
 

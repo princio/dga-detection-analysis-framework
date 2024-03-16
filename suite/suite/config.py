@@ -14,15 +14,14 @@ import sqlalchemy
 class ConfigBin:
     dns_parse: Path = Path()
     tshark: Path = Path()
-    python: Path = Path()
     python_lstm: Path = Path()
-    python_pslregex2: Path = Path()
+    python_psl_list: Path = Path()
     pass
 
 @dataclass
 class ConfigPyScript:
     lstm: Path = Path()
-    pslregex2: Path = Path()
+    psl_list: Path = Path()
     pass
 
 @dataclass
@@ -58,17 +57,30 @@ class ConfigPCAP:
     pass
 
 @dataclass
+class ConfigWhitelist:
+    name: str = ""
+    path: str = ""
+    year: int = 2000
+    dn_col: str = "dn"
+    bdn_col: str = "bdn"
+    rank_col: str = "rank"
+    pass
+
+@dataclass
 class ConfigWorkdir:
     path: Path = Path()
     dns_parse: Path = Path()
     log: Path = Path()
-    pslregex2: Path = Path()
+    psl_list: Path = Path()
     tshark: Path = Path()
 
     def __init__(self, workdir: Path):
         self.path = workdir
 
         self.path.mkdir(parents=True, exist_ok=True)
+
+        self.psl_list = workdir.joinpath("psl_list")
+        self.psl_list.mkdir(parents=True, exist_ok=True)
 
         self.log = workdir.joinpath("log")
         if not self.log.exists():
@@ -82,9 +94,9 @@ class ConfigWorkdir:
             pass
         pass 
 
-        if not self.pslregex2.exists():
-            print(f"[info]: making pslregex2 directory: {self.pslregex2}")
-            os.mkdir(self.pslregex2)
+        if not self.psl_list.exists():
+            print(f"[info]: making psl_list directory: {self.psl_list}")
+            os.mkdir(self.psl_list)
             pass
         pass
     pass
@@ -105,13 +117,12 @@ class Config:
                 
             self.bin = ConfigBin()
             self.bin.tshark = Path(conf["bin"]["tshark"])
-            self.bin.python = Path(conf["bin"]["python"])
-            self.bin.python_pslregex2 = Path(conf["bin"]["python_pslregex2"])
+            self.bin.python_psl_list = Path(conf["bin"]["python_psl_list"])
             self.bin.python_lstm = Path(conf["bin"]["python_lstm"])
             self.bin.dns_parse = conf["bin"]["dns_parse"]
 
             self.pyscript = ConfigPyScript()
-            self.pyscript.pslregex2 = conf["pyscript"]["pslregex2"]
+            self.pyscript.psl_list = conf["pyscript"]["psl_list"]
             self.pyscript.lstm = conf["pyscript"]["lstm"]
 
             self.pcaps: List[Path] = [Path(pcappath) for pcappath in conf["pcaps"]]
@@ -128,6 +139,18 @@ class Config:
             self.engine: sqlalchemy.Engine = sqlalchemy.create_engine(url)
             self.sqlalchemyconnection: sqlalchemy.Connection = self.engine.connect()
             self.psyconn = psycopg2.connect("host=%s dbname=%s user=%s password=%s" % (self.postgre.host, self.postgre.dbname, self.postgre.user, self.postgre.password))
+
+            self.whitelists: List[ConfigWhitelist] = []
+            for whitelist in conf["whitelists"]:
+                configwhitelist = ConfigWhitelist()
+                configwhitelist.name = whitelist["name"]
+                configwhitelist.path = whitelist["path"]
+                configwhitelist.year = whitelist["year"]
+                configwhitelist.dn_col = whitelist["dn_col"]
+                configwhitelist.bdn_col = whitelist["bdn_col"]
+                configwhitelist.rank_col = whitelist["rank_col"]
+                self.whitelists.append(whitelist)
+            pass
         pass
 
     pass

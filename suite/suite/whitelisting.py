@@ -19,11 +19,11 @@ class Paths:
     def __init__(self, root_outdir, pcapfile) -> None:
         self.root_outdir: str = str(Path(root_outdir).absolute())
 
-        self.dir_pslregex2: str = os.path.join(root_outdir, "pslregex2")
-        self.dir_pslregex2: str = str(Path(self.dir_pslregex2).absolute())
+        self.dir_psl_list: str = os.path.join(root_outdir, "psl_list")
+        self.dir_psl_list: str = str(Path(self.dir_psl_list).absolute())
 
-        self.path_pslregex2: str = os.path.join(self.dir_pslregex2, "etld.csv")
-        self.path_pslregex2: str = str(Path(self.path_pslregex2).absolute())
+        self.path_psl_list: str = os.path.join(self.dir_psl_list, "psl_list.csv")
+        self.path_psl_list: str = str(Path(self.path_psl_list).absolute())
 
         self.path_pcapfile: str = str(Path(pcapfile).absolute())
         self.path_malware: str = str(Path(self.path_pcapfile).parent.absolute().joinpath("malware.json"))
@@ -63,9 +63,9 @@ class Paths:
             pass
         pass 
 
-        if not os.path.exists(paths.dir_pslregex2):
-            print(f"[info]: making pslregex2 directory: {paths.dir_pslregex2}")
-            os.mkdir(paths.dir_pslregex2)
+        if not os.path.exists(paths.dir_psl_list):
+            print(f"[info]: making psl_list directory: {paths.dir_psl_list}")
+            os.mkdir(paths.dir_psl_list)
             pass
         pass
     pass
@@ -82,13 +82,13 @@ class Binaries:
 
             self.python: str = conf['bin']['python']
 
-            self.python_pslregex2: str = conf['bin']['python_lstm']
+            self.python_psl_list: str = conf['bin']['python_lstm']
 
             self.python_lstm: str = conf['bin']['python_lstm']
 
             self.dns_parse: str = conf['bin']['dns_parse']
 
-            self.script_pslregex2: str = conf['pyscript']['pslregex2']
+            self.script_psl_list: str = conf['pyscript']['psl_list']
 
             self.script_lstm: str = conf['pyscript']['lstm']
 
@@ -132,11 +132,11 @@ class Binaries:
                 pass
 
             error = error or self.check_python(self.python, fplog)
-            error = error or self.check_python(self.python_pslregex2, fplog)
+            error = error or self.check_python(self.python_psl_list, fplog)
             error = error or self.check_python(self.python_lstm, fplog)
 
-            if not os.path.exists(self.script_pslregex2):
-                print(f"{error}PSLRegex script not exists: {self.script_pslregex2}")
+            if not os.path.exists(self.script_psl_list):
+                print(f"{error}PSLRegex script not exists: {self.script_psl_list}")
                 pass
             if not os.path.exists(self.dns_parse):
                 print(f"{error}DNS Parse binary not exists: {self.dns_parse}")
@@ -200,12 +200,12 @@ if __name__ == "__main__":
 
 
 
-    # pslregex2
+    # psl_list
 
-    binaries.launch(paths.path_pslregex2, "pslregex2", [
-        binaries.python_pslregex2,
-        binaries.script_pslregex2,
-        paths.dir_pslregex2
+    binaries.launch(paths.path_psl_list, "psl_list", [
+        binaries.python_psl_list,
+        binaries.script_psl_list,
+        paths.dir_psl_list
     ])
 
 
@@ -225,7 +225,7 @@ if __name__ == "__main__":
 
     binaries.launch(paths.path_dns_parse_output, "dns_parse", [
         binaries.dns_parse,
-        "-i", paths.path_pslregex2,
+        "-i", paths.path_psl_list,
         "-o", paths.path_dns_parse_output,
         paths.path_tshark_output
     ])
@@ -236,7 +236,7 @@ if __name__ == "__main__":
 
     binaries.launch(paths.path_lstm_output, "lstm", [
         binaries.python_lstm,
-        binaries.script_pslregex2,
+        binaries.script_psl_list,
         binaries.nndir,
         paths.outdir,
         paths.path_dns_parse_output

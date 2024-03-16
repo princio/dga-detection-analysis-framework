@@ -43,5 +43,41 @@ if __name__ == "__main__":
     lstm = LSTM(config)
     lstm.run()
 
+    for whitelist in config.whitelists:
+        print(whitelist)
+
+        df = pd.read_csv(whitelist.path, index_col=False)
+
+        if not whitelist.bdn_col in df:
+            df[whitelist.bdn_col] = df[whitelist.dn_col]
+            pass
+
+        if not whitelist.rank_col == "#index":
+            df.index.set_names("rank")
+            df.reset_index(inplace=True)
+            pass
+        elif not whitelist.rank_col in df:
+            df[whitelist.rank_col] = 1
+
+        values = [ [ x["dn"], x["bdn"], x["rank"] ] for _, x in df.iterrows() ]
+        args_str = b",".join([cursor.mogrify("(%s,%s,%s,%s,%s,%s)", x) for x in values])
+        cursor.execute(b"""
+            INSERT INTO public.dn(
+                dn, bdn, tld, icann, private, invalid)
+                VALUES """ +
+            args_str +
+            b" ON CONFLICT DO NOTHING RETURNING id")
+        
+        values = [ [ x["dn"], x["bdn"], x["tld"], x["icann"], x["private"], not bool(x["is_valid"]) ] for _, x in df_u.iterrows() ]
+        args_str = b",".join([cursor.mogrify("(%s,%s,%s,%s,%s,%s)", x) for x in values])
+        cursor.execute(b"""
+            INSERT INTO public.dn(
+                dn, bdn, tld, icann, private, invalid)
+                VALUES """ +
+            args_str +
+            b" ON CONFLICT DO NOTHING RETURNING id")
+
+        pass
+
 
     pass
