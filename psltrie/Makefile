@@ -162,7 +162,7 @@ prod: SUFFIX := prod
 prod: CFLAGS_OPT := -O3
 prod: main
 
-install: clean prod
+install: clean debug
 	@rm -rvf /usr/local/lib/$(SHAREDLIB) /usr/local/include/$(PROJECT_NAME)
 	cp $(EXPORTDIR)/lib/$(SHAREDLIB) /usr/local/lib/$(SHAREDLIB)
 	chmod 0755 /usr/local/lib/$(SHAREDLIB)

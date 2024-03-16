@@ -359,6 +359,10 @@ PSLT* pslt_trie_load(char suffixlistpath[PATH_MAX]) {
     PSLT* pslt;
     int error;
 
+    if (!pslt_logger_file) {
+        pslt_logger_file = fopen("/tmp/psl_list.log", "w");
+    }
+
     pslt = calloc(1, sizeof(PSLT));
 
     error = _pslt_suffixes_parse(suffixlistpath, &pslt->suffixes);
@@ -429,6 +433,10 @@ void pslt_trie_free(PSLT* pslt) {
     _pslt_free_trie(pslt->trie);
     free(pslt->suffixes._);
     free(pslt);
+
+    if (!pslt_logger_file) {
+        fclose(pslt_logger_file);
+    }
 }
 
 int _pslt_domain_suffixes_search(PSLT* pslt, PSLTObject* obj) {
@@ -508,7 +516,7 @@ int _pslt_domain_suffixes_search(PSLT* pslt, PSLTObject* obj) {
 
         {
             char tmp[10000] = "";
-            sprintf(tmp + strlen(tmp), "[trace]: '%s' :: cur=[%ld] path=[%s] ", obj->domain, cursor, crawl->path);
+            sprintf(tmp + strlen(tmp), "'%s' :: cur=[%ld] path=[%s] ", obj->domain, cursor, crawl->path);
             sprintf(tmp + strlen(tmp), "\tsuffix=[%s]", crawl->suffix ? crawl->suffix->suffix : "");
             sprintf(tmp + strlen(tmp), "\tbranches=[%ld]", crawl->nbranches);
             sprintf(tmp + strlen(tmp), "\tindex=[%c]", INDEX_TO_CHAR(index));
