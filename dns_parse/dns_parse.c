@@ -263,7 +263,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-    conf.pslt = pslt_load(conf.pslt_iframe_path);
+    conf.pslt = pslt_trie_load(conf.pslt_iframe_path);
     if (conf.pslt == NULL) {
         fprintf(stderr, "Impossible to load PSLT.");
         exit(1);
@@ -486,39 +486,35 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
         fprintf(conf->csv_file, "%u,", dns->nscount);
         fprintf(conf->csv_file, "%u,",  dns->arcount);
 
-        PSLTDomain first_domain;
-        memset(first_domain, 0, sizeof(PSLTDomain));
+        PSLTObject object;
+        memset(&object, 0, sizeof(PSLTObject));
+
         dns_question *qnext = dns->queries;
         uint16_t first_qtype = 1;
         while (qnext != NULL) {
-            PSLTSuffixSearchResult result;
-            PSLTDomainProcessed processed;
-            if (!strlen(first_domain)) {
-                memccpy(first_domain, qnext->name, '\0', 10000);
-                for (size_t c = 0; c < strlen(first_domain); c++) {
-                    first_domain[c] = tolower(first_domain[c]);
+            if (!strlen(object.domain)) {
+                memccpy(object.domain, qnext->name, '\0', 10000);
+                for (size_t c = 0; c < strlen(object.domain); c++) {
+                    object.domain[c] = tolower(object.domain[c]);
                 }
-                PSLTDomain basedomain;
 
-                result = pslt_search(conf->pslt, first_domain);
-                processed = pslt_domain_remove_suffixes(first_domain, result);
-                pslt_basedomain(first_domain, result, basedomain);
-                int is_valid = pslt_count_domain_labels(first_domain) > 1;
+                pslt_domain_run(conf->pslt, &object);
+
+                int is_valid = pslt_domain_count_labels(object.domain) > 1;
 
                 fprintf(conf->csv_file, "%u,", qnext->type);
 
                 fprintf(conf->csv_file, "%s,", qnext->name);
-                fprintf(conf->csv_file, "%s,", basedomain);
+                fprintf(conf->csv_file, "%s,", object.basedomain);
                 fprintf(conf->csv_file, "%d,", is_valid);
 
+                PSLT_FOR_GROUP(g) {
+                    fprintf(conf->csv_file, "%s,", object.suffixless[g]);
+                }
 
-                fprintf(conf->csv_file, "%s,", processed.tld);
-                fprintf(conf->csv_file, "%s,", processed.icann);
-                fprintf(conf->csv_file, "%s,", processed.private);
-
-                fprintf(conf->csv_file, "%s,", result.tld ? result.tld->suffix->suffix : "");
-                fprintf(conf->csv_file, "%s,", result.icann ? result.icann->suffix->suffix : "");
-                fprintf(conf->csv_file, "%s,", result.private ? result.private->suffix->suffix : "");
+                PSLT_FOR_GROUP(g) {
+                    fprintf(conf->csv_file, "%s,", object.suffixes[g] ? object.suffixes[g]->suffix->suffix : "");
+                }
 
                 first_qtype = qnext->type;
             }
@@ -529,7 +525,7 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
         {
             rr_text text;
             memset(&text, 0, sizeof(text));
-            print_rr_section(dns->answers, first_domain, conf, &text, first_qtype, dns->id);
+            print_rr_section(dns->answers, object.domain, conf, &text, first_qtype, dns->id);
             fprintf(conf->csv_file, "\"%s\",", text.A);
         }
     }
