@@ -11,7 +11,7 @@
         {
             "label": "Make PSLTrie",
             "type": "shell",
-            "command": "make ca",
+            "command": "make cd",
             "options": {
                 "cwd": "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie"
             }

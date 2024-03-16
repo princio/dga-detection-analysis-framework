@@ -78,19 +78,19 @@
             "name": "psltrie",
             "type": "cppdbg",
             "request": "launch",
-            "program": "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/bin/binary",
+            "program": "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/bin/binary_debug",
             "args": [
-                "/home/princio/Repo/princio/malware_detection_preditc_file/outdirs/pslregex2/etld.csv",
+                "/home/princio/Repo/princio/malware_detection_preditc_file/pslregex2/python/psllist.csv",
 
                 // "print"
 
-                // "test",
-                // "google.com"
+                "test",
+                "google.com"
 
-                "csv",
-                "0",
-                "/home/princio/Repo/princio/malware_detection_preditc_file/top_10m.csv",
-                "/tmp/top_10m.psltrie.csv"
+                // "csv",
+                // "0",
+                // "/home/princio/Repo/princio/malware_detection_preditc_file/top_10m.csv",
+                // "/tmp/top_10m.psltrie.csv"
             ],
             "stopAtEntry": false,
             "cwd": "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/bin/",
@@ -140,9 +140,12 @@
             "name":"Python PSLRegex",
             "type":"debugpy",
             "request":"launch",
-            "program":"pslregex2/python/bo.py",
+            "program":"pslregex2/python/run.py",
             "console":"integratedTerminal",
-            "python": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/venv/bin/python"
+            "python": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/venv/bin/python",
+            "args": [
+                "pslregex2/psllist.csv"
+            ]
         }
     ]
 }
