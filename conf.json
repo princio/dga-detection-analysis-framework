@@ -21,5 +21,15 @@
         "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-20/raw/2023-02-20-00-00-03-192.168.1.108.pcap",
         "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-21/raw/2023-02-21-00-00-03-192.168.1.108.pcap"
     ],
-    "lstm_batch_size": 10000
+    "lstm_batch_size": 10000,
+    "whitelists": [
+        {
+            "name": "top10m",
+            "path": "/home/princio/Repo/princio/malware_detection_preditc_file/top_10m.csv",
+            "year": 2020,
+            "dn_col": "bdn",
+            "bdn_col": null,
+            "rank_col": "rank"
+        }
+    ]
 }
