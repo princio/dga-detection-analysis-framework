@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import json
 import subprocess
 import os, argparse
@@ -13,57 +14,76 @@ def rename_file_if_error(test: bool, path_currentfile: str):
         pass
     pass
 
+
+@dataclass
+class PathsDir:
+    root: Path
+    pcap: Path
+    psl_list: Path
+    log: Path
+    pass
+
+@dataclass
+class PathsInput:
+    pcap: Path
+    json: Path
+    pass
+
+@dataclass
+class PathsOutput:
+    psl_list: Path
+    tshark: Path
+    dns_parse: Path
+    lstm: Path
+    pass
+
+
 class Paths:
-    def __init__(self, root_outdir, pcapfile) -> None:
-        self.root_outdir: str = str(Path(root_outdir).absolute())
+    def __init__(self, root_outdir: Path, pcapfile: Path) -> None:
+        self.input = PathsInput(
+            pcapfile,
+            pcapfile.parent.joinpath("pcap.json")
+        )
 
-        self.dir_pslregex2: str = os.path.join(root_outdir, "pslregex2")
-        self.dir_pslregex2: str = str(Path(self.dir_pslregex2).absolute())
+        self.dir = PathsDir(
+            root_outdir,
+            root_outdir.joinpath(pcapfile.stem),
+            root_outdir.joinpath("psl_list"),
+            root_outdir.joinpath("logs").absolute()
+        )
 
-        self.path_pslregex2: str = os.path.join(self.dir_pslregex2, "etld.csv")
-        self.path_pslregex2: str = str(Path(self.path_pslregex2).absolute())
-
-        self.path_pcapfile: str = str(Path(pcapfile).absolute())
-        self.path_malware: str = str(Path(self.path_pcapfile).parent.absolute().joinpath("malware.json"))
-
-        self.basename = os.path.basename(self.path_pcapfile)
-
-        self.noext = Path(self.basename).stem
-
-        self.outdir: str = str(Path(self.root_outdir, self.noext).absolute())
-        self.dir_logs: str = str(Path(self.outdir, "logs").absolute())
-    
-        self.name_dnspcap = f"{self.noext}.onlydns.pcap"
-        self.path_tshark_output = str(Path(os.path.join(self.outdir, self.name_dnspcap)).absolute())
-
-        self.path_dns_parse_output = str(Path(os.path.join(self.outdir, f"{self.noext}.csv")).absolute())
-        self.path_lstm_output = str(Path(os.path.join(self.outdir, f"{self.noext}.lstm.csv")).absolute())
+        self.output = PathsOutput(
+            self.dir.psl_list.joinpath("psl_list.csv"),
+            root_outdir.joinpath(self.input.pcap.with_suffix(".onlydns.pcap").name),
+            root_outdir.joinpath(self.input.pcap.with_suffix(".csv").name),
+            root_outdir.joinpath(self.input.pcap.with_suffix(".lstm.csv").name)
+        )
 
         pass
 
     def check(self):
-        if not os.path.exists(paths.path_pcapfile):
+        if not os.path.exists(paths.input.pcap):
             raise FileNotFoundError("PCAP file not exists.")
             pass
-        if not os.path.exists(paths.outdir):
-            print(f"[info]: making output directory: {paths.outdir}")
-            os.makedirs(paths.outdir, exist_ok=True)
+        if not os.path.exists(paths.dir.root):
+            print(f"[info]: making output directory: {paths.dir.root}")
+            os.makedirs(paths.dir.root, exist_ok=True)
             pass
 
-        if not os.path.exists(paths.dir_logs):
-            print(f"[info]: making logs directory: {paths.dir_logs}")
-            os.mkdir(paths.dir_logs)
+        if not os.path.exists(paths.dir.log):
+            print(f"[info]: making logs directory: {paths.dir.log}")
+            os.mkdir(paths.dir.log)
             pass
         else:
-            shutil.rmtree(paths.dir_logs, ignore_errors=True)
-            os.mkdir(paths.dir_logs)
+            shutil.rmtree(paths.dir.log, ignore_errors=True)
+            os.mkdir(paths.dir.log)
             print(f"[info]: logs directory cleaned.")
             pass
         pass 
 
-        if not os.path.exists(paths.dir_pslregex2):
-            print(f"[info]: making pslregex2 directory: {paths.dir_pslregex2}")
-            os.mkdir(paths.dir_pslregex2)
+        if not os.path.exists(paths.dir.psl_list):
+            print(f"[info]: making psl_list directory: {paths.dir.psl_list}")
+            os.mkdir(paths.dir.psl_list)
             pass
         pass
     pass
@@ -80,13 +100,13 @@ class Binaries:
 
             self.python: str = conf['bin']['python']
 
-            self.python_pslregex2: str = conf['bin']['python_lstm']
+            self.python_psl_list: str = conf['bin']['python_lstm']
 
             self.python_lstm: str = conf['bin']['python_lstm']
 
             self.dns_parse: str = conf['bin']['dns_parse']
 
-            self.script_pslregex2: str = conf['pyscript']['pslregex2']
+            self.script_psl_list: str = conf['pyscript']['psl_list']
 
             self.script_lstm: str = conf['pyscript']['lstm']
 
@@ -112,7 +132,7 @@ class Binaries:
 
     def test(self):
         error = False
-        with open(os.path.join(self.paths.dir_logs, "binaries.log"), "w") as fplog:
+        with open(os.path.join(self.paths.dir.log, "binaries.log"), "w") as fplog:
             if True:
                 p = subprocess.Popen(
                     [self.tshark, "-v"],
@@ -130,11 +150,11 @@ class Binaries:
                 pass
 
             error = error or self.check_python(self.python, fplog)
-            error = error or self.check_python(self.python_pslregex2, fplog)
+            error = error or self.check_python(self.python_psl_list, fplog)
             error = error or self.check_python(self.python_lstm, fplog)
 
-            if not os.path.exists(self.script_pslregex2):
-                print(f"{error}PSLRegex script not exists: {self.script_pslregex2}")
+            if not os.path.exists(self.script_psl_list):
+                print(f"{error}PSLRegex script not exists: {self.script_psl_list}")
                 pass
             if not os.path.exists(self.dns_parse):
                 print(f"{error}DNS Parse binary not exists: {self.dns_parse}")
@@ -151,13 +171,15 @@ class Binaries:
     def launch(self, file_output, name, args):
         if not os.path.exists(file_output):
             print(f"[info]: {name} step...")
-            with open(os.path.join(paths.dir_logs, f"{name}.log"), "w") as fplog:
+            with open(os.path.join(paths.dir.log, f"{name}.log"), "w") as fplog:
                 p = subprocess.Popen(
                     args,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                     text=True
                 )
+
+                print(" ".join([str(a) for a in list(p.args)]))
 
                 output, errors = p.communicate(timeout=100)
 
@@ -190,7 +212,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
 
-    paths = Paths(args.root_outdir, args.pcapfile)
+    paths = Paths(Path(args.root_outdir), Path(args.pcapfile))
     binaries = Binaries(paths)
 
     paths.check()
@@ -199,40 +221,41 @@ if __name__ == "__main__":
 
 
 
-    # pslregex2
+    # psl_list
 
-    binaries.launch(paths.path_pslregex2, "pslregex2", [
-        binaries.python_pslregex2,
-        binaries.script_pslregex2,
-        paths.dir_pslregex2
+    binaries.launch(paths.output.psl_list, "psl_list", [
+        binaries.python_psl_list,
+        binaries.script_psl_list,
+        "-w", paths.dir.psl_list,
+        paths.output.psl_list
     ])
 
     # tshark
 
-    binaries.launch(paths.path_tshark_output, "tshark", [
+    binaries.launch(paths.output.tshark, "tshark", [
         binaries.tshark,
-        "-r", paths.path_pcapfile,
+        "-r", paths.input.pcap,
         "-Y", "dns && !_ws.malformed && !icmp",
-        "-w", paths.path_tshark_output
+        "-w", paths.output.tshark
     ])
 
     # dns_parse
 
-    binaries.launch(paths.path_dns_parse_output, "dns_parse", [
+    binaries.launch(paths.output.dns_parse, "dns_parse", [
         binaries.dns_parse,
-        "-i", paths.path_pslregex2,
-        "-o", paths.path_dns_parse_output,
-        paths.path_tshark_output
+        "-i", paths.output.psl_list,
+        "-o", paths.output.dns_parse,
+        paths.output.tshark
     ])
 
     # lstm
 
-    binaries.launch(paths.path_lstm_output, "lstm", [
+    binaries.launch(paths.output.lstm, "lstm", [
         binaries.python_lstm,
-        binaries.script_pslregex2,
+        binaries.script_lstm,
         binaries.nndir,
-        paths.outdir,
-        paths.path_dns_parse_output
+        paths.dir.root,
+        paths.output.dns_parse
     ])
 
     # postgres
@@ -242,7 +265,7 @@ if __name__ == "__main__":
     from sqlalchemy.engine import URL
     import psycopg2 as psy
 
-    psyconn = psy.connect("host=%s dbname=%s user=%s password=%s" % (binaries.postgre['host'], binaries.postgre['user'], binaries.postgre['dbname'], binaries.postgre['password']))
+    psyconn = psy.connect("host=%s dbname=%s user=%s password=%s" % (binaries.postgre['host'], binaries.postgre['dbname'], binaries.postgre['user'], binaries.postgre['password']))
 
     url = URL.create(
         drivername="postgresql",
@@ -254,7 +277,7 @@ if __name__ == "__main__":
     engine = create_engine(url)
     connection = engine.connect()
 
-    df = pd.read_csv(paths.path_lstm_output)
+    df = pd.read_csv(paths.output.lstm)
 
     # malware
     # malware
@@ -263,7 +286,7 @@ if __name__ == "__main__":
     malware_notinfected_id = 28
     malware_id = 28
 
-    with open(paths.path_malware, 'r') as fp:
+    with open(paths.input.json, 'r') as fp:
         malware = json.load(fp)
         if not "name" in malware:
             raise Exception("Name field missing in malware.json")
@@ -312,7 +335,6 @@ if __name__ == "__main__":
         cursor.close()
         pass
 
-
     # malware - end
     # malware - end
     # malware - end
@@ -323,7 +345,7 @@ if __name__ == "__main__":
 
     import hashlib
 
-    hash_rawpcap = hashlib.sha256(open(paths.path_pcapfile,'rb').read()).hexdigest()
+    hash_rawpcap = hashlib.sha256(open(paths.input.pcap,'rb').read()).hexdigest()
 
     qr = df.shape[0]
     q = df[df.qr == "q"].shape[0]
@@ -332,12 +354,12 @@ if __name__ == "__main__":
     cursor.execute(
         """
         INSERT INTO pcap
-            (name, hash, infected, qr, q, r, "unique", unique_norm, dga_ratio)
+            (name, sha256, infected, qr, q, r, u, dga_ratio)
         VALUES
             (%s,%s,%s::boolean,%s::bigint,%s::bigint,%s::bigint,%s::bigint,%s::real, %s::integer)
         RETURNING id
         """,
-        [paths.basename, hash_rawpcap, malware_id != 28, qr, q, r, u, u / qr, 1],
+        [paths.input.pcap.stem, hash_rawpcap, malware_id != 28, qr, q, r, u, u / qr, 1],
     )
 
     dn_unique = df.drop_duplicates(subset='dn')
