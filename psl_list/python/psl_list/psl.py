@@ -5,8 +5,8 @@ import pandas as pd
 import requests
 import re
 
-from pslregex.common import PSL_COLUMNS, PSL_FIELDS, ETLDType,  Origin, PSLSection
-import pslregex.etld
+from psl_list.common import PSL_COLUMNS, PSL_FIELDS, ETLDType,  Origin, PSLSection
+import psl_list.etld
 
 class PSL:
     def __init__(self, dir) -> None:
@@ -33,7 +33,7 @@ class PSL:
 
         return lines
         
-    def parse(self, etld: pslregex.etld.ETLD, force=False):
+    def parse(self, etld: psl_list.etld.ETLD, force=False):
         lines = self.download(force)
 
         if lines is None:

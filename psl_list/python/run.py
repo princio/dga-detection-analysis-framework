@@ -1,7 +1,6 @@
 
 from pathlib import Path
-from tkinter import WORD
-import pslregex
+import psl_list
 import argparse
 
 
@@ -23,11 +22,10 @@ if __name__ == "__main__":
     workdir = Path(args.workdir)
     workdir.mkdir(exist_ok=True, parents=True)
 
-
-    _etld = pslregex.etld.ETLD(workdir)
-    _tldlist = pslregex.tldlist.TLDLIST(workdir)
-    _iana = pslregex.iana.IANA(workdir)
-    _psl = pslregex.psl.PSL(workdir)
+    _etld = psl_list.etld.ETLD(workdir)
+    _tldlist = psl_list.tldlist.TLDLIST(workdir)
+    _iana = psl_list.iana.IANA(workdir)
+    _psl = psl_list.psl.PSL(workdir)
 
     _tldlist.parse(_etld)
     _iana.parse(_etld)

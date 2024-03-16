@@ -6,7 +6,7 @@ import pandas as pd
 import requests
 from io import StringIO
 
-from pslregex.common import TLDLIST_COLUMNS, TLDLIST_FIELDS, ETLDType, Origin
+from psl_list.common import TLDLIST_COLUMNS, TLDLIST_FIELDS, ETLDType, Origin
 
 TYPE_CONVERTER = {
     "gTLD": ETLDType.generic,
@@ -50,8 +50,8 @@ class TLDLIST:
         
         return df
 
-    import pslregex.etld
-    def parse(self, etld: pslregex.etld.ETLD, force=False):
+    import psl_list.etld
+    def parse(self, etld: psl_list.etld.ETLD, force=False):
         df = self.download(force)
 
         if df is None:

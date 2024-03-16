@@ -1,11 +1,10 @@
 
-from dataclasses import make_dataclass
 from pathlib import Path
 from typing import Union
 import pandas as pd
 
-from pslregex.common import IANA_COLUMNS, IANA_FIELDS, ETLDType,  Origin
-import pslregex.etld
+from psl_list.common import IANA_COLUMNS, IANA_FIELDS, ETLDType,  Origin
+import psl_list.etld
 
 IANA_COLUMNS = [
         ("type", ETLDType, "Type"),
@@ -49,7 +48,7 @@ class IANA:
         
         return df
     
-    def parse(self, etld: pslregex.etld.ETLD, force=False) -> Union[pd.DataFrame,None]:
+    def parse(self, etld: psl_list.etld.ETLD, force=False) -> Union[pd.DataFrame,None]:
 
         df = self.download(force)
 
