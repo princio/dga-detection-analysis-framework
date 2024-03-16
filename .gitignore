@@ -2,7 +2,7 @@
 
 venv
 
-outdirs/
+outdir/
 workdir/
 
 pslregex/__pycache__/*
