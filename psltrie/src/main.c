@@ -39,9 +39,27 @@ void _print_test_domain(PSLT* pslt, PSLTDomain domain) {
 
     pslt_domain_run(pslt, &object);
 
+    printf("%s\n", domain);
     PSLT_FOR_GROUP(g) {
-        printf("%10s\t%-20s\t%-10s\t%s\n", "tld", object.suffixes[g] ? object.suffixes[g]->suffix->suffix : "-", "", object.suffixless[g]);
+        printf("\t%10s\t%-20s\t%-10s\t%s\n", PSLT_GROUP_STR[g], object.suffixes[g] ? object.suffixes[g]->suffix->suffix : "-", "", object.suffixless[g]);
     }
+}
+
+void print_help() {
+    printf(
+    "Usage: dns_parse PSLLIST_PATH [print|test|csv|csvtest] [OPTIONS]\n\n"
+    "- print\n"
+    "  Print the psl trie in a tree format.\n"
+    "\n"
+    "- test DOMAINS\n"
+    "  Perform psltrie to each domain belonging to DOMAINS, whitespace separeted.\n"
+    "\n"
+    "- csv COL_NUMBER CSV_IN CSV_OUT\n"
+    "  Perform psltrie to each domain belonging to CSV_IN. The COL_NUMBER option indicates\n"
+    "  the column where domains are stored.\n"
+    "  The result will be saved in CSV_OUT in the following format: .\n"
+    "  -> dn,bdn,tld,icann,private,dn_tld,dn_icann,dn_private.\n"
+    );
 }
 
 int _parse_int(const char *str, int base, int *value) {
@@ -65,10 +83,15 @@ int main (int argc, char* argv[]) {
 
     if (argc < 3) {
         fprintf(stderr, "Not enough arguments.\n");
+        print_help();
         exit(1);
     }
 
     if (argc > 1) {
+        if (!strcmp(argv[1], "help")) {
+            print_help();
+            exit(0);
+        }
         pslt = pslt_trie_load(argv[1]);
         if (pslt == NULL) {
             fprintf(stderr, "Impossible to load PSLT.\n");
@@ -95,7 +118,7 @@ int main (int argc, char* argv[]) {
     if (!strcmp(command, "test")) {
         PSLTDomain domain;
         for (int i = 3; i < argc; i++) {
-            strcpy(domain, argv[3]);
+            strcpy(domain, argv[i]);
             _print_test_domain(pslt, domain);
         }
 
@@ -105,9 +128,11 @@ int main (int argc, char* argv[]) {
         strcpy(domain, "gmail.aksoak.aosk.google.co.uk");
         _print_test_domain(pslt, domain);
     }
+    else
+    if (!strcmp(command, "csvtest")) {
+        pslt_csv_test(pslt, "../../asset/psltrie/test.csv");
+    }
 
-    pslt_trie_print(pslt);
-    pslt_csv_test(pslt, "/home/princio/Desktop/psllist2.csv");
 
     pslt_trie_free(pslt);
 

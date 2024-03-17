@@ -345,9 +345,13 @@ int _pslt_trie_load_build(PSLTSuffixes suffixes, PSLTNode** root) {
  
     for (size_t i = 0; i < suffixes.n; i++) {
         if (!suffixes._[i].is_ascii) {
-            printf("is not ascii: %s\n", suffixes._[i].suffix);
+            LOG_TRACE("is not ascii: %s\n", suffixes._[i].suffix);
         }
-        _trie_insert(*root, &suffixes._[i]);
+        if (suffixes._[i].suffix[0] == '*') {
+            LOG_TRACE("skipping asterisk");
+        } else {
+            _trie_insert(*root, &suffixes._[i]);
+        }
     }
 
     _pslt_trie_compact_2(*root);
@@ -439,6 +443,30 @@ void pslt_trie_free(PSLT* pslt) {
     }
 }
 
+int _pslt_domain_suffixes_search_found(size_t cursor, PSLTDomain inverted, PSLTNode* crawl, PSLTObject* obj) {
+    int is_endoflabel = (inverted[cursor] == '.') || (cursor + 1 == strlen(inverted));
+    if (is_endoflabel) {
+        LOG_TRACE("Is end of label: '%s' (%d, %d)", inverted, inverted[cursor + 1] == '.', cursor + 1 == strlen(inverted));
+        LOG_TRACE("                  %*s", (int) cursor + 1, "^");
+    }
+    if (is_endoflabel && crawl->suffix) {
+        int h = strlen(obj->domain) - strlen(crawl->suffix->suffix);
+        if (h == 0) {
+            LOG_ERROR("h == 0 for %s and suffix %s", obj->domain, crawl->suffix->suffix);
+        }
+        
+        if (!strncmp(&obj->domain[h], crawl->suffix->suffix, strlen(crawl->suffix->suffix))) {
+            if (obj->suffixes[crawl->suffix->group]) {
+                LOG_WARN("already set for group '%s': replacing '%s' with '%s'", PSLT_GROUP_STR[crawl->suffix->group], obj->suffixes[crawl->suffix->group]->suffix->suffix, crawl->suffix->suffix);
+            }
+            LOG_INFO("found suffix '%s' of group %s for '%s'[inv::%s]", crawl->suffix->suffix, PSLT_GROUP_STR[crawl->suffix->group], obj->domain, inverted);
+            obj->suffixes[crawl->suffix->group] = crawl;
+            return 1;
+        }
+    }
+    return 0;
+}
+
 int _pslt_domain_suffixes_search(PSLT* pslt, PSLTObject* obj) {
 
     if (!pslt) {
@@ -464,7 +492,7 @@ int _pslt_domain_suffixes_search(PSLT* pslt, PSLTObject* obj) {
         if (last_dot == NULL) {
             return -1;
         }
-        last_dot[0] = '\0';
+        (last_dot + 1)[0] = '\0';
     }
 
     suffixes_found = 0;
@@ -476,41 +504,29 @@ int _pslt_domain_suffixes_search(PSLT* pslt, PSLTObject* obj) {
             char tmp[cursor+1];
             strncpy(tmp, inverted, cursor);
             tmp[cursor] = '\0';
-            LOG_ERROR("path and current search string not correspond: %s <> %s\n", crawl->path, tmp);
+            LOG_ERROR("path and current search string not correspond: %s <> %s", crawl->path, tmp);
             break;
         }
 
-        int is_endoflabel = (inverted[cursor + 1] == '.') || (cursor + 1 == strlen(inverted));
-        if (is_endoflabel) {
-            LOG_TRACE("Is end of label: '%s'\n", inverted);
-            LOG_TRACE("                  %*s\n", (int) cursor + 1, "^");
-        }
-        if (crawl->suffix && is_endoflabel) {
-            if (obj->suffixes[crawl->suffix->group]) {
-                LOG_WARN("already set for group '%s': replacing '%s' with '%s'", PSLT_GROUP_STR[crawl->suffix->group], obj->suffixes[crawl->suffix->group]->suffix->suffix, crawl->suffix->suffix);
-            }
-            LOG_INFO("found suffix '%s' of group %s for '%s'['%s']\n", crawl->suffix->suffix, PSLT_GROUP_STR[crawl->suffix->group], obj->domain, inverted);
-            obj->suffixes[crawl->suffix->group] = crawl;
-            suffixes_found++;
-        }
+        suffixes_found += _pslt_domain_suffixes_search_found(cursor, inverted, crawl, obj);
 
         if (crawl->nbranches == 0) {
-            LOG_INFO("no further suffixes, search is over for domain '%s'\n", inverted);
-            LOG_INFO("                                                %*c\n", (int) cursor, '^');
+            LOG_INFO("no further suffixes, search is over for domain '%s'", inverted);
+            LOG_INFO("                                                %*c", (int) cursor, '^');
             break;
         }
 
         index = CHAR_TO_INDEX(inverted[cursor]);
     
         if (index > PSLT_DOMAIN_ALPHABET_SIZE || index < 0) {
-            LOG_WARN("abc-index out of range, suffix not found for domain '%s'\n", obj->domain);
-            LOG_WARN("                                                     %*c\n", (int) cursor, '^');
+            LOG_WARN("abc-index out of range, suffix not found for domain '%s'", obj->domain);
+            LOG_WARN("                                                     %*c", (int) cursor, '^');
             break;
         }
 
         if (!crawl->children[index]) {
-            LOG_INFO("abc-index out of range, search over for domain '%s'\n", inverted);
-            LOG_INFO("                                                %*c\n", (int) cursor, '^');
+            LOG_INFO("abc-index out of range, search over for domain '%s'", inverted);
+            LOG_INFO("                                                %*c", (int) cursor, '^');
             break;
         }
 
@@ -529,14 +545,7 @@ int _pslt_domain_suffixes_search(PSLT* pslt, PSLTObject* obj) {
         cursor = strlen(crawl->path);
     }
 
-    if (crawl->suffix) {
-        if (obj->suffixes[crawl->suffix->group]) {
-            LOG_WARN("already set for group %s: replacing %s with %s", PSLT_GROUP_STR[crawl->suffix->group], obj->suffixes[crawl->suffix->group]->suffix->suffix, crawl->suffix->suffix);
-        }
-        LOG_INFO("found suffix %s of group %s for %s[%s]\n", crawl->suffix->suffix, PSLT_GROUP_STR[crawl->suffix->group], obj->domain, inverted);
-        obj->suffixes[crawl->suffix->group] = crawl;
-        suffixes_found++;
-    }
+    suffixes_found += _pslt_domain_suffixes_search_found(cursor, inverted, crawl, obj);
 
     obj->searched = 1;
 
@@ -632,7 +641,7 @@ int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_pa
 
     fp = fopen(csv_in_path, "r");
     if (!fp){
-        fprintf(stderr, "Impossible to open list file\n");
+        fprintf(stderr, "Impossible to open csv file\n");
         exit(1);
     }
 
@@ -662,7 +671,7 @@ int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_pa
 
         cursor = _pslt_csv_parse_field(buffer, cursor, sizeof(PSLTDomain), object.domain);
 
-        if (!pslt_domain_run(pslt, &object)) {
+        if (pslt_domain_run(pslt, &object)) {
             fprintf(fp_write, "%s,%s", object.domain, object.basedomain);
 
             PSLT_FOR_GROUP(g) {
@@ -742,37 +751,43 @@ int pslt_csv_test(PSLT* pslt, char csvtest_path[PATH_MAX]) {
             }
         }
 
-        fprintf(fpw, "%5ld\t", index);
-        fprintf(fpw, "'%s'\t", suffix);
-        fprintf(fpw, "'%s'", PSLT_GROUP_STR[group]);
+        fprintf(fpw, "%5ld,", index);
+        fprintf(fpw, "%s,", suffix);
+        fprintf(fpw, "%s,", PSLT_GROUP_STR[group]);
 
         for (size_t i = 0; i < 3; i++) {
             memset(&obj, 0, sizeof(PSLTObject));
             cursor = _pslt_csv_parse_field(buffer, cursor, sizeof(PSLTDomain), obj.domain);
 
-            fprintf(fpw, "\t");
             switch (_pslt_domain_suffixes_search(pslt, &obj)) {
                 case -1:
-                    fprintf(fpw, "%10s\t", "invalid");
+                    fprintf(fpw, "%s,", "invalid");
                     break;
                 case 0:
-                    fprintf(fpw, "%10s\t", "not-found");
+                    fprintf(fpw, "%s,", "not-found");
                     break;
                 default: {
                     if (obj.suffixes[group] && obj.suffixes[group]->suffix) {
                         if (strcmp(suffix, obj.suffixes[group]->suffix->suffix)) {
-                            fprintf(fpw, "%10s\t", "disequal");
+                            fprintf(fpw, "%s,", "DIS,");
                         } else
                         if (!strcmp(suffix, obj.suffixes[group]->suffix->suffix)) {
-                            fprintf(fpw, "%10s\t", "OK");
+                            fprintf(fpw, "%s", "EQ,");
                         }
+                        fprintf(fpw, "%s,", obj.suffixes[group]->suffix->suffix);
                     } else {
-                        fprintf(fpw, "%10s\t", "other-group");
+                        for (group = PSLT_GROUP_TLD; group < N_PSLTSUFFIXGROUP; group++) {
+                            if (obj.suffixes[group]) {
+                                fprintf(fpw, "OTH::%s,", PSLT_GROUP_STR[group]);
+                                fprintf(fpw, "%s,", obj.suffixes[group]->suffix->suffix);
+                            }
+                        }
                     }
                     break;
                 }
             }
         }
+        fseek(fpw, -1, SEEK_CUR);
         fprintf(fpw, "\n");
         fflush(fpw);
     }

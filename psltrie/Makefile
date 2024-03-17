@@ -125,7 +125,7 @@ OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
 
 dirs:
 	mkdir -p $(LIBDIR)/;
-	mkdir -p $(EXPORTDIR)/bin/;
+	mkdir -p $(EXPORTDIR)/bin;
 	mkdir -p $(EXPORTDIR)/lib;
 	mkdir -p $(EXPORTDIR)/include/$(PROJECT_NAME)
 
@@ -143,7 +143,7 @@ $(STATICLIB): $(OBJECTS)
 	ar rcs $(LIBDIR)/$@ $^
 	cp $(LIBDIR)/$@ $(EXPORTDIR)/lib;
 
-bin/binary: dirs $(SHAREDLIB) $(STATICLIB)
+bin/$(BINARY): dirs $(SHAREDLIB) $(STATICLIB)
 	@echo -en "$(BROWN)LD $(END_COLOR)";
 	$(CC) -o $(BINDIR)/$(BINARY) $(OBJECTS) $(CFLAGS_OPT) $(CFLAGS) $(LIBS)
 	cp $(SRCDIR)/*.h $(EXPORTDIR)/include/$(PROJECT_NAME)
@@ -151,8 +151,9 @@ bin/binary: dirs $(SHAREDLIB) $(STATICLIB)
 			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
 	cp $@ $@_$(SUFFIX)
 	@rm $@
+	cp $@_$(SUFFIX) $(EXPORTDIR)/bin/$(PROJECT_NAME)
 
-main: dirs $(SHAREDLIB) $(STATICLIB) bin/binary
+main: dirs $(SHAREDLIB) $(STATICLIB) bin/$(BINARY)
 
 debug: SUFFIX := debug
 debug: CFLAGS_OPT := -g3 -DDEBUG=1
@@ -163,10 +164,13 @@ prod: CFLAGS_OPT := -O3
 prod: main
 
 install: clean debug
-	@rm -rvf /usr/local/lib/$(SHAREDLIB) /usr/local/include/$(PROJECT_NAME)
+	mkdir -p /usr/local/include/$(PROJECT_NAME)
+	@rm -rvf /usr/local/lib/$(SHAREDLIB) /usr/local/include/$(PROJECT_NAME)/* /usr/local/bin/$(BINARY)
+	cp $(EXPORTDIR)/include/$(PROJECT_NAME)/* /usr/local/include/$(PROJECT_NAME)
 	cp $(EXPORTDIR)/lib/$(SHAREDLIB) /usr/local/lib/$(SHAREDLIB)
 	chmod 0755 /usr/local/lib/$(SHAREDLIB)
-	cp -r $(EXPORTDIR)/include/$(PROJECT_NAME) /usr/local/include/$(PROJECT_NAME)
+	cp $(EXPORTDIR)/bin/$(PROJECT_NAME) /usr/local/bin/$(PROJECT_NAME)
+	chmod +x /usr/local/bin/$(PROJECT_NAME)
 
 
 #########################################

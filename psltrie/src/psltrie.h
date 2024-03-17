@@ -140,35 +140,45 @@ int pslt_csv_test(PSLT* pslt, char csvtest_path[PATH_MAX]);
 
 
 extern FILE* pslt_logger_file;
+extern char PSLT_GROUP_STR[N_PSLTSUFFIXGROUP][30];
 
-#define LOG_ERROR(F, ...) if (pslt_logger_file) {\
-    fprintf(pslt_logger_file, "[erro]: ");  \
-    fprintf(pslt_logger_file, (F), ##__VA_ARGS__);\
-    fprintf(pslt_logger_file, "\n");\
+
+// #define DEVELOP
+
+#ifdef DEVELOP
+#define LOG_OUT stdout
+#else
+#define LOG_OUT pslt_logger_file
+#endif
+
+#define LOG_ERROR(F, ...) if (LOG_OUT) {\
+    fprintf(LOG_OUT, "[erro]: ");  \
+    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(LOG_OUT, "\n");\
 }
 
-#define LOG_WARN(F, ...) if (pslt_logger_file) {\
-    fprintf(pslt_logger_file, "[warn]: "); \
-    fprintf(pslt_logger_file, (F), ##__VA_ARGS__);\
-    fprintf(pslt_logger_file, "\n");\
+#define LOG_WARN(F, ...) if (LOG_OUT) {\
+    fprintf(LOG_OUT, "[warn]: "); \
+    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(LOG_OUT, "\n");\
 }
 
-#define LOG_INFO(F, ...) if (pslt_logger_file) {\
-    fprintf(pslt_logger_file, "[info]: "); \
-    fprintf(pslt_logger_file, (F), ##__VA_ARGS__);\
-    fprintf(pslt_logger_file, "\n");\
+#define LOG_INFO(F, ...) if (LOG_OUT) {\
+    fprintf(LOG_OUT, "[info]: "); \
+    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(LOG_OUT, "\n");\
 }
 
 #define LOG_DEBUG(F, ...) if (pslt_logger_file) {\
-    fprintf(pslt_logger_file, "[debug]: "); \
-    fprintf(pslt_logger_file, (F), ##__VA_ARGS__);\
-    fprintf(pslt_logger_file, "\n");\
+    fprintf(LOG_OUT, "[debug]: "); \
+    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(LOG_OUT, "\n");\
 }
 
-#define LOG_TRACE(F, ...) if (pslt_logger_file) {\
-    fprintf(pslt_logger_file, "[trace]: "); \
-    fprintf(pslt_logger_file, (F), ##__VA_ARGS__);\
-    fprintf(pslt_logger_file, "\n");\
+#define LOG_TRACE(F, ...) if (LOG_OUT) {\
+    fprintf(LOG_OUT, "[trace]: "); \
+    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(LOG_OUT, "\n");\
 }
 
 
