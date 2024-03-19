@@ -146,39 +146,49 @@ extern char PSLT_GROUP_STR[N_PSLTSUFFIXGROUP][30];
 // #define DEVELOP
 
 #ifdef DEVELOP
-#define LOG_OUT stdout
+#define PSLT_LOG_OUT stdout
+#define PSLT_LOG_LEVEL PSLT_LOG_LEVEL_INFO
 #else
-#define LOG_OUT pslt_logger_file
+#define PSLT_LOG_OUT pslt_logger_file
+#define PSLT_LOG_LEVEL PSLT_LOG_LEVEL_INFO
 #endif
 
-#define LOG_ERROR(F, ...) if (LOG_OUT) {\
-    fprintf(LOG_OUT, "[erro]: ");  \
-    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
-    fprintf(LOG_OUT, "\n");\
+enum PSLTLogLevel {
+    PSLT_LOG_LEVEL_ERROR = 0,
+    PSLT_LOG_LEVEL_WARN,
+    PSLT_LOG_LEVEL_INFO,
+    PSLT_LOG_LEVEL_DEBUG,
+    PSLT_LOG_LEVEL_TRACE
+};
+
+#define LOG_ERROR(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_ERROR) {\
+    fprintf(PSLT_LOG_OUT, "[erro]: ");  \
+    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, "\n");\
 }
 
-#define LOG_WARN(F, ...) if (LOG_OUT) {\
-    fprintf(LOG_OUT, "[warn]: "); \
-    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
-    fprintf(LOG_OUT, "\n");\
+#define LOG_WARN(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_WARN) {\
+    fprintf(PSLT_LOG_OUT, "[warn]: "); \
+    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, "\n");\
 }
 
-#define LOG_INFO(F, ...) if (LOG_OUT) {\
-    fprintf(LOG_OUT, "[info]: "); \
-    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
-    fprintf(LOG_OUT, "\n");\
+#define LOG_INFO(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_INFO) {\
+    fprintf(PSLT_LOG_OUT, "[info]: "); \
+    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, "\n");\
 }
 
-#define LOG_DEBUG(F, ...) if (pslt_logger_file) {\
-    fprintf(LOG_OUT, "[debug]: "); \
-    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
-    fprintf(LOG_OUT, "\n");\
+#define LOG_DEBUG(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_DEBUG) {\
+    fprintf(PSLT_LOG_OUT, "[debug]: "); \
+    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, "\n");\
 }
 
-#define LOG_TRACE(F, ...) if (LOG_OUT) {\
-    fprintf(LOG_OUT, "[trace]: "); \
-    fprintf(LOG_OUT, (F), ##__VA_ARGS__);\
-    fprintf(LOG_OUT, "\n");\
+#define LOG_TRACE(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_TRACE) {\
+    fprintf(PSLT_LOG_OUT, "[trace]: "); \
+    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, "\n");\
 }
 
 

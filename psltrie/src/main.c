@@ -15,7 +15,6 @@
 
 #include "psltrie.h"
 
-#include <getopt.h>
 #include <linux/limits.h>
 #include <stdio.h>
 #include <stdlib.h>

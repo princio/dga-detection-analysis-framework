@@ -1,9 +1,10 @@
 #include "psltrie.h"
 
 #include <assert.h>
-#include <string.h>
-#include <stdio.h>
+#include <ctype.h>
 #include <errno.h>
+#include <stdio.h>
+#include <string.h>
 
 #define CHAR_TO_INDEX(c) ((int) c - (int) '!')
 #define INDEX_TO_CHAR(i) (char) (i + (int) '!')
@@ -60,18 +61,16 @@ int _pslt_csv_parse_field(char *row, const size_t cursor_start, const size_t max
 }
 
 int pslt_domain_count_labels(PSLTDomain domain) {
-    const char* begin;
-    const char* end;
-
+    const char* begin = domain;
+    const char* end = &domain[strlen(domain) - 1];
     int nlabels = 0;
 
-    begin = domain;
-    end = domain;
-    while ((end = strchr(begin, '.')) ) {
-        ++nlabels;
-        begin = end + 1;
-    }
-    return nlabels + 1;
+    do {
+        nlabels++;
+        begin = strchr(begin + 1, '.');
+    } while (begin && begin + 1 < end);
+
+    return nlabels;
 }
 
 int pslt_domain_labels(PSLTDomain domain, PSLTDomainLabels labels) {
@@ -197,6 +196,8 @@ int _pslt_suffixes_parse(char filepath[PATH_MAX], PSLTSuffixes* suffixes) {
             cursor = _pslt_csv_parse_field(buffer, cursor, MAXFIELDSIZE, field);
             suffix->is_ascii = atoi(field);
         }
+
+        
 
         ++line_number;
     }
@@ -468,12 +469,6 @@ int _pslt_domain_suffixes_search_found(size_t cursor, PSLTDomain inverted, PSLTN
 }
 
 int _pslt_domain_suffixes_search(PSLT* pslt, PSLTObject* obj) {
-
-    if (!pslt) {
-        LOG_ERROR("PSLT is NULL");
-        return 1;
-    }
-
     struct PSLTNode *crawl;
     PSLTDomain inverted;
     size_t cursor;
@@ -581,46 +576,109 @@ int _pslt_domain_remove_suffixes(PSLT* pslt, PSLTObject* obj) {
 }
 
 int _pslt_domain_basedomain(PSLT* pslt, PSLTObject* object) {
-    char* biggest = NULL;
-
-    if (!object->searched) {
-        _pslt_domain_suffixes_search(pslt, object);
-    }
-
     if (strlen(object->domain) == 0) {
         LOG_ERROR("domain length is zero.");
         return 1;
     }
+
+    if (!object->searched) {
+        _pslt_domain_suffixes_search(pslt, object);
+    }
     
+    PSLTSuffix* suffix;
     PSLT_FOR_GROUP(g) {
         if (object->suffixes[g]) {
-            biggest = object->suffixes[g]->suffix->suffix;
+            suffix = object->suffixes[g]->suffix;
         }
     }
 
-    strcpy(object->basedomain, object->domain);
+    PSLTDomain tmp;
+    memset(tmp, 0, sizeof(PSLTDomain));
+    
+    strncpy(tmp, object->domain, strlen(object->domain) - strlen(suffix->suffix) + 1);
 
-    if (biggest == NULL) {
-        return 0;
+    char* dot;
+    int domain_labels;
+    int suffix_labels;
+
+    char const * domain_end = &object->domain[strlen(object->domain) - 1];
+    char const * suffix_end = &suffix->suffix[strlen(suffix->suffix) - 1];
+
+    dot = object->domain;
+    domain_labels = 0;
+    do {
+        domain_labels++;
+        dot = strchr(dot + 1, '.');
+    } while (dot && dot + 1 < domain_end);
+
+    dot = suffix->suffix;
+    suffix_labels = 0;
+    do {
+        suffix_labels++;
+        dot = strchr(dot + 1, '.');
+    } while (dot && dot + 1 < suffix_end);
+
+    int skipped_labels = domain_labels - (suffix_labels + 1);
+
+    dot = object->domain;
+    if (skipped_labels > 0) {
+        dot = object->domain;
+        for (int i = 0; i < skipped_labels; i++) {
+            if (dot + 1 < domain_end) {
+                dot = strchr(dot + 1, '.');
+            } else {
+                break;
+            }
+        }
+        dot += 1;
     }
 
-    object->basedomain[strlen(object->domain) - strlen(biggest) - 1] = '\0';
+    strcpy(object->basedomain, dot);
+
+    printf("%s -> %s", object->domain, object->basedomain);
+    printf("\n");
+
+    // strncpy(tmp, object->domain, strlen(object->domain) - biggest_suffix_length + 1);
+
+    // object->basedomain[strlen(object->domain) - strlen(biggest) - 1] = '\0';
 
     return 0;
 }
 
 int pslt_domain_run(PSLT* pslt, PSLTObject* obj) {
+    int suffixes_found;
+
     if (!pslt) {
-        fprintf(stderr, "PSLT is null");
-        return 1;
+        LOG_WARN("PSLT is null");
+        return -1;
     }
     if (!obj) {
-        fprintf(stderr, "PSLT object is null");
-        return 1;
+        LOG_WARN("PSLT object is null");
+        return -1;
+    }
+    if (obj->domain[0] == '.') {
+        LOG_WARN("domain starting with a dot: %s", obj->domain);
+        return -1;
+    }
+    if (obj->domain[strlen(obj->domain) - 1] == '.') {
+        LOG_WARN("domain   ending with a dot: %s", obj->domain);
+        return -1;
+    }
+    if (strlen(obj->domain) < 3) {
+        LOG_WARN("domain   too short: %s", obj->domain);
+        return -1;
+    }
+    if (pslt_domain_count_labels(obj->domain) <= 1) {
+        LOG_WARN("domain   having too many labels: %s", obj->domain);
+        return -1;
     }
 
-    int found = _pslt_domain_suffixes_search(pslt, obj);
-    if (!found) {
+    for (size_t i = 0; i < strlen(obj->domain); i++) {
+        obj->domain[i] = tolower(obj->domain[i]);
+    }
+
+    suffixes_found = _pslt_domain_suffixes_search(pslt, obj);
+    if (!suffixes_found) {
         strcpy(obj->basedomain, obj->domain);
         PSLT_FOR_GROUP(g) {
             strcpy(obj->suffixless[g], obj->domain);
@@ -630,7 +688,7 @@ int pslt_domain_run(PSLT* pslt, PSLTObject* obj) {
         _pslt_domain_remove_suffixes(pslt, obj);
     }
 
-    return found;
+    return suffixes_found;
 }
 
 int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_path[PATH_MAX]) {
@@ -656,7 +714,7 @@ int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_pa
 
     unused = fgets(buffer, MAXROWSIZE, fp); // skip the header (one line)
 
-    fprintf(fp_write, "dn,bdn,tld,icann,private,dn_tld,dn_icann,dn_private\n");
+    fprintf(fp_write, "dn,bdn,is_valid,tld,icann,private,dn_tld,dn_icann,dn_private\n");
 
     int cursor = 0;
     size_t n = 0;
@@ -671,19 +729,21 @@ int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_pa
 
         cursor = _pslt_csv_parse_field(buffer, cursor, sizeof(PSLTDomain), object.domain);
 
-        if (pslt_domain_run(pslt, &object)) {
-            fprintf(fp_write, "%s,%s", object.domain, object.basedomain);
+        int is_valid = 0 <= pslt_domain_run(pslt, &object);
 
-            PSLT_FOR_GROUP(g) {
-                fprintf(fp_write, ",%s", object.suffixes[g] ? object.suffixes[g]->suffix->suffix : "");
-            }
+        fprintf(fp_write, "%s,%s", object.domain, object.basedomain);
 
-            PSLT_FOR_GROUP(g) {
-                fprintf(fp_write, ",%s", object.suffixless[g]);
-            }
+        fprintf(fp_write, "%s,", is_valid ? "valid" : "not-valid");
 
-            fprintf(fp_write, "\n");
+        PSLT_FOR_GROUP(g) {
+            fprintf(fp_write, ",%s", object.suffixes[g] ? object.suffixes[g]->suffix->suffix : "");
         }
+
+        PSLT_FOR_GROUP(g) {
+            fprintf(fp_write, ",%s", object.suffixless[g]);
+        }
+
+        fprintf(fp_write, "\n");
 
         if (n && n % 1000 == 0) {
             fflush(fp_write);

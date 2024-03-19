@@ -171,6 +171,7 @@ install: clean debug
 	chmod 0755 /usr/local/lib/$(SHAREDLIB)
 	cp $(EXPORTDIR)/bin/$(PROJECT_NAME) /usr/local/bin/$(PROJECT_NAME)
 	chmod +x /usr/local/bin/$(PROJECT_NAME)
+	$(MAKE) clean
 
 
 #########################################
