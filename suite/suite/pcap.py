@@ -49,7 +49,7 @@ def parse_config_pcap(pcapfile: Path):
         pcap = json.load(fp_pcap)
         configpcap.name = pcap['name']
         if pcap["name"] != pcapfile.stem:
-            print("Warning: different names from file and json (%s <> %s)" % (configpcap.name, pcapfile.stem))
+            print("[warn]: different names from file and json (%s <> %s)" % (configpcap.name, pcapfile.stem))
             pass
         configpcap.infected = pcap['infected']
         configpcap.dataset = pcap['dataset']
