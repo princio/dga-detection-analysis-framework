@@ -112,7 +112,6 @@ class PCAP:
                           self.dns_parse_path,
                           "dns_parse", [
                               self.config.bin.dns_parse,
-                              "-i", self.config.workdir.psl_list_path,
                               "-o", self.dns_parse_path,
                               self.tshark_path
                         ])
@@ -204,11 +203,11 @@ class PCAP:
 
         cursor = self.config.psyconn.cursor()
 
-        values = [ [ x["dn"], x["bdn"], x["tld"], x["icann"], x["private"], not bool(x["is_valid"]) ] for _, x in df_u.iterrows() ]
-        args_str = b",".join([cursor.mogrify("(%s,%s,%s,%s,%s,%s)", x) for x in values])
+        values = [ ( x["dn"], ) for _, x in df_u.iterrows() ]
+        args_str = b",".join([cursor.mogrify("(%s)", x) for x in values])
         cursor.execute(b"""
             INSERT INTO public.dn(
-                dn, bdn, tld, icann, private, invalid)
+                dn)
                 VALUES """ +
             args_str +
             b" ON CONFLICT DO NOTHING RETURNING id")
@@ -287,9 +286,6 @@ class PCAP:
 
         df = pd.read_csv(self.dns_parse_path, index_col=False)
 
-        df.tld.replace([np.nan], [None], inplace=True)
-        df.icann.replace([np.nan], [None], inplace=True)
-        df.private.replace([np.nan], [None], inplace=True)
         df.server.replace([np.nan], [None], inplace=True)
         df.answer.replace([np.nan], [None], inplace=True)
 

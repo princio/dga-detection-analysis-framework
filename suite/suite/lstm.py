@@ -94,14 +94,14 @@ class LSTM:
             self.load_model(nn)
 
             cursor = self.config.psyconn.cursor()
-            cursor.execute("""SELECT DN.ID, DN, TLD, ICANN, PRIVATE, INVALID, NN_ID FROM DN LEFT JOIN DN_NN ON (DN.ID = DN_NN.DN_ID AND DN_NN.NN_ID = %s)  WHERE NN_ID is null""", (nn.id,))
+            cursor.execute("""SELECT DN.ID, DN, TLD, ICANN, PRIVATE, NN_ID FROM DN LEFT JOIN DN_NN ON (DN.ID = DN_NN.DN_ID AND DN_NN.NN_ID = %s)  WHERE NN_ID is null""", (nn.id,))
 
             while True:
                 rows = cursor.fetchmany(self.batch_size)
                 if not rows:
                     break
 
-                df = pd.DataFrame.from_records(rows, columns=["id", "dn", "tld", "icann", "private", "invalid", "nn_id"])
+                df = pd.DataFrame.from_records(rows, columns=["id", "dn", "tld", "icann", "private", "nn_id"])
 
                 df["icann"].fillna(value=df["tld"], inplace=True)
                 df["private"].fillna(value=df["icann"], inplace=True)
