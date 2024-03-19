@@ -157,7 +157,7 @@ int tb2d_io(IOReadWrite rw, char rootdir[DIR_MAX], RTB2W tb2w, RTB2D* tb2) {
     FILE* file;
     file = io_openfile(rw, fpath);
     if (file == NULL) {
-        LOG_ERROR("Impossible to %s file <%s>.\n", rw == IO_WRITE ? "write" : "read", fpath);
+        LOG_ERROR("Impossible to %s file <%s>.", rw == IO_WRITE ? "write" : "read", fpath);
         return -1;
     }
 

@@ -198,17 +198,6 @@ typedef struct WClass {
     DGAClass mc;
 } WClass;
 
-typedef struct DNSMessage {
-    int64_t id;
-    int64_t fn_req;
-    double value;
-    double logit;
-    int32_t is_response;
-    int32_t top10m;
-    int32_t dyndns;
-    int32_t rcode;
-} DNSMessage;
-
 #define N_WAPPLYDNBAD 4
 
 #define FOR_DNBAD for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++)
@@ -239,12 +228,24 @@ typedef enum WindowingType {
     WINDOWING_QR
 } WindowingType;
 
+#define N_NN 4
+
 typedef enum NN {
-    NN_ICANN = 7,
-    NN_NONE,
-    NN_PRIVATE,
-    NN_TLD
+    NN_NONE = 1,
+    NN_TLD,
+    NN_ICANN,
+    NN_PRIVATE
 } NN;
+
+typedef struct DNSMessage {
+    int64_t id;
+    int64_t fn_req;
+    int32_t is_response;
+    int32_t top10m;
+    int32_t dyndns;
+    int32_t rcode;
+    double value[N_NN];
+} DNSMessage;
 
 typedef enum CaptureType {
     CAPTURETYPE_PCAP,
@@ -269,7 +270,7 @@ typedef struct  {
 extern char CLASSES[N_DGACLASSES][50];
 
 typedef struct __Windowing* RWindowing;
-typedef struct __Window0* RWindow;
+typedef struct __Window* RWindow;
 typedef struct __Source* RSource;
 typedef struct __Dataset* RDataset;
 typedef struct __Fold* RFold0;

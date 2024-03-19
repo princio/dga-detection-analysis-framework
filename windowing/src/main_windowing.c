@@ -14,7 +14,7 @@ RTB2W main_windowing_generate(char dirpath[DIR_MAX], const WSize wsize, const si
         printf("Performing windowing...\n");
         tb2w = tb2w_create(dirpath, wsize, pg);
 
-        stratosphere_add(tb2w, max_sources_number);
+        stratosphere_add(tb2w, "CTU-SME-11", max_sources_number);
 
         if (max_sources_number && tb2w->sources.number < max_sources_number) {
             printf("Error: max sources number not correspond.\n");

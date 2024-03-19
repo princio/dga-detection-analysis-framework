@@ -76,9 +76,9 @@ int main (int argc, char* argv[]) {
 
     char rootdir[PATH_MAX];
 
-    const int wsize = 1000;
+    const int wsize = 150;
     const int nsources = 0;
-    const size_t max_configs = 0;
+    const size_t max_configs = 10;
     const size_t n_try = 5;
 
     const ParameterGenerator pg = parametergenerator_default(max_configs);
@@ -91,7 +91,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/test_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/princio/Desktop/results/dns2/test_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     RTB2W tb2w = NULL;
@@ -182,7 +182,7 @@ int main (int argc, char* argv[]) {
 
     RTrainer trainer = main_training_generate(rootdir, tb2d, thchoosers);
 
-    main_training_stat(trainer);
+    // main_training_stat(trainer);
 
     trainer_free(trainer);
     tb2d_free(tb2d);

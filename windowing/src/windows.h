@@ -6,7 +6,7 @@
 
 #include "wapply.h"
 
-typedef struct __Window0 {
+typedef struct __Window {
     size_t index;
     RWindowing windowing;
     
@@ -16,7 +16,7 @@ typedef struct __Window0 {
     uint32_t fn_req_max;
 
     MANY(WApply) applies;
-} __Window0;
+} __Window;
 
 void windows_shuffle(MANY(RWindow) rwindows);
 

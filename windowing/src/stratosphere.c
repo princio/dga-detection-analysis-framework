@@ -33,7 +33,7 @@ int _stratosphere_connect() {
     if (conn != NULL) {
         return 0;
     }
-    conn = PQconnectdb("postgresql://princio:postgres@localhost/dns");
+    conn = PQconnectdb("postgresql://princio:postgres@localhost/dns2");
 
     if (PQstatus(conn) == CONNECTION_OK) {
         return 0;
@@ -47,14 +47,15 @@ int _stratosphere_connect() {
 }
 
 void parse_message(PGresult* res, int row, DNSMessage* message) {
-    message->fn_req = atoi(PQgetvalue(res, row, 0));
-    message->value = atof(PQgetvalue(res, row, 1));
-    message->logit = atof(PQgetvalue(res, row, 2));
-    message->is_response = PQgetvalue(res, row, 3)[0] == 't';
-    message->top10m = atoi(PQgetvalue(res, row, 4));
-    message->dyndns = PQgetvalue(res, row, 5)[0] == 't';
-    message->id = atol(PQgetvalue(res, row, 6));
-    message->rcode = atoi(PQgetvalue(res, row, 7));
+    int cursor = 0;
+    message->fn_req = atoi(PQgetvalue(res, row, cursor++));
+    message->is_response = PQgetvalue(res, row, cursor++)[0] == 't';
+    message->id = atol(PQgetvalue(res, row,     cursor++));
+    message->rcode = atoi(PQgetvalue(res, row,  cursor++));
+    message->top10m = atoi(PQgetvalue(res, row, cursor++));
+    for (size_t nn = 0; nn < N_NN; nn++) {
+        message->value[nn] = atof(PQgetvalue(res, row,  cursor++));
+    }
 }
 
 void printdatastring(PGresult* res) {
@@ -189,16 +190,31 @@ void fetch_window(const __Source* source, uint64_t fn_req_min, uint64_t fn_req_m
 }
 
 void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pgresult) {
-    char sql[1000];
+    char sql[2000];
     int pgresult_binary = 1;
     
-    sprintf(sql,
-            "SELECT FN_REQ, VALUE, LOGIT, IS_RESPONSE, TOP10M, DYNDNS, M.ID, RCODE FROM MESSAGES_%d AS M "
-            "JOIN (SELECT * FROM DN_NN WHERE NN_ID=7) AS DN_NN ON M.DN_ID=DN_NN.DN_ID "
-            "JOIN DN AS DN ON M.DN_ID=DN.ID "
-            "ORDER BY FN_REQ, ID",
-            source->id
-            );
+    sprintf(sql, "SELECT   FN_REQ, IS_R, M.ID, RCODE, WL_NN.RANK_BDN");
+
+    for (size_t nn = 0; nn < N_NN; nn++) {
+        char tmp[100];
+        sprintf(tmp, ", DN_NN%ld.LOGIT AS LOGIT%ld", nn + 1, nn + 1);
+        strcat(sql, tmp);
+    }
+
+    {
+        char tmp[100];
+        sprintf(tmp, " FROM MESSAGE_%d AS M ", source->id);
+        strcat(sql, tmp);
+    }
+
+    strcat(sql, " LEFT JOIN (SELECT * FROM WHITELIST_DN WHERE WHITELIST_ID = 1) AS WL_NN ON M.DN_ID = WL_NN.DN_ID ");
+
+    for (size_t nn = 0; nn < N_NN; nn++) {
+        char tmp[200];
+        sprintf(tmp, " JOIN (SELECT * FROM DN_NN WHERE NN_ID = %ld) AS DN_NN%ld ON M.DN_ID = DN_NN%ld.DN_ID ", nn + 1, nn + 1, nn + 1);
+        strcat(sql, tmp);
+    }
+    strcat(sql, "ORDER BY FN_REQ, ID;");
 
     *pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
 
@@ -240,6 +256,7 @@ struct stratosphere_apply_consumer_args {
 
 void* stratosphere_apply_producer(void* argsvoid) {
     struct stratosphere_apply_producer_args* args = argsvoid;
+
 
     DNSMessage window[args->qm_max_size];
     memset(window, 0, sizeof(window));
@@ -420,16 +437,20 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
     pthread_mutex_destroy(&queue.mutex);
 }
 
-void _stratosphere_add(RTB2W tb2, size_t limit) {
+void _stratosphere_add(RTB2W tb2, char dataset[100], size_t limit) {
     PGresult* pgresult = NULL;
+    char sql[1000];
 
-    pgresult = PQexec(
-        conn, 
-        "SELECT pcap.id, mw.dga as dga, qr, q, r, fnreq_max "
+    sprintf(sql,
+        "SELECT "
+        "pcap.id, mw.dga as dga, qr, q, r, fnreq_max, dga_ratio "
         "FROM pcap JOIN malware as mw ON malware_id = mw.id "
-        "WHERE pcap.qr < 2000000"
-        "ORDER BY qr ASC"
+        "WHERE pcap.dataset = '%s'"
+        "ORDER BY qr ASC",
+        dataset
     );
+
+    pgresult = PQexec(conn, sql);
 
     if (PQresultStatus(pgresult) != PGRES_TUPLES_OK) {
         LOG_ERROR("get pcaps failed: %s.", PQerrorMessage(conn));
@@ -447,6 +468,7 @@ void _stratosphere_add(RTB2W tb2, size_t limit) {
         int32_t q;
         int32_t r;
         int32_t fnreq_max;
+        float dga_ratio;
 
         int z = 0;
         id = atoi(PQgetvalue(pgresult, row, z++));
@@ -455,6 +477,7 @@ void _stratosphere_add(RTB2W tb2, size_t limit) {
         q = atoi(PQgetvalue(pgresult, row, z++));
         r = atoi(PQgetvalue(pgresult, row, z++));
         fnreq_max = atoi(PQgetvalue(pgresult, row, z++));
+        dga_ratio = atof(PQgetvalue(pgresult, row, z++));
 
         RSource rsource = sources_alloc();
 
@@ -462,7 +485,7 @@ void _stratosphere_add(RTB2W tb2, size_t limit) {
         sprintf(rsource->galaxy, "%s", GALAXY_NAME);
         sprintf(rsource->name, "%s_%d", GALAXY_NAME, id);
         rsource->wclass.bc = dgaclass > 0;
-        rsource->wclass.mc = dgaclass;
+        rsource->wclass.mc = dgaclass > 0 ? 2 : 0; //dgaclass > 0 ? (dga_ratio > 0.3 ? 2 : 1) : 0; // (dgaclass == 0 || dgaclass == 2) ? dgaclass : 1;
         rsource->qr = qr;
         rsource->q = q;
         rsource->r = r;
@@ -474,13 +497,13 @@ void _stratosphere_add(RTB2W tb2, size_t limit) {
     PQclear(pgresult);
 }
 
-void stratosphere_add(RTB2W tb2, size_t limit) {
+void stratosphere_add(RTB2W tb2, char dataset[100], size_t limit) {
     if (_stratosphere_connect()) {
         LOG_ERROR("cannot connect to database.");
         return;
     }
 
-    _stratosphere_add(tb2, limit);
+    _stratosphere_add(tb2, dataset, limit);
 
     _stratosphere_disconnect();
 }

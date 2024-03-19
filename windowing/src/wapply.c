@@ -25,7 +25,7 @@ void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config) {
         return;
     }
 
-    value = message->value;
+    value = message->value[config->nn];
 
     if (config->nx_epsilon_increment >= 0 && message->rcode == 3) {
         value += config->nx_epsilon_increment;

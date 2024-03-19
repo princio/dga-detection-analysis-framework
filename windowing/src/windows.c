@@ -10,12 +10,12 @@
 #include <stdio.h>
 #include <string.h>
 
-MAKEMANY(__Window0);
+MAKEMANY(__Window);
 
 RGatherer windows_gatherer = NULL;
 
 void windows_free(void* item) {
-    MANY(__Window0)* windows = (MANY(__Window0)*) item;
+    MANY(__Window)* windows = (MANY(__Window)*) item;
 
     for (size_t w = 0; w < windows->number; w++) {
         MANY_FREE(windows->_[w].applies);
@@ -40,17 +40,17 @@ void windows_shuffle(MANY(RWindow) rwindows) {
 }
 
 MANY(RWindow) windows_alloc(size_t windows_number) {
-    MANY(__Window0)* windows;
+    MANY(__Window)* windows;
     MANY(RWindow) rwindows;
 
     if (windows_gatherer == NULL) {
         LOG_DEBUG("Gatherer: creating windows.");
-        gatherer_alloc(&windows_gatherer, "windows", windows_free, 100, sizeof(MANY(__Window0)), 10);
+        gatherer_alloc(&windows_gatherer, "windows", windows_free, 100, sizeof(MANY(__Window)), 10);
     }
 
     windows = gatherer_alloc_item(windows_gatherer);
 
-    MANY_INITREF(windows,  windows_number, __Window0);
+    MANY_INITREF(windows,  windows_number, __Window);
     MANY_INIT(rwindows, windows_number, RWindow);
 
     for (size_t w = 0; w < rwindows.number; w++) {
