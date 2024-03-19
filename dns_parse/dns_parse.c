@@ -68,9 +68,6 @@ int main(int argc, char **argv) {
             case 'f':
                 print_parsers();
                 return 0;
-            case 'i':
-                strcpy(conf.pslt_iframe_path, optarg);
-                break;
             case 'm':
                 conf.RECORD_SEP = optarg;
                 conf.SEP = '\n';
@@ -258,18 +255,6 @@ int main(int argc, char **argv) {
 
     conf.ip_fragment_head = NULL;
 
-    if (!strlen(conf.pslt_iframe_path)) {
-        fprintf(stderr, "PSLT Suffix list path required.");
-        exit(1);
-    }
-
-    conf.pslt = pslt_trie_load(conf.pslt_iframe_path);
-    if (conf.pslt == NULL) {
-        fprintf(stderr, "Impossible to load PSLT.");
-        exit(1);
-    }
-
-
     conf.csv_file = fopen(conf.csv_path, "w");
     if (conf.csv_file == NULL) {
         fprintf(stderr, "Impossible to open CSV file.");
@@ -277,8 +262,8 @@ int main(int argc, char **argv) {
     }
 
 
-    fprintf(conf.csv_file, "time,size,protocol,server,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,dn,bdn,is_valid,");
-    fprintf(conf.csv_file, "dn_tld,dn_icann,dn_private,tld,icann,private,answer\n");
+    fprintf(conf.csv_file, "time,size,protocol,server,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,");
+    fprintf(conf.csv_file, "dn,answer\n");
 
     // Load and prior TCP session info
     conf.tcp_sessions_head = NULL; 
@@ -460,6 +445,29 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     else return;
 
     conf->num++;
+
+    
+    if (dns->qdcount == 0) {
+        printf("[debug]: zero queries for current packet, ignoring.\n");
+    }
+
+    dns_question *qnext = NULL;
+    {
+        dns_question *crawl;
+        crawl = dns->queries;
+        while (crawl) {
+            if (qnext == NULL && crawl && strlen(crawl->name)) {
+                qnext = crawl;
+            }
+            crawl = crawl->next;
+        }
+    }
+
+    if (qnext == NULL) {
+        printf("[info]: there are q#%d queries but all are null, ignoring packet.\n", dns->qdcount);
+        return;
+    }
+
     if (dns->qr == 0) {
         conf->fnreq++;
     }
@@ -474,58 +482,25 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     fprintf(conf->csv_file, "%d,", dns->rcode);
     fprintf(conf->csv_file, "%ld,", conf->fnreq);
 
+    if (dns->qdcount > 1) {
+        printf("[debug]: more than one question (%d)\n", dns->qdcount);
+    }
+
+    fprintf(conf->csv_file, "%u,", dns->qdcount);
+    fprintf(conf->csv_file, "%u,", dns->ancount);
+    fprintf(conf->csv_file, "%u,", dns->nscount);
+    fprintf(conf->csv_file, "%u,",  dns->arcount);
+
+    fprintf(conf->csv_file, "%u,", qnext->type);
+    fprintf(conf->csv_file, "%s,", qnext->name);
+
+
+    // Print it resource record type in turn (for those enabled).
     {
-
-        // Go through the list of queries, and print each one.
-        if (dns->qdcount > 1) {
-            printf("WARNING: more than one question (%d)", dns->qdcount);
-        }
-
-        fprintf(conf->csv_file, "%u,", dns->qdcount);
-        fprintf(conf->csv_file, "%u,", dns->ancount);
-        fprintf(conf->csv_file, "%u,", dns->nscount);
-        fprintf(conf->csv_file, "%u,",  dns->arcount);
-
-        PSLTObject object;
-        memset(&object, 0, sizeof(PSLTObject));
-
-        dns_question *qnext = dns->queries;
-        uint16_t first_qtype = 1;
-        while (qnext != NULL) {
-            if (!strlen(object.domain)) {
-                memccpy(object.domain, qnext->name, '\0', 10000);
-                for (size_t c = 0; c < strlen(object.domain); c++) {
-                    object.domain[c] = tolower(object.domain[c]);
-                }
-
-                int is_valid = 0 <= pslt_domain_run(conf->pslt, &object);
-
-                fprintf(conf->csv_file, "%u,", qnext->type);
-
-                fprintf(conf->csv_file, "%s,", object.domain);
-                fprintf(conf->csv_file, "%s,", object.basedomain);
-                fprintf(conf->csv_file, "%d,", is_valid);
-
-                PSLT_FOR_GROUP(g) {
-                    fprintf(conf->csv_file, "%s,", object.suffixless[g]);
-                }
-
-                PSLT_FOR_GROUP(g) {
-                    fprintf(conf->csv_file, "%s,", object.suffixes[g] ? object.suffixes[g]->suffix->suffix : "");
-                }
-
-                first_qtype = qnext->type;
-            }
-            qnext = qnext->next;
-        }
-
-        // Print it resource record type in turn (for those enabled).
-        {
-            rr_text text;
-            memset(&text, 0, sizeof(text));
-            print_rr_section(dns->answers, object.domain, conf, &text, first_qtype, dns->id);
-            fprintf(conf->csv_file, "\"%s\",", text.A);
-        }
+        rr_text text;
+        memset(&text, 0, sizeof(text));
+        print_rr_section(dns->answers, qnext->name, conf, &text, qnext->type, dns->id);
+        fprintf(conf->csv_file, "\"%s\",", text.A);
     }
 
     fprintf(conf->csv_file, "\n");
@@ -890,14 +865,14 @@ void print_rr_section(dns_rr * next, char * name, config * conf, rr_text *text, 
         if (!strcmp(name, next->name) && next->type == qtype) {
             size_t l = strlen(text->A) + strlen(data);
             if (l > 2000) {
-                printf("Avoiding overflow: %zd > 2000.\n", l);
+                printf("[debug]: avoiding overflow: %zd > 2000.\n", l);
             }
             else {
                 sprintf(text->A + strlen(text->A), "%s;", data);
             }
         }
         else {
-            printf("Skipping[%6u]: type=%u\tname=%-50s\tdata=%s\n", id, next->type, name, data);
+            printf("[debug]: skipping[%6u]: type=%u\tname=%-50s\tdata=%s\n", id, next->type, name, data);
         }
         next = next->next; 
     }

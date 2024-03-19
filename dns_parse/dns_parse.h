@@ -6,8 +6,7 @@
 #include <pcap.h>
 // For standard int type declarations.
 #include <stdint.h>
-
-#include <psltrie/psltrie.h>
+#include <linux/limits.h>
 
 typedef unsigned int u_int;
 
@@ -68,10 +67,8 @@ typedef struct {
     struct ip_fragment * ip_fragment_head;
     unsigned long long * dedup_hashes;
     uint32_t dedup_pos;
-    PSLT* pslt;
     size_t num;
     size_t fnreq;
-    char pslt_iframe_path[PATH_MAX];
     char csv_path[PATH_MAX];
     FILE* csv_file;
 } config;

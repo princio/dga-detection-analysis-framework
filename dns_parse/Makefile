@@ -29,23 +29,23 @@ OBJ=rtypes.o strutils.o network.o tcp.o
 # LIBSEARCH := -L$(PSLTRIEDIR)/lib
 # LIBINCLUDE := -I$(PSLTRIEDIR)/include
 
-LIBS := -lpcap -lpsltrie
+LIBS := -lpcap # -lpsltrie
 
 bin/dns_parse: dns_parse.c ${OBJ}
 	mkdir -p bin
-	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) $(LIBINCLUDE) ${OBJ} -o bin/dns_parse dns_parse.c $(LIBS)
+	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) ${OBJ} -o bin/dns_parse dns_parse.c $(LIBS)
 
 rtypes.o: rtypes.c rtypes.h
-	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) $(LIBINCLUDE) -c rtypes.c
+	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) -c rtypes.c
 
 strutils.o: strutils.h strutils.c
-	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) $(LIBINCLUDE) -c strutils.c
+	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) -c strutils.c
 
 tcp.o:  tcp.h tcp.c dns_parse.h
-	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) $(LIBINCLUDE) -c tcp.c
+	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) -c tcp.c
 
 network.o:  network.h network.c dns_parse.h
-	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) $(LIBINCLUDE) -c network.c
+	${CC} ${CFLAGS} ${DEBUG} $(LIBSEARCH) -c network.c
 
 clean:
 	clear;
