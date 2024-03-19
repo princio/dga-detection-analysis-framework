@@ -70,16 +70,16 @@ int main (int argc, char* argv[]) {
 #ifdef LOGGING
     // logger_initFileLogger("log/log.txt", 1024 * 1024, 5);
     logger_initConsoleLogger(stdout);
-    logger_setLevel(LogLevel_TRACE);
+    logger_setLevel(LogLevel_DEBUG);
     logger_autoFlush(5000);
 #endif
 
     char rootdir[PATH_MAX];
 
-    const int wsize = 150;
+    const int wsize = 100;
     const int nsources = 0;
     const size_t max_configs = 10;
-    const size_t n_try = 5;
+    const size_t n_try = 1;
 
     const ParameterGenerator pg = parametergenerator_default(max_configs);
 
@@ -91,7 +91,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/dns2/test_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/princio/Desktop/results/dns2/test3_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     RTB2W tb2w = NULL;
@@ -126,9 +126,9 @@ int main (int argc, char* argv[]) {
 
     MANY(FoldConfig) foldconfigs_many; {
         FoldConfig foldconfigs[] = {
-            { .k = 10, .k_test = 2 },
-            { .k = 10, .k_test = 5, },
-            { .k = 20, .k_test = 16, },
+            // { .k = 10, .k_test = 2 },
+            // { .k = 10, .k_test = 5, },
+            // { .k = 20, .k_test = 16, },
             { .k = 20, .k_test = 10, }
         };
 
@@ -156,12 +156,33 @@ int main (int argc, char* argv[]) {
             break;
     }
 
+    int usable_splits = 0;
     BY_FOR(*tb2d, try) {
         BY_FOR(*tb2d, fold) {
-            for (size_t idxsplit = 0; idxsplit < BY_GET2(*tb2d, try, fold).splits.number; idxsplit++) {
-                dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].train);
-                dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].test);
+            if (BY_GET2(*tb2d, try, fold).isok) {
+                printf("try=%ld, fold=%ld\n", idxtry, idxfold);
+                for (size_t idxsplit = 0; idxsplit < BY_GET2(*tb2d, try, fold).splits.number; idxsplit++) {
+                    dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].train);
+                    dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].test);
+                    printf("\t%ld)", idxsplit);
+                    printf("\t(%ld)|", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.all.number);
+                    printf("(%ld)\t", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.all.number);
+                    printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.binary[0].number);
+                    printf("%ld)|", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.binary[1].number);
+                    printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.binary[0].number);
+                    printf("%ld)\t", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.binary[1].number);
+                    printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.multi[0].number);
+                    printf("%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.multi[1].number);
+                    printf("%ld)|", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.multi[2].number);
+                    printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.multi[0].number);
+                    printf("%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.multi[1].number);
+                    printf("%ld)\n", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.multi[2].number);
+                }
+                usable_splits++;
+            } else {
+                printf("Splits try#%ld, fold#%ld is unusable.\n", idxtry, idxfold);
             }
+            printf("\n");
         }
     }
 
@@ -170,27 +191,32 @@ int main (int argc, char* argv[]) {
         exit(1);
     }
 
-    MANY(Performance) thchoosers = _main_training_performance();
+    if (usable_splits) {
+        MANY(Performance) thchoosers = _main_training_performance();
 
-    // {
-    //     ThRange* thrange;
-    //     thrange_context* context = thrange_start(tb2d->tb2w, thchoosers);
-    //     thrange = context->thrange;
-    //     thrange_wait(context);
-    //     thrange_free(context->thrange);
-    // }
+        // {
+        //     ThRange* thrange;
+        //     thrange_context* context = thrange_start(tb2d->tb2w, thchoosers);
+        //     thrange = context->thrange;
+        //     thrange_wait(context);
+        //     thrange_free(context->thrange);
+        // }
 
-    RTrainer trainer = main_training_generate(rootdir, tb2d, thchoosers);
+        RTrainer trainer = main_training_generate(rootdir, tb2d, thchoosers);
 
-    // main_training_stat(trainer);
+        // main_training_stat(trainer);
 
-    trainer_free(trainer);
+        trainer_free(trainer);
+        MANY_FREE(thchoosers);
+    } else {
+        printf("No usable splits available.\n");
+    }
+
     tb2d_free(tb2d);
     tb2w_free(tb2w);
 
 
     MANY_FREE(foldconfigs_many);
-    MANY_FREE(thchoosers);
 
     gatherer_free_all();
 

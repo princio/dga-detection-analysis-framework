@@ -230,7 +230,7 @@ void* _td_consumer(void* argsvoid) {
         
         if (qm == NULL) break;
 
-        CLOCK_START(_td_consumer);
+        // CLOCK_START(_td_consumer);
 
         const size_t idxtry = qm->idxtry;
         const size_t idxfold = qm->idxfold;
@@ -376,7 +376,7 @@ void* _td_consumer(void* argsvoid) {
         }
 
         free(qm);
-        CLOCK_END(_td_consumer);
+        // CLOCK_END(_td_consumer);
     }
 
     for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {

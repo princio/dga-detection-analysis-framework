@@ -89,14 +89,20 @@ void _tb2d_io_datasets(IOReadWrite rw, FILE* file, RTB2D tb2d) {
             if (rw == IO_READ) {
                 MANY_INIT(splits->splits, tb2d->folds._[idxfold].k, DatasetSplit);
             }
-            
-            splits->isok = 1;
-            for (size_t k = 0; k < splits->splits.number; k++) {
-                _tb2d_io_dataset(rw, file, tb2d, &splits->splits._[k].train);
-                _tb2d_io_dataset(rw, file, tb2d, &splits->splits._[k].test);
 
-                if (splits->splits._[k].train->windows.binary[0].number == 0 || splits->splits._[k].train->windows.binary[1].number == 0) {
-                    splits->isok = 0;
+            FRW(splits->isok);
+
+            if (splits->isok) {
+                for (size_t k = 0; k < splits->splits.number; k++) {
+                    _tb2d_io_dataset(rw, file, tb2d, &splits->splits._[k].train);
+                    _tb2d_io_dataset(rw, file, tb2d, &splits->splits._[k].test);
+
+                    if (splits->splits._[k].train->windows.binary[0].number == 0) {
+                        LOG_ERROR("dataset should be ok but has 0 windows for class 0.");
+                    }
+                    if (splits->splits._[k].train->windows.binary[1].number == 0) {
+                        LOG_ERROR("dataset should be ok but has 0 windows for class 1.");
+                    }
                 }
             }
 
