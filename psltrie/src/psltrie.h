@@ -80,6 +80,7 @@ typedef struct PSLTSuffix {
     PSLTDomainSuffix suffix;
     int nlabels;
     PSLTSuffixGroup group;
+    PSLTDomainSuffix inverted;
 } PSLTSuffix;
 
 typedef struct PSLTSuffixes {
@@ -139,27 +140,28 @@ int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_pa
 int pslt_csv_test(PSLT* pslt, char csvtest_path[PATH_MAX]);
 
 
-extern FILE* pslt_logger_file;
-extern char PSLT_GROUP_STR[N_PSLTSUFFIXGROUP][30];
-
-
 // #define DEVELOP
 
 #ifdef DEVELOP
 #define PSLT_LOG_OUT stdout
-#define PSLT_LOG_LEVEL PSLT_LOG_LEVEL_INFO
+#define PSLT_LOG_LEVEL pslt_logger_level
 #else
 #define PSLT_LOG_OUT pslt_logger_file
-#define PSLT_LOG_LEVEL PSLT_LOG_LEVEL_INFO
+#define PSLT_LOG_LEVEL pslt_logger_level
 #endif
 
 enum PSLTLogLevel {
-    PSLT_LOG_LEVEL_ERROR = 0,
+    PSLT_LOG_LEVEL_NONE = 0,
+    PSLT_LOG_LEVEL_ERROR,
     PSLT_LOG_LEVEL_WARN,
     PSLT_LOG_LEVEL_INFO,
     PSLT_LOG_LEVEL_DEBUG,
     PSLT_LOG_LEVEL_TRACE
 };
+
+extern FILE* pslt_logger_file;
+extern char PSLT_GROUP_STR[N_PSLTSUFFIXGROUP][30];
+extern enum PSLTLogLevel pslt_logger_level;
 
 #define LOG_ERROR(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_ERROR) {\
     fprintf(PSLT_LOG_OUT, "[erro]: ");  \
