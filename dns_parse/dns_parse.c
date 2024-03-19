@@ -498,13 +498,11 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
                     object.domain[c] = tolower(object.domain[c]);
                 }
 
-                pslt_domain_run(conf->pslt, &object);
-
-                int is_valid = pslt_domain_count_labels(object.domain) > 1;
+                int is_valid = 0 <= pslt_domain_run(conf->pslt, &object);
 
                 fprintf(conf->csv_file, "%u,", qnext->type);
 
-                fprintf(conf->csv_file, "%s,", qnext->name);
+                fprintf(conf->csv_file, "%s,", object.domain);
                 fprintf(conf->csv_file, "%s,", object.basedomain);
                 fprintf(conf->csv_file, "%d,", is_valid);
 
