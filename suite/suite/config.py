@@ -16,6 +16,7 @@ class ConfigBin:
     tshark: Path = Path()
     python_lstm: Path = Path()
     python_psl_list: Path = Path()
+    psltrie: Path = Path()
     pass
 
 @dataclass
@@ -64,6 +65,7 @@ class ConfigWhitelist:
     dn_col: str = "dn"
     bdn_col: str = "bdn"
     rank_col: str = "rank"
+    id: int = -1
     pass
 
 @dataclass
@@ -71,7 +73,8 @@ class ConfigWorkdir:
     path: Path = Path()
     dns_parse: Path = Path()
     log: Path = Path()
-    psl_list: Path = Path()
+    psl_list_dir: Path = Path()
+    psl_list_path: Path = Path()
     tshark: Path = Path()
 
     def __init__(self, workdir: Path):
@@ -79,8 +82,9 @@ class ConfigWorkdir:
 
         self.path.mkdir(parents=True, exist_ok=True)
 
-        self.psl_list = workdir.joinpath("psl_list")
-        self.psl_list.mkdir(parents=True, exist_ok=True)
+        self.psl_list_dir = workdir.joinpath("psl_list")
+        self.psl_list_dir.mkdir(parents=True, exist_ok=True)
+        self.psl_list_path = self.psl_list_dir.joinpath("psl_list.csv")
 
         self.log = workdir.joinpath("log")
         if not self.log.exists():
@@ -93,12 +97,6 @@ class ConfigWorkdir:
             print(f"[info]: log directory cleaned.")
             pass
         pass 
-
-        if not self.psl_list.exists():
-            print(f"[info]: making psl_list directory: {self.psl_list}")
-            os.mkdir(self.psl_list)
-            pass
-        pass
     pass
 
 class Config:
@@ -120,6 +118,7 @@ class Config:
             self.bin.python_psl_list = Path(conf["bin"]["python_psl_list"])
             self.bin.python_lstm = Path(conf["bin"]["python_lstm"])
             self.bin.dns_parse = conf["bin"]["dns_parse"]
+            self.bin.psltrie = conf["bin"]["psltrie"]
 
             self.pyscript = ConfigPyScript()
             self.pyscript.psl_list = conf["pyscript"]["psl_list"]
@@ -149,7 +148,7 @@ class Config:
                 configwhitelist.dn_col = whitelist["dn_col"]
                 configwhitelist.bdn_col = whitelist["bdn_col"]
                 configwhitelist.rank_col = whitelist["rank_col"]
-                self.whitelists.append(whitelist)
+                self.whitelists.append(configwhitelist)
             pass
         pass
 

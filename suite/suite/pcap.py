@@ -8,7 +8,7 @@ from psycopg2.extras import Json
 
 from malware import Malwares
 from config import Config, ConfigPCAP
-from subprocess_utils import subprocess_launch
+from utils import subprocess_launch
 
 import pandas as pd
 import json
@@ -78,7 +78,6 @@ class PCAP:
 
         self.malwares = malwares
     
-        self.psl_list_path: Path = self.config.workdir.psl_list.joinpath("psl_list.csv")
         self.tshark_path: Path = self.config.workdir.path.joinpath(self.pcapfile.with_suffix(".dns.pcap").name)
         self.dns_parse_path: Path = self.config.workdir.path.joinpath(self.pcapfile.with_suffix(".csv").name)
 
@@ -88,12 +87,12 @@ class PCAP:
 
     def run_psl_list(self):
         subprocess_launch(self.config,
-                          self.psl_list_path,
+                          self.config.workdir.psl_list_path,
                           "psl_list", [
                               self.config.bin.python_psl_list,
                               self.config.pyscript.psl_list,
-                              "-w", self.config.workdir.psl_list,
-                              self.psl_list_path
+                              "-w", self.config.workdir.psl_list_dir,
+                              self.config.workdir.psl_list_path
                         ])
         pass
 
@@ -113,7 +112,7 @@ class PCAP:
                           self.dns_parse_path,
                           "dns_parse", [
                               self.config.bin.dns_parse,
-                              "-i", self.psl_list_path,
+                              "-i", self.config.workdir.psl_list_path,
                               "-o", self.dns_parse_path,
                               self.tshark_path
                         ])
