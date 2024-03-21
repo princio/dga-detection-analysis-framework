@@ -3,7 +3,6 @@
 
 #include "common.h"
 #include "io.h"
-#include "windows.h"
 
 #include <assert.h>
 #include <math.h>

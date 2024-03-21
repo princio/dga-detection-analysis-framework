@@ -13,6 +13,8 @@
 #define IO_SUBDIGEST_LENGTH 12
 #define IO_OBJECTID_LENGTH 128
 
+extern char iodir[PATH_MAX];
+
 #define FW32(A) fwrite32((void*) &A, file)
 #define FW64(A) fwrite64((void*) &A, file)
 #define FR32(A) fread32((void*) &A, file)
@@ -55,12 +57,16 @@ typedef enum IOReadWrite {
     IO_READ
 } IOReadWrite;
 
+#define IO_IS_READ(rw) (rw == IO_READ)
+#define IO_IS_WRITE(rw) (rw == IO_WRITE)
+ 
 typedef void (*FRWNPtr)(void* v, size_t s, FILE* file);
 
 typedef void (*IOObjectID)(TCPC(void), char[IO_OBJECTID_LENGTH]);
 typedef void (*IOObjectFunction)(IOReadWrite, FILE*, void*);
 
-FILE* io_openfile(IOReadWrite read, char fname[500]);
+FILE* io_openfile(IOReadWrite read, char fname[PATH_MAX]);
+int io_closefile(FILE* file, char path[PATH_MAX]);
 
 int io_direxists(char* dir);
 int io_fileexists(char* dir);

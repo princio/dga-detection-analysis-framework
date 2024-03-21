@@ -1,7 +1,6 @@
 
 #include "tb2w.h"
 
-#include "dataset.h"
 #include "gatherer.h"
 #include "io.h"
 // #include "logger.h"
@@ -67,14 +66,15 @@ void tb2w_windowing(RTB2W tb2w) {
         source = tb2w->sources._[idxsource];
         windowing_ref = &BY_GET(tb2w->windowing, source);
 
-        *windowing_ref = windowings_create(tb2w->wsize, source);
-        count_windows[source->wclass.mc] += (*windowing_ref)->windows.number;
+        *windowing_ref = windowing_create(tb2w->wsize, source);
+        
+        count_windows[source->wclass.mc] += (*windowing_ref)->windowmany->number;
     }
 
     BY_FOR(tb2w->windowing, source) {
         RWindowing windowing = BY_GET(tb2w->windowing, source);
-        for (size_t w = 0; w < windowing->windows.number; w++) {
-            MANY_INIT(windowing->windows._[w]->applies, tb2w->configsuite.configs.number, WApply);
+        for (size_t w = 0; w < windowing->windowmany->number; w++) {
+            MANY_INIT(windowing->windowmany->_[w]->applies, tb2w->configsuite.configs.number, WApply);
         }
     }
 }

@@ -3,7 +3,7 @@
 #define __DATASET_H__
 
 #include "common.h"
-#include "windows.h"
+#include "windowmany.h"
 
 typedef struct DatasetRWindow {
     MANY(RWindow) all;
@@ -18,8 +18,8 @@ typedef struct __Dataset {
 } __Dataset;
 
 typedef struct DatasetSplit {
-    RDataset train;
-    RDataset test;
+    RWindowMC train;
+    RWindowMC test;
 } DatasetSplit;
 
 MAKEMANY(DatasetSplit);
@@ -30,14 +30,14 @@ typedef struct DatasetSplits {
 } DatasetSplits;
 
 
-void dataset_minmax(RDataset ds);
+void dataset_minmax(RWindowMC ds);
 
-RDataset dataset_alloc();
-RDataset dataset_create(WSize wsize, Index counter);
-void dataset_shuffle(RDataset dataset);
+RWindowMC dataset_alloc();
+RWindowMC dataset_create(WSize wsize, IndexMC counter);
+void dataset_shuffle(RWindowMC dataset);
 int dataset_splits_ok(MANY(DatasetSplit) splits);
-DatasetSplits dataset_splits(RDataset dataset, const size_t k, const size_t k_test);
-Index dataset_counter(RDataset ds);
-RDataset dataset_from_windowings(MANY(RWindowing) windowings);
+DatasetSplits dataset_splits(RWindowMC dataset, const size_t k, const size_t k_test);
+IndexMC dataset_counter(RWindowMC ds);
+RWindowMC dataset_from_windowings(MANY(RWindowing) windowings);
 
 #endif

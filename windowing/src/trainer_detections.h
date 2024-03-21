@@ -25,7 +25,7 @@ typedef struct tdqueue_data {
 	size_t idxtry;
 	size_t idxsplit;
 
-    DatasetSplit split;
+    WindowFoldK foldk;
 } tdqueue_data;
 
 typedef struct tdqueue {

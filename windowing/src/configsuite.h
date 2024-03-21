@@ -9,8 +9,6 @@
 #define N_PARAMETERS 7
 
 
-
-
 typedef double ninf_t;
 typedef double pinf_t;
 typedef NN nn_t;
@@ -127,7 +125,6 @@ typedef struct ConfigSuite {
     MANY(Config) configs;
 } ConfigSuite;
 
-
 ParameterDefinition parameters_definition[N_PARAMETERS];
 
 size_t configsuite_pg_count(ParameterGenerator);
@@ -135,5 +132,7 @@ size_t configsuite_pg_count(ParameterGenerator);
 void configsuite_generate(ConfigSuite* cs, ParameterGenerator);
 void configset_disable(ConfigSuite* cs);
 void configset_free(ConfigSuite* cs);
+
+extern ConfigSuite configsuite;
 
 #endif

@@ -2,8 +2,9 @@
 #include "main_dataset.h"
 
 #include "tb2d_io.h"
+#include "windowmc.h"
 
-RTB2D main_dataset_generate(char dirpath[DIR_MAX], RTB2W tb2w ,const size_t n_try, MANY(FoldConfig) foldconfig_many) {
+RTB2D main_dataset_generate(char dirpath[DIR_MAX], RTB2W tb2w ,const size_t n_try, MANY(WindowFoldConfig) foldconfig_many) {
     RTB2D tb2d;
 
     tb2d = tb2d_create(tb2w, n_try, foldconfig_many);
@@ -25,7 +26,7 @@ RTB2D main_dataset_load(char dirpath[DIR_MAX], RTB2W tb2w) {
     return tb2d;
 }
 
-int main_dataset_test(char dirpath[DIR_MAX], RTB2W tb2w, const size_t n_try, MANY(FoldConfig) foldconfig_many) {
+int main_dataset_test(char dirpath[DIR_MAX], RTB2W tb2w, const size_t n_try, MANY(WindowFoldConfig) foldconfig_many) {
     RTB2D tb2d_1, tb2d_2;
 
     #define _TEST(A) printf("%100s -> ", #A); puts((A) ? "success." : "failed."); if (!(A)) return -1;
@@ -52,39 +53,39 @@ int main_dataset_test(char dirpath[DIR_MAX], RTB2W tb2w, const size_t n_try, MAN
     _TEST(tb2d_1->folds.number == tb2d_2->folds.number);
 
     BY_FOR(*tb2d_1, try) {
-        RDataset ds_1 = BY_GET(*tb2d_1, try).dataset;
-        RDataset ds_2 = BY_GET(*tb2d_2, try).dataset;
+        RWindowMC wmc_1= BY_GET(*tb2d_1, try).windowmc;
+        RWindowMC wmc_2 = BY_GET(*tb2d_2, try).windowmc;
         size_t wrongs;
 
-        _TEST(ds_1->windows.all.number == ds_2->windows.all.number);
-        _TEST(ds_1->windows.binary[0].number == ds_2->windows.binary[0].number);
-        _TEST(ds_1->windows.binary[1].number == ds_2->windows.binary[1].number);
-        _TEST(ds_1->windows.multi[0].number == ds_2->windows.multi[0].number);
-        _TEST(ds_1->windows.multi[1].number == ds_2->windows.multi[1].number);
-        _TEST(ds_1->windows.multi[2].number == ds_2->windows.multi[2].number);
+        _TEST(wmc_1->all->number == wmc_2->all->number);
+        _TEST(wmc_1->binary[0]->number == wmc_2->binary[0]->number);
+        _TEST(wmc_1->binary[1]->number == wmc_2->binary[1]->number);
+        _TEST(wmc_1->multi[0]->number == wmc_2->multi[0]->number);
+        _TEST(wmc_1->multi[1]->number == wmc_2->multi[1]->number);
+        _TEST(wmc_1->multi[2]->number == wmc_2->multi[2]->number);
     
         wrongs = 0;
-        for (size_t i = 0; i < ds_1->windows.all.number; i++) {
-            wrongs += !(ds_1->windows.all._[i]->index == ds_2->windows.all._[i]->index);
+        for (size_t i = 0; i < wmc_1->all->number; i++) {
+            wrongs += !(wmc_1->all->_[i]->index == wmc_2->all->_[i]->index);
         }
         _TEST(wrongs == 0)
 
         wrongs = 0;
-        for (size_t i = 0; i < ds_1->windows.binary[0].number; i++) {
-            wrongs += !(ds_1->windows.binary[0]._[i]->index == ds_2->windows.binary[0]._[i]->index);
+        for (size_t i = 0; i < wmc_1->binary[0]->number; i++) {
+            wrongs += !(wmc_1->binary[0]->_[i]->index == wmc_2->binary[0]->_[i]->index);
         }
         _TEST(wrongs == 0)
 
         wrongs = 0;
-        for (size_t i = 0; i < ds_1->windows.binary[1].number; i++) {
-            wrongs += !(ds_1->windows.binary[1]._[i]->index == ds_2->windows.binary[1]._[i]->index);
+        for (size_t i = 0; i < wmc_1->binary[1]->number; i++) {
+            wrongs += !(wmc_1->binary[1]->_[i]->index == wmc_2->binary[1]->_[i]->index);
         }
         _TEST(wrongs == 0)
 
         DGAFOR(cl) {
             wrongs = 0;
-            for (size_t i = 0; i < ds_1->windows.multi[cl].number; i++) {
-                wrongs += !(ds_1->windows.multi[cl]._[i]->index == ds_2->windows.multi[cl]._[i]->index);
+            for (size_t i = 0; i < wmc_1->multi[cl]->number; i++) {
+                wrongs += !(wmc_1->multi[cl]->_[i]->index == wmc_2->multi[cl]->_[i]->index);
             }
             _TEST(wrongs == 0)
         }

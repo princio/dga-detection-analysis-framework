@@ -1,6 +1,7 @@
 #include "trainer_detections.h"
 
 #include "trainer.h"
+#include "windowmc.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -138,8 +139,8 @@ void* _td_producer(void* argsvoid) {
     size_t total_splits = 0;
     BY_FOR(args->trainer->by, fold) {
         BY_FOR(args->trainer->by, try) {
-            TCPC(DatasetSplits) splits = &BY_GET2(tb2d, try, fold);
-            for (size_t idxsplit = 0; idxsplit < splits->splits.number; idxsplit++) {
+            RWindowFold windowfold = BY_GET2(tb2d, try, fold);
+            for (size_t idxsplit = 0; idxsplit < windowfold->foldkmany.number; idxsplit++) {
                 total_splits++;
             }
         }
@@ -148,9 +149,9 @@ void* _td_producer(void* argsvoid) {
     int qm_id = 0;
     BY_FOR(args->trainer->by, fold) {
         BY_FOR(args->trainer->by, try) {
-            TCPC(DatasetSplits) splits = &BY_GET2(tb2d, try, fold);
+            RWindowFold windowfold = BY_GET2(tb2d, try, fold);
 
-            if (!splits->isok) {
+            if (windowfold == NULL) {
                 BY_GET2(trainer->by, fold, try).isok = 0;
                 LOG_WARN("Fold [fold=%ld, try=%ld] is not healthy.", idxfold, idxtry);
                 continue;
@@ -158,7 +159,7 @@ void* _td_producer(void* argsvoid) {
 
             BY_GET2(trainer->by, fold, try).isok = 1;
 
-            for (size_t idxsplit = 0; idxsplit < splits->splits.number; idxsplit++) {
+            for (size_t idxsplit = 0; idxsplit < windowfold->foldkmany.number; idxsplit++) {
                 char fpath[PATH_MAX];
                 int file_exists;
                 TD_IO_EXISTS(fpath, file_exists);
@@ -178,7 +179,7 @@ void* _td_producer(void* argsvoid) {
 
                 qm->n_configs = trainer->tb2d->tb2w->configsuite.configs.number;
 
-                qm->split = splits->splits._[idxsplit];
+                qm->foldk = windowfold->foldkmany._[idxsplit];
 
                 qm->idxfold = idxfold;
                 qm->idxtry = idxtry;
@@ -236,7 +237,7 @@ void* _td_consumer(void* argsvoid) {
         const size_t idxfold = qm->idxfold;
         const size_t idxsplit = qm->idxsplit;
 
-        DatasetSplit split = qm->split;
+        WindowFoldK foldk = qm->foldk;
 
         {
             size_t avg_n = 0;
@@ -247,8 +248,8 @@ void* _td_consumer(void* argsvoid) {
             for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
                 int min_found = 0;
                 int max_found = 0;
-                const int64_t reduced_min = reducer_logit(split.train->minmax._[idxconfig].min, ths.reducer);
-                const int64_t reduced_max = reducer_logit(split.train->minmax._[idxconfig].max, ths.reducer);
+                const int64_t reduced_min = reducer_logit(foldk.train->minmax._[idxconfig].min, ths.reducer);
+                const int64_t reduced_max = reducer_logit(foldk.train->minmax._[idxconfig].max, ths.reducer);
                 for (size_t idxth = 0; idxth < ths.many.number; idxth++) {
                     if (min_found && max_found) {
                         size_t n_range = max_idx - min_idx;
@@ -294,8 +295,8 @@ void* _td_consumer(void* argsvoid) {
             }
 
             int progress_print = 0;
-            for (size_t idxwindow = 0; idxwindow < split.train->windows.all.number; idxwindow++) {
-                RWindow window0 = split.train->windows.all._[idxwindow];
+            for (size_t idxwindow = 0; idxwindow < foldk.train->all->number; idxwindow++) {
+                RWindow window0 = foldk.train->all->_[idxwindow];
                 RSource source = window0->windowing->source;
 
                 FOR_CONFIG {
@@ -308,8 +309,8 @@ void* _td_consumer(void* argsvoid) {
                         detect_run(apply, window0->windowing->source, ths.many._[idxth], &detections_config->_[idxth]);
                     }
                 }
-                if (idxwindow % (split.train->windows.all.number / 10) == 0) {
-                    LOG_TRACE("Consumer#%d - Window#%7ld%% - done", args->id, 10 * (idxwindow / (split.train->windows.all.number / 10)));
+                if (idxwindow % (foldk.train->all->number / 10) == 0) {
+                    LOG_TRACE("Consumer#%d - Window#%7ld%% - done", args->id, 10 * (idxwindow / (foldk.train->all->number / 10)));
                 }
             } // calculating detections
 
@@ -339,8 +340,8 @@ void* _td_consumer(void* argsvoid) {
 
             LOG_TRACE("Consumer#%d - [%7ld, %7ld, %7ld] - start test", args->id, idxconfigstart, idxconfigend, n_configs);
 
-            for (size_t w = 0; w < split.test->windows.all.number; w++) {
-                RWindow window0 = split.test->windows.all._[w];
+            for (size_t w = 0; w < foldk.test->all->number; w++) {
+                RWindow window0 = foldk.test->all->_[w];
                 RSource source = window0->windowing->source;
 
                 FOR_CONFIG {

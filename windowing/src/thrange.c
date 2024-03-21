@@ -178,15 +178,15 @@ void* _thr_consumer(void* argsvoid) {
         if (qm == NULL) break;
 
 
-        MANY(RWindow) windows = tb2w->windowing.bysource._[qm->idxsource]->windows;
+        RWindowMany windowmany = tb2w->windowing.bysource._[qm->idxsource]->windowmany;
         RSource source = tb2w->sources._[qm->idxsource];
 
         for (size_t idxconfig = qm->idxconfig_start; idxconfig < qm->idxconfig_end; idxconfig++) {
             for (size_t idxth = 0; idxth < args->ths.many.number; idxth++) {
                 Detection detection;
                 memset(&detection, 0, sizeof(Detection));
-                for (size_t idxwindow = 0; idxwindow < windows.number; idxwindow++) {
-                    RWindow window0 = windows._[idxwindow];
+                for (size_t idxwindow = 0; idxwindow < windowmany->number; idxwindow++) {
+                    RWindow window0 = windowmany->_[idxwindow];
                     WApply * const apply = &window0->applies._[idxconfig];
                     const double th = ths.many._[idxth];
                     const int prediction = apply->logit >= th;

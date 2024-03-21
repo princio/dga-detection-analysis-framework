@@ -10,6 +10,8 @@
 
 #include <openssl/sha.h>
 
+char iodir[PATH_MAX];
+
 int io_direxists(char* dir) {
     struct stat st = {0};
     return stat(dir, &st) == 0 && S_ISDIR(st.st_mode);
@@ -94,13 +96,31 @@ int io_makedirs_notoverwrite(char dirpath[DIR_MAX]) {
     return 0;
 }
 
-FILE* io_openfile(IOReadWrite read, char fname[500]) {
+FILE* io_openfile(IOReadWrite read, char fname[PATH_MAX]) {
     FILE* file;
-    file = fopen(fname, read ? "rb+" : "wb+");
+    char fpath_tmp[PATH_MAX];
+    io_path_concat(fname, ".tmp", fpath_tmp);
+
+    file = fopen(fpath_tmp, read ? "rb+" : "wb+");
     if (!file) {
         LOG_ERROR("%s", strerror(errno));
     }
+
     return file;
+}
+
+int io_closefile(FILE* file, char path[PATH_MAX]) {
+    char path_tmp[PATH_MAX];
+    io_path_concat(path, ".tmp", path_tmp);
+
+    int ret = fclose(file);
+    if (ret) {
+        LOG_ERROR("%s", strerror(errno));
+    } else {
+        ret = rename(path_tmp, path);
+    }
+    
+    return ret;
 }
 
 void io_dumphex_file(FILE* file, const void* data, size_t size) {

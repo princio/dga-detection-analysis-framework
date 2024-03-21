@@ -5,8 +5,7 @@
 #include "common.h"
 
 #include "detect.h"
-#include "windows.h"
-#include "tb2d.h"
+#include "windowmany.h"
 
 #include <linux/limits.h>
 
@@ -55,7 +54,6 @@ typedef struct TrainerBy {
 
 typedef struct __Trainer {
     char rootdir[DIR_MAX];
-    RTB2D tb2d;
     MANY(Performance) thchoosers;
     TrainerBy by;
 } __Trainer;

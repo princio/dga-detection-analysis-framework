@@ -69,13 +69,13 @@ int main_windowing_test(char dirpath[DIR_MAX], const WSize wsize, const size_t m
 
     size_t diffs = 0;
     for (size_t idxsource = 0; idxsource < tb2w_generated->sources.number; idxsource++) {
-        for (size_t idxwindow = 0; idxwindow < tb2w_generated->windowing.bysource._[idxsource]->windows.number; idxwindow++) {
+        for (size_t idxwindow = 0; idxwindow < tb2w_generated->windowing.bysource._[idxsource]->windowmany->number; idxwindow++) {
             for (size_t idxconfig = 0; idxconfig < tb2w_generated->configsuite.configs.number; idxconfig++) {
                 WApply* wa1;
                 WApply* wa2;
 
-                wa1 = &tb2w_generated->windowing.bysource._[idxsource]->windows._[idxwindow]->applies._[idxconfig];
-                wa2 = &tb2w_loaded->windowing.bysource._[idxsource]->windows._[idxwindow]->applies._[idxconfig];
+                wa1 = &tb2w_generated->windowing.bysource._[idxsource]->windowmany->_[idxwindow]->applies._[idxconfig];
+                wa2 = &tb2w_loaded->windowing.bysource._[idxsource]->windowmany->_[idxwindow]->applies._[idxconfig];
 
                 size_t diff = (wa1->logit - wa2->logit) * 10e12;
                 

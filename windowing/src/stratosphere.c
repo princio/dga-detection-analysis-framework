@@ -5,7 +5,7 @@
 #include "configsuite.h"
 #include "tb2w.h"
 #include "wqueue.h"
-#include "windows.h"
+#include "windowmany.h"
 
 #include <ncurses.h>
 #include <libpq-fe.h>
@@ -318,7 +318,7 @@ void* stratosphere_apply_consumer(void* argsvoid) {
 
         for (int i = 0; i < qm->number; i++) {
             const int wnum = CALC_WNUM(qm->messages[i].fn_req, args->windowing->wsize);
-            RWindow rwindow = args->windowing->windows._[wnum];
+            RWindow rwindow = args->windowing->windowmany->_[wnum];
             for (size_t idxconfig = 0; idxconfig < args->tb2w->configsuite.configs.number; idxconfig++) {
                 wapply_run(&rwindow->applies._[idxconfig], &qm->messages[i], &args->tb2w->configsuite.configs._[idxconfig]);
             }
@@ -329,7 +329,7 @@ void* stratosphere_apply_consumer(void* argsvoid) {
     return NULL;
 }
 
-void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
+void stratosphere_apply(RWindowing windowing, ConfigSuite suite) {
     const RSource source = windowing->source;
     
     PGresult* pgresult = NULL;
@@ -377,7 +377,6 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
 
         for (size_t i = 0; i < WQUEUE_NTHREADS; ++ i) {
             consumer_args[i].id = i;
-            consumer_args[i].tb2w = tb2w;
             consumer_args[i].windowing = windowing;
             consumer_args[i].queue = &queue;
 
@@ -392,6 +391,7 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
     }
     CLOCK_END(memazzo);
 
+/*
     if (0) { //test
         RWindowing windowing_test = windowings_create(windowing->wsize, source);
 
@@ -403,19 +403,19 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
             const int wnum = CALC_WNUM(message.fn_req, windowing_test->wsize);
 
             int wcount = 0;
-            for (size_t idxconfig = 0; idxconfig < tb2w->configsuite.configs.number; idxconfig++) {
-                if (windowing_test->windows._[wnum]->applies.size == 0) {
-                    MANY_INIT(windowing_test->windows._[wnum]->applies, tb2w->configsuite.configs.number, WApply);
+            for (size_t idxconfig = 0; idxconfig < suite.configs.number; idxconfig++) {
+                if (windowing_test->windowmany->_[wnum]->applies.size == 0) {
+                    MANY_INIT(windowing_test->windowmany->_[wnum]->applies, suite.configs.number, WApply);
                 }
-                wapply_run(&windowing_test->windows._[wnum]->applies._[idxconfig], &message, &tb2w->configsuite.configs._[idxconfig]);
+                wapply_run(&windowing_test->windowmany->_[wnum]->applies._[idxconfig], &message, &suite.configs._[idxconfig]);
                 wcount++;
             }
         }
         CLOCK_END(memazzo);
-        for (size_t idxwindow = 0; idxwindow < windowing->windows.number; idxwindow++) {
-            for (size_t idxconfig = 0; idxconfig < tb2w->configsuite.configs.number; idxconfig++) {
-                WApply* wapply1 = & windowing->windows._[idxwindow]->applies._[idxconfig];
-                WApply* wapply2 = & windowing_test->windows._[idxwindow]->applies._[idxconfig];
+        for (size_t idxwindow = 0; idxwindow < windowing->windowmany->number; idxwindow++) {
+            for (size_t idxconfig = 0; idxconfig < suite.configs.number; idxconfig++) {
+                WApply* wapply1 = & windowing->windowmany->_[idxwindow]->applies._[idxconfig];
+                WApply* wapply2 = & windowing_test->windowmany->_[idxwindow]->applies._[idxconfig];
                 double l1 = wapply1->logit;
                 double l2 = wapply2->logit;
                 if ((size_t) (l1 - l2) * 100000000 > 0) {
@@ -429,6 +429,7 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
             }
         }
     }
+*/
 
     PQclear(pgresult);
 
@@ -437,7 +438,7 @@ void stratosphere_apply(RTB2W tb2w, RWindowing windowing) {
     pthread_mutex_destroy(&queue.mutex);
 }
 
-void _stratosphere_add(RTB2W tb2, char dataset[100], size_t limit) {
+void _stratosphere_add(char dataset[100], size_t limit) {
     PGresult* pgresult = NULL;
     char sql[1000];
 
@@ -479,7 +480,7 @@ void _stratosphere_add(RTB2W tb2, char dataset[100], size_t limit) {
         fnreq_max = atoi(PQgetvalue(pgresult, row, z++));
         dga_ratio = atof(PQgetvalue(pgresult, row, z++));
 
-        RSource rsource = sources_alloc();
+        RSource rsource = source_alloc();
 
         rsource->id = id;
         sprintf(rsource->galaxy, "%s", GALAXY_NAME);
@@ -490,20 +491,18 @@ void _stratosphere_add(RTB2W tb2, char dataset[100], size_t limit) {
         rsource->q = q;
         rsource->r = r;
         rsource->fnreq_max = fnreq_max;
-
-        tb2w_source_add(tb2, rsource);
     }
 
     PQclear(pgresult);
 }
 
-void stratosphere_add(RTB2W tb2, char dataset[100], size_t limit) {
+void stratosphere_add(char dataset[100], size_t limit) {
     if (_stratosphere_connect()) {
         LOG_ERROR("cannot connect to database.");
         return;
     }
 
-    _stratosphere_add(tb2, dataset, limit);
+    _stratosphere_add(dataset, limit);
 
     _stratosphere_disconnect();
 }

@@ -65,6 +65,12 @@ void gatherer_alloc(RGatherer* gatherer_ref, char name[50], GathererFreeFn freef
     *gatherer_ref = gatherer;
 }
 
+/**
+ * @brief return a pointer to a new element of size element_size.
+ * 
+ * @param gat 
+ * @return void* 
+ */
 void* gatherer_alloc_item(RGatherer gat) {
     void* allocated = NULL;
 

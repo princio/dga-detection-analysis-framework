@@ -3,7 +3,6 @@
 
 #include "common.h"
 
-#include "dataset.h"
 #include "configsuite.h"
 #include "wapply.h"
 #include "windowing.h"

@@ -1,11 +1,11 @@
 #include "trainer.h"
 
-#include "dataset.h"
 #include "io.h"
 // #include "logger.h"
 #include "configsuite.h"
 #include "detect.h"
-#include "sources.h"
+#include "source.h"
+#include "windowmc.h"
 #include "trainer_detections.h"
 
 #include <assert.h>
@@ -33,14 +33,14 @@ MAKEMANY(ResultsTODO);
 void trainer_md(char dirname[200], RTrainer trainer);
 int trainer_io_results_file(IOReadWrite rw, char fpath[PATH_MAX], TrainerBy_config* result);
 
-MANY(ThsDataset) _trainer_ths(RDataset dataset, MANY(ResultsTODO) todo) {
+MANY(ThsDataset) _trainer_ths(RWindowMC windowmc, MANY(ResultsTODO) todo) {
     MANY(ThsDataset) ths;
 
     MANY_INIT(ths, todo.number, MANY(ThsDataset));
 
     for (size_t a = 0; a < todo.number; a++) {
         if (todo._[a].todo) {
-            MANY_INIT(ths._[a], dataset->windows.all.number, ThsDataset);
+            MANY_INIT(ths._[a], windowmc->all->number, ThsDataset);
         }
     }
 
@@ -50,11 +50,11 @@ MANY(ThsDataset) _trainer_ths(RDataset dataset, MANY(ResultsTODO) todo) {
     int th_reducer;
 
     th_reducer = 100;
-    // if (dataset->windows.all.number < 10000) th_reducer = 25;
+    // if (dataset->windows->all->number < 10000) th_reducer = 25;
     // else
-    // if (dataset->windows.all.number < 1000) th_reducer = 10;
+    // if (dataset->windows->all->number < 1000) th_reducer = 10;
     // else
-    // if (dataset->windows.all.number < 100) th_reducer = 5;
+    // if (dataset->windows->all->number < 100) th_reducer = 5;
     
     for (size_t a = 0; a < todo.number; a++) {
         if (todo._[a].todo == 0) {
@@ -62,11 +62,11 @@ MANY(ThsDataset) _trainer_ths(RDataset dataset, MANY(ResultsTODO) todo) {
         }
         size_t n = 0;
 
-        for (size_t w = 0; w < dataset->windows.all.number; w++) {
+        for (size_t w = 0; w < windowmc->all->number; w++) {
             int logit;
             int exists;
 
-            logit = ((int) floor(dataset->windows.all._[w]->applies._[a].logit))  / th_reducer * th_reducer;
+            logit = ((int) floor(windowmc->all->_[w]->applies._[a].logit))  / th_reducer * th_reducer;
             exists = 0;
 
             for (size_t i = 0; i < n; i++) {
@@ -89,12 +89,12 @@ MANY(ThsDataset) _trainer_ths(RDataset dataset, MANY(ResultsTODO) todo) {
         avg += n;
     }
     
-    LOG_TRACE("Ths number: reducer=%d\twn=%-10ld\tmin=%-10ld\tmax=%-10ld\tavg=%-10ld", th_reducer, dataset->windows.all.number, min, max, avg / todo.number);
+    LOG_TRACE("Ths number: reducer=%d\twn=%-10ld\tmin=%-10ld\tmax=%-10ld\tavg=%-10ld", th_reducer, windowmc->all->number, min, max, avg / todo.number);
 
     return ths;
 }
 
-MANY(ThsDataset) _trainer_ths2(RDataset dataset, const size_t n_configs) {
+MANY(ThsDataset) _trainer_ths2(RWindowMC windowmc, const size_t n_configs) {
     MANY(ThsDataset) ths;
 
     MANY_INIT(ths, n_configs, ThsDataset);
@@ -105,22 +105,22 @@ MANY(ThsDataset) _trainer_ths2(RDataset dataset, const size_t n_configs) {
     int th_reducer;
 
     th_reducer = 100;
-    // if (dataset->windows.all.number < 10000) th_reducer = 25;
+    // if (dataset->windows->all->number < 10000) th_reducer = 25;
     // else
-    // if (dataset->windows.all.number < 1000) th_reducer = 10;
+    // if (dataset->windows->all->number < 1000) th_reducer = 10;
     // else
-    // if (dataset->windows.all.number < 100) th_reducer = 5;
+    // if (dataset->windows->all->number < 100) th_reducer = 5;
     
     for (size_t a = 0; a < n_configs; a++) {
-        MANY_INIT(ths._[a], dataset->windows.all.number, ThsDataset);
+        MANY_INIT(ths._[a], windowmc->all->number, ThsDataset);
 
         size_t n = 0;
 
-        for (size_t w = 0; w < dataset->windows.all.number; w++) {
+        for (size_t w = 0; w < windowmc->all->number; w++) {
             int logit;
             int exists;
 
-            logit = ((int) floor(dataset->windows.all._[w]->applies._[a].logit))  / th_reducer * th_reducer;
+            logit = ((int) floor(windowmc->all->_[w]->applies._[a].logit))  / th_reducer * th_reducer;
             exists = 0;
 
             for (size_t i = 0; i < n; i++) {
@@ -143,12 +143,12 @@ MANY(ThsDataset) _trainer_ths2(RDataset dataset, const size_t n_configs) {
         avg += n;
     }
     
-    printf("Ths number: reducer=%d\twn=%-10ld\tmin=%-10ld\tmax=%-10ld\tavg=%-10ld", th_reducer, dataset->windows.all.number, min, max, avg / n_configs);
+    printf("Ths number: reducer=%d\twn=%-10ld\tmin=%-10ld\tmax=%-10ld\tavg=%-10ld", th_reducer, windowmc->all->number, min, max, avg / n_configs);
 
     return ths;
 }
 
-ThsDataset _trainer_ths_2(RDataset dataset, size_t n_ths) {
+ThsDataset _trainer_ths_2(RWindowMC windowmc, size_t n_ths) {
     ThsDataset ths;
 
     MANY_INIT(ths, 0, double);
@@ -156,11 +156,11 @@ ThsDataset _trainer_ths_2(RDataset dataset, size_t n_ths) {
     double ths_min = DBL_MAX;
     double ths_max = - DBL_MAX;
 
-    size_t applies_number = dataset->windows.all._[0]->applies.number;
+    size_t applies_number = windowmc->all->_[0]->applies.number;
     
     for (size_t a = 0; a < applies_number; a++) {
-        for (size_t w = 0; w < dataset->windows.all.number; w++) {
-            const double logit = dataset->windows.all._[w]->applies._[a].logit;
+        for (size_t w = 0; w < windowmc->all->number; w++) {
+            const double logit = windowmc->all->_[w]->applies._[a].logit;
             if (logit > ths_max) ths_max = logit;
             if (logit < ths_min) ths_min = logit;
         }
@@ -172,8 +172,8 @@ ThsDataset _trainer_ths_2(RDataset dataset, size_t n_ths) {
     const double cell_width = (ths_max - ths_min) / (n_ths * 50);
     
     for (size_t a = 0; a < applies_number; a++) {
-        for (size_t w = 0; w < dataset->windows.all.number; w++) {
-            const double logit = dataset->windows.all._[w]->applies._[a].logit;
+        for (size_t w = 0; w < windowmc->all->number; w++) {
+            const double logit = windowmc->all->_[w]->applies._[a].logit;
             size_t ths_freq_i = ((logit - ths_min) / cell_width);
             ths_freq[ths_freq_i]++;
         }
@@ -299,8 +299,8 @@ RTrainer trainer_run(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_
                 }
 
                 CLOCK_START(calculating_detections);
-                for (size_t idxwindow = 0; idxwindow < split.train->windows.all.number; idxwindow++) {
-                    RWindow window0 = split.train->windows.all._[idxwindow];
+                for (size_t idxwindow = 0; idxwindow < split.train->windows->all->number; idxwindow++) {
+                    RWindow window0 = split.train->windows->all->_[idxwindow];
                     RSource source = window0->windowing->source;
 
 
@@ -344,8 +344,8 @@ RTrainer trainer_run(RTB2D tb2d, MANY(Performance) thchoosers, char rootdir[DIR_
                 CLOCK_END(calculating_performance_train);
 
                 CLOCK_START(calculating_performance_from_train_th_to_test);
-                for (size_t w = 0; w < split.test->windows.all.number; w++) {
-                    RWindow window0 = split.test->windows.all._[w];
+                for (size_t w = 0; w < split.test->windows->all->number; w++) {
+                    RWindow window0 = split.test->windows->all->_[w];
                     RSource source = window0->windowing->source;
 
                     BY_FOR((*by), config) { APPLY_SKIP;

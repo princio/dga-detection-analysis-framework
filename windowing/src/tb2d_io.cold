@@ -49,9 +49,9 @@ void _tb2d_io_dataset_windows(IOReadWrite rw, FILE* file, RTB2D tb2d, MANY(RWind
 void _tb2d_io_dataset(IOReadWrite rw, FILE* file, RTB2D tb2d, RDataset* dataset_ref) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    Index windows_counter;
+    IndexMC windows_counter;
     WSize wsize;
-    Index walker;
+    IndexMC walker;
 
     if (rw == IO_WRITE) {
         windows_counter = dataset_counter(*dataset_ref);
@@ -65,11 +65,11 @@ void _tb2d_io_dataset(IOReadWrite rw, FILE* file, RTB2D tb2d, RDataset* dataset_
         (*dataset_ref) = dataset_create(tb2d->tb2w->wsize, windows_counter);
     }
 
-    _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windows.all);
-    _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windows.binary[0]);
-    _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windows.binary[1]);
+    _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windowmc.all);
+    _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windowmc.binary[0]);
+    _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windowmc.binary[1]);
     DGAFOR(cl) {
-        _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windows.multi[cl]);
+        _tb2d_io_dataset_windows(rw, file, tb2d, (*dataset_ref)->windowmc.multi[cl]);
     }
 }
 
@@ -97,10 +97,10 @@ void _tb2d_io_datasets(IOReadWrite rw, FILE* file, RTB2D tb2d) {
                     _tb2d_io_dataset(rw, file, tb2d, &splits->splits._[k].train);
                     _tb2d_io_dataset(rw, file, tb2d, &splits->splits._[k].test);
 
-                    if (splits->splits._[k].train->windows.binary[0].number == 0) {
+                    if (splits->splits._[k].train->windowmc.binary[0].number == 0) {
                         LOG_ERROR("dataset should be ok but has 0 windows for class 0.");
                     }
-                    if (splits->splits._[k].train->windows.binary[1].number == 0) {
+                    if (splits->splits._[k].train->windowmc.binary[1].number == 0) {
                         LOG_ERROR("dataset should be ok but has 0 windows for class 1.");
                     }
                 }

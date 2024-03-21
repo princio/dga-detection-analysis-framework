@@ -92,7 +92,9 @@ char CACHE_DIR[DIR_MAX];
 #define CLOCK_END(A)
 #endif
 
-#define MANY_INIT(A, N, T) { if ((N) == 0) LOG_WARN("MANY - initializing empty block.\n", __FILE__, __LINE__); \
+#define MANY_INIT(A, N, T) {\
+            if ((N) == 0) LOG_WARN("MANY - initializing empty block.\n", __FILE__, __LINE__); \
+            if ((A).number && (A)._) LOG_WARN("MANY - initializing already init block.\n", __FILE__, __LINE__); \
             (A).size = (N); \
             (A).number = (N); \
             (A).element_size = sizeof(T); \
@@ -121,6 +123,15 @@ char CACHE_DIR[DIR_MAX];
 #define MANY_FREEREF(A) { if (A->number) free(A->_); A->number = 0; A->size = 0; }
 
 #define BY_SETN(BY, NAME, N) memcpy((size_t*) &(BY).n.NAME, &N, sizeof(size_t));
+
+#define MANY_FOR(OBJMANY, IDXNAME)\
+    for (size_t idx ## IDXNAME = 0; idx ## IDXNAME < (OBJMANY).number; idx ## IDXNAME++)
+
+#define MANY_GET(BY, N1) (BY).by ## N1._[idx ## N1]
+#define MANY_GET2(BY, N1, N2) BY_GET(BY_GET((BY), N1), N2)
+#define MANY_GET3(BY, N1, N2, N3) BY_GET2(BY_GET((BY), N1), N2, N3)
+#define MANY_GET4(BY, N1, N2, N3, N4) BY_GET3(BY_GET((BY), N1), N2, N3, N4)
+#define MANY_GET5(BY, N1, N2, N3, N4, N5) BY_GET4(BY_GET((BY), N1), N2, N3, N4, N5)
 
 #define BY_GET(BY, N1) (BY).by ## N1._[idx ## N1]
 #define BY_GET2(BY, N1, N2) BY_GET(BY_GET((BY), N1), N2)
@@ -161,11 +172,11 @@ char CACHE_DIR[DIR_MAX];
 
 typedef int32_t IDX;
 
-typedef struct Index {
+typedef struct IndexMC {
     size_t all;
     size_t binary[2];
     size_t multi[N_DGACLASSES];
-} Index;
+} IndexMC;
 
 typedef struct __MANY {
     size_t size;
@@ -269,20 +280,25 @@ typedef struct  {
 
 extern char CLASSES[N_DGACLASSES][50];
 
+typedef struct __Source* RSource;
+
 typedef struct __Windowing* RWindowing;
 typedef struct __Window* RWindow;
-typedef struct __Source* RSource;
-typedef struct __Dataset* RDataset;
-typedef struct __Fold* RFold0;
+typedef struct __WindowMC* RWindowMC;
+typedef struct __WindowFold* RWindowFold;
+typedef struct __WindowSplit* RWindowSplit;
+typedef struct __WindowMany* RWindowMany;
+
 typedef struct __Trainer* RTrainer;
 typedef struct TB2W* RTB2W;
 typedef struct __TB2D* RTB2D;
+typedef struct __TB2S* RTB2S;
+
 
 
 MAKEMANY(RWindow);
-MAKEMANY(RDataset);
 MAKEMANY(RWindowing);
-MAKEMANY(RFold0);
+
 MAKEMANY(size_t);
 MAKEMANY(int64_t);
 MAKEMANY(double);

@@ -1,10 +1,10 @@
 #include "stat.h"
 
-#include "dataset.h"
 #include "io.h"
 // #include "logger.h"
 #include "detect.h"
-#include "sources.h"
+#include "source.h"
+#include "windowmc.h"
 
 #include <assert.h>
 #include <float.h>
@@ -164,8 +164,8 @@ Stat stat_run(RTrainer trainer, ParameterRealmEnabled parameterrealmenabled, cha
     BY_FOR(stats.by, fold) {
         if (idxfold == 0) {
             DGAFOR(cl) {
-                BY_GET(stats.by, fold).wcount[cl].train = trainer->tb2d->bytry._[0].byfold._[idxfold].splits._[0].train->windows.multi[cl].number;
-                BY_GET(stats.by, fold).wcount[cl].test = trainer->tb2d->bytry._[0].byfold._[idxfold].splits._[0].test->windows.multi[cl].number;
+                BY_GET(stats.by, fold).wcount[cl].train = trainer->tb2d->bytry._[0].byfold._[idxfold]->foldkmany._[0].train->multi[cl]->number;
+                BY_GET(stats.by, fold).wcount[cl].test =  trainer->tb2d->bytry._[0].byfold._[idxfold]->foldkmany._[0].test->multi[cl]->number;
             }
         }
         BY_FOR(trainer->by, try) {

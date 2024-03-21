@@ -1,17 +1,24 @@
-#ifndef __WINDOWING_H__
-#define __WINDOWING_H__
+#ifndef __WINDOWING_WINDOWING_H__
+#define __WINDOWING_WINDOWING_H__
 
-#include "sources.h"
-#include "windows.h"
+#include "gatherer2.h"
+#include "source.h"
+#include "windowmany.h"
 
 typedef struct __Windowing {
-    size_t index;
+    G2Index g2index;
+
     RSource source;
     size_t wsize;
-    MANY(RWindow) windows;
+    RWindowMany windowmany;
 } __Windowing;
 
-RWindowing windowings_alloc();
-RWindowing windowings_create(size_t wsize, RSource source);
+IndexMC windowingmany_count(MANY(RWindowing) windowingmany);
+
+RWindowing windowing_alloc();
+
+RWindowing windowing_create(size_t wsize, RSource source);
+
+void windowing_apply(ConfigSuite suite);
 
 #endif

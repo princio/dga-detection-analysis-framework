@@ -3,6 +3,7 @@
 #include "gatherer.h"
 // #include "logger.h"
 #include "sources.h"
+#include "windowmc.h"
 #include "windowing.h"
 
 #include <float.h>
@@ -12,34 +13,27 @@
 RGatherer datasets_gatherer = NULL;
 
 void dataset_free(void* item) {
-    RDataset dataset = (RDataset) item;
-    DGAFOR(cl) {
-        MANY_FREE(dataset->windows.multi[cl]);
-    }
-    MANY_FREE(dataset->windows.binary[0]);
-    MANY_FREE(dataset->windows.binary[1]);
-    MANY_FREE(dataset->windows.all);
-    MANY_FREE(dataset->minmax);
+    RWindowMC dataset = (RWindowMC) item;
 }
 
-void dataset_minmax(RDataset ds) {
-    int64_t logits[ds->windows.all.number];
+void dataset_minmax(RWindowMC windowmc) {
+    int64_t logits[windowmc->all->number];
 
-    const size_t n_configs = ds->windows.all._[0]->applies.number;
+    const size_t n_configs = windowmc->all->_[0]->applies.number;
 
-    MANY_INIT(ds->minmax, n_configs, MinMax);
+    MANY_INIT(windowmc->minmax, n_configs, MinMax);
 
     for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
-        ds->minmax._[idxconfig].max = DBL_MIN;
-        ds->minmax._[idxconfig].min = DBL_MAX;
+        windowmc->minmax._[idxconfig].max = DBL_MIN;
+        windowmc->minmax._[idxconfig].min = DBL_MAX;
     }
 
-    for (size_t idxwindow = 0; idxwindow < ds->windows.all.number; idxwindow++) {
+    for (size_t idxwindow = 0; idxwindow < windowmc->all->number; idxwindow++) {
         for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
-            double *min = &ds->minmax._[idxconfig].min;
-            double *max = &ds->minmax._[idxconfig].max;
+            double *min = &windowmc->minmax._[idxconfig].min;
+            double *max = &windowmc->minmax._[idxconfig].max;
 
-            const double logit = ds->windows.all._[idxwindow]->applies._[idxconfig].logit;
+            const double logit = windowmc->all->_[idxwindow]->applies._[idxconfig].logit;
 
             if (*min > logit) *min = logit;
             if (*max < logit) *max = logit;
@@ -48,15 +42,15 @@ void dataset_minmax(RDataset ds) {
 }
 
 
-RDataset dataset_alloc() {
+RWindowMC dataset_alloc() {
     if (datasets_gatherer == NULL) {
         gatherer_alloc(&datasets_gatherer, "datasets", dataset_free, 10000, sizeof(__Dataset), 10);
     }
-    return (RDataset) gatherer_alloc_item(datasets_gatherer);;
+    return (RWindowMC) gatherer_alloc_item(datasets_gatherer);;
 }
 
-RDataset dataset_create(WSize wsize, Index counter) {
-    RDataset dataset;
+RWindowMC dataset_create(WSize wsize, IndexMC counter) {
+    RWindowMC dataset;
 
     dataset = dataset_alloc();
 
@@ -80,7 +74,7 @@ int dataset_splits_ok(MANY(DatasetSplit) splits) {
     return (splits.number == 0 && splits._ == 0x0) == 0;
 }
 
-void dataset_shuffle(RDataset dataset) {
+void dataset_shuffle(RWindowMC dataset) {
     windows_shuffle(dataset->windows.all);
     windows_shuffle(dataset->windows.binary[0]);
     windows_shuffle(dataset->windows.binary[1]);
@@ -89,7 +83,7 @@ void dataset_shuffle(RDataset dataset) {
     }
 }
 
-DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_test) {
+DatasetSplits dataset_splits(RWindowMC dataset, const size_t _k, const size_t _k_test) {
     DatasetSplits splits;
 
     DGAFOR(cl) {
@@ -186,8 +180,8 @@ DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_
     }
 
     for (size_t k = 0; k < KFOLDs; k++) {
-        RDataset train = splits.splits._[k].train;
-        RDataset test = splits.splits._[k].test;
+        RWindowMC train = splits.splits._[k].train;
+        RWindowMC test = splits.splits._[k].test;
 
         MANY_INITREF(&train->windows.all, train_counter[k].all, RWindow);
         MANY_INITREF(&train->windows.binary[0], train_counter[k].binary[0], RWindow);
@@ -204,8 +198,8 @@ DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_
     memset(&test_counter_2, 0, KFOLDs * sizeof(Index));
     DGAFOR(cl) {
         for (size_t k = 0; k < KFOLDs; k++) {
-            RDataset train = splits.splits._[k].train;
-            RDataset test = splits.splits._[k].test;
+            RWindowMC train = splits.splits._[k].train;
+            RWindowMC test = splits.splits._[k].test;
 
             memcpy(&train->windows.all._[train_counter_2[k].all], train->windows.multi[cl]._, sizeof(RWindow) * train->windows.multi[cl].number);
             memcpy(&train->windows.binary[cl > 0]._[train_counter_2[k].binary[cl > 0]], train->windows.multi[cl]._, sizeof(RWindow) * train->windows.multi[cl].number);
@@ -224,21 +218,21 @@ DatasetSplits dataset_splits(RDataset dataset, const size_t _k, const size_t _k_
     return splits;
 }
 
-Index dataset_counter(RDataset ds) {
+Index dataset_counter(RWindowMC windowmc) {
     Index counter;
     
-    counter.all = ds->windows.all.number;
-    counter.binary[0] = ds->windows.binary[0].number;
-    counter.binary[1] = ds->windows.binary[1].number;
-    counter.multi[0] = ds->windows.multi[0].number;
-    counter.multi[1] = ds->windows.multi[1].number;
-    counter.multi[2] = ds->windows.multi[2].number;
+    counter.all = windowmc->all->number;
+    counter.binary[0] = windowmc->all->binary[0].number;
+    counter.binary[1] = windowmc->all->binary[1].number;
+    counter.multi[0] = windowmc->all->multi[0].number;
+    counter.multi[1] = windowmc->all->multi[1].number;
+    counter.multi[2] = windowmc->all->multi[2].number;
     
     return counter;
 }
 
-RDataset dataset_from_windowings(MANY(RWindowing) windowings) {
-    RDataset ds;
+RWindowMC dataset_from_windowings(MANY(RWindowing) windowings) {
+    RWindowMC windowmc;
     Index counter;
     memset(&counter, 0, sizeof(Index));
     for (size_t w = 0; w < windowings.number; w++) {
@@ -256,9 +250,9 @@ RDataset dataset_from_windowings(MANY(RWindowing) windowings) {
         const WClass wc = windowing->source->wclass;
         const size_t nw = windowing->windows.number;
 
-        memcpy(&ds->windows.all._[counter.all], windowing->windows._, nw * sizeof(RWindow));
-        memcpy(&ds->windows.binary[wc.bc]._[counter.binary[wc.bc]], windowing->windows._, nw * sizeof(RWindow));
-        memcpy(&ds->windows.multi[wc.mc]._[counter.multi[wc.mc]], windowing->windows._, nw * sizeof(RWindow));
+        memcpy(&windowmc->all->_[counter.all], windowing->windows._, nw * sizeof(RWindow));
+        memcpy(&windowmc->all->binary[wc.bc]._[counter.binary[wc.bc]], windowing->windows._, nw * sizeof(RWindow));
+        memcpy(&windowmc->all->multi[wc.mc]._[counter.multi[wc.mc]], windowing->windows._, nw * sizeof(RWindow));
 
         counter.all += nw;
         counter.binary[wc.bc] += nw;

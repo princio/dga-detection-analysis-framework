@@ -4,7 +4,8 @@
 
 #include "tb2w.h"
 
-void stratosphere_add(RTB2W testbed, char dataset[100], size_t limit);
-void stratosphere_apply(RTB2W tb2w, RWindowing);
+void stratosphere_add(char dataset[100], size_t limit);
+
+void stratosphere_apply(RWindowing, ConfigSuite);
 
 #endif

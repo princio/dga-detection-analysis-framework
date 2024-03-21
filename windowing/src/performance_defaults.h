@@ -25,4 +25,7 @@ double performancedefaults_tpr1(Detection*, TCPC(Performance));
 double performancedefaults_tpr2(Detection*, TCPC(Performance));
 double performancedefaults_tpr12(Detection*, TCPC(Performance));
 
+
+extern MANY(Performance) windowing_thchooser;
+
 #endif

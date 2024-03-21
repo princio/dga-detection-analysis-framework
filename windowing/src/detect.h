@@ -2,7 +2,9 @@
 #ifndef __DETECT_H__
 #define __DETECT_H__
 
-#include "windows.h"
+#include "common.h"
+
+#include "wapply.h"
 
 #define N_PERFORMANCE_DGAHANDLINGs 2
 

@@ -32,8 +32,12 @@
 #include "wqueue.h"
 #include "performance_defaults.h"
 #include "thrange.h"
+#include "stratosphere.h"
 
 #include <math.h>
+
+ConfigSuite configsuite;
+MANY(Performance) windowing_thchooser;
 
 enum BO {
     BO_LOAD_OR_GENERATE,
@@ -93,6 +97,10 @@ int main (int argc, char* argv[]) {
     } else {
         sprintf(rootdir, "/home/princio/Desktop/results/dns2/test3_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
+
+
+    stratosphere_add("CTU-SME-11", 0);
+    stratosphere_apply()
 
     RTB2W tb2w = NULL;
     RTB2D tb2d = NULL;
@@ -156,35 +164,35 @@ int main (int argc, char* argv[]) {
             break;
     }
 
-    int usable_splits = 0;
-    BY_FOR(*tb2d, try) {
-        BY_FOR(*tb2d, fold) {
-            if (BY_GET2(*tb2d, try, fold).isok) {
-                printf("try=%ld, fold=%ld\n", idxtry, idxfold);
-                for (size_t idxsplit = 0; idxsplit < BY_GET2(*tb2d, try, fold).splits.number; idxsplit++) {
-                    dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].train);
-                    dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].test);
-                    printf("\t%ld)", idxsplit);
-                    printf("\t(%ld)|", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.all.number);
-                    printf("(%ld)\t", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.all.number);
-                    printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.binary[0].number);
-                    printf("%ld)|", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.binary[1].number);
-                    printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.binary[0].number);
-                    printf("%ld)\t", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.binary[1].number);
-                    printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.multi[0].number);
-                    printf("%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.multi[1].number);
-                    printf("%ld)|", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windows.multi[2].number);
-                    printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.multi[0].number);
-                    printf("%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.multi[1].number);
-                    printf("%ld)\n", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windows.multi[2].number);
-                }
-                usable_splits++;
-            } else {
-                printf("Splits try#%ld, fold#%ld is unusable.\n", idxtry, idxfold);
-            }
-            printf("\n");
-        }
-    }
+    // int usable_splits = 0;
+    // BY_FOR(*tb2d, try) {
+    //     BY_FOR(*tb2d, fold) {
+    //         if (BY_GET2(*tb2d, try, fold).isok) {
+    //             printf("try=%ld, fold=%ld\n", idxtry, idxfold);
+    //             for (size_t idxsplit = 0; idxsplit < BY_GET2(*tb2d, try, fold).splits.number; idxsplit++) {
+    //                 dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].train);
+    //                 dataset_minmax(BY_GET2(*tb2d, try, fold).splits._[idxsplit].test);
+    //                 printf("\t%ld)", idxsplit);
+    //                 printf("\t(%ld)|", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windowmc.all.number);
+    //                 printf("(%ld)\t", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windowmc.all.number);
+    //                 printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windowmc.binary[0].number);
+    //                 printf("%ld)|", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windowmc.binary[1].number);
+    //                 printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windowmc.binary[0].number);
+    //                 printf("%ld)\t", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windowmc.binary[1].number);
+    //                 printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windowmc.multi[0].number);
+    //                 printf("%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windowmc.multi[1].number);
+    //                 printf("%ld)|", BY_GET2(*tb2d, try, fold).splits._[idxsplit].train->windowmc.multi[2].number);
+    //                 printf("(%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windowmc.multi[0].number);
+    //                 printf("%ld,", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windowmc.multi[1].number);
+    //                 printf("%ld)\n", BY_GET2(*tb2d, try, fold).splits._[idxsplit].test->windowmc.multi[2].number);
+    //             }
+    //             usable_splits++;
+    //         } else {
+    //             printf("Splits try#%ld, fold#%ld is unusable.\n", idxtry, idxfold);
+    //         }
+    //         printf("\n");
+    //     }
+    // }
 
     if(!tb2d) {
         LOG_ERROR("TB2D is NULL.");
