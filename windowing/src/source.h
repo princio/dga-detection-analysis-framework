@@ -33,6 +33,7 @@ typedef struct __Source {
     int day;
 } __Source;
 
+MAKEMANY(__Source);
 MAKEMANY(RSource);
 
 RSource source_alloc();

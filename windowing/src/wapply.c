@@ -36,6 +36,7 @@ void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config) {
     } else {
         logit = log(value / (1 - value));
     }
+
     
     if (message->top10m > 0 && ((size_t) message->top10m) < config->wl_rank) {
         value = 0;

@@ -9,7 +9,7 @@
 #include <time.h>
 #include <openssl/sha.h>
 
-#define IO_DIGEST_LENGTH 64
+#define IO_DIGEST_LENGTH 65
 #define IO_SUBDIGEST_LENGTH 12
 #define IO_OBJECTID_LENGTH 128
 
@@ -88,6 +88,7 @@ void io_fread32(void *v, FILE* file);
 void io_fread64(void *v, FILE* file);
 
 void io_hash(void const * const, const size_t, char[IO_DIGEST_LENGTH]);
+void io_hash_digest(char digest[IO_DIGEST_LENGTH], uint8_t out[SHA256_DIGEST_LENGTH]);
 void io_subdigest(void const * const, const size_t, char[IO_SUBDIGEST_LENGTH]);
 
 int io_save(TCPC(void), int cache, IOObjectID fnname, IOObjectFunction fn);

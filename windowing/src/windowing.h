@@ -15,10 +15,14 @@ typedef struct __Windowing {
     RWindowMany windowmany;
 } __Windowing;
 
+MAKEMANY(__Windowing);
+
 IndexMC windowing_many_count(MANY(RWindowing) windowingmany);
 
 void windowing_build(RWindowing, RWindow0Many, size_t, RSource);
 
 void windowing_apply(WSize wsize);
+
+MANY(RWindowing) windowing_many_get();
 
 #endif

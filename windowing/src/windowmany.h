@@ -39,6 +39,8 @@ typedef struct __WindowMany {
 } __WindowMany;
 
 typedef struct __Window0Many {
+    G2Index g2index;
+    
     MANY(__Window) __window0many;
     __WindowMany __windowmany;
 } __Window0Many;

@@ -22,6 +22,8 @@ typedef enum G2Id {
 
 typedef void (*G2FreeFn)(void *);
 typedef void (*G2IOFn)(IOReadWrite, FILE*, void**);
+typedef void (*G2HashFn)(void*, uint8_t[SHA256_DIGEST_LENGTH]);
+typedef void (*G2PrintFn)(void*);
 
 typedef size_t G2Index;
 
@@ -42,6 +44,8 @@ typedef struct G2Config {
     size_t element_size;
     G2IOFn iofn;
     G2FreeFn freefn;
+    G2PrintFn printfn;
+    G2HashFn hashfn;
 } G2Config;
 
 typedef struct __G2 {
@@ -52,12 +56,15 @@ typedef struct __G2 {
 
     G2IOFn iofn;
     G2FreeFn freefn;
+    G2PrintFn printfn;
+    G2HashFn hashfn;
 
     G2Node root;
 
     __MANY array;
 
-    int iosaved;
+    int ioloaded;
+    int iostored;
 } __G2;
 
 void g2_init();

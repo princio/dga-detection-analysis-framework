@@ -93,14 +93,12 @@ char CACHE_DIR[DIR_MAX];
 #endif
 
 #define MANY_INIT(A, N, T) {\
-            if ((N) == 0) LOG_WARN("MANY - initializing empty block.\n", __FILE__, __LINE__); \
-            if ((A).number && (A)._) LOG_WARN("MANY - initializing already init block.\n", __FILE__, __LINE__); \
+            if ((N) == 0) LOG_WARN("MANY: initializing empty block."); \
             (A).size = (N); \
             (A).number = (N); \
             (A).element_size = sizeof(T); \
             (A)._ = calloc((A).number, sizeof(T));\
-            if ((A)._ == NULL) LOG_ERROR("Many Initialization failed");\
-            LOG_UTRACE("MANY INIT %s of type %s with %ld.", #A, #T, N);\
+            if ((A)._ == NULL) LOG_ERROR("MANY: initialization failed");\
             }
 
 #define MANY_INIT_0(A, N, T) MANY_INIT(A, N, T); (A).number = 0;

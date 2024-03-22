@@ -256,6 +256,18 @@ void io_fread64(void *v, FILE* file) {
     memcpy(v, &be, 8);
 }
 
+void io_hash_digest(char digest[IO_DIGEST_LENGTH], uint8_t out[SHA256_DIGEST_LENGTH]) {
+    char hex[16] = {
+        '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
+    };
+
+    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; i++) {
+        digest[i * 2] = hex[out[i] >> 4];
+        digest[i * 2 + 1] = hex[out[i] & 0x0F];
+    }
+    digest[64] = '\0';
+}
+
 void io_hash(void const * const object, const size_t object_size, char digest[IO_DIGEST_LENGTH]) {
     uint8_t out[SHA256_DIGEST_LENGTH];
     SHA256_CTX sha;
@@ -266,21 +278,7 @@ void io_hash(void const * const object, const size_t object_size, char digest[IO
     SHA256_Update(&sha, object, sizeof(object_size));
     SHA256_Final(out, &sha);
 
-    char hex[16] = {
-        '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'
-    };
-
-    for (size_t i = 0; i < SHA256_DIGEST_LENGTH; i++) {
-        digest[i * 2] = hex[out[i] >> 4];
-        digest[i * 2 + 1] = hex[out[i] & 0x0F];
-    }
-}
-
-void io_appendtime(char *str, size_t size) {
-    time_t t = time(NULL);
-    struct tm tm = *localtime(&t);
-
-    snprintf(str + strlen(str), size, "%02d%02d%02d_%02d%02d%02d", (tm.tm_year + 1900), tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    io_hash_digest(digest, out);
 }
 
 void io_subdigest(void const * const object, const size_t object_size, char subdigest[IO_SUBDIGEST_LENGTH]) {
@@ -288,6 +286,13 @@ void io_subdigest(void const * const object, const size_t object_size, char subd
     io_hash(object, object_size, digest);
     strncpy(subdigest, digest, IO_SUBDIGEST_LENGTH);
     subdigest[IO_SUBDIGEST_LENGTH - 1] = '\0';
+}
+
+void io_appendtime(char *str, size_t size) {
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+
+    snprintf(str + strlen(str), size, "%02d%02d%02d_%02d%02d%02d", (tm.tm_year + 1900), tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
 }
 
 void io_flag(IOReadWrite rw, FILE* file, char flag_code[IO_FLAG_LEN], int line) {

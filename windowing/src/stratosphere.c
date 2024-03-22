@@ -198,7 +198,7 @@ void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pg
 
     for (size_t nn = 0; nn < N_NN; nn++) {
         char tmp[100];
-        sprintf(tmp, ", DN_NN%ld.LOGIT AS LOGIT%ld", nn + 1, nn + 1);
+        sprintf(tmp, ", DN_NN%ld.VALUE AS LOGIT%ld", nn + 1, nn + 1);
         strcat(sql, tmp);
     }
 
@@ -274,7 +274,6 @@ void* stratosphere_apply_producer(void* argsvoid) {
         if (!qm) {
             qm = calloc(1, sizeof(queue_messages));
         }
-
 
         if (window_wcount > args->qm_max_size) {
             printf("window_wcount > args->qm_max_size: %d > %d\n", window_wcount, args->qm_max_size);
@@ -447,8 +446,10 @@ void _stratosphere_add(char dataset[100], size_t limit) {
         "SELECT "
         "pcap.id, mw.dga as dga, qr, q, r, fnreq_max, dga_ratio "
         "FROM pcap JOIN malware as mw ON malware_id = mw.id "
-        "WHERE pcap.dataset = '%s'"
-        "ORDER BY qr ASC",
+        "WHERE pcap.dataset = '%s' "
+        "ORDER BY qr ASC "
+        "LIMIT 1 "
+        ,
         dataset
     );
 

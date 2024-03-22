@@ -30,6 +30,10 @@
 #include "performance_defaults.h"
 #include "source.h"
 #include "stratosphere.h"
+#include "windowing.h"
+#include "windowmc.h"
+#include "windowfold.h"
+#include "windowsplit.h"
 
 #include <math.h>
 
@@ -101,27 +105,49 @@ int main (int argc, char* argv[]) {
     io_setdir(rootdir);
     g2_init();
 
+    MANY(__Source) source_write;
+    MANY(__Windowing) windowing_write;
+    source_write.number = 0;
+    source_write._ = 0;
+    windowing_write.number = 0;
+    windowing_write._ = 0;
+
+    configsuite_generate(&configsuite, pg);
     stratosphere_add("CTU-SME-11", 0);
 
-    __MANY many = g2_array(G2_SOURCE);
-
-    for (size_t i = 0; i < many.number; i++) {
-        RSource source = many._[i];
-
-        printf("%10s: %ld\n", "g2index", source->g2index);
-        printf("%10s: %s\n", "name", source->name);
-        printf("%10s: %s\n", "galaxy", source->galaxy);
-        printf("%10s: %d\n", "wclass.bc", source->wclass.bc);
-        printf("%10s: %d\n", "wclass.mc", source->wclass.mc);
-        printf("%10s: %d\n", "id", source->id);
-        printf("%10s: %ld\n", "qr", source->qr);
-        printf("%10s: %ld\n", "q", source->q);
-        printf("%10s: %ld\n", "r", source->r);
-        printf("%10s: %ld\n", "fnreq_max", source->fnreq_max);
-        printf("%10s: %d\n", "day", source->day);
-        printf("\n");
+    {
+        __MANY many = g2_array(G2_SOURCE);
+        MANY_INIT(source_write, many.number, __Source);
+        for (size_t i = 0; i < many.number; i++) {
+            RSource source = many._[i];
+            memcpy(&source_write._[i], source, sizeof(__Source));
+        }
     }
     
+    windowing_apply(500);
+
+    // RWindowMC windowmc;
+    // MANY(RWindowing) windowingmany;
+
+    // windowingmany = windowing_many_get();
+
+    // windowmc = g2_insert_alloc_item(G2_WMC);
+
+    // windowmc_init(windowmc);
+
+    // windowmc_buildby_windowing_many(windowmc, windowingmany);
+ 
+    // WindowFoldConfig config = { .k = 10, .k_test = 5 };
+    // windowfold_create(windowmc, config);
+
+    {
+        __MANY many = g2_array(G2_WING);
+        MANY_INIT(windowing_write, many.number, __Source);
+        for (size_t i = 0; i < many.number; i++) {
+            RWindowing windowing = many._[i];
+            memcpy(&windowing_write._[i], windowing, sizeof(__Source));
+        }
+    }
 
     g2_io_all(IO_WRITE);
     g2_free_all();
@@ -129,27 +155,48 @@ int main (int argc, char* argv[]) {
     g2_init();
     g2_io_all(IO_READ);
 
-    many = g2_array(G2_SOURCE);
-    for (size_t i = 0; i < many.number; i++) {
-        RSource source = many._[i];
+    {
+        __MANY many = g2_array(G2_SOURCE);
+        int errors = 0;
+        for (size_t i = 0; i < many.number; i++) {
+            RSource source = many._[i];
+            int mismatch = memcmp(&source_write._[i], source, sizeof(__Source));
+            if (mismatch) {
+                printf("SOURCE %ld mismatch: %d\n", i, mismatch);
+            }
+        }
+        printf("SOURCE errors: %d\n", errors);
+    }
+    
+    {
+        __MANY many = g2_array(G2_WING);
+        int errors = 0;
+        for (size_t i = 0; i < many.number; i++) {
+            RWindowing windowing = many._[i];
+            int mismatch = 0;
+            
+            mismatch += windowing_write._[i].g2index != windowing->g2index;
+            mismatch += windowing_write._[i].wsize != windowing->wsize;
+            mismatch += strcmp(windowing_write._[i].source->name, windowing->source->name);
+            mismatch += windowing_write._[i].windowmany->number != windowing->windowmany->number;
+            mismatch += windowing_write._[i].windowmany->g2index != windowing->windowmany->g2index;
 
-        printf("%10s: %ld\n", "g2index", source->g2index);
-        printf("%10s: %s\n", "name", source->name);
-        printf("%10s: %s\n", "galaxy", source->galaxy);
-        printf("%10s: %d\n", "wclass.bc", source->wclass.bc);
-        printf("%10s: %d\n", "wclass.mc", source->wclass.mc);
-        printf("%10s: %d\n", "id", source->id);
-        printf("%10s: %ld\n", "qr", source->qr);
-        printf("%10s: %ld\n", "q", source->q);
-        printf("%10s: %ld\n", "r", source->r);
-        printf("%10s: %ld\n", "fnreq_max", source->fnreq_max);
-        printf("%10s: %d\n", "day", source->day);
-        printf("\n");
+            if (windowing_write._[i].windowmany->g2index != windowing->windowmany->g2index)
+            printf("g2index: %ld != %ld\n",  windowing_write._[i].windowmany->g2index, windowing->windowmany->g2index);
+
+            if (mismatch) {
+                printf("WINDOWING %ld mismatch: %d\n", i, mismatch);
+            }
+
+            errors += mismatch > 0;
+        }
+        printf("WINDOWING errors: %d\n", errors);
     }
 
 
     g2_free_all();
 
+    configset_free(&configsuite);
 
     #ifdef LOGGING
     logger_close();

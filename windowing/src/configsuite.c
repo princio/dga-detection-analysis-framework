@@ -203,6 +203,8 @@ size_t configsuite_pg_count(ParameterGenerator pg) {
 }
 
 void configsuite_generate(ConfigSuite* cs, ParameterGenerator pg) {
+    memset(cs, 0, sizeof(ConfigSuite));
+
     if (0 == parametersdefinition_init_done) {
         _parametersdefinition_init();
         parametersdefinition_init_done = 1;

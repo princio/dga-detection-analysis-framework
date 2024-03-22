@@ -16,18 +16,20 @@
 
 void _windowing_free(void* item);
 void _windowing_io(IOReadWrite rw, FILE* file, void**);
+void _windowing_print(void* item);
+void _windowing_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]);
 
 G2Config g2_config_wing = {
     .element_size = sizeof(__Windowing),
     .size = 0,
     .freefn = _windowing_free,
     .iofn = _windowing_io,
+    .printfn = _windowing_print,
+    .hashfn = _windowing_hash,
     .id = G2_WING
 };
 
 void _windowing_free(void* item) {
-    RWindowing* rwindowing_ref = item;
-    free(*rwindowing_ref);
 }
 
 IndexMC windowing_many_count(MANY(RWindowing) windowingmany) {
@@ -85,26 +87,86 @@ void windowing_apply(WSize wsize) {
     }
 }
 
+MANY(RWindowing) windowing_many_get() {
+    __MANY many = g2_array(G2_WING);
+
+    MANY(RWindowing) windowingmany;
+    MANY_INIT(windowingmany, many.number, RWindowing);
+
+    for (size_t i = 0; i < many.number; i++) {
+        windowingmany._[i] = (RWindowing) many._[i];
+    }
+    
+    return windowingmany;
+}
+
 void _windowing_io(IOReadWrite rw, FILE* file, void** item) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
     RWindowing* windowing = (RWindowing*) item;
+    RWindow0Many window0many;
+    G2Index window0many_g2index;
 
     g2_io_call(G2_SOURCE, rw);
     g2_io_call(G2_W0MANY, rw);
-    g2_io_call(G2_WMANY, rw);
-
-    G2Index source_g2index;
-    G2Index windowmany_g2index;
-    __Window0Many* window0many;
 
     FRW((*windowing)->g2index);
     FRW((*windowing)->wsize);
 
     g2_io_index(file, rw, G2_SOURCE, (void**) &(*windowing)->source);
-    g2_io_index(file, rw, G2_SOURCE, (void**) &window0many);
+
+    if (IO_IS_WRITE(rw)) {
+        window0many_g2index = (*windowing)->g2index;
+    }
+    FRW(window0many_g2index);
+
+    (*windowing)->windowmany = g2_get(G2_W0MANY, window0many_g2index);
 
     for (size_t w = 0; w < (*windowing)->windowmany->number; w++) {
         (*windowing)->windowmany->_[w]->windowing = *windowing;
     }
+}
+
+void _windowing_print(void* item) {
+    RWindowing windowing = (RWindowing) item;
+    printf("%10s: %s\n", "source", windowing->source->name);
+    printf("%10s: %ld\n", "wsize", windowing->wsize);
+    printf("%10s: %ld\n", "wnum", windowing->windowmany->number);
+    printf("configsuite 0");
+    for (size_t w = 0; w < windowing->windowmany->number; w++) {
+        printf("%10s %ld\n", "window", w);
+        for (size_t c = 0; c < configsuite.configs.number; c++) {
+            printf("\t%10s: %f\n", "logit", windowing->windowmany->_[w]->applies._[c].logit);
+        }
+    }
+}
+
+#define MISM(A) { int _m = (A); if ((A)) LOG_ERROR(#A); mismatch += _m; }
+int windowing_cmp(RWindowing a, RWindowing b) {
+    int mismatch = 0;
+
+    MISM(a->g2index != b->g2index);
+    MISM(a->wsize != b->wsize);
+    MISM(strcmp(a->source->name, b->source->name));
+    MISM(a->windowmany->number != b->windowmany->number);
+    MISM(a->windowmany->g2index != b->windowmany->g2index);
+
+    return mismatch;
+}
+
+void _windowing_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
+    RWindowing windowing = (RWindowing) item;
+
+    SHA256_CTX sha;
+
+    memset(out, 0, SHA256_DIGEST_LENGTH);
+
+    SHA256_Init(&sha);
+
+    SHA256_Update(&sha, &windowing->g2index, sizeof(G2Index));
+    SHA256_Update(&sha, &windowing->source->g2index, sizeof(G2Index));
+    SHA256_Update(&sha, &windowing->windowmany->g2index, sizeof(G2Index));
+    SHA256_Update(&sha, &windowing->wsize, sizeof(WSize));
+
+    SHA256_Final(out, &sha);
 }

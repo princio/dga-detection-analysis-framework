@@ -79,7 +79,7 @@ void* g2_get(const G2Id id, size_t index) {
 
     gat = &gatherer_of_gatherers[id];
 
-    if (gat->size == gat->array.number) {
+    if (gat->size != gat->array.number) {
         g2_array(id);
     }
 
@@ -106,6 +106,8 @@ void g2_init() {
 
         gatherer_of_gatherers[i].iofn = config.iofn;
         gatherer_of_gatherers[i].freefn = config.freefn;
+        gatherer_of_gatherers[i].printfn = config.printfn;
+        gatherer_of_gatherers[i].hashfn = config.hashfn;
 
         gatherer_of_gatherers[i].id = config.id;
     }
@@ -188,7 +190,6 @@ void g2_free_all() {
 }
 
 void g2_io_index(FILE* file, IOReadWrite rw, const G2Id id, void** item) {
-    LOG_TRACE("[%s] io %s of index.", g2_id_names[id], IO_IS_READ(rw) ? "load" : "store");
 
     size_t index;
 
@@ -199,13 +200,14 @@ void g2_io_index(FILE* file, IOReadWrite rw, const G2Id id, void** item) {
         FR(index);
         *item = g2_get(id, index);
     }
+
+    LOG_TRACE("[%s] io %s of index %ld.", g2_id_names[id], IO_IS_READ(rw) ? "loaded" : "stored", index);
 }
 
 void g2_io_node(G2Node* node, IOReadWrite rw, char g2_node_dir[PATH_MAX]) {
     LOG_TRACE("[%s] node %ld.", g2_id_names[node->g2->id], node->index);
 
     FILE* file;
-    G2Index index;
     char filepath[PATH_MAX];
 
     sprintf(filepath, "%s_%05ld", g2_id_names[node->g2->id], node->index);
@@ -214,10 +216,45 @@ void g2_io_node(G2Node* node, IOReadWrite rw, char g2_node_dir[PATH_MAX]) {
     file = io_openfile(rw, filepath);
     if (!file)
         exit(1);
-    
+
     node->g2->iofn(rw, file, &node->item);
 
-    memcpy(&index, node->item, sizeof(G2Index)); // before iofn item is not allocated
+    if (IO_IS_READ(rw)) {
+        memcpy(node->item, &node->index, sizeof(G2Index)); // before iofn item is not allocated
+    }
+    
+    if (node->g2->hashfn) {
+        uint8_t hash[SHA256_DIGEST_LENGTH];
+        char digest[IO_DIGEST_LENGTH];
+
+        node->g2->hashfn(node->item, hash);
+
+        if (IO_IS_READ(rw)) {
+            uint8_t hash_check[SHA256_DIGEST_LENGTH];
+            char digest_check[IO_DIGEST_LENGTH];
+            FR(hash_check);
+            io_hash_digest(digest, hash);
+            io_hash_digest(digest_check, hash_check);
+            LOG_DEBUG("[%s] index %ld digests: %s | %s.", g2_id_names[node->g2->id], node->index, digest, digest_check);
+            if (memcmp(hash, hash_check, SHA256_DIGEST_LENGTH)) {
+                LOG_DEBUG("[%s] index %ld digests not correspond.", g2_id_names[node->g2->id], node->index);
+                if (node->g2->printfn) {
+                    node->g2->printfn(node->item);
+                }
+            } else {
+                io_hash_digest(digest, hash);
+                io_hash_digest(digest_check, hash_check);
+                LOG_DEBUG("[%s] index %ld digests correspond.", g2_id_names[node->g2->id], node->index);
+            }
+        } else {
+            io_hash_digest(digest, hash);
+            LOG_DEBUG("[%s] index %ld write digest: %s.", g2_id_names[node->g2->id], node->index, digest);
+            FW(hash);
+            if (node->g2->printfn) {
+                node->g2->printfn(node->item);
+            }
+        }
+    }
 
     if (io_closefile(file, rw, filepath))
         exit(1);
@@ -233,7 +270,10 @@ int g2_io(RG2 gat, IOReadWrite rw) {
     char dirpath[PATH_MAX];
     size_t size;
 
-    if (gat->iosaved) {
+    if (IO_IS_WRITE(rw) && gat->iostored) {
+        return 0;
+    }
+    if (IO_IS_READ(rw) && gat->ioloaded) {
         return 0;
     }
 
@@ -274,6 +314,7 @@ int g2_io(RG2 gat, IOReadWrite rw) {
         if (IO_IS_READ(rw)) {
             for (G2Index index = 0; index < size; index++) {
                 G2Node* node = _g2_insert_alloc(gat->id);
+                memcpy(node->item, &index, sizeof(G2Index));
                 g2_io_node(node, rw, dirpath);
             }
         } else {
@@ -286,8 +327,11 @@ int g2_io(RG2 gat, IOReadWrite rw) {
         }
     }
 
-    gat->iosaved = 1;
-
+    if (IO_IS_WRITE(rw)) {
+        gat->iostored = 1;
+    } else {
+        gat->ioloaded = 1;
+    }
     return 0;
 }
 

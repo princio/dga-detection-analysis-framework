@@ -11,17 +11,22 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <openssl/sha.h>
+
 void _window0many_free(void* item);
 void _window0many_io(IOReadWrite rw, FILE* file, void**);
+void _window0many_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]);
 
 void _windowmany_free(void* item);
 void _windowmany_io(IOReadWrite rw, FILE* file, void**);
+void _windowmany_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]);
 
 G2Config g2_config_w0many = {
     .element_size = sizeof(__Window0Many),
     .size = 0,
     .freefn = _window0many_free,
     .iofn = _window0many_io,
+    .hashfn = _window0many_hash,
     .id = G2_W0MANY
 };
 
@@ -30,6 +35,7 @@ G2Config g2_config_wmany = {
     .size = 0,
     .freefn = _windowmany_free,
     .iofn = _windowmany_io,
+    .hashfn = _windowmany_hash,
     .id = G2_WMANY
 };
 
@@ -68,7 +74,7 @@ void windowmany_buildby_size(RWindowMany windowmany, size_t windows_num) {
 }
 
 void window0many_buildby_size(RWindow0Many window0many, const size_t window_number) {
-    MANY_INIT(window0many->__windowmany,  window_number, __Window);
+    MANY_INIT(window0many->__window0many,  window_number, __Window);
 
     windowmany_buildby_size(&window0many->__windowmany,  window_number);
 
@@ -85,13 +91,14 @@ void window0many_buildby_size(RWindow0Many window0many, const size_t window_numb
 }
 
 void _window0many_free(void* item) {
-    MANY(__Window)* window0many = (MANY(__Window)*) item;
+    RWindow0Many window0many = (RWindow0Many) item;
 
-    for (size_t w = 0; w < window0many->number; w++) {
-        MANY_FREE(window0many->_[w].applies);
+    for (size_t w = 0; w < window0many->__window0many.number; w++) {
+        MANY_FREE(window0many->__window0many._[w].applies);
     }
 
-    MANY_FREE((*window0many));
+    MANY_FREE(window0many->__window0many);
+    MANY_FREE(window0many->__windowmany);
 }
 
 void _windowmany_free(void* item) {
@@ -122,7 +129,7 @@ void _window0many_io(IOReadWrite rw, FILE* file, void** item_ref) {
 
     for (size_t w = 0; w < window0many_number; w++) {
         RWindow window;
-        size_t idxwindowing;
+        size_t apply_count;
 
         window = &(*window0many)->__window0many._[w];
 
@@ -132,6 +139,10 @@ void _window0many_io(IOReadWrite rw, FILE* file, void** item_ref) {
         FRW(window->fn_req_max);
         
         FRW(window->applies.number);
+
+        if (IO_IS_READ(rw)) {
+            MANY_INIT(window->applies, window->applies.number, WApply);
+        }
 
         __FRW(window->applies._, window->applies.number * sizeof(WApply), file);
     }
@@ -177,4 +188,71 @@ void _windowmany_io(IOReadWrite rw, FILE* file, void** item_ref) {
             window = windowmany->_[windowmany_window_index];
         }
     }
+}
+
+#define MISM(A) { int _m = (A); if ((A)) LOG_ERROR(#A); mismatch += _m; }
+int window0many_cmp(RWindow0Many a, RWindow0Many b) {
+    int mismatch = 0;
+
+    MISM(a->__window0many.number != b->__window0many.number);
+
+    MISM(a->__window0many.number != b->__window0many.number);
+    MISM(a->__windowmany.number != b->__windowmany.number);
+
+    for (size_t w = 0; w < a->__window0many.number; w++) {
+        MISM(memcmp(
+            &a->__window0many._[w],
+            &b->__window0many._[w],
+            sizeof(__Window) - sizeof(MANY(WApply))));
+    }
+    
+    MISM(a->g2index != b->g2index);
+
+    return mismatch;
+}
+
+void _window0many_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
+    RWindow0Many a = (RWindow0Many) item;
+    SHA256_CTX sha;
+    memset(out, 0, SHA256_DIGEST_LENGTH);
+
+    SHA256_Init(&sha);
+
+    SHA256_Update(&sha, &a->g2index, sizeof(G2Index));
+    SHA256_Update(&sha, &a->__window0many.number, sizeof(size_t));
+    SHA256_Update(&sha, &a->__windowmany.number, sizeof(size_t));
+
+    const size_t size_tocompare = sizeof(__Window) - sizeof(MANY(WApply));
+    for (size_t w = 0; w < a->__window0many.number; w++) {
+        RWindow window = &a->__window0many._[w];
+        SHA256_Update(&sha, &window->index, sizeof(size_t));
+        SHA256_Update(&sha, &window->manyindex, sizeof(G2Index));
+        SHA256_Update(&sha, &window->fn_req_min, sizeof(uint32_t));
+        SHA256_Update(&sha, &window->fn_req_max, sizeof(uint32_t));
+
+        for (size_t c = 0; c < configsuite.configs.number; c++) {
+            SHA256_Update(&sha, &window->applies._[c].dn_bad, sizeof(window->applies._[c].dn_bad));
+            SHA256_Update(&sha, &window->applies._[c].wcount, sizeof(window->applies._[c].wcount));
+            SHA256_Update(&sha, &window->applies._[c].whitelistened, sizeof(window->applies._[c].whitelistened));
+        }
+    }
+    SHA256_Final(out, &sha);
+}
+
+void _windowmany_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
+    RWindowMany a = (RWindowMany) item;
+    SHA256_CTX sha;
+    memset(out, 0, SHA256_DIGEST_LENGTH);
+
+    SHA256_Init(&sha);
+
+    SHA256_Update(&sha, &a->g2index, sizeof(G2Index));
+    SHA256_Update(&sha, &a->number, sizeof(size_t));
+
+    const size_t size_tocompare = sizeof(__Window) - sizeof(MANY(WApply));
+    for (size_t w = 0; w < a->number; w++) {
+        SHA256_Update(&sha, &a->_[w], size_tocompare);
+    }
+
+    SHA256_Final(out, &sha);
 }
