@@ -24,6 +24,8 @@ Reducer reducer_run(const size_t nblocks, const size_t nlogits_max, const int64_
     logits.n_blocks = nblocks;
     logits.n_logit_max = nlogits_max;
     logits.reducer = reducer;
+    logits.many._ = NULL;
+    logits.many.number = 0;
 
     int64_t logit_min;
     int64_t logit_max;

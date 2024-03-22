@@ -1,7 +1,5 @@
 #include "thrange.h"
 
-#include "trainer.h"
-
 #include <assert.h>
 #include <errno.h>
 #include <float.h>

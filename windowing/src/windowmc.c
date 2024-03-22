@@ -36,8 +36,8 @@ IndexMC windowmc_count(RWindowMC wmc) {
     return counter;
 }
 
-RWindowMC windowmc_clone(RWindowMC windowmc) {
-    return windowmc_alloc_by_windowmany(windowmc->all);
+void windowmc_clone(RWindowMC windowmc_src, RWindowMC windowmc_dst) {
+    windowmc_buildby_windowmany(windowmc_dst, windowmc_src->all);
 }
 
 void windowmc_shuffle(RWindowMC windowmc) {
@@ -48,8 +48,10 @@ void windowmc_shuffle(RWindowMC windowmc) {
 
     for (size_t w = 0; w < windowmc->all->number; w++) {
         RWindow window = windowmc->all->_[w];
-        windowmc->binary[counter.binary[window->windowing->source->wclass.bc]++];
-        windowmc->multi[counter.multi[window->windowing->source->wclass.mc]++];
+        WClass wc = window->windowing->source->wclass;
+
+        windowmc->binary[wc.bc]->_[counter.binary[wc.bc]++] = window;
+        windowmc->multi[wc.mc]->_[counter.multi[wc.mc]++] = window;
     }
 }
 
@@ -81,94 +83,72 @@ void windowmc_minmax(RWindowMC windowmc) {
     }
 }
 
-void _windowmc_windowingmany_fill(RWindowMC rwindowmc, MANY(RWindowing) windowingmany) {
-    if (windowingmany.number == 0) {
-        LOG_ERROR("windowing-many elements number is 0.");
-        return NULL;
-    }
+void windowmc_init(RWindowMC windowmc) {
+    windowmc->all = g2_insert_alloc_item(G2_WMANY);
+    BINFOR(bn) windowmc->binary[bn] = g2_insert_alloc_item(G2_WMANY);
+    DGAFOR(cl) windowmc->multi[cl] = g2_insert_alloc_item(G2_WMANY);
+}
 
-    IndexMC counter = windowingmany_count(windowingmany);
+#define WINDOWMC_CHECK\
+    assert(windowmc->all);\
+    BINFOR(bn) assert(windowmc->binary[bn]);\
+    DGAFOR(cl) assert(windowmc->multi[cl]);
 
-    rwindowmc->all = windowmany_alloc_size(counter.all);
-    BINFOR(bn) rwindowmc->binary[bn] = windowmany_alloc_size(counter.binary[bn]);
-    DGAFOR(cl) rwindowmc->multi[cl] = windowmany_alloc_size(counter.multi[cl]);
-    
+void windowmc_buildby_size(RWindowMC windowmc, IndexMC size) {
+    WINDOWMC_CHECK;
+
+    windowmany_buildby_size(windowmc->all, size.all);
+    BINFOR(bc) windowmany_buildby_size(windowmc->binary[bc], size.binary[bc]);
+    DGAFOR(mc) windowmany_buildby_size(windowmc->multi[mc], size.multi[mc]);
+}
+
+void windowmc_buildby_windowmany(RWindowMC windowmc, RWindowMany windowmany) {
+    WINDOWMC_CHECK;
+    assert(windowmany->number > 0);
+
     IndexMC index;
+    IndexMC counter;
+    
+    counter = windowmany_count(windowmany);
+
+    windowmc_buildby_size(windowmc, counter);
+    
     memset(&index, 0, sizeof(IndexMC));
+
+    for (size_t w = 0; w < windowmany->number; w++) {
+        RWindow window  = windowmany->_[w];
+        WClass wc = window->windowing->source->wclass;
+
+        windowmc->all->_[index.all++] = window;
+        windowmc->binary[wc.bc]->_[index.binary[wc.bc]++] = window;
+        windowmc->multi[wc.mc]->_[index.binary[wc.mc]++] = window;
+    }
+}
+
+void windowmc_buildby_windowing_many(RWindowMC windowmc, MANY(RWindowing) windowingmany) {
+    WINDOWMC_CHECK;
+    assert(windowingmany.number > 0);
+
+    IndexMC index;
+    IndexMC counter;
+    
+    counter = windowing_many_count(windowingmany);
+
+    windowmc_buildby_size(windowmc, counter);
+    
+    memset(&index, 0, sizeof(IndexMC));
+
     for (size_t g = 0; g < windowingmany.number; g++) {
         RWindowing windowing = windowingmany._[g];
 
         for (size_t w = 0; w < windowing->windowmany->number; w++) {
             RWindow window = windowing->windowmany->_[w];
             WClass wc = windowing->source->wclass;
-            rwindowmc->all->_[index.all++] = window;
-            rwindowmc->binary[wc.bc]->_[index.binary[wc.bc]++] = window;
-            rwindowmc->multi[wc.mc]->_[index.binary[wc.mc]++] = window;
+            windowmc->all->_[index.all++] = window;
+            windowmc->binary[wc.bc]->_[index.binary[wc.bc]++] = window;
+            windowmc->multi[wc.mc]->_[index.binary[wc.mc]++] = window;
         }
     }
-}
-
-void _windowmc_windowmany_fill(RWindowMC rwindowmc, RWindowMany windowmany) {
-    if (windowmany->number == 0) {
-        LOG_ERROR("window-many elements number is 0.");
-        return NULL;
-    }
-
-    IndexMC counter = windowmany_count(windowmany);
-
-    rwindowmc->all = windowmany_alloc_size(counter.all);
-    BINFOR(bn) rwindowmc->binary[bn] = windowmany_alloc_size(counter.binary[bn]);
-    DGAFOR(cl) rwindowmc->multi[cl] = windowmany_alloc_size(counter.multi[cl]);
-    
-    IndexMC index;
-    memset(&index, 0, sizeof(IndexMC));
-    for (size_t g = 0; g < windowmany->number; g++) {
-        RWindowing windowing = windowmany->_[g];
-
-        for (size_t w = 0; w < windowing->windowmany->number; w++) {
-            RWindow window = windowing->windowmany->_[w];
-            WClass wc = windowing->source->wclass;
-            rwindowmc->all->_[index.all++] = window;
-            rwindowmc->binary[wc.bc]->_[index.binary[wc.bc]++] = window;
-            rwindowmc->multi[wc.mc]->_[index.binary[wc.mc]++] = window;
-        }
-    }
-}
-
-RWindowMC windowmc_alloc() {
-    return (RWindowMC) g2_insert_and_alloc(G2_WMC);
-}
-
-RWindowMC windowmc_alloc_by_windowmany(RWindowMany windowmany) {
-    RWindowMC rwindowmc;
-    
-    rwindowmc = windowmc_alloc();
-
-    _windowmc_windowmany_fill(rwindowmc, windowmany);
-
-    return rwindowmc;
-}
-
-RWindowMC windowmc_alloc_by_windowingmany(MANY(RWindowing) windowingmany) {
-    RWindowMC rwindowmc;
-    
-    rwindowmc = windowmc_alloc();
-
-    _windowmc_windowingmany_fill(rwindowmc, windowingmany);
-
-    return rwindowmc;
-}
-
-RWindowMC windowmc_alloc_by_size(IndexMC size) {
-    RWindowMC rwindowmc;
-    
-    rwindowmc = windowmc_alloc();
-
-    rwindowmc->all = windowmany_alloc_size(size.all);
-    BINFOR(bc) rwindowmc->binary[bc] = windowmany_alloc_size(size.binary[bc]);
-    DGAFOR(mc) rwindowmc->multi[mc] = windowmany_alloc_size(size.multi[mc]);
-
-    return rwindowmc;
 }
 
 void _windowmc_free(void* item) {
@@ -177,7 +157,7 @@ void _windowmc_free(void* item) {
 
 void _windowmc_io(IOReadWrite rw, FILE* file, void** item) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
-    RWindowMC* windowmc = item;
+    RWindowMC* windowmc = (RWindowMC*) item;
 
     g2_io_call(G2_WMANY, rw);
 
@@ -189,14 +169,9 @@ void _windowmc_io(IOReadWrite rw, FILE* file, void** item) {
         }
 
         FRW(indexmc);
-
-        if (IO_IS_READ(rw)) {
-            *windowmc = windowmc_alloc(indexmc);
-        }
     }
 
     {
-        __MANY many;
         G2Index windowmany_g2index;
         RWindowMany* tmp[6] = {
             &(*windowmc)->all,
@@ -207,18 +182,8 @@ void _windowmc_io(IOReadWrite rw, FILE* file, void** item) {
             &(*windowmc)->multi[2]
         };
 
-        if (IO_IS_READ(rw)) {
-            many = g2_array("windowmany");
-        }
-
         for (size_t i = 0; i < 6; i++) {
-            if (IO_IS_WRITE(rw)) {
-                windowmany_g2index = (*tmp[i])->g2index;
-            }
-            FRW(windowmany_g2index);
-            if (IO_IS_READ(rw)) {
-                *tmp[i] = many._[windowmany_g2index];
-            }
+            g2_io_index(file, rw, G2_WMANY, (void**) tmp[i]);
         }
     }
 }

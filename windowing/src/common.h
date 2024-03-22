@@ -182,7 +182,7 @@ typedef struct __MANY {
     size_t size;
     size_t number;
     size_t element_size;
-    uint8_t* _;
+    void** _;
 } __MANY;
 
 inline int32_t dgamany_number_sum(__MANY many[N_DGACLASSES]){
@@ -287,6 +287,7 @@ typedef struct __Window* RWindow;
 typedef struct __WindowMC* RWindowMC;
 typedef struct __WindowFold* RWindowFold;
 typedef struct __WindowSplit* RWindowSplit;
+typedef struct __Window0Many* RWindow0Many;
 typedef struct __WindowMany* RWindowMany;
 
 typedef struct __Trainer* RTrainer;

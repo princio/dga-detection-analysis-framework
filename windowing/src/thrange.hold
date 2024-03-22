@@ -2,8 +2,6 @@
 #ifndef __THRANGE_H__
 #define __THRANGE_H__
 
-#include "tb2d.h"
-
 #include "detect.h"
 #include "reducer.h"
 

@@ -1,6 +1,6 @@
 #include "windowfold.h"
 
-#include "gatherer.h"
+#include "gatherer2.h"
 #include "source.h"
 #include "windowing.h"
 #include "windowmc.h"
@@ -13,7 +13,7 @@ void _windowfold_free(void*);
 void _windowfold_io(IOReadWrite, FILE*, void**);
 
 G2Config g2_config_wfold = {
-    .element_size = sizeof(__Windowing),
+    .element_size = sizeof(__WindowFold),
     .size = 0,
     .freefn = _windowfold_free,
     .iofn = _windowfold_io,
@@ -25,15 +25,21 @@ void _windowfold_free(void* item) {
     MANY_FREE(windowfold->foldkmany);
 }
 
-RWindowFold windowfold_alloc() {
-    return (RWindowFold) g2_insert_and_alloc(G2_WFOLD);
-}
-
 int windowfold_foldk_ok(RWindowFold windwofold, const size_t k) {
     return (windwofold->foldkmany.number == 0 && windwofold->foldkmany._ == 0x0) == 0;
 }
 
+void windowfold_init(RWindowFold windowfold, const WindowFoldConfig config) {
+    MANY_INIT(windowfold->foldkmany, config.k, WindowFoldK);
+    for (size_t k = 0; k < config.k; k++) {
+        windowfold->foldkmany._[k].train = g2_insert_alloc_item(G2_WMC);
+        windowfold->foldkmany._[k].test = g2_insert_alloc_item(G2_WMC);
+    }
+}
+
 RWindowFold windowfold_create(RWindowMC windowmc, const WindowFoldConfig config) {
+    RWindowFold windowfold;
+
     DGAFOR(cl) {
         const size_t windows_cl_number = windowmc->multi[cl]->number;
         const size_t kfold_size = windows_cl_number / config.k;
@@ -43,21 +49,14 @@ RWindowFold windowfold_create(RWindowMC windowmc, const WindowFoldConfig config)
         }
     }
 
-    RWindowFold windowfold;
+    windowfold = g2_insert_alloc_item(G2_WFOLD);
+    windowfold_init(windowfold, config);
+
     const size_t KFOLDs = config.k;
     const size_t TRAIN_KFOLDs = config.k - config.k_test;
     const size_t TEST_KFOLDs = config.k_test;
 
-    windowfold =  windowfold_alloc();
-
     windowfold->isok = 1;
-
-    MANY_INIT(windowfold->foldkmany, KFOLDs, WindowFoldK);
-
-    for (size_t k = 0; k < KFOLDs; k++) {
-        windowfold->foldkmany._[k].train = windowmc_alloc();
-        windowfold->foldkmany._[k].test = windowmc_alloc();
-    }
 
     IndexMC train_counter[KFOLDs];
     IndexMC test_counter[KFOLDs];
@@ -127,13 +126,13 @@ RWindowFold windowfold_create(RWindowMC windowmc, const WindowFoldConfig config)
         RWindowMC train = windowfold->foldkmany._[k].train;
         RWindowMC test = windowfold->foldkmany._[k].test;
 
-        MANY_INITREF(train->all, train_counter[k].all, RWindow);
-        MANY_INITREF(train->binary[0], train_counter[k].binary[0], RWindow);
-        MANY_INITREF(train->binary[1], train_counter[k].binary[1], RWindow);
+        windowmany_buildby_size(train->all, train_counter[k].all);
+        windowmany_buildby_size(train->binary[0], train_counter[k].binary[0]);
+        windowmany_buildby_size(train->binary[1], train_counter[k].binary[1]);
 
-        MANY_INITREF(test->all, test_counter[k].all, RWindow);
-        MANY_INITREF(test->binary[0], test_counter[k].binary[0], RWindow);
-        MANY_INITREF(test->binary[1], test_counter[k].binary[1], RWindow);
+        windowmany_buildby_size(test->all, test_counter[k].all);
+        windowmany_buildby_size(test->binary[0], test_counter[k].binary[0]);
+        windowmany_buildby_size(test->binary[1], test_counter[k].binary[1]);
     }
 
     IndexMC train_counter_2[KFOLDs];
@@ -159,18 +158,14 @@ RWindowFold windowfold_create(RWindowMC windowmc, const WindowFoldConfig config)
         }
     }
 
-    return 0;
+    return windowfold;
 }
 
 void _windowfold_io(IOReadWrite rw, FILE* file, void** item) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
-    RWindowFold* windowfold = item;
+    RWindowFold* windowfold = (RWindowFold*) item;
 
     g2_io_call(G2_WMC, rw);
-
-    if (IO_IS_READ(rw)) {
-        *windowfold = windowfold_alloc();
-    }
 
     FRW((*windowfold)->isok);
     FRW((*windowfold)->config);
@@ -180,20 +175,7 @@ void _windowfold_io(IOReadWrite rw, FILE* file, void** item) {
     }
 
     for (size_t i = 0; i < (*windowfold)->foldkmany.number; i++) {
-        G2Index windowmc_g2index_train;
-        G2Index windowmc_g2index_test;
-
-        if (IO_IS_WRITE(rw)) {
-            windowmc_g2index_train = (*windowfold)->foldkmany._[i].train->g2index;
-            windowmc_g2index_test = (*windowfold)->foldkmany._[i].test->g2index;
-        }
-
-        FRW(windowmc_g2index_train);
-        FRW(windowmc_g2index_test);
-
-        if (IO_IS_READ(rw)) {
-            (*windowfold)->foldkmany._[i].train = g2_get(G2_WMC, windowmc_g2index_train);
-            (*windowfold)->foldkmany._[i].test = g2_get(G2_WMC, windowmc_g2index_test);
-        }
+        g2_io_index(file, rw, G2_WMC, (void**) &(*windowfold)->foldkmany._[i].train);
+        g2_io_index(file, rw, G2_WMC, (void**) &(*windowfold)->foldkmany._[i].test);
     }
 }

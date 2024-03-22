@@ -1,20 +1,17 @@
-#ifndef __WINDOWING_WINDOWDETECTION_H__
-#define __WINDOWING_WINDOWDETECTION_H__
+
+#ifndef __TRAINER_DETECTIONS_2_H__
+#define __TRAINER_DETECTIONS_2_H__
 
 #include "common.h"
-#include "detect.h"
+#include "configsuite.h"
 #include "gatherer2.h"
-#include "windowmany.h"
 
-typedef struct __WindowDetection {
-    G2Index g2index;
-
-    RWindowSplit windowdetection;
-
+typedef struct WindowSplitDetection {
     MANY(Detection) train;
     MANY(Detection) test;
-} __WindowDetection;
+} WindowSplitDetection;
 
-void windowdetection_run();
+void* windowsplitdetection_run();
+void windowsplitdetection_wait(void*);
 
 #endif

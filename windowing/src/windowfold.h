@@ -30,7 +30,7 @@ typedef struct __WindowFold {
 
 void windowfold_minmax(RWindowFold);
 
-RWindowFold windowfold_alloc();
+void windowfold_init(RWindowFold, WindowFoldConfig);
 
 RWindowFold windowfold_create(RWindowMC windowmc, const WindowFoldConfig config);
 

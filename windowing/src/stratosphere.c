@@ -3,9 +3,10 @@
 
 // #include "logger.h"
 #include "configsuite.h"
-#include "tb2w.h"
+#include "source.h"
 #include "wqueue.h"
 #include "windowmany.h"
+#include "windowing.h"
 
 #include <ncurses.h>
 #include <libpq-fe.h>
@@ -156,7 +157,7 @@ int32_t get_fnreq_max(int32_t id) {
     return fnreq_max;
 }
 
-void fetch_window(const __Source* source, uint64_t fn_req_min, uint64_t fn_req_max, PGresult** pgresult, int32_t* nrows) {
+void fetch_window(RSource source, uint64_t fn_req_min, uint64_t fn_req_max, PGresult** pgresult, int32_t* nrows) {
     char sql[1000];
     int pgresult_binary = 1;
 
@@ -319,8 +320,8 @@ void* stratosphere_apply_consumer(void* argsvoid) {
         for (int i = 0; i < qm->number; i++) {
             const int wnum = CALC_WNUM(qm->messages[i].fn_req, args->windowing->wsize);
             RWindow rwindow = args->windowing->windowmany->_[wnum];
-            for (size_t idxconfig = 0; idxconfig < args->tb2w->configsuite.configs.number; idxconfig++) {
-                wapply_run(&rwindow->applies._[idxconfig], &qm->messages[i], &args->tb2w->configsuite.configs._[idxconfig]);
+            for (size_t idxconfig = 0; idxconfig < configsuite.configs.number; idxconfig++) {
+                wapply_run(&rwindow->applies._[idxconfig], &qm->messages[i], &configsuite.configs._[idxconfig]);
             }
         }
         free(qm);
@@ -329,7 +330,7 @@ void* stratosphere_apply_consumer(void* argsvoid) {
     return NULL;
 }
 
-void stratosphere_apply(RWindowing windowing, ConfigSuite suite) {
+void stratosphere_apply(RWindowing windowing) {
     const RSource source = windowing->source;
     
     PGresult* pgresult = NULL;

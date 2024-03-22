@@ -35,8 +35,8 @@ typedef struct __WindowSplit {
 
 void windowsplit_shuffle(RWindowSplit split);
 
-RWindowSplit windowsplit_by_day(MANY(RWindowing) windowings, int day);
+RWindowSplit windowsplit_createby_day(MANY(RWindowing) windowings, int day);
 
-RWindowSplit windowsplit_by_portion(RWindowMC wmc, float portion);
+RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, int k, int k_total);
 
 #endif

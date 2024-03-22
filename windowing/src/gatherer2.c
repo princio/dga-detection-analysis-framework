@@ -23,7 +23,9 @@ __G2 gatherer_of_gatherers[G2_NUM];
 
 int initialized = 0;
 
-inline G2Config _g2_config_get(G2Id id) {
+char g2_iodir[PATH_MAX];
+
+static inline G2Config _g2_config_get(G2Id id) {
     G2Config* configs[] = {
         &g2_config_source,
         &g2_config_w0many,
@@ -67,6 +69,25 @@ __MANY g2_array(G2Id id) {
 }
 
 void* g2_get(G2Id id, size_t index) {
+    assert(id < G2_NUM);
+    
+    RG2 gat;
+
+    gat = &gatherer_of_gatherers[id];
+
+    if (gat->size == gat->array.number) {
+        g2_array(id);
+    }
+
+    if (index > gat->size) {
+        LOG_ERROR("[%s] index bigger than gatherer size: %ld > %ld", g2_id_names[id], index, gat->size);
+        return NULL;
+    }
+
+    return gat->array._[index];
+}
+
+void* g2_get_crawling(G2Id id, size_t index) {
     assert(id < G2_NUM);
     
     RG2 gat;
@@ -114,7 +135,7 @@ G2Node* g2_insert(G2Id id) {
     assert(id < G2_NUM);
 
     if (!initialized) {
-        g2_init();
+        _g2_init();
     }
     
     RG2 g2;
@@ -141,27 +162,17 @@ G2Node* g2_insert(G2Id id) {
     return crawl->next;
 }
 
-void* g2_insert_and_alloc(G2Id id) {
-    RG2 g2;
-    G2Node* crawl;
-    void* newelement;
-    
-    crawl = g2_insert(id);
+void** g2_insert_item(G2Id id) {
+    return &g2_insert(id)->item;
+}
 
-    g2 = &gatherer_of_gatherers[id];
+void* g2_alloc(G2Id id, void** item) {
+    *item = calloc(1, gatherer_of_gatherers[id].element_size);
+    return (*item);
+}
 
-    newelement = calloc(1, g2->element_size);
-    if (newelement == NULL) {
-        LOG_ERROR("impossible to allocate new element for gatherer %s", g2_id_names[g2->id]);
-        free(crawl->next);
-        return NULL;
-    }
-
-    // setting g2index
-    crawl->item = newelement;
-    memcpy(newelement, &g2->size, sizeof(size_t));
-
-    return newelement;
+void* g2_insert_alloc_item(G2Id id) {
+    return g2_alloc(id, g2_insert_item(id));
 }
 
 void g2_free(RG2 gat) {
@@ -182,13 +193,13 @@ void g2_free_all() {
     }
 }
 
-void g2_io_g2_node(G2Node* node, IOReadWrite rw) {
+void g2_io_node(G2Node* node, IOReadWrite rw, char g2_node_dir[PATH_MAX]) {
     FILE* file;
     G2Index index;
     char filepath[PATH_MAX];
 
-    sprintf(filepath, "%s/%s_%05ld", g2_id_names[node->g2->id], node->index);
-    io_path_concat(iodir, filepath, filepath);
+    sprintf(filepath, "%s_%05ld", g2_id_names[node->g2->id], node->index);
+    io_path_concat(g2_node_dir, filepath, filepath);
 
     file = io_openfile(rw, filepath);
     if (!file)
@@ -207,6 +218,11 @@ void g2_io_g2_node(G2Node* node, IOReadWrite rw) {
 int g2_io(RG2 gat, IOReadWrite rw) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
+    io_path_concat(iodir, "g2/", g2_iodir);
+    if (io_makedirs(g2_iodir)) {
+        exit(1);
+    }
+
     char dirpath[PATH_MAX];
     size_t size;
 
@@ -218,16 +234,17 @@ int g2_io(RG2 gat, IOReadWrite rw) {
         size = gat->size;
     }
 
-    {
+    char g2_id_iodir[PATH_MAX];
+
+    { // g2_io_makedir
         FILE* file;
         char filepath[PATH_MAX];
-        char dirname[PATH_MAX];
-        sprintf(dirname, "%s/", g2_id_names[gat->id]);
-        io_path_concat(iodir, dirname, dirpath);
+        sprintf(g2_id_iodir, "%s/", g2_id_names[gat->id]);
+        io_path_concat(g2_iodir, g2_id_iodir, dirpath);
         if (!io_makedirs(dirpath))
             return -1;
 
-        io_path_concat(iodir, "general", filepath);
+        io_path_concat(g2_id_iodir, "general", filepath);
         file = io_openfile(rw, filepath);
     
         if (!file)
@@ -239,21 +256,23 @@ int g2_io(RG2 gat, IOReadWrite rw) {
             exit(1);
     }
 
-    G2Node* node = gat->root;
-    for (size_t index = 0; index < size; index++) {
-        FILE* file;
-        G2Index index;
-        char filepath[PATH_MAX];
+    { // crawl g2 and io each node
+        G2Node* node = gat->root;
+        for (size_t index = 0; index < size; index++) {
+            FILE* file;
+            G2Index index;
+            char filepath[PATH_MAX];
 
-        if (IO_IS_READ(rw)) {
-            node = g2_insert(gat->id);
-        } else {
-            node = node->next;
+            if (IO_IS_READ(rw)) {
+                node = g2_insert(gat->id);
+            } else {
+                node = node->next;
+            }
+
+            assert(node);
+
+            g2_io_node(node, rw, g2_id_iodir);
         }
-
-        assert(node);
-
-        g2_io_g2_node(node, rw);
     }
 
     gat->iosaved = 1;
@@ -261,7 +280,7 @@ int g2_io(RG2 gat, IOReadWrite rw) {
     return 0;
 }
 
-int g2_io_all(IOReadWrite rw) {
+void g2_io_all(IOReadWrite rw) {
     if (initialized == 0) {
         _g2_init();
     }
@@ -273,4 +292,16 @@ int g2_io_all(IOReadWrite rw) {
 
 int g2_io_call(G2Id id, IOReadWrite rw) {
     return g2_io(&gatherer_of_gatherers[id], rw);
+}
+
+void g2_io_index(FILE* file, IOReadWrite rw, G2Id id, void** item) {
+    size_t index;
+
+    if (IO_IS_WRITE(rw)) {
+        memcpy(&index, *item, sizeof(G2Index));
+        FW(index);
+    } else {
+        FR(index);
+        *item = g2_get(id, index);
+    }
 }

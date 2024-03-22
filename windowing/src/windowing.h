@@ -1,6 +1,8 @@
 #ifndef __WINDOWING_WINDOWING_H__
 #define __WINDOWING_WINDOWING_H__
 
+#include "common.h"
+
 #include "gatherer2.h"
 #include "source.h"
 #include "windowmany.h"
@@ -13,12 +15,10 @@ typedef struct __Windowing {
     RWindowMany windowmany;
 } __Windowing;
 
-IndexMC windowingmany_count(MANY(RWindowing) windowingmany);
+IndexMC windowing_many_count(MANY(RWindowing) windowingmany);
 
-RWindowing windowing_alloc();
+void windowing_build(RWindowing, RWindow0Many, size_t, RSource);
 
-RWindowing windowing_create(size_t wsize, RSource source);
-
-void windowing_apply(ConfigSuite suite);
+void windowing_apply(WSize wsize);
 
 #endif

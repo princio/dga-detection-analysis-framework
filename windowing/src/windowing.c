@@ -1,9 +1,11 @@
 
 #include "windowing.h"
 
+#include "configsuite.h"
 #include "gatherer2.h"
 #include "io.h"
 #include "windowmany.h"
+#include "stratosphere.h"
 // #include "logger.h"
 
 #include <assert.h>
@@ -28,7 +30,7 @@ void _windowing_free(void* item) {
     free(*rwindowing_ref);
 }
 
-IndexMC windowingmany_count(MANY(RWindowing) windowingmany) {
+IndexMC windowing_many_count(MANY(RWindowing) windowingmany) {
     IndexMC counter;
     memset(&counter, 0, sizeof(IndexMC));
 
@@ -44,53 +46,42 @@ IndexMC windowingmany_count(MANY(RWindowing) windowingmany) {
     return counter;
 }
 
-RWindowing windowing_alloc() {
-    return gatherer_alloc_item(G2_WING);
-}
-
-RWindowing windowing_create(size_t wsize, RSource source) {
-    RWindowing windowing;
-    const size_t nw = N_WINDOWS(source->fnreq_max, wsize);
-
-    windowing = windowing_alloc();
-
+void windowing_build(RWindowing windowing, RWindow0Many window0many, size_t wsize, RSource source) {
     windowing->wsize = wsize;
     windowing->source = source;
-    windowing->windowmany = window_alloc(nw);
+
+    window0many_buildby_size(window0many, N_WINDOWS(source->fnreq_max, wsize));
+    
+    windowing->windowmany = &window0many->__windowmany;
 
     size_t fnreq = 0;
-    for (size_t w = 0; w < nw; w++) {
-        windowing->windowmany->_[w]->windowing = windowing;
-        windowing->windowmany->_[w]->fn_req_min = fnreq;
-        windowing->windowmany->_[w]->fn_req_max = fnreq + wsize;
+    for (size_t w = 0; w < windowing->windowmany->number; w++) {
+        RWindow window = windowing->windowmany->_[w];
+        window->windowing = windowing;
+        window->fn_req_min = fnreq;
+        window->fn_req_max = fnreq + wsize;
+
+        MANY_INIT(window->applies, configsuite.configs.number, WApply);
+
         fnreq += wsize;
     }
-    return windowing;
 }
 
-IndexMC windowing_many_windowscount(MANY(RWindowing) windowingmany) {
-    IndexMC counter;
-    memset(&counter, 0, sizeof(IndexMC));
-    for (size_t w = 0; w < windowingmany.number; w++) {
-        counter.all += windowingmany._[w]->windowmany->number;
-        counter.binary[windowingmany._[w]->source->wclass.bc] += windowingmany._[w]->windowmany->number;
-        counter.multi[windowingmany._[w]->source->wclass.mc] += windowingmany._[w]->windowmany->number;
-    }
-    return counter;
-}
+void windowing_apply(WSize wsize) {
+    __MANY sourcemany = g2_array(G2_SOURCE);
 
-void windowing_apply(ConfigSuite suite) {
-    __MANY many = g2_array(G2_WING);
+    for (size_t i = 0; i < sourcemany.number; i++) {
+        RSource source = (RSource) sourcemany._[i];
 
-    for (size_t i = 0; i < many.number; i++) {
-        RWindowing windowing = (RWindowing) many._[i];
+        RWindowing windowing;
+        RWindow0Many window0many;
 
-        for (size_t w = 0; w < windowing->windowmany->number; w++) {
-            RWindow window = windowing->windowmany->_[w];
-            MANY_INIT(window->applies, suite.configs.number, WApply);
-        }
-        
-        stratosphere_apply(windowing, suite);
+        windowing = g2_insert_alloc_item(G2_WING);
+        window0many = g2_insert_alloc_item(G2_W0MANY);
+
+        windowing_build(windowing, window0many, wsize, source);
+
+        stratosphere_apply(windowing);
     }
 }
 
@@ -105,22 +96,15 @@ void _windowing_io(IOReadWrite rw, FILE* file, void** item) {
 
     G2Index source_g2index;
     G2Index windowmany_g2index;
+    __Window0Many* window0many;
 
     FRW((*windowing)->g2index);
     FRW((*windowing)->wsize);
 
-    if (IO_IS_WRITE(rw)) {
-        source_g2index = (*windowing)->source->g2index;
-        windowmany_g2index = (*windowing)->windowmany->g2index;
-    }
-
-    FRW(source_g2index);
-    FRW(windowmany_g2index);
-
-    (*windowing)->source = g2_get("source", source_g2index);
-    (*windowing)->windowmany = g2_get("windowmany", windowmany_g2index);
+    g2_io_index(file, rw, G2_SOURCE, (void**) &(*windowing)->source);
+    g2_io_index(file, rw, G2_SOURCE, (void**) &window0many);
 
     for (size_t w = 0; w < (*windowing)->windowmany->number; w++) {
-        (*windowing)->windowmany->_[w]->windowing = windowing;
+        (*windowing)->windowmany->_[w]->windowing = *windowing;
     }
 }

@@ -47,8 +47,8 @@ if(__io__debug) {\
 #define FRW(A) (*__FRW)((void*) &A, sizeof(A), file);
 #endif
 
-#define FW(A) fwriteN((void*) &A, sizeof(A), file)
-#define FR(A) freadN((void*) &A, sizeof(A), file)
+#define FW(A) io_fwriteN((void*) &A, sizeof(A), file)
+#define FR(A) io_freadN((void*) &A, sizeof(A), file)
 
 #define IO_FLAG_LEN 80
 

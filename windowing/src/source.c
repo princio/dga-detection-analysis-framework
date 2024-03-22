@@ -21,27 +21,27 @@ G2Config g2_config_source = {
 };
 
 RSource source_alloc() {
-    return (RSource) g2_insert_and_alloc(G2_SOURCE);
+    return (RSource) g2_insert_alloc_item(G2_SOURCE);
 }
 
-void source_io(IOReadWrite rw, FILE* file, void* item) {
+void _source_free(void* item) {
+    free(item);
+}
+
+void _source_io(IOReadWrite rw, FILE* file, void** item) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    RSource source = (RSource) item;
+    RSource* source = (RSource*) item;
 
     size_t sources_number = 0;
 
-    tb2_io_flag_source(rw, file, 0, __LINE__);
-    
-    FRW(source->index);
-    FRW(source->galaxy);
-    FRW(source->name);
-    FRW(source->wclass);
-    FRW(source->id);
-    FRW(source->qr);
-    FRW(source->q);
-    FRW(source->r);
-    FRW(source->fnreq_max);
-
-    tb2_io_flag_source(rw, file, source->id, __LINE__);
+    FRW((*source)->index);
+    FRW((*source)->galaxy);
+    FRW((*source)->name);
+    FRW((*source)->wclass);
+    FRW((*source)->id);
+    FRW((*source)->qr);
+    FRW((*source)->q);
+    FRW((*source)->r);
+    FRW((*source)->fnreq_max);
 }

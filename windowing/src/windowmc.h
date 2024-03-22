@@ -20,12 +20,12 @@ void windowmc_shuffle(RWindowMC rwindows);
 
 IndexMC windowmc_count(RWindowMC);
 
-RWindowMC windowmc_clone(RWindowMC);
+void windowmc_clone(RWindowMC, RWindowMC);
 
-RWindowMC windowmc_alloc();
+void windowmc_init(RWindowMC windowmc);
 
-RWindowMC windowmc_alloc_by_windowmany(RWindowMany windowmany);
-
-RWindowMC windowmc_alloc_by_windowingmany(MANY(RWindowing) windowingmany);
+void windowmc_buildby_windowmany(RWindowMC rwindowmc, RWindowMany windowmany);
+void windowmc_buildby_windowing_many(RWindowMC rwindowmc, MANY(RWindowing) windowingmany);
+void windowmc_buildby_size(RWindowMC rwindowmc, IndexMC size);
 
 #endif

@@ -22,6 +22,8 @@ typedef struct __Window {
     MANY(WApply) applies;
 } __Window;
 
+MAKEMANY(__Window);
+
 typedef struct __WindowMany {
     G2Index g2index;
 
@@ -36,14 +38,21 @@ typedef struct __WindowMany {
     RWindow* _;
 } __WindowMany;
 
+typedef struct __Window0Many {
+    MANY(__Window) __window0many;
+    __WindowMany __windowmany;
+} __Window0Many;
+
 IndexMC windowmany_count(RWindowMany);
 
-void windowmany_shuffle(RWindowMany rwindows);
+void windowmany_shuffle(RWindowMany);
 
-RWindowMany windowmany_alloc();
+void windowmany_buildby_size(RWindowMany, size_t);
 
-RWindowMany windowmany_alloc_size(size_t windows_num);
+void window0many_buildby_size(RWindow0Many, const size_t);
 
-void window0many_io(IOReadWrite rw, FILE* file, RWindowMany windowmany);
+RWindowMany windowmany_create(size_t);
+
+RWindowMany window0many_create(size_t);
 
 #endif

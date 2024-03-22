@@ -64,14 +64,14 @@ __MANY g2_array(G2Id);
 
 void* g2_get(G2Id, size_t index);
 
-G2Node* g2_insert(G2Id id);
-void* g2_insert_and_alloc(G2Id id);
+void* g2_insert_alloc_item(G2Id id);
 
 void g2_free();
 
 void g2_set_iodir(char path[PATH_MAX]);
 
 int g2_io_call(G2Id, IOReadWrite rw);
+void g2_io_index(FILE* file, IOReadWrite rw, G2Id id, void** item);
 
 extern G2Config g2_config_source;
 extern G2Config g2_config_w0many;
