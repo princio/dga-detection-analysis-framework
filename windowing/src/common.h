@@ -93,27 +93,35 @@ char CACHE_DIR[DIR_MAX];
 #endif
 
 #define MANY_INIT(A, N, T) {\
-            if ((N) == 0) LOG_WARN("MANY: initializing empty block."); \
+            if ((N) == 0) { LOG_WARN("MANY: initializing empty block."); }\
+            else {\
+            if ((A).number && (A)._) LOG_WARN("MANY: block already initialized."); \
             (A).size = (N); \
             (A).number = (N); \
             (A).element_size = sizeof(T); \
             (A)._ = calloc((A).number, sizeof(T));\
             if ((A)._ == NULL) LOG_ERROR("MANY: initialization failed");\
-            }
+            }}
 
 #define MANY_INIT_0(A, N, T) MANY_INIT(A, N, T); (A).number = 0;
 
-#define MANY_INITREF(A, N, T) { if ((N) == 0) LOG_WARN("MANY - initializing empty block.\n", __FILE__, __LINE__);\
+#define MANY_INITREF(A, N, T) {\
+            if ((N) == 0) { LOG_WARN("MANY: initializing empty block."); }\
+            else {\
+            if ((A)->number && (A)->_) LOG_WARN("MANY: block already initialized."); \
             (A)->size = (N); \
             (A)->number = (N); \
             (A)->element_size = sizeof(T); \
-            (A)->_ = calloc((A)->number, sizeof(T)); }
+            (A)->_ = calloc((A)->number, sizeof(T)); }}
 
-#define MANY_INITSIZE(A, N, S) { if ((N) == 0) LOG_WARN("MANY - initializing empty block.\n", __FILE__, __LINE__); \
+#define MANY_INITSIZE(A, N, S) {\
+            if ((N) == 0) { LOG_WARN("MANY: initializing empty block."); }\
+            else {\
+            if ((A).number && (A)._) LOG_WARN("MANY: block already initialized."); \
             (A).size = (N); \
             (A).number = (N); \
             (A).element_size = (S); \
-            (A)._ = calloc(A.number, (S)); }
+            (A)._ = calloc(A.number, (S)); }}
 
 #define MANY_CLONE(DST, SRC) MANY_INITSIZE((DST), (SRC).number, (SRC).element_size); memcpy((DST)._, (SRC)._, (SRC).element_size * (SRC).number);
 

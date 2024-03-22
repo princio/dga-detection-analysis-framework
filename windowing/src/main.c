@@ -105,94 +105,30 @@ int main (int argc, char* argv[]) {
     io_setdir(rootdir);
     g2_init();
 
-    MANY(__Source) source_write;
-    MANY(__Windowing) windowing_write;
-    source_write.number = 0;
-    source_write._ = 0;
-    windowing_write.number = 0;
-    windowing_write._ = 0;
-
     configsuite_generate(&configsuite, pg);
     stratosphere_add("CTU-SME-11", 0);
 
-    {
-        __MANY many = g2_array(G2_SOURCE);
-        MANY_INIT(source_write, many.number, __Source);
-        for (size_t i = 0; i < many.number; i++) {
-            RSource source = many._[i];
-            memcpy(&source_write._[i], source, sizeof(__Source));
-        }
-    }
-    
-    windowing_apply(500);
+    windowing_apply(100);
 
-    // RWindowMC windowmc;
-    // MANY(RWindowing) windowingmany;
+    RWindowMC windowmc;
+    MANY(RWindowing) windowingmany;
 
-    // windowingmany = windowing_many_get();
+    windowingmany = windowing_many_get();
 
-    // windowmc = g2_insert_alloc_item(G2_WMC);
-
-    // windowmc_init(windowmc);
-
+    windowmc = g2_insert_alloc_item(G2_WMC);
+    windowmc_init(windowmc);
     // windowmc_buildby_windowing_many(windowmc, windowingmany);
  
     // WindowFoldConfig config = { .k = 10, .k_test = 5 };
     // windowfold_create(windowmc, config);
 
-    {
-        __MANY many = g2_array(G2_WING);
-        MANY_INIT(windowing_write, many.number, __Source);
-        for (size_t i = 0; i < many.number; i++) {
-            RWindowing windowing = many._[i];
-            memcpy(&windowing_write._[i], windowing, sizeof(__Source));
-        }
-    }
+    MANY_FREE(windowingmany);
 
     g2_io_all(IO_WRITE);
     g2_free_all();
 
     g2_init();
     g2_io_all(IO_READ);
-
-    {
-        __MANY many = g2_array(G2_SOURCE);
-        int errors = 0;
-        for (size_t i = 0; i < many.number; i++) {
-            RSource source = many._[i];
-            int mismatch = memcmp(&source_write._[i], source, sizeof(__Source));
-            if (mismatch) {
-                printf("SOURCE %ld mismatch: %d\n", i, mismatch);
-            }
-        }
-        printf("SOURCE errors: %d\n", errors);
-    }
-    
-    {
-        __MANY many = g2_array(G2_WING);
-        int errors = 0;
-        for (size_t i = 0; i < many.number; i++) {
-            RWindowing windowing = many._[i];
-            int mismatch = 0;
-            
-            mismatch += windowing_write._[i].g2index != windowing->g2index;
-            mismatch += windowing_write._[i].wsize != windowing->wsize;
-            mismatch += strcmp(windowing_write._[i].source->name, windowing->source->name);
-            mismatch += windowing_write._[i].windowmany->number != windowing->windowmany->number;
-            mismatch += windowing_write._[i].windowmany->g2index != windowing->windowmany->g2index;
-
-            if (windowing_write._[i].windowmany->g2index != windowing->windowmany->g2index)
-            printf("g2index: %ld != %ld\n",  windowing_write._[i].windowmany->g2index, windowing->windowmany->g2index);
-
-            if (mismatch) {
-                printf("WINDOWING %ld mismatch: %d\n", i, mismatch);
-            }
-
-            errors += mismatch > 0;
-        }
-        printf("WINDOWING errors: %d\n", errors);
-    }
-
 
     g2_free_all();
 

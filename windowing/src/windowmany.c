@@ -11,8 +11,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <openssl/sha.h>
-
 void _window0many_free(void* item);
 void _window0many_io(IOReadWrite rw, FILE* file, void**);
 void _window0many_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]);
@@ -168,24 +166,26 @@ void _windowmany_io(IOReadWrite rw, FILE* file, void** item_ref) {
         gatherer_window0many = g2_array(G2_W0MANY);
     }
 
+    __MANY many = g2_array(G2_W0MANY);
+
     for (size_t w = 0; w < (*windowmany)->number; w++) {;
-        size_t windowmany_index;
-        size_t windowmany_window_index;
+        size_t window0many_index;
+        size_t window0many_window_index;
         RWindow window;
 
         window = (*windowmany)->_[w];
 
         if (IO_IS_WRITE(rw)) {
-           windowmany_index = window->manyindex;
-           windowmany_window_index = window->index;
+           window0many_index = window->manyindex;
+           window0many_window_index = window->index;
         }
 
-        FRW(windowmany_index);
-        FRW(windowmany_window_index);
+        FRW(window0many_index);
+        FRW(window0many_window_index);
 
         if (IO_IS_READ(rw)) {
-            RWindowMany windowmany = gatherer_window0many._[windowmany_index]; 
-            window = windowmany->_[windowmany_window_index];
+            RWindow0Many w0m = ((RWindow0Many) many._[window0many_index]);
+            window = w0m->__windowmany._[window0many_window_index];
         }
     }
 }
@@ -239,6 +239,16 @@ void _window0many_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
     SHA256_Final(out, &sha);
 }
 
+void windowmany_hash_update(SHA256_CTX* sha, RWindowMany a) {
+    SHA256_Update(sha, &a->g2index, sizeof(G2Index));
+    SHA256_Update(sha, &a->number, sizeof(size_t));
+
+    const size_t size_tocompare = sizeof(__Window) - sizeof(MANY(WApply));
+    for (size_t w = 0; w < a->number; w++) {
+        SHA256_Update(sha, a->_[w], size_tocompare);
+    }
+}
+
 void _windowmany_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
     RWindowMany a = (RWindowMany) item;
     SHA256_CTX sha;
@@ -246,13 +256,7 @@ void _windowmany_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
 
     SHA256_Init(&sha);
 
-    SHA256_Update(&sha, &a->g2index, sizeof(G2Index));
-    SHA256_Update(&sha, &a->number, sizeof(size_t));
-
-    const size_t size_tocompare = sizeof(__Window) - sizeof(MANY(WApply));
-    for (size_t w = 0; w < a->number; w++) {
-        SHA256_Update(&sha, &a->_[w], size_tocompare);
-    }
+    windowmany_hash_update(&sha, a);
 
     SHA256_Final(out, &sha);
 }

@@ -25,9 +25,24 @@ G2Config g2_config_wmc = {
     .id = G2_WMC
 };
 
+int windowmc_isinit(RWindowMC wmc) {
+    int isinit = 1;
+
+    isinit &= wmc->all ? 1 : 0;
+    BINFOR(bc) isinit &= wmc->binary[bc] ? 1 : 0;
+    DGAFOR(mc) isinit &= wmc->multi[mc] ? 1 : 0;
+
+    return isinit;
+}
+
 IndexMC windowmc_count(RWindowMC wmc) {
     IndexMC counter;
     memset(&counter, 0, sizeof(IndexMC));
+
+    if (!windowmc_isinit(wmc)) {
+        windowmc_init(wmc);
+        return counter;
+    }
 
     counter.all = wmc->all->number;
     BINFOR(bn) counter.binary[bn] = wmc->binary[bn]->number;
@@ -41,6 +56,8 @@ void windowmc_clone(RWindowMC windowmc_src, RWindowMC windowmc_dst) {
 }
 
 void windowmc_shuffle(RWindowMC windowmc) {
+    assert(windowmc_isinit(windowmc));
+
     windowmany_shuffle(windowmc->all);
 
     IndexMC counter;
@@ -56,6 +73,7 @@ void windowmc_shuffle(RWindowMC windowmc) {
 }
 
 void windowmc_minmax(RWindowMC windowmc) {
+    assert(windowmc_isinit(windowmc));
     assert(windowmc->all->number > 0);
     assert(windowmc->all->_[0]->applies.number);
     
@@ -84,18 +102,16 @@ void windowmc_minmax(RWindowMC windowmc) {
 }
 
 void windowmc_init(RWindowMC windowmc) {
+    assert(!windowmc_isinit(windowmc));
+
     windowmc->all = g2_insert_alloc_item(G2_WMANY);
     BINFOR(bn) windowmc->binary[bn] = g2_insert_alloc_item(G2_WMANY);
     DGAFOR(cl) windowmc->multi[cl] = g2_insert_alloc_item(G2_WMANY);
 }
 
-#define WINDOWMC_CHECK\
-    assert(windowmc->all);\
-    BINFOR(bn) assert(windowmc->binary[bn]);\
-    DGAFOR(cl) assert(windowmc->multi[cl]);
 
 void windowmc_buildby_size(RWindowMC windowmc, IndexMC size) {
-    WINDOWMC_CHECK;
+    assert(windowmc_isinit(windowmc));
 
     windowmany_buildby_size(windowmc->all, size.all);
     BINFOR(bc) windowmany_buildby_size(windowmc->binary[bc], size.binary[bc]);
@@ -103,7 +119,8 @@ void windowmc_buildby_size(RWindowMC windowmc, IndexMC size) {
 }
 
 void windowmc_buildby_windowmany(RWindowMC windowmc, RWindowMany windowmany) {
-    WINDOWMC_CHECK;
+    assert(windowmc_isinit(windowmc));
+
     assert(windowmany->number > 0);
 
     IndexMC index;
@@ -126,7 +143,8 @@ void windowmc_buildby_windowmany(RWindowMC windowmc, RWindowMany windowmany) {
 }
 
 void windowmc_buildby_windowing_many(RWindowMC windowmc, MANY(RWindowing) windowingmany) {
-    WINDOWMC_CHECK;
+    assert(windowmc_isinit(windowmc));
+
     assert(windowingmany.number > 0);
 
     IndexMC index;
@@ -146,7 +164,7 @@ void windowmc_buildby_windowing_many(RWindowMC windowmc, MANY(RWindowing) window
             WClass wc = windowing->source->wclass;
             windowmc->all->_[index.all++] = window;
             windowmc->binary[wc.bc]->_[index.binary[wc.bc]++] = window;
-            windowmc->multi[wc.mc]->_[index.binary[wc.mc]++] = window;
+            windowmc->multi[wc.mc]->_[index.multi[wc.mc]++] = window;
         }
     }
 }
@@ -158,6 +176,10 @@ void _windowmc_free(void* item) {
 void _windowmc_io(IOReadWrite rw, FILE* file, void** item) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
     RWindowMC* windowmc = (RWindowMC*) item;
+
+    if (IO_IS_WRITE(rw)) {
+        assert(windowmc_isinit(*windowmc));
+    }
 
     g2_io_call(G2_WMANY, rw);
 
@@ -186,4 +208,29 @@ void _windowmc_io(IOReadWrite rw, FILE* file, void** item) {
             g2_io_index(file, rw, G2_WMANY, (void**) tmp[i]);
         }
     }
+}
+
+void _windowmc_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
+    RWindowMC a = (RWindowMC) item;
+    SHA256_CTX sha;
+    memset(out, 0, SHA256_DIGEST_LENGTH);
+
+    RWindowMany tmp[6] = {
+        a->all,
+        a->binary[0],
+        a->binary[1],
+        a->multi[0],
+        a->multi[1],
+        a->multi[2]
+    };
+
+    SHA256_Init(&sha);
+
+    SHA256_Update(&sha, &a->g2index, sizeof(G2Index));
+
+    for (size_t i = 0; i < 6; i++) {
+        windowmany_hash_update(&sha, tmp[i]);
+    }
+
+    SHA256_Final(out, &sha);
 }

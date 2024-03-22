@@ -57,4 +57,5 @@ RWindowMany windowmany_create(size_t);
 
 RWindowMany window0many_create(size_t);
 
+void windowmany_hash_update(SHA256_CTX*, RWindowMany);
 #endif

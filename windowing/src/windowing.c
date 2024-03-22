@@ -91,6 +91,7 @@ MANY(RWindowing) windowing_many_get() {
     __MANY many = g2_array(G2_WING);
 
     MANY(RWindowing) windowingmany;
+    memset(&windowingmany, 0, sizeof(MANY(RWindowing)));
     MANY_INIT(windowingmany, many.number, RWindowing);
 
     for (size_t i = 0; i < many.number; i++) {
