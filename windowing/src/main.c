@@ -117,7 +117,7 @@ int main (int argc, char* argv[]) {
 
     windowmc = g2_insert_alloc_item(G2_WMC);
     windowmc_init(windowmc);
-    // windowmc_buildby_windowing_many(windowmc, windowingmany);
+    windowmc_buildby_windowing_many(windowmc, windowingmany);
  
     // WindowFoldConfig config = { .k = 10, .k_test = 5 };
     // windowfold_create(windowmc, config);

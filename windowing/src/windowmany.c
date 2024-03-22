@@ -5,11 +5,12 @@
 #include "io.h"
 #include "windowing.h"
 
-#include <stdlib.h>
-#include <sys/time.h>
+#include <assert.h>
 #include <math.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
 
 void _window0many_free(void* item);
 void _window0many_io(IOReadWrite rw, FILE* file, void**);
@@ -74,12 +75,15 @@ void windowmany_buildby_size(RWindowMany windowmany, size_t windows_num) {
 void window0many_buildby_size(RWindow0Many window0many, const size_t window_number) {
     MANY_INIT(window0many->__window0many,  window_number, __Window);
 
+    LOG_TRACE("[window0many] buildby size: %ld", window_number);
+
     windowmany_buildby_size(&window0many->__windowmany,  window_number);
 
     for (size_t w = 0; w < window_number; w++) {
         RWindow window = &window0many->__window0many._[w];
 
         window->index = w;
+        window->manyindex = window0many->g2index;
         window->fn_req_min = 0;
         window->fn_req_max = 0;
         window->windowing = NULL;
@@ -171,21 +175,23 @@ void _windowmany_io(IOReadWrite rw, FILE* file, void** item_ref) {
     for (size_t w = 0; w < (*windowmany)->number; w++) {;
         size_t window0many_index;
         size_t window0many_window_index;
-        RWindow window;
+        RWindow* rwindow;
 
-        window = (*windowmany)->_[w];
+        rwindow = &(*windowmany)->_[w];
 
         if (IO_IS_WRITE(rw)) {
-           window0many_index = window->manyindex;
-           window0many_window_index = window->index;
+           window0many_index = (*rwindow)->manyindex;
+           window0many_window_index = (*rwindow)->index;
         }
 
         FRW(window0many_index);
         FRW(window0many_window_index);
+    
+        RWindow0Many w0m = ((RWindow0Many) many._[window0many_index]);
+        assert(w0m->__windowmany.number > window0many_window_index);
 
         if (IO_IS_READ(rw)) {
-            RWindow0Many w0m = ((RWindow0Many) many._[window0many_index]);
-            window = w0m->__windowmany._[window0many_window_index];
+            (*rwindow) = w0m->__windowmany._[window0many_window_index];
         }
     }
 }
@@ -222,7 +228,6 @@ void _window0many_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
     SHA256_Update(&sha, &a->__window0many.number, sizeof(size_t));
     SHA256_Update(&sha, &a->__windowmany.number, sizeof(size_t));
 
-    const size_t size_tocompare = sizeof(__Window) - sizeof(MANY(WApply));
     for (size_t w = 0; w < a->__window0many.number; w++) {
         RWindow window = &a->__window0many._[w];
         SHA256_Update(&sha, &window->index, sizeof(size_t));
@@ -243,9 +248,11 @@ void windowmany_hash_update(SHA256_CTX* sha, RWindowMany a) {
     SHA256_Update(sha, &a->g2index, sizeof(G2Index));
     SHA256_Update(sha, &a->number, sizeof(size_t));
 
-    const size_t size_tocompare = sizeof(__Window) - sizeof(MANY(WApply));
     for (size_t w = 0; w < a->number; w++) {
-        SHA256_Update(sha, a->_[w], size_tocompare);
+        SHA256_Update(sha, &a->_[w]->index, sizeof(size_t));
+        SHA256_Update(sha, &a->_[w]->manyindex, sizeof(G2Index));
+        SHA256_Update(sha, &a->_[w]->fn_req_min, sizeof(uint32_t));
+        SHA256_Update(sha, &a->_[w]->fn_req_max, sizeof(uint32_t));
     }
 }
 

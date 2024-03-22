@@ -152,12 +152,12 @@ G2Node* _g2_insert(const G2Id id) {
 G2Node* _g2_insert_alloc(const G2Id id) {
     G2Node* node = _g2_insert(id);
     node->item = calloc(1, gatherer_of_gatherers[id].element_size);
+    memcpy(node->item, &node->index, sizeof(G2Index));
     return node;
 }
 
 void* g2_insert_alloc_item(const G2Id id) {
-    G2Node* node = _g2_insert(id);
-    node->item = calloc(1, gatherer_of_gatherers[id].element_size);
+    G2Node* node = _g2_insert_alloc(id);
     return node->item;
 }
 
@@ -217,12 +217,12 @@ void g2_io_node(G2Node* node, IOReadWrite rw, char g2_node_dir[PATH_MAX]) {
     if (!file)
         exit(1);
 
+    if (IO_IS_READ(rw)) {
+        memcpy(node->item, &node->index, sizeof(G2Index));
+    }
+
     node->g2->iofn(rw, file, &node->item);
 
-    if (IO_IS_READ(rw)) {
-        memcpy(node->item, &node->index, sizeof(G2Index)); // before iofn item is not allocated
-    }
-    
     if (node->g2->hashfn) {
         uint8_t hash[SHA256_DIGEST_LENGTH];
         char digest[IO_DIGEST_LENGTH];
@@ -336,6 +336,17 @@ int g2_io(RG2 gat, IOReadWrite rw) {
 }
 
 int g2_io_call(const G2Id id, IOReadWrite rw) {
+
+    RG2 g2 = &gatherer_of_gatherers[id];
+
+    if (IO_IS_WRITE(rw) && g2->iostored) {
+        LOG_TRACE("[%s] calling for storing already done.", g2_id_names[id]);
+        return 0;
+    }
+    if (IO_IS_READ(rw) && g2->ioloaded) {
+        LOG_TRACE("[%s] calling for loading already done.", g2_id_names[id]);
+        return 0;
+    }
     LOG_TRACE("[%s] calling %s.", g2_id_names[id], IO_IS_READ(rw) ? "loading" : "storing");
     
     return g2_io(&gatherer_of_gatherers[id], rw);

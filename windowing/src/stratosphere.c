@@ -448,7 +448,7 @@ void _stratosphere_add(char dataset[100], size_t limit) {
         "FROM pcap JOIN malware as mw ON malware_id = mw.id "
         "WHERE pcap.dataset = '%s' "
         "ORDER BY qr ASC "
-        "LIMIT 2 "
+        "LIMIT 3 "
         ,
         dataset
     );
