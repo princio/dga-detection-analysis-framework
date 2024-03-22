@@ -28,6 +28,7 @@
 #include "parameter_generator.h"
 #include "wqueue.h"
 #include "performance_defaults.h"
+#include "source.h"
 #include "stratosphere.h"
 
 #include <math.h>
@@ -73,7 +74,7 @@ int main (int argc, char* argv[]) {
 #ifdef LOGGING
     // logger_initFileLogger("log/log.txt", 1024 * 1024, 5);
     logger_initConsoleLogger(stdout);
-    logger_setLevel(LogLevel_DEBUG);
+    logger_setLevel(LogLevel_TRACE);
     logger_autoFlush(5000);
 #endif
 
@@ -94,13 +95,61 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/dns2/test3_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/princio/Desktop/results/dns3/test3_%d_%d_%ld/", wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
+    io_setdir(rootdir);
+    g2_init();
 
     stratosphere_add("CTU-SME-11", 0);
 
-    g2_free();
+    __MANY many = g2_array(G2_SOURCE);
+
+    for (size_t i = 0; i < many.number; i++) {
+        RSource source = many._[i];
+
+        printf("%10s: %ld\n", "g2index", source->g2index);
+        printf("%10s: %s\n", "name", source->name);
+        printf("%10s: %s\n", "galaxy", source->galaxy);
+        printf("%10s: %d\n", "wclass.bc", source->wclass.bc);
+        printf("%10s: %d\n", "wclass.mc", source->wclass.mc);
+        printf("%10s: %d\n", "id", source->id);
+        printf("%10s: %ld\n", "qr", source->qr);
+        printf("%10s: %ld\n", "q", source->q);
+        printf("%10s: %ld\n", "r", source->r);
+        printf("%10s: %ld\n", "fnreq_max", source->fnreq_max);
+        printf("%10s: %d\n", "day", source->day);
+        printf("\n");
+    }
+    
+
+    g2_io_all(IO_WRITE);
+    g2_free_all();
+
+    g2_init();
+    g2_io_all(IO_READ);
+
+    many = g2_array(G2_SOURCE);
+    for (size_t i = 0; i < many.number; i++) {
+        RSource source = many._[i];
+
+        printf("%10s: %ld\n", "g2index", source->g2index);
+        printf("%10s: %s\n", "name", source->name);
+        printf("%10s: %s\n", "galaxy", source->galaxy);
+        printf("%10s: %d\n", "wclass.bc", source->wclass.bc);
+        printf("%10s: %d\n", "wclass.mc", source->wclass.mc);
+        printf("%10s: %d\n", "id", source->id);
+        printf("%10s: %ld\n", "qr", source->qr);
+        printf("%10s: %ld\n", "q", source->q);
+        printf("%10s: %ld\n", "r", source->r);
+        printf("%10s: %ld\n", "fnreq_max", source->fnreq_max);
+        printf("%10s: %d\n", "day", source->day);
+        printf("\n");
+    }
+
+
+    g2_free_all();
+
 
     #ifdef LOGGING
     logger_close();

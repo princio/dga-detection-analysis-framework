@@ -25,7 +25,6 @@ RSource source_alloc() {
 }
 
 void _source_free(void* item) {
-    free(item);
 }
 
 void _source_io(IOReadWrite rw, FILE* file, void** item) {

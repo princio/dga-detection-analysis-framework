@@ -1,6 +1,7 @@
 #include "windowsplitdetection.h"
 
 #include "configsuite.h"
+#include "io.h"
 #include "performance_defaults.h"
 #include "reducer.h"
 #include "windowing.h"
@@ -348,7 +349,7 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
             } // filling Result
         }
 
-        if (io_closefile(IO_WRITE, path))
+        if (io_closefile(file, IO_WRITE, path))
             exit(1);
 
         free(qm);
@@ -376,7 +377,7 @@ void* windowsplitdetection_start() {
     Reducer logits = reducer_run(nblocks, nlogits_max, reducer);
 
     {
-        io_path_concat(iodir, "trainer/", outdir);
+        io_path_concat(windowing_iodir, "trainer/", outdir);
         if (!io_direxists(outdir) && io_makedirs(outdir)) {
             LOG_ERROR("Impossible to create the directory: %s", outdir);
             return NULL;

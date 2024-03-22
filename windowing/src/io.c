@@ -10,7 +10,12 @@
 
 #include <openssl/sha.h>
 
-char iodir[PATH_MAX];
+char windowing_iodir[PATH_MAX];
+
+int io_setdir(char dir[PATH_MAX]) {
+    strcpy(windowing_iodir, dir);
+    return io_makedirs(dir);
+}
 
 int io_direxists(char* dir) {
     struct stat st = {0};
@@ -56,9 +61,9 @@ int io_makedirs(char dir[PATH_MAX]) {
     char tmp[PATH_MAX];
     char *p = NULL;
     size_t len;
-    int error;
+    int errors;
 
-    error = 0;
+    errors = 0;
 
     snprintf(tmp, PATH_MAX, "%s", dir);
     len = strlen(tmp);
@@ -66,42 +71,46 @@ int io_makedirs(char dir[PATH_MAX]) {
         if (*p == '/') {
             *p = 0;
             if (io_direxists(tmp) == 0) {
-                printf("Creating %s:\t", tmp);
                 if (mkdir(tmp, S_IRWXU)) {
-                    error++;
-                    printf("error\n");
+                    errors++;
+                    LOG_ERROR("makedirs %s error: %s", tmp, strerror(errno));
                 } else {
-                    printf("success\n");
+                    LOG_TRACE("makedirs %s success", tmp);
                 }
             }
             *p = '/';
         }
     }
 
-    return error;
+    return errors;
 }
 
 int io_makedirs_notoverwrite(char dirpath[DIR_MAX]) {
 
     if (io_direxists(dirpath)) {
-        printf("Directory already exist: %s\n", dirpath);
+        LOG_ERROR("directory already exist: %s", dirpath);
         return -1;
     }
 
     if (io_makedirs(dirpath)) {
-        printf("Impossible to create tb2 directory: %s\n", dirpath);
+        LOG_ERROR("impossible to create tb2 directory: %s", dirpath);
         return -1;
     }
 
     return 0;
 }
 
-FILE* io_openfile(IOReadWrite read, char fname[PATH_MAX]) {
-    FILE* file;
-    char fpath_tmp[PATH_MAX];
-    io_path_concat(fname, ".tmp", fpath_tmp);
+FILE* io_openfile(IOReadWrite rw, char path[PATH_MAX]) {
 
-    file = fopen(fpath_tmp, read ? "rb+" : "wb+");
+    FILE* file;
+    char path_tmp[PATH_MAX];
+    strcpy(path_tmp, path);
+
+    if (IO_IS_WRITE(rw)) {
+        strcat(path_tmp, ".tmp");
+    }
+
+    file = fopen(path_tmp, IO_IS_READ(rw) ? "rb+" : "wb+");
     if (!file) {
         LOG_ERROR("%s", strerror(errno));
     }
@@ -109,15 +118,22 @@ FILE* io_openfile(IOReadWrite read, char fname[PATH_MAX]) {
     return file;
 }
 
-int io_closefile(FILE* file, char path[PATH_MAX]) {
+int io_closefile(FILE* file, IOReadWrite rw, char path[PATH_MAX]) {
     char path_tmp[PATH_MAX];
-    io_path_concat(path, ".tmp", path_tmp);
+
+    strcpy(path_tmp, path);
+    if (IO_IS_WRITE(rw)) {
+        strcat(path_tmp, ".tmp");
+    }
 
     int ret = fclose(file);
     if (ret) {
-        LOG_ERROR("%s", strerror(errno));
+        LOG_ERROR("closing error: %s", strerror(errno));
     } else {
         ret = rename(path_tmp, path);
+        if (ret) {
+            LOG_ERROR("renaming error: '%s' for src '%s' and dst '%s'.", strerror(errno), path_tmp, path);
+        }
     }
     
     return ret;

@@ -53,12 +53,14 @@ typedef struct __G2 {
     G2IOFn iofn;
     G2FreeFn freefn;
 
-    G2Node* root;
+    G2Node root;
 
     __MANY array;
 
     int iosaved;
 } __G2;
+
+void g2_init();
 
 __MANY g2_array(G2Id);
 
@@ -66,12 +68,13 @@ void* g2_get(G2Id, size_t index);
 
 void* g2_insert_alloc_item(G2Id id);
 
-void g2_free();
+void g2_free_all();
 
 void g2_set_iodir(char path[PATH_MAX]);
 
 int g2_io_call(G2Id, IOReadWrite rw);
-void g2_io_index(FILE* file, IOReadWrite rw, G2Id id, void** item);
+void g2_io_index(FILE* file, IOReadWrite rw, const G2Id id, void** item);
+void g2_io_all(IOReadWrite rw);
 
 extern G2Config g2_config_source;
 extern G2Config g2_config_w0many;

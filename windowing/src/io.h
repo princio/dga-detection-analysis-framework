@@ -13,7 +13,7 @@
 #define IO_SUBDIGEST_LENGTH 12
 #define IO_OBJECTID_LENGTH 128
 
-extern char iodir[PATH_MAX];
+extern char windowing_iodir[PATH_MAX];
 
 #define FW32(A) fwrite32((void*) &A, file)
 #define FW64(A) fwrite64((void*) &A, file)
@@ -66,7 +66,7 @@ typedef void (*IOObjectID)(TCPC(void), char[IO_OBJECTID_LENGTH]);
 typedef void (*IOObjectFunction)(IOReadWrite, FILE*, void*);
 
 FILE* io_openfile(IOReadWrite read, char fname[PATH_MAX]);
-int io_closefile(FILE* file, char path[PATH_MAX]);
+int io_closefile(FILE* file, IOReadWrite read, char path[PATH_MAX]);
 
 int io_direxists(char* dir);
 int io_fileexists(char* dir);
@@ -75,6 +75,8 @@ int io_makedir(char dir[PATH_MAX], int append_time);
 int io_makedirs(char dir[PATH_MAX]);
 void io_path_concat(char path1[PATH_MAX], char path2[PATH_MAX], char res[PATH_MAX]);
 int io_makedirs_notoverwrite(char dirpath[DIR_MAX]);
+
+int io_setdir(char dir[PATH_MAX]);
 
 void io_dumphex_file(FILE* file, const void* data, size_t size);
 void io_dumphex(const void* data, size_t size);
