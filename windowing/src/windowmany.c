@@ -14,11 +14,11 @@
 
 void _window0many_free(void* item);
 void _window0many_io(IOReadWrite rw, FILE* file, void**);
-void _window0many_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]);
+void _window0many_hash(void* item, SHA256_CTX*);
 
 void _windowmany_free(void* item);
 void _windowmany_io(IOReadWrite rw, FILE* file, void**);
-void _windowmany_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]);
+void _windowmany_hash(void* item, SHA256_CTX*);
 
 G2Config g2_config_w0many = {
     .element_size = sizeof(__Window0Many),
@@ -217,31 +217,28 @@ int window0many_cmp(RWindow0Many a, RWindow0Many b) {
     return mismatch;
 }
 
-void _window0many_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
+void _window0many_hash(void* item, SHA256_CTX* sha) {
     RWindow0Many a = (RWindow0Many) item;
-    SHA256_CTX sha;
-    memset(out, 0, SHA256_DIGEST_LENGTH);
 
-    SHA256_Init(&sha);
-
-    SHA256_Update(&sha, &a->g2index, sizeof(G2Index));
-    SHA256_Update(&sha, &a->__window0many.number, sizeof(size_t));
-    SHA256_Update(&sha, &a->__windowmany.number, sizeof(size_t));
+    G2_IO_HASH_UPDATE(a->g2index);
+    G2_IO_HASH_UPDATE(a->__window0many.number);
+    G2_IO_HASH_UPDATE(a->__windowmany.number);
 
     for (size_t w = 0; w < a->__window0many.number; w++) {
         RWindow window = &a->__window0many._[w];
-        SHA256_Update(&sha, &window->index, sizeof(size_t));
-        SHA256_Update(&sha, &window->manyindex, sizeof(G2Index));
-        SHA256_Update(&sha, &window->fn_req_min, sizeof(uint32_t));
-        SHA256_Update(&sha, &window->fn_req_max, sizeof(uint32_t));
+        G2_IO_HASH_UPDATE(window->index);
+        G2_IO_HASH_UPDATE(window->manyindex);
+        G2_IO_HASH_UPDATE(window->fn_req_min);
+        G2_IO_HASH_UPDATE(window->fn_req_max);
+        G2_IO_HASH_UPDATE_DOUBLE(window->duration);
 
         for (size_t c = 0; c < configsuite.configs.number; c++) {
-            SHA256_Update(&sha, &window->applies._[c].dn_bad, sizeof(window->applies._[c].dn_bad));
-            SHA256_Update(&sha, &window->applies._[c].wcount, sizeof(window->applies._[c].wcount));
-            SHA256_Update(&sha, &window->applies._[c].whitelistened, sizeof(window->applies._[c].whitelistened));
+            G2_IO_HASH_UPDATE(window->applies._[c].dn_bad);
+            G2_IO_HASH_UPDATE(window->applies._[c].wcount);
+            G2_IO_HASH_UPDATE(window->applies._[c].whitelistened);
+            G2_IO_HASH_UPDATE_DOUBLE(window->applies._[c].logit);
         }
     }
-    SHA256_Final(out, &sha);
 }
 
 void windowmany_hash_update(SHA256_CTX* sha, RWindowMany a) {
@@ -249,21 +246,17 @@ void windowmany_hash_update(SHA256_CTX* sha, RWindowMany a) {
     SHA256_Update(sha, &a->number, sizeof(size_t));
 
     for (size_t w = 0; w < a->number; w++) {
-        SHA256_Update(sha, &a->_[w]->index, sizeof(size_t));
-        SHA256_Update(sha, &a->_[w]->manyindex, sizeof(G2Index));
-        SHA256_Update(sha, &a->_[w]->fn_req_min, sizeof(uint32_t));
-        SHA256_Update(sha, &a->_[w]->fn_req_max, sizeof(uint32_t));
+        G2_IO_HASH_UPDATE(a->_[w]->index);
+        G2_IO_HASH_UPDATE(a->_[w]->manyindex);
+        G2_IO_HASH_UPDATE(a->_[w]->fn_req_min);
+        G2_IO_HASH_UPDATE(a->_[w]->fn_req_max);
+
+        G2_IO_HASH_UPDATE_DOUBLE(a->_[w]->duration);
     }
 }
 
-void _windowmany_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
+void _windowmany_hash(void* item, SHA256_CTX* sha) {
     RWindowMany a = (RWindowMany) item;
-    SHA256_CTX sha;
-    memset(out, 0, SHA256_DIGEST_LENGTH);
 
-    SHA256_Init(&sha);
-
-    windowmany_hash_update(&sha, a);
-
-    SHA256_Final(out, &sha);
+    windowmany_hash_update(sha, a);
 }

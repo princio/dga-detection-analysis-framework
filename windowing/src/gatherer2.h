@@ -8,7 +8,7 @@
 
 #define G2_NAME_MAX 100
 
-#define G2_NUM 7
+#define G2_NUM 8
 
 typedef enum G2Id {
     G2_SOURCE,
@@ -17,12 +17,13 @@ typedef enum G2Id {
     G2_WING,
     G2_WMC,
     G2_WFOLD,
-    G2_WSPLIT
+    G2_WSPLIT,
+    G2_CONFIGSUITE
 } G2Id;
 
 typedef void (*G2FreeFn)(void *);
 typedef void (*G2IOFn)(IOReadWrite, FILE*, void**);
-typedef void (*G2HashFn)(void*, uint8_t[SHA256_DIGEST_LENGTH]);
+typedef void (*G2HashFn)(void*, SHA256_CTX*);
 typedef void (*G2PrintFn)(void*);
 
 typedef size_t G2Index;
@@ -73,6 +74,8 @@ __MANY g2_array(G2Id);
 
 void* g2_get(G2Id, size_t index);
 
+size_t g2_size(G2Id);
+
 void* g2_insert_alloc_item(G2Id id);
 
 void g2_free_all();
@@ -83,6 +86,9 @@ int g2_io_call(G2Id, IOReadWrite rw);
 void g2_io_index(FILE* file, IOReadWrite rw, const G2Id id, void** item);
 void g2_io_all(IOReadWrite rw);
 
+#define G2_IO_HASH_UPDATE(V) SHA256_Update(sha, &(V), sizeof(V));
+#define G2_IO_HASH_UPDATE_DOUBLE(V) { int64_t tmp = (int64_t) (V); SHA256_Update(sha, &tmp, sizeof(int64_t)); };
+
 extern G2Config g2_config_source;
 extern G2Config g2_config_w0many;
 extern G2Config g2_config_wmany;
@@ -90,7 +96,6 @@ extern G2Config g2_config_wing;
 extern G2Config g2_config_wmc;
 extern G2Config g2_config_wfold;
 extern G2Config g2_config_wsplit;
-
-extern char g2_name[G2_NAME_MAX];
+extern G2Config g2_config_configsuite;
 
 #endif

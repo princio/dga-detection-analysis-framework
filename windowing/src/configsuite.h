@@ -5,6 +5,7 @@
 #include "common.h"
 
 #include "io.h"
+#include "gatherer2.h"
 
 #define N_PARAMETERS 7
 
@@ -120,8 +121,10 @@ char NN_NAMES[11][10];
 
 
 typedef struct ConfigSuite {
-    ParameterGenerator pg;
-    ParameterRealm pr;
+    G2Index g2index;
+
+    ParameterGenerator generator;
+    ParameterRealm realm;
     MANY(Config) configs;
 } ConfigSuite;
 
@@ -129,9 +132,9 @@ ParameterDefinition parameters_definition[N_PARAMETERS];
 
 size_t configsuite_pg_count(ParameterGenerator);
 
-void configsuite_generate(ConfigSuite* cs, ParameterGenerator);
+void configsuite_generate(ParameterGenerator);
+
 void configset_disable(ConfigSuite* cs);
-void configset_free(ConfigSuite* cs);
 
 extern ConfigSuite configsuite;
 

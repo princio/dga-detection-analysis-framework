@@ -11,12 +11,14 @@
 
 void _windowfold_free(void*);
 void _windowfold_io(IOReadWrite, FILE*, void**);
+void _windowfold_hash(void*, SHA256_CTX*);
 
 G2Config g2_config_wfold = {
     .element_size = sizeof(__WindowFold),
     .size = 0,
     .freefn = _windowfold_free,
     .iofn = _windowfold_io,
+    .hashfn = _windowfold_hash,
     .id = G2_WFOLD
 };
 
@@ -30,10 +32,13 @@ int windowfold_foldk_ok(RWindowFold windwofold, const size_t k) {
 }
 
 void windowfold_init(RWindowFold windowfold, const WindowFoldConfig config) {
+    windowfold->config = config;
     MANY_INIT(windowfold->foldkmany, config.k, WindowFoldK);
     for (size_t k = 0; k < config.k; k++) {
         windowfold->foldkmany._[k].train = g2_insert_alloc_item(G2_WMC);
         windowfold->foldkmany._[k].test = g2_insert_alloc_item(G2_WMC);
+        windowmc_init(windowfold->foldkmany._[k].train);
+        windowmc_init(windowfold->foldkmany._[k].test);
     }
 }
 
@@ -171,11 +176,23 @@ void _windowfold_io(IOReadWrite rw, FILE* file, void** item) {
     FRW((*windowfold)->config);
 
     if (IO_IS_READ(rw)) {
-        MANY_INIT((*windowfold)->foldkmany, (*windowfold)->config.k, sizeof(WindowFoldK));
+        MANY_INIT((*windowfold)->foldkmany, (*windowfold)->config.k, WindowFoldK);
     }
 
     for (size_t i = 0; i < (*windowfold)->foldkmany.number; i++) {
         g2_io_index(file, rw, G2_WMC, (void**) &(*windowfold)->foldkmany._[i].train);
         g2_io_index(file, rw, G2_WMC, (void**) &(*windowfold)->foldkmany._[i].test);
     }
+}
+
+void _windowfold_hash(void* item, SHA256_CTX* sha) {
+    RWindowFold windowfold = (RWindowFold) item;
+
+    // SHA256_Update(&sha, &windowfold->g2index, sizeof(G2Index));
+    G2_IO_HASH_UPDATE(windowfold->config);
+
+    // for (size_t i = 0; i < windowfold->foldkmany.number; i++) {
+    //     windowmc_hash_update(&sha, windowfold->foldkmany._[i].train);
+    //     windowmc_hash_update(&sha, windowfold->foldkmany._[i].test);
+    // }
 }

@@ -14,10 +14,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-void _windowing_free(void* item);
-void _windowing_io(IOReadWrite rw, FILE* file, void**);
-void _windowing_print(void* item);
-void _windowing_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]);
+void _windowing_free(void*);
+void _windowing_io(IOReadWrite, FILE*, void**);
+void _windowing_print(void*);
+void _windowing_hash(void*, SHA256_CTX*);
 
 G2Config g2_config_wing = {
     .element_size = sizeof(__Windowing),
@@ -155,19 +155,11 @@ int windowing_cmp(RWindowing a, RWindowing b) {
     return mismatch;
 }
 
-void _windowing_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
+void _windowing_hash(void* item, SHA256_CTX* sha) {
     RWindowing windowing = (RWindowing) item;
 
-    SHA256_CTX sha;
-
-    memset(out, 0, SHA256_DIGEST_LENGTH);
-
-    SHA256_Init(&sha);
-
-    SHA256_Update(&sha, &windowing->g2index, sizeof(G2Index));
-    SHA256_Update(&sha, &windowing->source->g2index, sizeof(G2Index));
-    SHA256_Update(&sha, &windowing->windowmany->g2index, sizeof(G2Index));
-    SHA256_Update(&sha, &windowing->wsize, sizeof(WSize));
-
-    SHA256_Final(out, &sha);
+    G2_IO_HASH_UPDATE(windowing->g2index);
+    G2_IO_HASH_UPDATE(windowing->source->g2index);
+    G2_IO_HASH_UPDATE(windowing->windowmany->g2index);
+    G2_IO_HASH_UPDATE(windowing->wsize);
 }

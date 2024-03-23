@@ -9,10 +9,10 @@
 #include <stdio.h>
 #include <string.h>
 
-void _source_free(void* item);
-void _source_io(IOReadWrite rw, FILE* file, void**);
+void _source_free(void*);
+void _source_io(IOReadWrite, FILE*, void**);
 void _source_print(void*);
-void _source_hash(void*, uint8_t[SHA256_DIGEST_LENGTH]);
+void _source_hash(void*, SHA256_CTX*);
 
 G2Config g2_config_source = {
     .element_size = sizeof(__Source),
@@ -74,16 +74,8 @@ int source_cmp(RSource a, RSource b) {
     return mismatch;
 }
 
-void _source_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
+void _source_hash(void* item, SHA256_CTX* sha) {
     RSource source = (RSource) item;
 
-    SHA256_CTX sha;
-
-    memset(out, 0, SHA256_DIGEST_LENGTH);
-
-    SHA256_Init(&sha);
-
-    SHA256_Update(&sha, source, sizeof(__Source));
-
-    SHA256_Final(out, &sha);
+    SHA256_Update(sha, source, sizeof(__Source));
 }

@@ -103,9 +103,11 @@ int main (int argc, char* argv[]) {
     }
 
     io_setdir(rootdir);
+
     g2_init();
 
-    configsuite_generate(&configsuite, pg);
+    configsuite_generate(pg);
+
     stratosphere_add("CTU-SME-11", 0);
 
     windowing_apply(100);
@@ -119,20 +121,19 @@ int main (int argc, char* argv[]) {
     windowmc_init(windowmc);
     windowmc_buildby_windowing_many(windowmc, windowingmany);
  
-    // WindowFoldConfig config = { .k = 10, .k_test = 5 };
-    // windowfold_create(windowmc, config);
+    WindowFoldConfig wfc = { .k = 10, .k_test = 5 };
+    windowfold_create(windowmc, wfc);
 
     MANY_FREE(windowingmany);
 
     g2_io_all(IO_WRITE);
-    g2_free_all();
-
-    g2_init();
-    g2_io_all(IO_READ);
 
     g2_free_all();
 
-    configset_free(&configsuite);
+    // g2_init();
+    // g2_io_all(IO_READ);
+
+    // g2_free_all();
 
     #ifdef LOGGING
     logger_close();

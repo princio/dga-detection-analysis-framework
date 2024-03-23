@@ -14,14 +14,16 @@
 #include <sys/time.h>
 
 
-void _windowmc_free(void* item);
-void _windowmc_io(IOReadWrite rw, FILE* file, void**);
+void _windowmc_free(void*);
+void _windowmc_io(IOReadWrite, FILE*, void**);
+void _windowmc_hash(void*, SHA256_CTX*);
 
 G2Config g2_config_wmc = {
     .element_size = sizeof(__WindowMC),
     .size = 0,
     .freefn = _windowmc_free,
     .iofn = _windowmc_io,
+    .hashfn = _windowmc_hash,
     .id = G2_WMC
 };
 
@@ -210,11 +212,7 @@ void _windowmc_io(IOReadWrite rw, FILE* file, void** item) {
     }
 }
 
-void _windowmc_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
-    RWindowMC a = (RWindowMC) item;
-    SHA256_CTX sha;
-    memset(out, 0, SHA256_DIGEST_LENGTH);
-
+void windowmc_hash_update(SHA256_CTX* sha, RWindowMC a) {
     RWindowMany tmp[6] = {
         a->all,
         a->binary[0],
@@ -224,13 +222,14 @@ void _windowmc_hash(void* item, uint8_t out[SHA256_DIGEST_LENGTH]) {
         a->multi[2]
     };
 
-    SHA256_Init(&sha);
-
-    SHA256_Update(&sha, &a->g2index, sizeof(G2Index));
+    G2_IO_HASH_UPDATE(a->g2index);
 
     for (size_t i = 0; i < 6; i++) {
-        windowmany_hash_update(&sha, tmp[i]);
+        windowmany_hash_update(sha, tmp[i]);
     }
+}
 
-    SHA256_Final(out, &sha);
+void _windowmc_hash(void* item, SHA256_CTX* sha) {
+    RWindowMC a = (RWindowMC) item;
+    windowmc_hash_update(sha, a);
 }

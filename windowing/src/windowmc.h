@@ -28,4 +28,6 @@ void windowmc_buildby_windowmany(RWindowMC rwindowmc, RWindowMany windowmany);
 void windowmc_buildby_windowing_many(RWindowMC rwindowmc, MANY(RWindowing) windowingmany);
 void windowmc_buildby_size(RWindowMC rwindowmc, IndexMC size);
 
+void windowmc_hash_update(SHA256_CTX* sha, RWindowMC a);
+
 #endif

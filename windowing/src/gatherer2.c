@@ -16,7 +16,8 @@ char g2_id_names[G2_NUM][G2_NAME_MAX] = {
     "windowing",
     "windowmc",
     "windowfold",
-    "windowsplit"
+    "windowsplit",
+    "configsuite"
 };
 
 __G2 gatherer_of_gatherers[G2_NUM];
@@ -33,7 +34,8 @@ static inline G2Config _g2_config_get(const G2Id id) {
         &g2_config_wing,
         &g2_config_wmc,
         &g2_config_wfold,
-        &g2_config_wsplit
+        &g2_config_wsplit,
+        &g2_config_configsuite
     };
     return *configs[id];
 }
@@ -83,12 +85,15 @@ void* g2_get(const G2Id id, size_t index) {
         g2_array(id);
     }
 
-    if (index > gat->size) {
+    if(index > gat->size)
         LOG_ERROR("[%s] index bigger than gatherer size: %ld > %ld", g2_id_names[id], index, gat->size);
-        return NULL;
-    }
+    assert(index < gat->size);
 
     return gat->array._[index];
+}
+
+size_t g2_size(G2Id id) {
+    return gatherer_of_gatherers[id].size;
 }
 
 void g2_init() {
@@ -157,6 +162,8 @@ G2Node* _g2_insert_alloc(const G2Id id) {
 }
 
 void* g2_insert_alloc_item(const G2Id id) {
+    assert(initialized == 1);
+
     G2Node* node = _g2_insert_alloc(id);
     return node->item;
 }
@@ -201,7 +208,49 @@ void g2_io_index(FILE* file, IOReadWrite rw, const G2Id id, void** item) {
         *item = g2_get(id, index);
     }
 
-    LOG_TRACE("[%s] io %s of index %ld.", g2_id_names[id], IO_IS_READ(rw) ? "loaded" : "stored", index);
+    LOG_TRACE("[%s] <io-%s> of index %ld.", g2_id_names[id], IO_IS_READ(rw) ? "loaded" : "stored", index);
+}
+
+void _g2_io_node_hash_call(G2Node* node, char digest[IO_DIGEST_LENGTH]) {
+    SHA256_CTX sha;
+    uint8_t hash[SHA256_DIGEST_LENGTH];
+
+    memset(hash, 0, SHA256_DIGEST_LENGTH);
+
+    SHA256_Init(&sha);
+
+    node->g2->hashfn(node->item, &sha);
+
+    SHA256_Final(hash, &sha);
+
+    io_hash_digest(digest, hash);
+}
+
+void _g2_io_node_hash(FILE* file, IOReadWrite rw, G2Node* node) {
+    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    if (node->g2->printfn == NULL) {
+        return;
+    }
+
+    char digest_computed[IO_DIGEST_LENGTH];
+    
+    _g2_io_node_hash_call(node, digest_computed);
+
+    if (IO_IS_WRITE(rw)) {
+        FW(digest_computed);
+        LOG_DEBUG("[%s] index %ld write digest: %s.", g2_id_names[node->g2->id], node->index, digest_computed);
+    } else {
+        char digest_stored[IO_DIGEST_LENGTH];
+
+        FR(digest_stored);
+
+        if (memcmp(digest_computed, digest_stored, IO_DIGEST_LENGTH)) {
+            LOG_DEBUG("[%s] index %ld digests not correspond.", g2_id_names[node->g2->id], node->index);
+        }
+
+        LOG_DEBUG("[%s] index %ld hash:", g2_id_names[node->g2->id], node->index, digest_stored, digest_computed);
+    }
 }
 
 void g2_io_node(G2Node* node, IOReadWrite rw, char g2_node_dir[PATH_MAX]) {
@@ -223,38 +272,7 @@ void g2_io_node(G2Node* node, IOReadWrite rw, char g2_node_dir[PATH_MAX]) {
 
     node->g2->iofn(rw, file, &node->item);
 
-    if (node->g2->hashfn) {
-        uint8_t hash[SHA256_DIGEST_LENGTH];
-        char digest[IO_DIGEST_LENGTH];
-
-        node->g2->hashfn(node->item, hash);
-
-        if (IO_IS_READ(rw)) {
-            uint8_t hash_check[SHA256_DIGEST_LENGTH];
-            char digest_check[IO_DIGEST_LENGTH];
-            FR(hash_check);
-            io_hash_digest(digest, hash);
-            io_hash_digest(digest_check, hash_check);
-            LOG_DEBUG("[%s] index %ld digests: %s | %s.", g2_id_names[node->g2->id], node->index, digest, digest_check);
-            if (memcmp(hash, hash_check, SHA256_DIGEST_LENGTH)) {
-                LOG_DEBUG("[%s] index %ld digests not correspond.", g2_id_names[node->g2->id], node->index);
-                if (node->g2->printfn) {
-                    node->g2->printfn(node->item);
-                }
-            } else {
-                io_hash_digest(digest, hash);
-                io_hash_digest(digest_check, hash_check);
-                LOG_DEBUG("[%s] index %ld digests correspond.", g2_id_names[node->g2->id], node->index);
-            }
-        } else {
-            io_hash_digest(digest, hash);
-            LOG_DEBUG("[%s] index %ld write digest: %s.", g2_id_names[node->g2->id], node->index, digest);
-            FW(hash);
-            if (node->g2->printfn) {
-                node->g2->printfn(node->item);
-            }
-        }
-    }
+    _g2_io_node_hash(file, rw, node);
 
     if (io_closefile(file, rw, filepath))
         exit(1);
