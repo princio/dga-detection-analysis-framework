@@ -140,7 +140,7 @@ void windowmc_buildby_windowmany(RWindowMC windowmc, RWindowMany windowmany) {
 
         windowmc->all->_[index.all++] = window;
         windowmc->binary[wc.bc]->_[index.binary[wc.bc]++] = window;
-        windowmc->multi[wc.mc]->_[index.binary[wc.mc]++] = window;
+        windowmc->multi[wc.mc]->_[index.multi[wc.mc]++] = window;
     }
 }
 

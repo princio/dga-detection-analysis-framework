@@ -124,16 +124,27 @@ int main (int argc, char* argv[]) {
     WindowFoldConfig wfc = { .k = 10, .k_test = 5 };
     windowfold_create(windowmc, wfc);
 
+    WindowSplitConfig config = { 
+        .how = WINDOWSPLIT_HOW_BY_DAY,
+        .day = 1
+    };
+
+    // RWindowSplit split1 = windowsplit_createby_day(windowingmany, 1);
+    for (size_t i = 0; i < 10; i++) {
+        RWindowSplit split = windowsplit_createby_portion(windowmc, 1, 10);
+    }
+
+    RWindowSplit split = windowsplit_createby_day(windowingmany, 0);
+
     MANY_FREE(windowingmany);
 
     g2_io_all(IO_WRITE);
 
     g2_free_all();
 
-    // g2_init();
-    // g2_io_all(IO_READ);
-
-    // g2_free_all();
+    g2_init();
+    g2_io_all(IO_READ);
+    g2_free_all();
 
     #ifdef LOGGING
     logger_close();

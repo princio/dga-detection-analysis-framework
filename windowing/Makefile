@@ -71,7 +71,9 @@ STD := -std=gnu99 # See man gcc for more options
 STACK := #-Wstack-protector # -fstack-protector-all
 
 # Specifies to GCC the required warnings
-WARNS := -Wall -Wextra -pedantic # -pedantic warns on language standards
+ERRORS := -fmax-errors=5
+
+WARNS := $(ERRORS) -Wall -Wextra -pedantic # -pedantic warns on language standards
 
 NOWARNS := -Wno-unused-parameter -Wno-unused-variable -Wno-unused-variable -Wno-unused-but-set-variable
 
@@ -203,7 +205,7 @@ tests:
 
 # Rule for cleaning the project
 clean:
-	@rm -rvf $(BINDIR)/* $(ALLLIBDIR)/* $(LOGDIR)/* $(PRODLIBDIR)/* ;
+	@rm -rvf $(BINDIR)/* $(ALLLIBDIR)/* $(PRODLIBDIR)/* ;
 
 ca: clean all
 

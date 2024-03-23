@@ -71,7 +71,7 @@ RWindowFold windowfold_create(RWindowMC windowmc, const WindowFoldConfig config)
         RWindowMany multi = windowmc->multi[cl];
 
         if (multi->number == 0) {
-            LOG_WARN("empty windows for class %d\n", cl);
+            LOG_WARN("empty windows for class %d.", cl);
             continue;
         }
     
@@ -188,11 +188,11 @@ void _windowfold_io(IOReadWrite rw, FILE* file, void** item) {
 void _windowfold_hash(void* item, SHA256_CTX* sha) {
     RWindowFold windowfold = (RWindowFold) item;
 
-    // SHA256_Update(&sha, &windowfold->g2index, sizeof(G2Index));
+    G2_IO_HASH_UPDATE(windowfold->g2index);
     G2_IO_HASH_UPDATE(windowfold->config);
 
-    // for (size_t i = 0; i < windowfold->foldkmany.number; i++) {
-    //     windowmc_hash_update(&sha, windowfold->foldkmany._[i].train);
-    //     windowmc_hash_update(&sha, windowfold->foldkmany._[i].test);
-    // }
+    for (size_t i = 0; i < windowfold->foldkmany.number; i++) {
+        windowmc_hash_update(sha, windowfold->foldkmany._[i].train);
+        windowmc_hash_update(sha, windowfold->foldkmany._[i].test);
+    }
 }

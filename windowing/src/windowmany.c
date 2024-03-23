@@ -47,7 +47,7 @@ IndexMC windowmany_count(RWindowMany windowmany) {
         WClass wc = window->windowing->source->wclass;
         counter.all++;
         counter.binary[wc.bc]++;
-        counter.binary[wc.mc]++;
+        counter.multi[wc.mc]++;
     }
 
     return counter;

@@ -12,12 +12,14 @@
 
 void _windowsplit_free(void*);
 void _windowsplit_io(IOReadWrite, FILE*, void**);
+void _windowsplit_hash(void*, SHA256_CTX*);
 
 G2Config g2_config_wsplit = {
     .element_size = sizeof(__WindowSplit),
     .size = 0,
     .freefn = _windowsplit_free,
     .iofn = _windowsplit_io,
+    .hashfn = _windowsplit_hash,
     .id = G2_WSPLIT
 };
 
@@ -29,17 +31,30 @@ void windowsplit_shuffle(RWindowSplit split) {
 void windowsplit_init(RWindowSplit windowsplit) {
     windowsplit->train = g2_insert_alloc_item(G2_WMANY);
     windowsplit->test = g2_insert_alloc_item(G2_WMC);
+    windowmc_init(windowsplit->test);
 }
 
-RWindowSplit windowsplit_createby_day(MANY(RWindowing) windowingmany, int day) {
+RWindowSplit windowsplit_createby_day(MANY(RWindowing) windowingmany, const int day) {
     RWindowSplit split;
     size_t train_counter;
     IndexMC test_counter;
 
+    {
+        int count;
+        count = 0;
+        for (size_t i = 0; i < windowingmany.number; i++) {
+            count += windowingmany._[i]->source->day == (int) day;
+        }
+        if (count == 0) {
+            LOG_ERROR("no data available for day %ld.", day);
+            exit(1);
+        }
+    }
+
     split = (RWindowSplit) g2_insert_alloc_item(G2_WSPLIT);
     windowsplit_init(split);
 
-    #define DGA0_AND_FIRSTDAY windowing->source->wclass.bc == BINARYCLASS_0 && windowing->source->day == 1
+    #define DGA0_AND_FIRSTDAY windowing->source->wclass.bc == BINARYCLASS_0 && windowing->source->day == day
 
     { // counting to allocate
         train_counter = 0;
@@ -84,18 +99,21 @@ RWindowSplit windowsplit_createby_day(MANY(RWindowing) windowingmany, int day) {
 }
 
 
-RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, int k, int k_total) {
+RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, const size_t _k, const size_t k_total) {
+    assert(_k > 0 && _k <= k_total);
+
+    const size_t k = _k - 1;
+
     RWindowSplit split;
     __WindowMany tmp_test;
+    memset(&tmp_test, 0, sizeof(__WindowMany));
 
     split = (RWindowSplit) g2_insert_alloc_item(G2_WSPLIT);
     windowsplit_init(split);
 
-    size_t portion_counter;
-
     const size_t kfold_size = windowmc->binary[BINARYCLASS_0]->number / k_total;
     const size_t kfold_size_rest = windowmc->binary[BINARYCLASS_0]->number - (kfold_size * k_total);
-    const size_t train_counter = kfold_size + (k + 1 == k_total) ? kfold_size_rest : 0;
+    const size_t train_counter = kfold_size + ((k + 1 == k_total) ? kfold_size_rest : 0);
     const size_t window_index_begin = k * kfold_size;
     const size_t window_index_end = window_index_begin + train_counter;
 
@@ -126,7 +144,7 @@ RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, int k, int k_total
                 split->train->_[index_train] = window;
                 ++index_train;
             } else {
-                split->test->all->_[index_test] = window;
+                tmp_test._[index_test] = window;
                 ++index_test;
             }
         }
@@ -140,7 +158,6 @@ RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, int k, int k_total
 
 void _windowsplit_free(void* item) {
     RWindowSplit split = (RWindowSplit) item;
-    free(split);
 }
 
 void _windowsplit_io(IOReadWrite rw, FILE* file, void** item) {
@@ -158,4 +175,15 @@ void _windowsplit_io(IOReadWrite rw, FILE* file, void** item) {
 
     g2_io_index(file, rw, G2_WMANY, (void**) &(*windowsplit)->train);
     g2_io_index(file, rw, G2_WMC, (void**) &(*windowsplit)->test);
+}
+
+void _windowsplit_hash(void* item, SHA256_CTX* sha) {
+    RWindowSplit windowsplit = (RWindowSplit) item;
+
+    G2_IO_HASH_UPDATE(windowsplit->g2index);
+    G2_IO_HASH_UPDATE(windowsplit->config);
+    G2_IO_HASH_UPDATE(windowsplit->wsize);
+
+    windowmany_hash_update(sha, windowsplit->train);
+    windowmc_hash_update(sha, windowsplit->test);
 }

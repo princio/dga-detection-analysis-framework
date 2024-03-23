@@ -229,11 +229,15 @@ void _g2_io_node_hash_call(G2Node* node, char digest[IO_DIGEST_LENGTH]) {
 void _g2_io_node_hash(FILE* file, IOReadWrite rw, G2Node* node) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    if (node->g2->printfn == NULL) {
+    if (node->g2->hashfn == NULL) {
         return;
     }
 
     char digest_computed[IO_DIGEST_LENGTH];
+    char digest_stored[IO_DIGEST_LENGTH];
+
+    strcpy(digest_computed, "not-computed");
+    strcpy(digest_stored, "not-stored");
     
     _g2_io_node_hash_call(node, digest_computed);
 
@@ -241,16 +245,24 @@ void _g2_io_node_hash(FILE* file, IOReadWrite rw, G2Node* node) {
         FW(digest_computed);
         LOG_DEBUG("[%s] index %ld write digest: %s.", g2_id_names[node->g2->id], node->index, digest_computed);
     } else {
-        char digest_stored[IO_DIGEST_LENGTH];
 
         FR(digest_stored);
 
         if (memcmp(digest_computed, digest_stored, IO_DIGEST_LENGTH)) {
-            LOG_DEBUG("[%s] index %ld digests not correspond.", g2_id_names[node->g2->id], node->index);
+            LOG_DEBUG("[%s] index %ld digests not correspond.", g2_id_names[node->g2->id], node->index, digest_stored, digest_computed);
+        } else {
+            LOG_DEBUG("[%s] index %ld digests correspond.", g2_id_names[node->g2->id], node->index);
         }
-
-        LOG_DEBUG("[%s] index %ld hash:", g2_id_names[node->g2->id], node->index, digest_stored, digest_computed);
     }
+    FILE* filetmp = fopen("/tmp/bibo.csv", "a");
+    fprintf(filetmp, "%s,%s,%ld,%s,%s\n",
+        IO_IS_WRITE(rw) ? "write" : "read",
+        g2_id_names[node->g2->id],
+        node->index,
+        digest_stored,
+        digest_computed
+    );
+    fclose(filetmp);
 }
 
 void g2_io_node(G2Node* node, IOReadWrite rw, char g2_node_dir[PATH_MAX]) {
