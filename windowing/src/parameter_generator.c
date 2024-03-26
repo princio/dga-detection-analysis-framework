@@ -34,10 +34,10 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
 
     {
         nn_t nn[] = {
-            NN_NONE,
+            // NN_NONE
             NN_TLD,
-            NN_ICANN,
-            NN_PRIVATE
+            // NN_ICANN,
+            // NN_PRIVATE
         };
         __SET(nn);
     }

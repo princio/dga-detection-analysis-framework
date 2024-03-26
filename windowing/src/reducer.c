@@ -39,9 +39,9 @@ Reducer reducer_run(const size_t nblocks, const size_t nlogits_max, const int64_
         for (size_t i = 0; i < windowingmany.number; i++) {
             RWindowing windowing = windowingmany._[i];
 
-            for (size_t idxwindow = 0; idxwindow < windowing->windowmany->number; idxwindow++) {
+            for (size_t idxwindow = 0; idxwindow < windowing->window0many->number; idxwindow++) {
                 for (size_t idxconfig = 0; idxconfig < configsuite.configs.number; idxconfig++) {
-                    const int64_t logit = reducer_logit(windowing->windowmany->_[idxwindow]->applies._[idxconfig].logit, reducer);
+                    const int64_t logit = reducer_logit(windowing->window0many->_[idxwindow].applies._[idxconfig].logit, reducer);
 
                     if (logit_min > logit) logit_min = logit;
                     if (logit_max < logit) logit_max = logit;
@@ -67,10 +67,10 @@ Reducer reducer_run(const size_t nblocks, const size_t nlogits_max, const int64_
 
         for (size_t i = 0; i < windowingmany.number; i++) {
             RWindowing windowing = windowingmany._[i];
-            LOG_TRACE("Counting source#%4ld having %7ld windows", windowing->source->g2index, windowing->windowmany->number);
-            for (size_t idxwindow = 0; idxwindow < windowing->windowmany->number; idxwindow++) {
+            LOG_TRACE("Counting source#%4ld having %7ld windows", windowing->source->g2index, windowing->window0many->number);
+            for (size_t idxwindow = 0; idxwindow < windowing->window0many->number; idxwindow++) {
                 for (size_t idxconfig = 0; idxconfig < configsuite.configs.number; idxconfig++) {
-                    const int64_t logit = reducer_logit(windowing->windowmany->_[idxwindow]->applies._[idxconfig].logit, reducer);
+                    const int64_t logit = reducer_logit(windowing->window0many->_[idxwindow].applies._[idxconfig].logit, reducer);
 
                     const size_t index = floor(((double) (logit - begin)) / step);
 
