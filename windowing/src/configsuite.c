@@ -33,17 +33,17 @@ char WINDOWING_NAMES[3][10] = {
 };
 
 char NN_NAMES[11][10] = {
+    "NONE", // dns2
+    "TLD", // dns2
+    "ICANN", // dns2
+    "PRIVATE", // dns2
     "",
     "",
     "",
-    "",
-    "",
-    "",
-    "",
-    "ICANN",
-    "NONE",
-    "PRIVATE",
-    "TLD"
+    "ICANN", // dns
+    "NONE", // dns
+    "PRIVATE", // dns
+    "TLD" // dns
 };
 
 const char parameters_format[N_PARAMETERS][5] = {
@@ -222,7 +222,7 @@ size_t configsuite_pg_count(ParameterGenerator pg) {
     return count;
 }
 
-void _configsuite_generate(ConfigSuite* cs, ParameterGenerator pg) {
+void _configsuite_build(ConfigSuite* cs, ParameterGenerator pg) {
 
     _parametersdefinition_init();
 
@@ -233,6 +233,8 @@ void _configsuite_generate(ConfigSuite* cs, ParameterGenerator pg) {
     if (pg.max_size && pg.max_size < cs->configs.number) {
         cs->configs.number = pg.max_size;
     }
+
+    memcpy(&configsuite, cs, sizeof(ConfigSuite));
 }
 
 void configsuite_generate(ParameterGenerator pg) {
@@ -243,9 +245,7 @@ void configsuite_generate(ParameterGenerator pg) {
     
     ConfigSuite* cs = (ConfigSuite*) g2_insert_alloc_item(G2_CONFIGSUITE);
 
-    _configsuite_generate(cs, pg);
-
-    memcpy(&configsuite, cs, sizeof(ConfigSuite));
+    _configsuite_build(cs, pg);
 }
 
 void configset_disable(ConfigSuite* cs) {
@@ -279,7 +279,7 @@ void _configsuite_io(IOReadWrite rw, FILE* file, void** item) {
     FRW((*cs)->generator);
 
     if (IO_IS_READ(rw)) {
-        _configsuite_generate((*cs), (*cs)->generator);
+        _configsuite_build((*cs), (*cs)->generator);
     }
 }
 
@@ -300,4 +300,16 @@ void _configsuite_hash(void* item, SHA256_CTX* sha) {
         G2_IO_HASH_UPDATE_DOUBLE(config->wl_value);
         G2_IO_HASH_UPDATE_DOUBLE(config->nx_epsilon_increment);
     }
+}
+
+void configsuite_print(const size_t idxconfig) {
+    Config * config = &configsuite.configs._[idxconfig];
+
+    printf("inf(%g,%g) %s (%ld,%g) %s %g",
+        config->ninf, config->pinf,
+        NN_NAMES[config->nn],
+        config->wl_rank, config->wl_value,
+        WINDOWING_NAMES[config->nn],
+        config->nx_epsilon_increment
+    );
 }

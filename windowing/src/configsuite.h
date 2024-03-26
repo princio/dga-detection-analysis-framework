@@ -136,6 +136,8 @@ void configsuite_generate(ParameterGenerator);
 
 void configset_disable(ConfigSuite* cs);
 
+void configsuite_print(const size_t idxconfig);
+
 extern ConfigSuite configsuite;
 
 #endif
