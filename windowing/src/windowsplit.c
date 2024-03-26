@@ -1,5 +1,6 @@
 #include "windowsplit.h"
 
+#include "detect.h"
 #include "gatherer2.h"
 #include "source.h"
 #include "windowing.h"
@@ -34,16 +35,19 @@ void windowsplit_init(RWindowSplit windowsplit) {
     windowmc_init(windowsplit->test);
 }
 
-RWindowSplit windowsplit_createby_day(MANY(RWindowing) windowingmany, const int day) {
+RWindowSplit windowsplit_createby_day(const int day) {
+    __MANY many;
     RWindowSplit split;
     size_t train_counter;
     IndexMC test_counter;
 
+    many = g2_array(G2_WING);
+
     {
         int count;
         count = 0;
-        for (size_t i = 0; i < windowingmany.number; i++) {
-            count += windowingmany._[i]->source->day == (int) day;
+        for (size_t i = 0; i < many.number; i++) {
+            count += ((RWindowing) many._[i])->source->day == (int) day;
         }
         if (count == 0) {
             LOG_ERROR("no data available for day %ld.", day);
@@ -59,14 +63,14 @@ RWindowSplit windowsplit_createby_day(MANY(RWindowing) windowingmany, const int 
     { // counting to allocate
         train_counter = 0;
         memset(&test_counter, 0, sizeof(IndexMC));
-        for (size_t w = 0; w < windowingmany.number; w++) {
-            RWindowing windowing = windowingmany._[w];
+        for (size_t w = 0; w < many.number; w++) {
+            RWindowing windowing = (RWindowing) many._[w];
             if (DGA0_AND_FIRSTDAY) {
-                train_counter += windowing->windowmany->number;
+                train_counter += windowing->window0many->number;
             } else {
-                test_counter.all += windowing->windowmany->number;
-                test_counter.binary[windowing->source->wclass.bc] += windowing->windowmany->number;
-                test_counter.multi[windowing->source->wclass.mc] += windowing->windowmany->number;
+                test_counter.all += windowing->window0many->number;
+                test_counter.binary[windowing->source->wclass.bc] += windowing->window0many->number;
+                test_counter.multi[windowing->source->wclass.mc] += windowing->window0many->number;
             }
         }
 
@@ -74,20 +78,20 @@ RWindowSplit windowsplit_createby_day(MANY(RWindowing) windowingmany, const int 
         windowmc_buildby_size(split->test, test_counter);
     }
 
-    { // counting to allocate
+    { // setting references
         train_counter = 0;
         memset(&test_counter, 0, sizeof(IndexMC));
-        for (size_t g = 0; g < windowingmany.number; g++) {
-            RWindowing windowing = windowingmany._[g];
+        for (size_t g = 0; g < many.number; g++) {
+            RWindowing windowing = (RWindowing) many._[g];
             WClass wc = windowing->source->wclass;
 
-            for (size_t w = 0; w < windowing->windowmany->number; w++) {
+            for (size_t w = 0; w < windowing->window0many->number; w++) {
                 if (DGA0_AND_FIRSTDAY) {
-                    split->train->_[train_counter++] = windowing->windowmany->_[w];
+                    split->train->_[train_counter++] = &windowing->window0many->_[w];
                 } else {
-                    split->test->all->_[test_counter.all++] = windowing->windowmany->_[w];
-                    split->test->binary[wc.bc]->_[test_counter.binary[wc.bc]++] = windowing->windowmany->_[w];
-                    split->test->multi[wc.mc]->_[test_counter.multi[wc.mc]++] = windowing->windowmany->_[w];
+                    split->test->all->_[test_counter.all++] = &windowing->window0many->_[w];
+                    split->test->binary[wc.bc]->_[test_counter.binary[wc.bc]++] = &windowing->window0many->_[w];
+                    split->test->multi[wc.mc]->_[test_counter.multi[wc.mc]++] = &windowing->window0many->_[w];
                 }
             }
         }
@@ -102,36 +106,48 @@ RWindowSplit windowsplit_createby_day(MANY(RWindowing) windowingmany, const int 
 RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, const size_t _k, const size_t k_total) {
     assert(_k > 0 && _k <= k_total);
 
+    RWindowSplit split;
+    __WindowMany tmp_test; {
+        memset(&tmp_test, 0, sizeof(__WindowMany));
+    }
+
+    const IndexMC windowmc_counter = windowmc_count(windowmc);
     const size_t k = _k - 1;
 
-    RWindowSplit split;
-    __WindowMany tmp_test;
-    memset(&tmp_test, 0, sizeof(__WindowMany));
+    {
+        split = (RWindowSplit) g2_insert_alloc_item(G2_WSPLIT);
+        windowsplit_init(split);
+    }
 
-    split = (RWindowSplit) g2_insert_alloc_item(G2_WSPLIT);
-    windowsplit_init(split);
-
-    const size_t kfold_size = windowmc->binary[BINARYCLASS_0]->number / k_total;
-    const size_t kfold_size_rest = windowmc->binary[BINARYCLASS_0]->number - (kfold_size * k_total);
-    const size_t train_counter = kfold_size + ((k + 1 == k_total) ? kfold_size_rest : 0);
-    const size_t window_index_begin = k * kfold_size;
-    const size_t window_index_end = window_index_begin + train_counter;
-
+    const size_t b0_kfold_size = windowmc_counter.binary[0] / k_total;
+    const size_t b0_window_index_begin = k * b0_kfold_size;
+    const size_t b0_window_index_end = k == k_total ? windowmc_counter.binary[0] : (b0_window_index_begin + b0_kfold_size);
 
     split->config.how = WINDOWSPLIT_HOW_PORTION;
     split->config.k = k;
     split->config.k_total = k_total;
 
     {
-        IndexMC test_imc = windowmc_count(windowmc);
-        windowmany_buildby_size(split->train, train_counter);
-        windowmany_buildby_size(&tmp_test, test_imc.all - train_counter);
+        windowmany_buildby_size(split->train, b0_kfold_size);
+        windowmany_buildby_size(&tmp_test, windowmc_counter.all - b0_kfold_size);
     }
 
-    {
+    // printf("[windowsplit] windomc->all->number: %ld\n", windowmc_counter.all);
+    // printf("[windowsplit] windomc->bin[0]->number: %ld\n", windowmc_counter.binary[0]);
+    // printf("[windowsplit] windomc->bin[1]->number: %ld\n", windowmc_counter.binary[1]);
+    // printf("[windowsplit] k/k_total: %ld/%ld\n", _k, k_total);
+    // printf("[windowsplit] kfold_size: %ld\n", b0_kfold_size);
+    // printf("[windowsplit] window_index_begin: %ld\n", b0_window_index_begin);
+    // printf("[windowsplit] window_index_end: %ld\n", b0_window_index_end);
+    // printf("[windowsplit] split->train->number: %ld\n", split->train->number);
+    // printf("[windowsplit]\n");
+
+    { // setting window references
+        size_t index_train_bc0;
         size_t index_train;
         size_t index_test;
 
+        index_train_bc0 = 0;
         index_train = 0;
         index_test = 0;
     
@@ -139,13 +155,18 @@ RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, const size_t _k, c
             RWindow window = windowmc->all->_[w];
             WClass wc = window->windowing->source->wclass;
 
-            if (wc.bc == BINARYCLASS_0 &&
-                index_train >= window_index_begin && index_train < window_index_end) {
+            
+            if (wc.bc == BINARYCLASS_0 && index_train_bc0 >= b0_window_index_begin && index_train_bc0 < b0_window_index_end) {
+                assert(index_train < split->train->number);
                 split->train->_[index_train] = window;
                 ++index_train;
             } else {
+                assert(index_test < tmp_test.number);
                 tmp_test._[index_test] = window;
                 ++index_test;
+            }
+            if (wc.bc == BINARYCLASS_0) {
+                index_train_bc0++;
             }
         }
         windowmc_buildby_windowmany(split->test, &tmp_test);
@@ -154,6 +175,32 @@ RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, const size_t _k, c
     MANY_FREE(tmp_test);
 
     return split;
+}
+
+void windowsplit_detect(RWindowSplit windowsplit, size_t const idxconfig, Detection* detection) {
+    MinMax logitminmax;
+    double thzone[N_DETZONE];
+    double th;
+
+    memset(&logitminmax, 0, sizeof(MinMax));
+    memset(thzone, 0, sizeof(thzone));
+
+    logitminmax = windowmany_minmax_config(windowsplit->train, idxconfig);
+    th = logitminmax.max + 1;
+
+    thzone[0] = - DBL_MAX;
+    thzone[N_DETZONE - 1] = DBL_MAX;
+    double step = 1.0 / (N_DETZONE - 2);
+
+    thzone[1] = logitminmax.min;
+    thzone[2] = (logitminmax.max + logitminmax.min) / 2;
+    thzone[3] = logitminmax.max + 1;
+
+    thzone[4] = thzone[3] + (logitminmax.max - logitminmax.min)/3;
+    thzone[5] = thzone[4] + (logitminmax.max - logitminmax.min)/3;
+    thzone[6] = thzone[5] + (logitminmax.max - logitminmax.min)/3;
+
+    detect_run(detection, windowsplit->test->all, idxconfig, th, thzone);
 }
 
 void _windowsplit_free(void* item) {
@@ -171,7 +218,6 @@ void _windowsplit_io(IOReadWrite rw, FILE* file, void** item) {
 
     FRW((*windowsplit)->config);
     FRW((*windowsplit)->wsize);
-    FRW((*windowsplit)->minmax);
 
     g2_io_index(file, rw, G2_WMANY, (void**) &(*windowsplit)->train);
     g2_io_index(file, rw, G2_WMC, (void**) &(*windowsplit)->test);

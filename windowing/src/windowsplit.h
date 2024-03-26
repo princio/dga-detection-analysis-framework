@@ -27,16 +27,17 @@ typedef struct __WindowSplit {
     WindowSplitConfig config;
 
     WSize wsize;
-    MANY(MinMax) minmax;
 
     RWindowMany train; // class 0
     RWindowMC test; // all classes
 } __WindowSplit;
 
-void windowsplit_shuffle(RWindowSplit split);
+void windowsplit_shuffle(RWindowSplit);
 
-RWindowSplit windowsplit_createby_day(MANY(RWindowing) windowings, const int day);
+RWindowSplit windowsplit_createby_day(const int);
 
-RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, const size_t k, const size_t k_total);
+RWindowSplit windowsplit_createby_portion(RWindowMC, const size_t, const size_t);
+
+void windowsplit_detect(RWindowSplit, size_t const, Detection*);
 
 #endif

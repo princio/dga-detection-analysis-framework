@@ -11,7 +11,7 @@ typedef struct WindowSplitDetection {
     MANY(Detection) test;
 } WindowSplitDetection;
 
-void* windowsplitdetection_run();
+void* windowsplitdetection_start();
 void windowsplitdetection_wait(void*);
 
 #endif

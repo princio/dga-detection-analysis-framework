@@ -5,6 +5,7 @@
 #include "performance_defaults.h"
 #include "reducer.h"
 #include "windowing.h"
+#include "windowmany.h"
 #include "windowmc.h"
 #include "windowsplit.h"
 
@@ -15,7 +16,7 @@
 #include <pthread.h>
 #include <stdio.h>
 
-#define TD_NTHREADS 8
+#define TD_NTHREADS 1
 #define TDQM_MAX_SIZE 500
 #define TDQUEUE_INITIALIZER(buffer, buffer_size) { buffer, buffer_size, 0, 0, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, PTHREAD_COND_INITIALIZER }
 
@@ -27,7 +28,7 @@ typedef struct MinMaxIdx {
 MAKEMANY(MinMaxIdx);
 
 void _windowsplitdetection_io_detection(IOReadWrite rw, FILE* file, Detection* detection);
-void _windowsplitdetection_io_path(char outdir[PATH_MAX], char path[PATH_MAX], RWindowSplit split);
+void _windowsplitdetection_io_path(char path[PATH_MAX], RWindowSplit split);
 
 typedef struct tdqueue_data {
     int id;
@@ -49,16 +50,11 @@ typedef struct tdqueue {
 struct td_producer_args {
     tdqueue_t* queue;
     RTrainer trainer;
-	Reducer ths;
-    char outdir[PATH_MAX];
 };
 
 struct td_consumer_args {
     int id;
     tdqueue_t* queue;
-	Reducer ths;
-	size_t blockconfig_step;
-    char outdir[PATH_MAX];
 };
 
 typedef struct windowsplitdetection_context {
@@ -155,7 +151,7 @@ void* _windowsplitdetection_producer(void* argsvoid) {
 
         split = many._[i];
 
-        _windowsplitdetection_io_path(args->outdir, path, split);
+        _windowsplitdetection_io_path(path, split);
         if (io_fileexists(path)) {
             LOG_INFO("Skipping split %ld, file exists.", i);
             continue;
@@ -175,192 +171,124 @@ void* _windowsplitdetection_producer(void* argsvoid) {
     return NULL;
 }
 
+struct ConsumerVars {
+    Reducer ths;
+    MANY(MinMaxIdx) minmaxidx;
+    MANY(Detection)* detections;
+    Detection* best_detections;
+    int* best_detections_init;
+
+    struct {
+        char path[PATH_MAX];
+        FILE* file;
+        RWindowSplit split;
+        Performance thchooser_fpr;
+        size_t idxbatchconfigstart;
+        size_t idxbatchconfigend;
+    } run;
+};
+
+typedef struct IdxConfigBatch {
+    size_t start;
+    size_t end;
+    size_t count;
+    size_t apply;
+} IdxConfigBatch;
+
 void* _windowsplitdetection_consumer(void* argsvoid) {
     struct td_consumer_args* args = argsvoid;
 
-    const size_t n_configs = configsuite.configs.number;
-    Reducer ths = args->ths;
-    const size_t blockconfig_step = args->blockconfig_step;
-    MANY(MinMaxIdx) minmax;
-
-    minmax.number = 0;
-    minmax._ = NULL;
-
-    MANY_INIT(minmax, n_configs, MinMax);
-
-    #define FOR_CONFIG for (size_t idxconfig = 0; idxconfig < idxconfigsize; idxconfig++)
-
-    MANY(Detection) detections[configsuite.configs.number];
-    Detection best_detections[n_configs];
-    int best_detections_init[n_configs];
-    for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
-        MANY_INIT(detections[idxconfig], ths.many.number, Detection);
-    }
+    const size_t N_CONFIG = configsuite.configs.number;
 
     while(!tdqueue_isend(args->queue)) {
         char path[PATH_MAX];
         tdqueue_data* qm;
         FILE* file;
         Performance thchooser_fpr;
+        RWindowSplit split;
 
         qm = tdqueue_dequeue(args->queue);
         
         if (qm == NULL) break;
 
-        RWindowSplit split = qm->split;
-
+        split = qm->split;
         
-        _windowsplitdetection_io_path(args->outdir, path, split);
-        file = io_openfile(IO_WRITE, path);
-        if (!file)
-            exit(1);
+        // _windowsplitdetection_io_path(path, split);
+        // file = io_openfile(IO_WRITE, path);
+        // if (!file)
+        //     exit(1);
+
+        LOG_TRACE("consumer: processing windowsplit %ld.", split->g2index);
 
         // CLOCK_START(_windowsplitdetection_consumer);
 
+        for (size_t idxconfig = 0; idxconfig < N_CONFIG; idxconfig++) {
+            Detection detection;
 
-        { // calcola minmax bo
-            size_t avg_n = 0;
-            size_t min_idx;
-            size_t max_idx;
-            size_t min_n = SIZE_MAX;
-            size_t max_n = 0;
-            for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
-                int min_found = 0;
-                int max_found = 0;
-                const int64_t reduced_min = reducer_logit(split->train->minmax._[idxconfig].min, ths.reducer);
-                const int64_t reduced_max = reducer_logit(split->train->minmax._[idxconfig].max, ths.reducer);
-                for (size_t idxth = 0; idxth < ths.many.number; idxth++) {
-                    if (min_found && max_found) {
-                        size_t n_range = max_idx - min_idx;
-                        if (n_range == 0) {
-                            LOG_ERROR("Range for config#%-7ld is 0", idxconfig);
-                        }
-                        if (min_n > n_range) min_n = n_range;
-                        if (max_n < n_range) max_n = n_range;
-                        avg_n += n_range;
-                        break;
-                    } else {if (!min_found && ths.many._[idxth] > reduced_min) {
-                            min_found = 1;
-                            min_idx = idxth == 0 ? idxth : idxth - 1;
-                            minmax._[idxconfig].min = min_idx;
-                        }
-                        if (!max_found && ths.many._[idxth] > reduced_max) {
-                            max_found = 1;
-                            max_idx = idxth;
-                            minmax._[idxconfig].max = max_idx;
-                        }
-                    }
-                }
-                if (!min_found || !max_found) {
-                    LOG_ERROR("No range found for config#%-7ld", idxconfig);
+            memset(&detection, 0, sizeof(Detection));
+            memset(detection.zone, 0, sizeof(detection.zone));
+
+            windowsplit_detect(split, idxconfig, &detection);
+
+            // _windowsplitdetection_io_detection(IO_WRITE, file, &detection);
+
+            IndexMC count = windowmany_count(detection.windowmany);
+            MinMax train_minmax = windowmany_minmax_config(split->train, idxconfig);
+
+            printf("windowsplit %ld (%d/%d)\n", detection.windowmany->g2index, split->config.k, split->config.k_total);
+            for (size_t w = 0; w < split->train->number; w++) {
+                assert(split->train->_[w]->windowing->source->wclass.bc == 0);
+            }
+            
+            printf("train:\t#%8ld\t(%6.5g to %6.5g)\n", split->train->number, train_minmax.min, train_minmax.max);
+            printf(" test:\t#%8ld", split->test->all->number);
+            DGAFOR(mc) {
+                if (split->test->multi[mc]->number) {
+                    MinMax test_minmax = windowmany_minmax_config(split->test->multi[mc], idxconfig);
+                    printf("\t(%6.5g to %-6.5g)", test_minmax.min,  test_minmax.max);
+                } else {
+                    printf("\t(%6s to %-6s)", "-", "-");
                 }
             }
-            PRINTF("min: %8ld\n", min_n);
-            PRINTF("max: %8ld\n", max_n);
-            PRINTF("avg: %8ld\n", avg_n / minmax.number);
-        }
+            printf("\n");
+            configsuite_print(idxconfig);
+            printf("\n");
 
-        thchooser_fpr = performance_defaults[PERFORMANCEDEFAULTS_FPR];
-        
-        for (size_t idxconfigstart = 0; idxconfigstart < n_configs; idxconfigstart += blockconfig_step) {
-            size_t idxconfigend = idxconfigstart + blockconfig_step;
-            if (idxconfigend > n_configs) idxconfigend = n_configs;
-            const size_t idxconfigsize = idxconfigend - idxconfigstart;
-
-            LOG_TRACE("Consumer#%d - [%7ld, %7ld, %7ld] - start train", args->id, idxconfigstart, idxconfigend, n_configs);
-
-            memset(best_detections_init, 0, sizeof(int) * n_configs);
-            memset(best_detections, 0, sizeof(Detection) * n_configs);
-            for (size_t idxconfig = 0; idxconfig < idxconfigsize; idxconfig++) {
-                memset(detections[idxconfig]._, 0, ths.many.number * sizeof(Detection));
+            {
+                printf("%*s", 223, " ");
+                for (size_t z = 0; z < N_DETZONE; z++) {
+                    printf("%*g", -19, detection.thzone[z]);
+                }
+                printf("\n");
             }
-
-            int progress_print = 0;
-            for (size_t idxwindow = 0; idxwindow < split->train->number; idxwindow++) {
-                RWindow window;
-                RSource source;
-
-                window = split->train->_[idxwindow];
-                source = window->windowing->source;
-
-                FOR_CONFIG {
-                    size_t apply_idxconfig = idxconfig + idxconfigstart;
-                    size_t idxth_start = minmax._[idxconfig].min;
-                    size_t idxth_end = minmax._[idxconfig].max;
-                    WApply * apply = &window->applies._[apply_idxconfig];
-
-                    MANY(Detection) * detections_config = &detections[idxconfig];
-                    for (size_t idxth = idxth_start; idxth < idxth_end; idxth++) {
-                        detect_run(apply, window->windowing->source, ths.many._[idxth], &detections_config->_[idxth]);
+            {
+                printf("%*s", 25, " ");
+                for (size_t z = 0; z < N_DETZONE - 1; z++) {
+                    printf("|      zone %2ld     ", z);
+                }
+                printf("|\n");
+            }
+            DGAFOR(cl) {
+                int p = printf("(%6d %6d) %6ld", detection.windows[cl][0], detection.windows[cl][1], count.multi[cl]);
+                printf("%*s", 25 - p, " ");
+                for (size_t z = 0; z < N_DETZONE - 1; z++) {
+                    if (detection.zone[z][cl] == 0) printf("|%*s", 18, " ");
+                    else {
+                        int p = printf("|        %-5d", detection.zone[z][cl]);
+                        printf("%*s", 19 - p, " ");
                     }
                 }
-                if (idxwindow % (split->train->number / 10) == 0) {
-                    LOG_TRACE("Consumer#%d - Window#%7ld%% - done", args->id, 10 * (idxwindow / (split->train->number / 10)));
-                }
-            } // calculating detections
+                printf("|\n");
+            }
+            printf("\n");
+        } // filling Result
 
-            LOG_TRACE("Consumer#%d - [%7ld, %7ld, %7ld] - find better", args->id, idxconfigstart, idxconfigend, n_configs);
-
-            FOR_CONFIG {
-                size_t apply_idxconfig = idxconfig + idxconfigstart;
-                for (size_t idxth = minmax._[idxconfig].min; idxth < minmax._[idxconfig].max; idxth++) {
-                    double current_score = detect_performance(&detections[idxconfig]._[idxth], &thchooser_fpr);
-
-                    int is_better = 0;
-                    if (best_detections_init[idxconfig] == 1) {
-                        double best_score = detect_performance(&best_detections[idxconfig], &thchooser_fpr);
-                        is_better = detect_performance_compare(&thchooser_fpr, current_score, best_score);
-                    } else {
-                        is_better = 1;
-                    }
-
-                    if (is_better) {
-                        best_detections_init[idxconfig] = 1;
-                        memcpy(&best_detections[idxconfig], &detections[idxconfig]._[idxth], sizeof(Detection));
-                    }
-                }
-            }// calculating performances for each detection and setting the best one
-
-            LOG_TRACE("Consumer#%d - [%7ld, %7ld, %7ld] - start test", args->id, idxconfigstart, idxconfigend, n_configs);
-
-            for (size_t w = 0; w < split->test->all->number; w++) {
-                RWindow window = split->test->all->_[w];
-                RSource source = window->windowing->source;
-
-                FOR_CONFIG {
-                    size_t apply_idxconfig = idxconfig + idxconfigstart;
-
-                    Detection detection_training_best;
-                    Detection detection_test;
-
-                    detect_run(
-                        &window->applies._[apply_idxconfig],
-                        window->windowing->source,
-                        best_detections[idxconfig].th,
-                        &detection_training_best
-                    );
-
-                    memcpy(&detection_test, &best_detections[idxconfig], sizeof(Detection));
-
-                    _windowsplitdetection_io_detection(IO_WRITE, file, &detection_training_best);
-                    _windowsplitdetection_io_detection(IO_WRITE, file, &detection_test);
-                }
-
-            } // filling Result
-        }
-
-        if (io_closefile(file, IO_WRITE, path))
-            exit(1);
+        // if (io_closefile(file, IO_WRITE, path))
+        //     exit(1);
 
         free(qm);
         // CLOCK_END(_windowsplitdetection_consumer);
     }
-
-    for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
-        MANY_FREE(detections[idxconfig]);
-    }
-
-    MANY_FREE(minmax);
 
     return NULL;
 }
@@ -374,7 +302,7 @@ void* windowsplitdetection_start() {
     const size_t nlogits_max = 200;
     const int64_t reducer = 100;
 
-    Reducer logits = reducer_run(nblocks, nlogits_max, reducer);
+    // Reducer logits = reducer_run(nblocks, nlogits_max, reducer);
 
     {
         io_path_concat(windowing_iodir, "trainer/", outdir);
@@ -388,13 +316,13 @@ void* windowsplitdetection_start() {
     // BY_SETN(trainer->by, config, a);
     // trainer->tb2d->tb2w->configsuite.configs.number = a;
 
-    size_t blockconfig_step = (9e9 / TD_NTHREADS) / (sizeof(Detection) * logits.many.number);
-    if (blockconfig_step > configsuite.configs.number) blockconfig_step = configsuite.configs.number;
+    // size_t blockconfig_step = (9e9 / TD_NTHREADS) / (sizeof(Detection) * logits.many.number);
+    // if (blockconfig_step > configsuite.configs.number) blockconfig_step = configsuite.configs.number;
 
     const int buffer_size = 100;
     context->qm = calloc(buffer_size, sizeof(tdqueue_data));
 
-    context->logits = logits;
+    // context->logits = logits;
 
     {
         tdqueue_t queue = TDQUEUE_INITIALIZER(context->qm, buffer_size);
@@ -402,17 +330,15 @@ void* windowsplitdetection_start() {
     }
 
     context->producer_args.queue = &context->queue;
-    context->producer_args.ths = logits;
-    strcpy(context->producer_args.outdir, outdir);
+    // context->producer_args.ths = logits;
 
     pthread_create(&context->producer, NULL, _windowsplitdetection_producer, &context->producer_args);
 
     for (size_t i = 0; i < TD_NTHREADS; ++ i) {
         context->consumer_args[i].id = i;
         context->consumer_args[i].queue = &context->queue;
-        context->consumer_args[i].ths = logits;
-        context->consumer_args[i].blockconfig_step = blockconfig_step;
-        strcpy(context->consumer_args[i].outdir, outdir);
+        // context->consumer_args[i].ths = logits;
+        // context->consumer_args[i].blockconfig_step = blockconfig_step;
 
         pthread_create(&context->consumers[i], NULL, _windowsplitdetection_consumer, &context->consumer_args[i]);
     }
@@ -484,7 +410,7 @@ void _windowsplitdetection_io_detection(IOReadWrite rw, FILE* file, Detection* d
     FRW(detection->windows);
 }
 
-inline void _windowsplitdetection_io_path(char outdir[PATH_MAX], char path[PATH_MAX], RWindowSplit split) {
+inline void _windowsplitdetection_io_path(char path[PATH_MAX], RWindowSplit split) {
     sprintf(path, "/trainer/result_split_%ld", split->g2index);
-    io_path_concat(outdir, "/trainer", path);
+    io_path_concat(windowing_iodir, path, path);
 }
