@@ -3,7 +3,8 @@
         "dns_parse": "/home/princio/Repo/princio/malware_detection_preditc_file/dns_parse/bin/dns_parse",
         "tshark": "/usr/bin/tshark",
         "python_lstm": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/venv/bin/python",
-        "python_psl_list": "/home/princio/Repo/princio/malware_detection_preditc_file/psl_list/venv/bin/python"
+        "python_psl_list": "/home/princio/Repo/princio/malware_detection_preditc_file/psl_list/venv/bin/python",
+        "psltrie": "/usr/local/bin/psltrie"
     },
     "pyscript": {
         "lstm": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/predict_dns_parse_output.py",
@@ -17,17 +18,28 @@
         "password": "postgres"
     },
     "pcaps": [
-        "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-20/raw/2023-02-20-00-00-03-192.168.1.108.pcap",
-        "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-21/raw/2023-02-21-00-00-03-192.168.1.108.pcap"
+        "/media/princio/ssd512/stratosphere/pcap/dns_pcap/ctu-11/normal/",
+        "/media/princio/ssd512/stratosphere/pcap/dns_pcap/ctu-11/infected/"
     ],
+    "comments": {
+        "pcaps": [
+            "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-20/raw/2023-02-20-00-00-03-192.168.1.108.pcap",
+            "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-21/raw/2023-02-21-00-00-03-192.168.1.108.pcap",
+            "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-22/raw/2023-02-22-00-00-03-192.168.1.108.pcap",
+            "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-23/raw/2023-02-23-00-00-42-192.168.1.108.pcap",
+            "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-24/raw/2023-02-24-00-01-29-192.168.1.108.pcap",
+            "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-25/raw/2023-02-25-00-01-30-192.168.1.108.pcap",
+            "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/Experiment-VM-Microsoft-Windows7AD-1/2023-02-26/raw/2023-02-26-00-01-48-192.168.1.108.pcap"
+        ]
+    },
     "lstm_batch_size": 10000,
     "whitelists": [
         {
             "name": "top10m",
-            "path": "/home/princio/Repo/princio/malware_detection_preditc_file/top_10m.csv",
+            "path": "/home/princio/Repo/princio/malware_detection_preditc_file/asset/whitelisting/top_10m.csv",
             "year": 2020,
             "dn_col": "bdn",
-            "bdn_col": null,
+            "bdn_col": "bdn",
             "rank_col": "rank"
         }
     ]

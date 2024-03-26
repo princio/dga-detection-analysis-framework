@@ -46,7 +46,6 @@
             "request": "launch",
             "program": "/home/princio/Repo/princio/malware_detection_preditc_file/dns_parse/bin/dns_parse",
             "args": [
-                "-i", "/home/princio/Repo/princio/malware_detection_preditc_file/outdir/psl_list/psl_list.csv",
                 "-o", "/home/princio/Repo/princio/malware_detection_preditc_file/outdir/2023-02-21-00-00-03-192.168.1.108.csv",
                 "/home/princio/Repo/princio/malware_detection_preditc_file/outdir/2023-02-21-00-00-03-192.168.1.108.onlydns.pcap"
             ],
@@ -82,15 +81,18 @@
             "args": [
                 "/home/princio/Repo/princio/malware_detection_preditc_file/outdir/psl_list/psl_list.csv",
 
-                "print"
+                // "print"
 
                 // "test",
-                // "google.com"
+                // "google.com",
+                // "ocsp.digicert.com"
 
                 // "csv",
-                // "0",
-                // "/home/princio/Repo/princio/malware_detection_preditc_file/top_10m.csv",
-                // "/tmp/top_10m.psltrie.csv"
+                // "1",
+                // "/home/princio/Repo/princio/malware_detection_preditc_file/workdir/test/dn.in.csv",
+                // "/home/princio/Repo/princio/malware_detection_preditc_file/workdir/test/dn.out.csv"
+
+                "csvtest"
             ],
             "stopAtEntry": false,
             "cwd": "/home/princio/Repo/princio/malware_detection_preditc_file/psltrie/bin/",

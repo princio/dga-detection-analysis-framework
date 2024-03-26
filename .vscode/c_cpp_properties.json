@@ -18,6 +18,7 @@
                 "-libpq"
             ],
             "browse": {
+                "limitSymbolsToIncludedHeaders": true,
                 "path": [
                     "${workspaceFolder}/windowing/src/**",
                     "${workspaceFolder}/dns_parse/**",
