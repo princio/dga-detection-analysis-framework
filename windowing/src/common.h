@@ -92,6 +92,7 @@ char CACHE_DIR[DIR_MAX];
 #define CLOCK_END(A)
 #endif
 
+#define MANY_DECL(A, T); MANY(T) A; memset(&A, 0, sizeof(MANY(T)));
 #define MANY_INIT(A, N, T) {\
             if ((N) == 0) { LOG_WARN("MANY: initializing empty block."); }\
             else {\
@@ -321,15 +322,21 @@ MAKEMANY(MinMax);
 typedef uint32_t DetectionValue;
 typedef DetectionValue DetectionPN[2];
 
+#define N_DETZONE 8
+
 typedef struct Detection {
     double th;
+    RWindowMany windowmany;
 
     size_t dn_count[N_DGACLASSES];
     size_t dn_whitelistened_count[N_DGACLASSES];
 
     DetectionValue alarms[N_DGACLASSES][N_WAPPLYDNBAD];
     DetectionPN windows[N_DGACLASSES];
-    DetectionPN sources[N_DGACLASSES][50];
+    DetectionPN sources[100];
+
+    double thzone[N_DETZONE];
+    DetectionValue zone[N_DETZONE - 1][N_DGACLASSES]; 
 } Detection;
 
 MAKEMANY(Detection);
