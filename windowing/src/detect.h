@@ -34,8 +34,11 @@ MAKEMANY(Performance);
 
 void detect_reset(Detection*);
 void detect_copy(TCPC(Detection) src, Detection* dst);
-void detect_run(WApply const * const apply, RSource source, const double th, Detection* detection);
+void detect_update(WApply const * const apply, RSource source, const double th, Detection* detection);
+
+void detect_run(Detection*, RWindowMany, size_t const, const double, const double[N_DETZONE]);
+
 double detect_performance(Detection[N_DGACLASSES], TCPC(Performance));
 int detect_performance_compare(Performance* performance, double new, double old);
-
+double detect_true0ratio(Detection[N_DGACLASSES], DGAClass);
 #endif
