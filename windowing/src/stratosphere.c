@@ -318,9 +318,10 @@ void* stratosphere_apply_consumer(void* argsvoid) {
 
         for (int i = 0; i < qm->number; i++) {
             const int wnum = CALC_WNUM(qm->messages[i].fn_req, args->windowing->wsize);
-            RWindow rwindow = args->windowing->windowmany->_[wnum];
+            RWindow rwindow = &args->windowing->window0many->_[wnum];
             for (size_t idxconfig = 0; idxconfig < configsuite.configs.number; idxconfig++) {
                 wapply_run(&rwindow->applies._[idxconfig], &qm->messages[i], &configsuite.configs._[idxconfig]);
+                rwindow->n_message++;
             }
         }
         free(qm);
@@ -448,7 +449,7 @@ void _stratosphere_add(char dataset[100], size_t limit) {
         "FROM pcap JOIN malware as mw ON malware_id = mw.id "
         "WHERE pcap.dataset = '%s' "
         "ORDER BY qr ASC "
-        "LIMIT 3 "
+        // "LIMIT 3 "
         ,
         dataset
     );
