@@ -84,7 +84,7 @@ void g2_set_iodir(char path[PATH_MAX]);
 
 int g2_io_call(G2Id, IOReadWrite rw);
 void g2_io_index(FILE* file, IOReadWrite rw, const G2Id id, void** item);
-void g2_io_all(IOReadWrite rw);
+int g2_io_all(IOReadWrite rw);
 
 #define G2_IO_HASH_UPDATE(V) SHA256_Update(sha, &(V), sizeof(V));
 #define G2_IO_HASH_UPDATE_DOUBLE(V) { int64_t tmp = (int64_t) (V); SHA256_Update(sha, &tmp, sizeof(int64_t)); };

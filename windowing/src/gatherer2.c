@@ -315,12 +315,12 @@ int g2_io(RG2 gat, IOReadWrite rw) {
         if (IO_IS_WRITE(rw)) {
             if (io_makedirs(dirpath)) {
                 LOG_ERROR("[%s] impossible to create store directory.", g2_id_names[gat->id]);
-                exit(1);
+                return -1;
             }
         } else {
             if (!io_direxists(dirpath)) {
                 LOG_ERROR("[%s] impossible to load, directory not exist.", g2_id_names[gat->id]);
-                exit(1);
+                return -1;
             }
         }
 
@@ -365,7 +365,26 @@ int g2_io(RG2 gat, IOReadWrite rw) {
     return 0;
 }
 
+int g2_io_setroot(IOReadWrite rw) {
+    io_path_concat(windowing_iodir, "g2/", g2_iodir);
+    if (IO_IS_WRITE(rw)) {
+        if (io_makedirs(g2_iodir)) {
+            LOG_ERROR("impossible to create store directory.");
+            return -1;
+        }
+    } else {
+        if (!io_direxists(g2_iodir)) {
+            LOG_ERROR("impossible to load, directory not exist.");
+            return -1;
+        }
+    }
+    return 0;
+}
+
 int g2_io_call(const G2Id id, IOReadWrite rw) {
+    if (g2_io_setroot(rw)) {
+        return -1;
+    }
 
     RG2 g2 = &gatherer_of_gatherers[id];
 
@@ -382,25 +401,18 @@ int g2_io_call(const G2Id id, IOReadWrite rw) {
     return g2_io(&gatherer_of_gatherers[id], rw);
 }
 
-void g2_io_all(IOReadWrite rw) {
+int g2_io_all(IOReadWrite rw) {
     assert(initialized == 1);
 
-    LOG_TRACE("%s all.", IO_IS_READ(rw) ? "Loading" : "Storing");
-
-    io_path_concat(windowing_iodir, "g2/", g2_iodir);
-    if (IO_IS_WRITE(rw)) {
-        if (io_makedirs(g2_iodir)) {
-            LOG_ERROR("impossible to create store directory.");
-            exit(1);
-        }
-    } else {
-        if (!io_direxists(g2_iodir)) {
-            LOG_ERROR("impossible to load, directory not exist.");
-            exit(1);
-        }
+    if (g2_io_setroot(rw)) {
+        return -1;
     }
+
+    LOG_TRACE("%s all.", IO_IS_READ(rw) ? "Loading" : "Storing");
 
     for (size_t i = 0; i < G2_NUM; i++) {
         g2_io(&gatherer_of_gatherers[i], rw);
     }
+
+    return 0;
 }
