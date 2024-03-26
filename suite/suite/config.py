@@ -55,6 +55,7 @@ class ConfigPCAP:
     days: int = 0
     sha256: str = ""
     malware: ConfigMalware = ConfigMalware()
+    year: int = 0
     pass
 
 @dataclass
@@ -124,7 +125,16 @@ class Config:
             self.pyscript.psl_list = conf["pyscript"]["psl_list"]
             self.pyscript.lstm = conf["pyscript"]["lstm"]
 
-            self.pcaps: List[Path] = [Path(pcappath) for pcappath in conf["pcaps"]]
+
+            self.pcaps: List[Path] = []
+            tmp = [Path(pcappath) for pcappath in conf["pcaps"]]
+            for pd in tmp:
+                if pd.is_dir():
+                    [self.pcaps.append(file) for file in pd.glob("*/*.pcap") if file.is_file() ]
+                    pass
+                else:
+                    self.pcaps.append(pd)
+                    pass
 
             self.nndir = conf["nndir"]
 

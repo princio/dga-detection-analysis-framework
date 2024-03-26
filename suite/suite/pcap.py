@@ -169,12 +169,12 @@ class PCAP:
                     name, malware_id, sha256, infected, 
                     dataset, day, days, terminal, 
                     qr, q, r, u, 
-                    fnreq_max, dga_ratio
+                    fnreq_max, dga_ratio, year
                 ) VALUES (
                     %s, %s, %s, %s::boolean,
                     %s, %s, %s, %s, 
                     %s::bigint,%s::bigint,%s::bigint,%s::bigint,
-                    %s::bigint, %s::real
+                    %s::bigint, %s::real, %s
                 )
                 RETURNING id;
                 """,
@@ -182,7 +182,7 @@ class PCAP:
                     self.pcapfile.name, malware.id, self.configpcap.sha256, self.configpcap.infected,
                     self.configpcap.dataset, self.configpcap.day, self.configpcap.days, self.configpcap.terminal,
                     qr, q, r, u,
-                    fnreq_max, nx_ratio 
+                    fnreq_max, nx_ratio, self.configpcap.year
                 )
             )
 

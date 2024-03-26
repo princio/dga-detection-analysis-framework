@@ -11,6 +11,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
                     prog='DNSMalwareDetection',
                     description='Malware detection')
+    
 
     parser.add_argument('configjson')
     parser.add_argument('workdir')
@@ -22,13 +23,27 @@ if __name__ == "__main__":
 
     config = Config(configjson, workdir)
 
+    # from lstm import LSTM
+    # lstm = LSTM(config)
+    # lstm.test([
+    #     "dns.msftncsi.com",
+    #     "msftncsi.com",
+    #     "com.msftncsi.dns",
+    #     "com.msftncsi",
+    #     "msftncsi.dns",
+    #     ".msftncsidns",
+    #     ".msftncsi.dns",
+    #     "msftncsidns"
+    # ])
+    # pass
+
+
     malwares = Malwares(config)
 
     for pcappath in config.pcaps:
         pcap = PCAP(config, malwares, pcappath)
         pcap.run()
         pass
-
 
     from dn import DN
     dn = DN(config)

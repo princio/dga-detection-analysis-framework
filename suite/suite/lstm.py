@@ -23,7 +23,6 @@ def load_model_json(path_json, path_h5):
     loaded_model = model_from_json(loaded_model_json)
     # load weights into new model
     loaded_model.load_weights(path_h5)
-    print("Loaded model from disk")
     return loaded_model
 
 max_len = 60
@@ -46,6 +45,11 @@ class NN:
     model: Any = None
     pass
 
+oldpaths = {}
+oldpaths[Extractor.NONE] = "/home/princio/Repo/princio/nn/20220318_183750__NONE_256_8_20_binary_0/fold_4/model_20"
+oldpaths[Extractor.TLD] = "/home/princio/Repo/princio/nn/20220318_183750__TLD_256_8_20_binary_0/fold_6/model_20"
+oldpaths[Extractor.ICANN] = "/home/princio/Repo/princio/nn/20220318_183750__ICANN_256_8_20_binary_0/fold_3/model_20"
+oldpaths[Extractor.PRIVATE] = "/home/princio/Repo/princio/nn/20220318_183750__PRIVATE_256_8_20_binary_0/fold_7/model_20"
 
 
 
@@ -79,10 +83,14 @@ class LSTM:
         return dn_count - dn_nn_count
 
     def load_model(self, nn: NN):
-        nn.model = load_model_json(
-            nn.dir.joinpath("model.json"),
-            nn.dir.joinpath("model.h5")
-        )
+        if nn.model is None:
+            nn.model = load_model_json(
+                nn.dir.joinpath("model.json"),
+                nn.dir.joinpath("model.h5")
+            )
+            print(f"Model {nn.name} loaded.")
+        else:
+            print(f"Model {nn.name} already loaded.")
         pass
 
     def run(self):
@@ -90,8 +98,6 @@ class LSTM:
             if self.count(nn) == 0:
                 print("DN completed for %s" % nn.name)
                 continue
-
-            self.load_model(nn)
 
             cursor = self.config.psyconn.cursor()
             cursor.execute("""SELECT DN.ID, DN, TLD, ICANN, PRIVATE, NN_ID FROM DN LEFT JOIN DN_NN ON (DN.ID = DN_NN.DN_ID AND DN_NN.NN_ID = %s)  WHERE NN_ID is null""", (nn.id,))
@@ -111,13 +117,15 @@ class LSTM:
             pass # for nns
         pass # def
 
-    def run_lstm(self, df: pd.DataFrame, nn: NN):
+    def _run(self, df: pd.DataFrame, nn: NN):
+        self.load_model(nn)
+
         df["reversed"] = [ ".".join(row["dn"].split('.')[::-1]) for _, row in df.iterrows() ]
         if nn.extractor == Extractor.NONE:
             dn_extracted_reversed = [ row["reversed"] for _, row in df.iterrows() ]
         else:
             df["suffix"] = df[nn.extractor.name.lower()].fillna("")
-            dn_extracted_reversed = [ row["reversed"][len(row["suffix"]) if len(row["suffix"]) > 0 else 0:]  for _, row in df.iterrows() ]
+            dn_extracted_reversed = [ row["reversed"][1 + len(row["suffix"]) if len(row["suffix"]) > 0 else 0:]  for _, row in df.iterrows() ]
             pass
 
         Xtf = self.layer(tf.strings.bytes_split(tf.strings.substr(dn_extracted_reversed, 0, max_len)))
@@ -127,7 +135,10 @@ class LSTM:
         )
         Xtf = convert_to_tensor(Xtf)
 
-        Y = nn.model.predict(Xtf, batch_size=128, verbose=1)[:,0]
+        return dn_extracted_reversed, nn.model.predict(Xtf, batch_size=128, verbose=1)[:,0]
+
+    def run_lstm(self, df: pd.DataFrame, nn: NN):
+        _, Y = self._run(df, nn)
 
         df["Y"] = Y
         df["logit"] = np.log(Y / (1 - Y))
@@ -148,4 +159,37 @@ class LSTM:
 
         pass
     
+
+    def test(self, dns):
+        for nn in self.nns:
+            self.load_model(nn)
+            if False:
+                Xtf = self.layer(tf.strings.bytes_split(tf.strings.substr(dns, 0, max_len)))
+                Xtf = pad_sequences(
+                    Xtf.numpy(), maxlen=max_len, padding='post', dtype="int32",
+                    truncating='pre', value=vocabulary.index('')
+                )
+                Xtf = convert_to_tensor(Xtf)
+            elif False:
+                X = [[ vocabulary.index(c) for c in dn] for dn in dns ]
+
+                Xtf = tf.keras.preprocessing.sequence.pad_sequences(
+                    X, maxlen=max_len, padding='post', dtype="int32",
+                    truncating='pre', value=vocabulary.index('')
+                )
+            else:
+                X = [[ vocabulary.index(c) for c in dn] for dn in dns ]
+
+                Xtf = tf.keras.preprocessing.sequence.pad_sequences(
+                    X, maxlen=max_len, padding='post', dtype="int32",
+                    truncating='pre', value=vocabulary.index('')
+                )
+                
+                model = tf.keras.models.load_model(oldpaths[nn.extractor])
+
+                Y = model.predict(Xtf, batch_size=128, verbose=1)[:,0]
+
+            print("\n".join([ "%20s\t%10s\t%-100s" % (dns[i], Y[i], Xtf[i]) for i in range(len(X))]))
+            pass
+        pass
     pass
