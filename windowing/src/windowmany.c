@@ -6,28 +6,16 @@
 #include "windowing.h"
 
 #include <assert.h>
+#include <float.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/time.h>
 
-void _window0many_free(void* item);
-void _window0many_io(IOReadWrite rw, FILE* file, void**);
-void _window0many_hash(void* item, SHA256_CTX*);
-
 void _windowmany_free(void* item);
 void _windowmany_io(IOReadWrite rw, FILE* file, void**);
 void _windowmany_hash(void* item, SHA256_CTX*);
-
-G2Config g2_config_w0many = {
-    .element_size = sizeof(__Window0Many),
-    .size = 0,
-    .freefn = _window0many_free,
-    .iofn = _window0many_io,
-    .hashfn = _window0many_hash,
-    .id = G2_W0MANY
-};
 
 G2Config g2_config_wmany = {
     .element_size = sizeof(__WindowMany),
@@ -53,6 +41,54 @@ IndexMC windowmany_count(RWindowMany windowmany) {
     return counter;
 }
 
+MinMax windowmany_minmax_config(RWindowMany windowmany, const size_t idxconfig) {
+    assert(windowmany->number > 0);
+
+    MinMax minmax;
+
+    minmax.max = -DBL_MAX;
+    minmax.min = DBL_MAX;
+
+    for (size_t idxwindow = 0; idxwindow < windowmany->number; idxwindow++) {
+        const double logit = windowmany->_[idxwindow]->applies._[idxconfig].logit;
+
+        if (minmax.min > logit) minmax.min = logit;
+        if (minmax.max < logit) minmax.max = logit;
+    }
+
+    return minmax;
+}
+
+MANY(MinMax) windowmany_minmax(RWindowMany windowmany) {
+    assert(windowmany->number > 0);
+    
+    MANY_DECL(minmaxmany, MinMax);
+    int64_t logits[windowmany->number];
+
+    const size_t n_configs = windowmany->_[0]->applies.number;
+
+    MANY_INIT(minmaxmany, n_configs, MinMax);
+
+    for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
+        minmaxmany._[idxconfig].max = - DBL_MAX;
+        minmaxmany._[idxconfig].min = DBL_MAX;
+    }
+
+    for (size_t idxwindow = 0; idxwindow < windowmany->number; idxwindow++) {
+        for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
+            double *min = &minmaxmany._[idxconfig].min;
+            double *max = &minmaxmany._[idxconfig].max;
+
+            const double logit = windowmany->_[idxwindow]->applies._[idxconfig].logit;
+
+            if (*min > logit) *min = logit;
+            if (*max < logit) *max = logit;
+        }
+    }
+
+    return minmaxmany;
+}
+
 void windowmany_shuffle(RWindowMany rwindowmany) {
     struct timeval tv;
     gettimeofday(&tv, NULL);
@@ -69,85 +105,41 @@ void windowmany_shuffle(RWindowMany rwindowmany) {
 }
 
 void windowmany_buildby_size(RWindowMany windowmany, size_t windows_num) {
+    assert(windowmany->number == 0);
+
     MANY_INITREF(windowmany, windows_num, RWindow);
 }
 
-void window0many_buildby_size(RWindow0Many window0many, const size_t window_number) {
-    MANY_INIT(window0many->__window0many,  window_number, __Window);
+void windowmany_buildby_window0many(RWindowMany windowmany, RWindow0Many window0many) {
+    windowmany_buildby_size(windowmany, window0many->number);
 
-    LOG_TRACE("[window0many] buildby size: %ld", window_number);
-
-    windowmany_buildby_size(&window0many->__windowmany,  window_number);
-
-    for (size_t w = 0; w < window_number; w++) {
-        RWindow window = &window0many->__window0many._[w];
-
-        window->index = w;
-        window->manyindex = window0many->g2index;
-        window->fn_req_min = 0;
-        window->fn_req_max = 0;
-        window->windowing = NULL;
-
-        window0many->__windowmany._[w] = window;
+    for (size_t w = 0; w < window0many->number; w++) {
+        windowmany->_[w] = &window0many->_[w];
     }
 }
 
-void _window0many_free(void* item) {
-    RWindow0Many window0many = (RWindow0Many) item;
+void windowmany_buildby_windowing(RWindowMany windowmany) {
+    __MANY many;
+    IndexMC counter;
 
-    for (size_t w = 0; w < window0many->__window0many.number; w++) {
-        MANY_FREE(window0many->__window0many._[w].applies);
+    counter = windowing_count();
+    
+    windowmany_buildby_size(windowmany, counter.all);
+
+    many = g2_array(G2_WING);
+    size_t index = 0;
+    for (size_t g = 0; g < many.number; g++) {
+        RWindowing windowing = (RWindowing) many._[g];
+        for (size_t w = 0; w < windowing->window0many->number; w++) {
+            windowmany->_[index] = &windowing->window0many->_[w];
+            index++;
+        }
     }
-
-    MANY_FREE(window0many->__window0many);
-    MANY_FREE(window0many->__windowmany);
 }
 
 void _windowmany_free(void* item) {
     RWindowMany windowmany = (RWindowMany) item;
     MANY_FREE((*windowmany));
-}
-
-void _window0many_io(IOReadWrite rw, FILE* file, void** item_ref) {
-    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
-    RWindow0Many* window0many = (RWindow0Many*) item_ref;
-
-    // we don't put these because we would enter in a forever loop.
-    // many to many relationships are handled in source and windowing
-    // g2_io_call(G2_SOURCE, rw);
-    // g2_io_call(G2_WING, rw);
-
-    size_t window0many_number;
-
-    if (IO_IS_WRITE(rw)) {
-        window0many_number = (*window0many)->__window0many.number;
-    }
-
-    FRW(window0many_number);
-
-    if (IO_IS_READ(rw)) {
-        window0many_buildby_size(*window0many, window0many_number);
-    }
-
-    for (size_t w = 0; w < window0many_number; w++) {
-        RWindow window;
-        size_t apply_count;
-
-        window = &(*window0many)->__window0many._[w];
-
-        FRW(window->index);
-        FRW(window->duration);
-        FRW(window->fn_req_min);
-        FRW(window->fn_req_max);
-        
-        FRW(window->applies.number);
-
-        if (IO_IS_READ(rw)) {
-            MANY_INIT(window->applies, window->applies.number, WApply);
-        }
-
-        __FRW(window->applies._, window->applies.number * sizeof(WApply), file);
-    }
 }
 
 void _windowmany_io(IOReadWrite rw, FILE* file, void** item_ref) {
@@ -188,55 +180,10 @@ void _windowmany_io(IOReadWrite rw, FILE* file, void** item_ref) {
         FRW(window0many_window_index);
     
         RWindow0Many w0m = ((RWindow0Many) many._[window0many_index]);
-        assert(w0m->__windowmany.number > window0many_window_index);
+        assert(w0m->number > window0many_window_index);
 
         if (IO_IS_READ(rw)) {
-            (*rwindow) = w0m->__windowmany._[window0many_window_index];
-        }
-    }
-}
-
-#define MISM(A) { int _m = (A); if ((A)) LOG_ERROR(#A); mismatch += _m; }
-int window0many_cmp(RWindow0Many a, RWindow0Many b) {
-    int mismatch = 0;
-
-    MISM(a->__window0many.number != b->__window0many.number);
-
-    MISM(a->__window0many.number != b->__window0many.number);
-    MISM(a->__windowmany.number != b->__windowmany.number);
-
-    for (size_t w = 0; w < a->__window0many.number; w++) {
-        MISM(memcmp(
-            &a->__window0many._[w],
-            &b->__window0many._[w],
-            sizeof(__Window) - sizeof(MANY(WApply))));
-    }
-    
-    MISM(a->g2index != b->g2index);
-
-    return mismatch;
-}
-
-void _window0many_hash(void* item, SHA256_CTX* sha) {
-    RWindow0Many a = (RWindow0Many) item;
-
-    G2_IO_HASH_UPDATE(a->g2index);
-    G2_IO_HASH_UPDATE(a->__window0many.number);
-    G2_IO_HASH_UPDATE(a->__windowmany.number);
-
-    for (size_t w = 0; w < a->__window0many.number; w++) {
-        RWindow window = &a->__window0many._[w];
-        G2_IO_HASH_UPDATE(window->index);
-        G2_IO_HASH_UPDATE(window->manyindex);
-        G2_IO_HASH_UPDATE(window->fn_req_min);
-        G2_IO_HASH_UPDATE(window->fn_req_max);
-        G2_IO_HASH_UPDATE_DOUBLE(window->duration);
-
-        for (size_t c = 0; c < configsuite.configs.number; c++) {
-            G2_IO_HASH_UPDATE(window->applies._[c].dn_bad);
-            G2_IO_HASH_UPDATE(window->applies._[c].wcount);
-            G2_IO_HASH_UPDATE(window->applies._[c].whitelistened);
-            G2_IO_HASH_UPDATE_DOUBLE(window->applies._[c].logit);
+            (*rwindow) = &w0m->_[window0many_window_index];
         }
     }
 }

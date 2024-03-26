@@ -10,24 +10,23 @@
 typedef struct __WindowMC {
     G2Index g2index;
 
-    MANY(MinMax) minmax;
     RWindowMany all;
     RWindowMany binary[2];
     RWindowMany multi[N_DGACLASSES];
 } __WindowMC;
 
-void windowmc_shuffle(RWindowMC rwindows);
+void windowmc_shuffle(RWindowMC);
 
 IndexMC windowmc_count(RWindowMC);
 
 void windowmc_clone(RWindowMC, RWindowMC);
 
-void windowmc_init(RWindowMC windowmc);
+void windowmc_init(RWindowMC);
 
-void windowmc_buildby_windowmany(RWindowMC rwindowmc, RWindowMany windowmany);
-void windowmc_buildby_windowing_many(RWindowMC rwindowmc, MANY(RWindowing) windowingmany);
-void windowmc_buildby_size(RWindowMC rwindowmc, IndexMC size);
+void windowmc_buildby_windowmany(RWindowMC, RWindowMany);
+void windowmc_buildby_windowing(RWindowMC windowmc);
+void windowmc_buildby_size(RWindowMC, IndexMC);
 
-void windowmc_hash_update(SHA256_CTX* sha, RWindowMC a);
+void windowmc_hash_update(SHA256_CTX*, RWindowMC);
 
 #endif

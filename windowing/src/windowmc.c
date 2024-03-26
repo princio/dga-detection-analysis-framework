@@ -74,35 +74,6 @@ void windowmc_shuffle(RWindowMC windowmc) {
     }
 }
 
-void windowmc_minmax(RWindowMC windowmc) {
-    assert(windowmc_isinit(windowmc));
-    assert(windowmc->all->number > 0);
-    assert(windowmc->all->_[0]->applies.number);
-    
-    int64_t logits[windowmc->all->number];
-
-    const size_t n_configs = windowmc->all->_[0]->applies.number;
-
-    MANY_INIT(windowmc->minmax, n_configs, MinMax);
-
-    for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
-        windowmc->minmax._[idxconfig].max = DBL_MIN;
-        windowmc->minmax._[idxconfig].min = DBL_MAX;
-    }
-
-    for (size_t idxwindow = 0; idxwindow < windowmc->all->number; idxwindow++) {
-        for (size_t idxconfig = 0; idxconfig < n_configs; idxconfig++) {
-            double *min = &windowmc->minmax._[idxconfig].min;
-            double *max = &windowmc->minmax._[idxconfig].max;
-
-            const double logit = windowmc->all->_[idxwindow]->applies._[idxconfig].logit;
-
-            if (*min > logit) *min = logit;
-            if (*max < logit) *max = logit;
-        }
-    }
-}
-
 void windowmc_init(RWindowMC windowmc) {
     assert(!windowmc_isinit(windowmc));
 
@@ -135,40 +106,30 @@ void windowmc_buildby_windowmany(RWindowMC windowmc, RWindowMany windowmany) {
     memset(&index, 0, sizeof(IndexMC));
 
     for (size_t w = 0; w < windowmany->number; w++) {
-        RWindow window  = windowmany->_[w];
+        RWindow window = windowmany->_[w];
         WClass wc = window->windowing->source->wclass;
-
         windowmc->all->_[index.all++] = window;
         windowmc->binary[wc.bc]->_[index.binary[wc.bc]++] = window;
         windowmc->multi[wc.mc]->_[index.multi[wc.mc]++] = window;
     }
 }
 
-void windowmc_buildby_windowing_many(RWindowMC windowmc, MANY(RWindowing) windowingmany) {
+void windowmc_buildby_windowing(RWindowMC windowmc) {
     assert(windowmc_isinit(windowmc));
 
-    assert(windowingmany.number > 0);
-
+    __WindowMany __windowmany;
+    __MANY many;
     IndexMC index;
     IndexMC counter;
+
+    __windowmany.number = 0;
+    __windowmany._ = NULL;
+
+    windowmany_buildby_windowing(&__windowmany);
+
+    windowmc_buildby_windowmany(windowmc, &__windowmany);
     
-    counter = windowing_many_count(windowingmany);
-
-    windowmc_buildby_size(windowmc, counter);
-    
-    memset(&index, 0, sizeof(IndexMC));
-
-    for (size_t g = 0; g < windowingmany.number; g++) {
-        RWindowing windowing = windowingmany._[g];
-
-        for (size_t w = 0; w < windowing->windowmany->number; w++) {
-            RWindow window = windowing->windowmany->_[w];
-            WClass wc = windowing->source->wclass;
-            windowmc->all->_[index.all++] = window;
-            windowmc->binary[wc.bc]->_[index.binary[wc.bc]++] = window;
-            windowmc->multi[wc.mc]->_[index.multi[wc.mc]++] = window;
-        }
-    }
+    MANY_FREE(__windowmany);
 }
 
 void _windowmc_free(void* item) {
