@@ -41,8 +41,6 @@ void detect_update(WApply const * const apply, RSource source, const double th, 
 void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxconfig, const double th, const double thzone[N_DETZONE]) {
     memset(detection, 0, sizeof(Detection));
 
-    detection->windowmany = windowmany;
-
     detection->th = th;
 
     for (size_t w = 0; w < windowmany->number; w++) {

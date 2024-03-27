@@ -309,7 +309,7 @@ MAKEMANY(MinMax);
 typedef uint32_t DetectionValue;
 typedef DetectionValue DetectionPN[2];
 
-#define N_DETZONE 8
+#define N_DETZONE 6
 
 typedef struct DetectionZone {
     double th[N_DETZONE];
@@ -320,12 +320,9 @@ typedef struct DetectionZone {
 
 typedef enum WApplyDNBad {
     WAPPLYDNBAD_0000,
+    WAPPLYDNBAD_0100,
     WAPPLYDNBAD_0250,
     WAPPLYDNBAD_0500,
-    WAPPLYDNBAD_0750,
-    WAPPLYDNBAD_0900,
-    WAPPLYDNBAD_0990,
-    WAPPLYDNBAD_0999,
     WAPPLYDNBAD_1100
 } WApplyDNBad;
 
@@ -333,7 +330,6 @@ extern const double WApplyDNBad_Values[N_DETZONE];
 
 typedef struct Detection {
     double th;
-    RWindowMany windowmany;
 
     size_t dn_count[N_DGACLASSES];
     size_t dn_whitelistened_count[N_DGACLASSES];

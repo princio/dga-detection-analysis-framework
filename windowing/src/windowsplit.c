@@ -196,9 +196,7 @@ void windowsplit_detect(RWindowSplit windowsplit, size_t const idxconfig, Detect
     thzone[2] = (logitminmax.max + logitminmax.min) / 2;
     thzone[3] = logitminmax.max + 1;
 
-    thzone[4] = thzone[3] + (logitminmax.max - logitminmax.min)/3;
-    thzone[5] = thzone[4] + (logitminmax.max - logitminmax.min)/3;
-    thzone[6] = thzone[5] + (logitminmax.max - logitminmax.min)/3;
+    thzone[4] = thzone[3] + (logitminmax.max - logitminmax.min) * 0.1;
 
     detect_run(detection, windowsplit->test->all, idxconfig, th, thzone);
 }

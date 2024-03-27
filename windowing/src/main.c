@@ -103,7 +103,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/dns3/%s/test_new_tld/", dataset); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/princio/Desktop/results/dns3/%s/test_new_tld_1000/", dataset); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     io_setdir(rootdir);
@@ -117,7 +117,7 @@ int main (int argc, char* argv[]) {
 
         stratosphere_add(dataset, 0);
 
-        windowing_apply(100);
+        windowing_apply(1000);
 
         g2_io_call(G2_WING, IO_WRITE);
     }
@@ -148,9 +148,6 @@ if (compute) {
     windowmc_init(windowmc);
     windowmc_buildby_windowing(windowmc);
  
-    WindowFoldConfig wfc = { .k = 10, .k_test = 5 };
-    windowfold_create(windowmc, wfc);
-
     WindowSplitConfig config = { 
         .how = WINDOWSPLIT_HOW_BY_DAY,
         .day = 1

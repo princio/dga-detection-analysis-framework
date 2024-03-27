@@ -44,8 +44,8 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
 
     {
         wl_rank_t wl_rank[] = {
-            0,
-            100,
+            // 0,
+            // 100,
             1000,
             100000
         };
@@ -54,8 +54,8 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
 
     {
         wl_value_t wl_value[] = {
-            0,
-            -10,
+            // 0,
+            // -10,
             -50,
             -100,
             -150
@@ -67,7 +67,7 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
         windowing_t windowing[] = {
             WINDOWING_Q,
             // WINDOWING_R,
-            WINDOWING_QR
+            // WINDOWING_QR
         };
         __SET(windowing);
     }

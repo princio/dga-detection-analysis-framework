@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const double WApplyDNBad_Values[N_DETZONE] = { 0, 0.1, 0.25, 0.5, 0.75, 0.9, 0.999, 1.1  };
+const double WApplyDNBad_Values[N_DETZONE] = { 0, 0.1, 0.25, 0.5, 0.9, 1.1  };
 
 void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config) {
     int whitelistened = 0;

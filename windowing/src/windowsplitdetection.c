@@ -234,19 +234,23 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
         // CLOCK_START(_windowsplitdetection_consumer);
 
         for (size_t idxconfig = 0; idxconfig < N_CONFIG; idxconfig++) {
-            Detection detection;
+            WindowSplitDetection wsd;
 
-            windowsplit_detect(split, idxconfig, &detection);
+            memset(&wsd, 0, sizeof(WindowSplitDetection));
+
+            windowsplit_detect(split, idxconfig, &wsd.detection);
 
             // _windowsplitdetection_io_detection(IO_WRITE, file, &detection);
 
-            IndexMC count = windowmany_count(detection.windowmany);
-            MinMax train_minmax = windowmany_minmax_config(split->train, idxconfig);
+            const IndexMC test_count = windowmany_count(split->test->all);
+            const MinMax train_minmax = windowmany_minmax_config(split->train, idxconfig);
 
-            printf("windowsplit %ld (%d/%d)\n", detection.windowmany->g2index, split->config.k, split->config.k_total);
+            printf("windowsplit %ld (%d/%d)\tconfig#%ld: ", split->g2index, split->config.k, split->config.k_total, idxconfig);
             for (size_t w = 0; w < split->train->number; w++) {
                 assert(split->train->_[w]->windowing->source->wclass.bc == 0);
             }
+            configsuite_print(idxconfig);
+            printf("\n");
             
             printf("train:\t#%8ld\t(%6.5g to %6.5g)\n", split->train->number, train_minmax.min, train_minmax.max);
             printf(" test:\t#%8ld", split->test->all->number);
@@ -259,39 +263,56 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
                 }
             }
             printf("\n");
-            configsuite_print(idxconfig);
-            printf("\n");
             for (size_t zz = 0; zz < 2; zz++) {
-
+                IndexMC count;
+                memset(&count, 0, sizeof(IndexMC));
+                if (zz == 0) {
+                    for (size_t i = 0; i < split->test->all->number; i++) {
+                        WClass wc = split->test->all->_[i]->windowing->source->wclass;
+                        size_t c = split->test->all->_[i]->applies._[idxconfig].wcount;
+                        count.all += c;
+                        count.binary[wc.bc] += c;
+                        count.multi[wc.mc] += c;
+                    }
+                } else {
+                    count = test_count;
+                }
+                const int pad = 30;
+                const int width = 30;
                 {
-                    printf("%*s", 22, " ");
+                    printf("%*s", pad, " ");
                     for (size_t z = 0; z < N_DETZONE; z++) {
-                        printf("%*g", -19, detection.zone[zz].th[z]);
+                        printf("%*g", -width, (double) wsd.detection.zone[zz].th[z]);
                     }
                     printf("\n");
                 }
                 {
-                    printf("%*s", 25, " ");
+                    printf("%*s", pad, " ");
                     for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                        printf("|      zone %2ld     ", z);
+                        printf("|%*szone %2ld%*s", width / 2 - 4, " ", z, width / 2 - 4, " ");
                     }
                     printf("|\n");
                 }
                 DGAFOR(cl) {
-                    int p = printf("(%6d %6d) %6ld", detection.windows[cl][0], detection.windows[cl][1], count.multi[cl]);
-                    printf("%*s", 25 - p, " ");
+                    if (zz == 0) {
+                        int p = printf("%12.0g", (double) count.multi[cl]);
+                        printf("%*s", pad - p, " ");
+                    } else {
+                        int p = printf("(%6.2d %6.2d) %6.2d", wsd.detection.windows[cl][0], wsd.detection.windows[cl][1], test_count.multi[cl]);
+                        printf("%*s", pad - p, " ");
+                    }
                     for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                        if (detection.zone[zz].zone[z][cl] == 0) printf("|%*s", 18, " ");
+                        if (wsd.detection.zone[zz].zone[z][cl] == 0) printf("|%*s", width-1, " ");
                         else {
-                            int p = printf("|        %-5d", detection.zone[zz].zone[z][cl]);
-                            printf("%*s", 19 - p, " ");
+                            int p = printf("|  %*d  %*.2g", width / 3, wsd.detection.zone[zz].zone[z][cl], width / 3, ((double) wsd.detection.zone[zz].zone[z][cl]) / count.all);
+                            printf("%*s", width - p, " ");
                         }
                     }
                     printf("|\n");
                 }
                 {
                     DetectionValue fa, ta;
-                    detect_alarms(&detection, zz, &fa, &ta);
+                    detect_alarms(&wsd.detection, zz, &fa, &ta);
                     printf("%5d - %5d --- %g\n", fa, ta, ((double) ta) / (fa + ta));
                     // calcolo degli allarmi relativamente per ogni classe 
                 }
