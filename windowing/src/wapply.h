@@ -17,7 +17,7 @@ typedef struct WApply {
     uint16_t wcount;
     double  logit;
     uint16_t whitelistened;
-    uint16_t dn_bad[N_WAPPLYDNBAD];
+    uint16_t dn_bad[N_DETZONE - 1];
 } WApply;
 
 MAKEMANY(WApplyTiny);

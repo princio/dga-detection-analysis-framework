@@ -8,7 +8,7 @@
 
 #define G2_NAME_MAX 100
 
-#define G2_NUM 8
+#define G2_NUM 9
 
 typedef enum G2Id {
     G2_SOURCE,
@@ -18,7 +18,8 @@ typedef enum G2Id {
     G2_WMC,
     G2_WFOLD,
     G2_WSPLIT,
-    G2_CONFIGSUITE
+    G2_CONFIGSUITE,
+    G2_WSPLITDET
 } G2Id;
 
 typedef void (*G2FreeFn)(void *);
@@ -97,5 +98,6 @@ extern G2Config g2_config_wmc;
 extern G2Config g2_config_wfold;
 extern G2Config g2_config_wsplit;
 extern G2Config g2_config_configsuite;
+extern G2Config g2_config_wsplitdet;
 
 #endif

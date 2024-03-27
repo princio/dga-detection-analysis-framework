@@ -7,8 +7,15 @@
 #include "gatherer2.h"
 
 typedef struct WindowSplitDetection {
-    MANY(Detection) train;
-    MANY(Detection) test;
+    G2Index g2index_split;
+    Config config;
+
+    MinMax train;
+    MinMax test_all;
+    MinMax test_bin[2];
+    MinMax test_mul[N_DGACLASSES];
+    
+    Detection detection;
 } WindowSplitDetection;
 
 void* windowsplitdetection_start();

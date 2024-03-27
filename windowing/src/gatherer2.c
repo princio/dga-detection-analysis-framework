@@ -17,7 +17,8 @@ char g2_id_names[G2_NUM][G2_NAME_MAX] = {
     "windowmc",
     "windowfold",
     "windowsplit",
-    "configsuite"
+    "configsuite",
+    "wsplitdet"
 };
 
 __G2 gatherer_of_gatherers[G2_NUM];
@@ -35,7 +36,8 @@ static inline G2Config _g2_config_get(const G2Id id) {
         &g2_config_wmc,
         &g2_config_wfold,
         &g2_config_wsplit,
-        &g2_config_configsuite
+        &g2_config_configsuite,
+        &g2_config_wsplitdet
     };
     return *configs[id];
 }

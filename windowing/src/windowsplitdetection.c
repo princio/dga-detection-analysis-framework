@@ -30,6 +30,17 @@ MAKEMANY(MinMaxIdx);
 void _windowsplitdetection_io_detection(IOReadWrite rw, FILE* file, Detection* detection);
 void _windowsplitdetection_io_path(char path[PATH_MAX], RWindowSplit split);
 
+
+G2Config g2_config_wsplitdet = {
+    .id = G2_WSPLITDET,
+    .element_size = 0,
+    .size = 0,
+    .freefn = NULL,
+    .hashfn = NULL,
+    .iofn = NULL,
+    .printfn = NULL
+};
+
 typedef struct tdqueue_data {
     int id;
     RWindowSplit split;
@@ -225,9 +236,6 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
         for (size_t idxconfig = 0; idxconfig < N_CONFIG; idxconfig++) {
             Detection detection;
 
-            memset(&detection, 0, sizeof(Detection));
-            memset(detection.zone, 0, sizeof(detection.zone));
-
             windowsplit_detect(split, idxconfig, &detection);
 
             // _windowsplitdetection_io_detection(IO_WRITE, file, &detection);
@@ -253,34 +261,41 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
             printf("\n");
             configsuite_print(idxconfig);
             printf("\n");
+            for (size_t zz = 0; zz < 2; zz++) {
 
-            {
-                printf("%*s", 223, " ");
-                for (size_t z = 0; z < N_DETZONE; z++) {
-                    printf("%*g", -19, detection.thzone[z]);
-                }
-                printf("\n");
-            }
-            {
-                printf("%*s", 25, " ");
-                for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                    printf("|      zone %2ld     ", z);
-                }
-                printf("|\n");
-            }
-            DGAFOR(cl) {
-                int p = printf("(%6d %6d) %6ld", detection.windows[cl][0], detection.windows[cl][1], count.multi[cl]);
-                printf("%*s", 25 - p, " ");
-                for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                    if (detection.zone[z][cl] == 0) printf("|%*s", 18, " ");
-                    else {
-                        int p = printf("|        %-5d", detection.zone[z][cl]);
-                        printf("%*s", 19 - p, " ");
+                {
+                    printf("%*s", 22, " ");
+                    for (size_t z = 0; z < N_DETZONE; z++) {
+                        printf("%*g", -19, detection.zone[zz].th[z]);
                     }
+                    printf("\n");
                 }
-                printf("|\n");
+                {
+                    printf("%*s", 25, " ");
+                    for (size_t z = 0; z < N_DETZONE - 1; z++) {
+                        printf("|      zone %2ld     ", z);
+                    }
+                    printf("|\n");
+                }
+                DGAFOR(cl) {
+                    int p = printf("(%6d %6d) %6ld", detection.windows[cl][0], detection.windows[cl][1], count.multi[cl]);
+                    printf("%*s", 25 - p, " ");
+                    for (size_t z = 0; z < N_DETZONE - 1; z++) {
+                        if (detection.zone[zz].zone[z][cl] == 0) printf("|%*s", 18, " ");
+                        else {
+                            int p = printf("|        %-5d", detection.zone[zz].zone[z][cl]);
+                            printf("%*s", 19 - p, " ");
+                        }
+                    }
+                    printf("|\n");
+                }
+                {
+                    DetectionValue fa, ta;
+                    detect_alarms(&detection, zz, &fa, &ta);
+                    printf("%5d - %5d --- %g\n", fa, ta, ((double) ta) / (fa + ta));
+                    // calcolo degli allarmi relativamente per ogni classe 
+                }
             }
-            printf("\n");
         } // filling Result
 
         // if (io_closefile(file, IO_WRITE, path))

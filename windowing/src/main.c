@@ -96,16 +96,17 @@ int main (int argc, char* argv[]) {
         exit(0);
     }
 
+    char dataset[20];
+    strcpy(dataset, "CTU-13");
+    // strcpy(dataset, "CTU-SME-11");
+    
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/dns3/sme-11/test_new_tld/"); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/princio/Desktop/results/dns3/%s/test_new_tld/", dataset); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     io_setdir(rootdir);
-
-    char dataset[20];
-    strcpy(dataset, "CTU-SME-11");
     
     int compute = 1;
     
@@ -119,6 +120,25 @@ int main (int argc, char* argv[]) {
         windowing_apply(100);
 
         g2_io_call(G2_WING, IO_WRITE);
+    }
+
+
+
+    {
+        __MANY many = g2_array(G2_W0MANY);
+        for (size_t i = 0; i < many.number; i++) {
+            RWindow0Many w0many = (RWindow0Many) many._[i];
+            assert(w0many->number);
+            assert(w0many->_[0].applies.number);
+            assert(w0many->_[0].applies._);
+            for (size_t w = 0; w < w0many->number; w++) {
+                assert(w0many->_[w].n_message > 0);
+                for (size_t c = 0; c < configsuite.configs.number; c++) {
+                    assert(w0many->_[w].applies._[c].wcount);
+                    // could be zero due to windowing=windowing_r
+                }
+            }
+        }
     }
 
 if (compute) {

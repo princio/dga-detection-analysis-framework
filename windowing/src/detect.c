@@ -31,7 +31,7 @@ void detect_update(WApply const * const apply, RSource source, const double th, 
     detection->windows[source->wclass.mc][tp]++;
     detection->sources[source->g2index][tp]++;
     
-    for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++) {
+    for (size_t idxdnbad = 0; idxdnbad < N_DETZONE; idxdnbad++) {
         detection->alarms[source->wclass.mc][idxdnbad] += apply->dn_bad[idxdnbad];
     }
     detection->dn_count[source->wclass.mc] += apply->wcount;
@@ -44,7 +44,6 @@ void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxco
     detection->windowmany = windowmany;
 
     detection->th = th;
-    memcpy(detection->thzone, thzone, sizeof(double) * N_DETZONE);
 
     for (size_t w = 0; w < windowmany->number; w++) {
         RWindow window = windowmany->_[w];
@@ -59,21 +58,51 @@ void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxco
         detection->windows[wc.mc][tp]++;
         detection->sources[source->g2index][tp]++;
     
-        for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++) {
+        for (size_t idxdnbad = 0; idxdnbad < N_DETZONE; idxdnbad++) {
             detection->alarms[source->wclass.mc][idxdnbad] += apply->dn_bad[idxdnbad];
         }
         detection->dn_count[source->wclass.mc] += apply->wcount;
         detection->dn_whitelistened_count[source->wclass.mc] += apply->whitelistened;
 
         {
-            int z = 0;
+            int z;
+            DetectionZone *zone;
+            zone = &detection->zone[0];
+            memcpy(zone->th, WApplyDNBad_Values, N_DETZONE * sizeof(double));
+            int a = 0;
+            for (z = 0; z < N_DETZONE; z++) {
+                zone->zone[z][source->wclass.mc] += apply->dn_bad[z];
+                a += apply->dn_bad[z];
+            }
+            assert(a);
+        }
+        {
+            int z;
+            DetectionZone *zone;
+            zone = &detection->zone[1];
+            memcpy(zone->th, thzone, N_DETZONE * sizeof(double));
             for (z = 0; z < N_DETZONE - 1; z++) {
-                if (apply->logit >= detection->thzone[z] && apply->logit < detection->thzone[z + 1]) {
+                if (apply->logit >= zone->th[z] && apply->logit < zone->th[z + 1]) {
                     break;
                 }
             }
             assert(z >= 0 && z <= N_DETZONE - 1);
-            detection->zone[z][source->wclass.mc]++;
+            zone->zone[z][source->wclass.mc]++;
+        }
+    }
+}
+
+void detect_alarms(Detection* detection, int a, DetectionValue* false_alarms, DetectionValue* true_alarms) {
+    *false_alarms = 0;
+    *true_alarms = 0;
+    
+    for (size_t z = (N_DETZONE - 1) / 2; z < N_DETZONE - 1; z++) {
+        DGAFOR(mc) {
+            if (mc == 0) {
+                *false_alarms += detection->zone[a].zone[z][mc];
+            } else {
+                *true_alarms += detection->zone[a].zone[z][mc];
+            }
         }
     }
 }

@@ -216,19 +216,6 @@ typedef struct WClass {
     DGAClass mc;
 } WClass;
 
-#define N_WAPPLYDNBAD 4
-
-#define FOR_DNBAD for (size_t idxdnbad = 0; idxdnbad < N_WAPPLYDNBAD; idxdnbad++)
-
-typedef enum WApplyDNBad {
-    WAPPLYDNBAD_05,
-    WAPPLYDNBAD_09,
-    WAPPLYDNBAD_099,
-    WAPPLYDNBAD_0999
-} WApplyDNBad;
-
-extern const double WApplyDNBad_Values[N_WAPPLYDNBAD];
-
 //   P A R A M E T E R S
 
 typedef size_t WSize;
@@ -324,6 +311,26 @@ typedef DetectionValue DetectionPN[2];
 
 #define N_DETZONE 8
 
+typedef struct DetectionZone {
+    double th[N_DETZONE];
+    DetectionValue zone[N_DETZONE - 1][N_DGACLASSES]; 
+} DetectionZone;
+
+#define DETZONE_FOR for (size_t idxdetzone = 0; idxdetzone < N_DETZONE; idxdetzone++)
+
+typedef enum WApplyDNBad {
+    WAPPLYDNBAD_0000,
+    WAPPLYDNBAD_0250,
+    WAPPLYDNBAD_0500,
+    WAPPLYDNBAD_0750,
+    WAPPLYDNBAD_0900,
+    WAPPLYDNBAD_0990,
+    WAPPLYDNBAD_0999,
+    WAPPLYDNBAD_1100
+} WApplyDNBad;
+
+extern const double WApplyDNBad_Values[N_DETZONE];
+
 typedef struct Detection {
     double th;
     RWindowMany windowmany;
@@ -331,12 +338,11 @@ typedef struct Detection {
     size_t dn_count[N_DGACLASSES];
     size_t dn_whitelistened_count[N_DGACLASSES];
 
-    DetectionValue alarms[N_DGACLASSES][N_WAPPLYDNBAD];
+    DetectionValue alarms[N_DGACLASSES][N_DETZONE];
     DetectionPN windows[N_DGACLASSES];
     DetectionPN sources[100];
 
-    double thzone[N_DETZONE];
-    DetectionValue zone[N_DETZONE - 1][N_DGACLASSES]; 
+    DetectionZone zone[3];
 } Detection;
 
 MAKEMANY(Detection);

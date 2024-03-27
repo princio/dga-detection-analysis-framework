@@ -66,7 +66,7 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
     {
         windowing_t windowing[] = {
             WINDOWING_Q,
-            WINDOWING_R,
+            // WINDOWING_R,
             WINDOWING_QR
         };
         __SET(windowing);
