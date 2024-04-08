@@ -43,7 +43,7 @@ def subprocess_launch(config: Config, file_output: Union[Path,None], name, args:
             print("\n".join([ str(arg) for arg in args ]))
             exit(1)
 
-        output, errors = p.communicate(timeout=10000)
+        output, errors = p.communicate(timeout=100000)
 
         fplog.writelines(output)
         fplog.writelines(errors)

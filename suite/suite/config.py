@@ -13,6 +13,7 @@ import sqlalchemy
 @dataclass
 class ConfigBin:
     dns_parse: Path = Path()
+    tcpdump: Path = Path()
     tshark: Path = Path()
     python_lstm: Path = Path()
     python_psl_list: Path = Path()
@@ -112,6 +113,7 @@ class Config:
             self.lstm_batch_size = conf["lstm_batch_size"]
                 
             self.bin = ConfigBin()
+            self.bin.tcpdump = Path(conf["bin"]["tcpdump"])
             self.bin.tshark = Path(conf["bin"]["tshark"])
             self.bin.python_psl_list = Path(conf["bin"]["python_psl_list"])
             self.bin.python_lstm = Path(conf["bin"]["python_lstm"])

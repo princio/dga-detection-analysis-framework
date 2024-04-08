@@ -44,12 +44,11 @@ if __name__ == "__main__":
         pcap = PCAP(config, malwares, pcappath)
         print("%s/%s" % (i, len(config.pcaps)), "Performing", pcap.configpcap.name)
         pcap.run()
-        pass
 
     from dn import DN
     dn = DN(config)
     dn.run()
-    
+
     from lstm import LSTM
     lstm = LSTM(config)
     lstm.run()

@@ -73,11 +73,17 @@ class PCAP:
         self.dbpcap: Union[DBPCAP,None] = None
         
         self.pcapfile = pcapfile
+        self.pcapdir = self.config.workdir.path.joinpath(self.configpcap.name)
+
+        if not self.pcapdir.exists():
+            self.pcapdir.mkdir(parents=True, exist_ok=True)
+            pass
 
         self.malwares = malwares
     
-        self.tshark_path: Path = self.config.workdir.path.joinpath(self.pcapfile.with_suffix(".dns.pcap").name)
-        self.dns_parse_path: Path = self.config.workdir.path.joinpath(self.pcapfile.with_suffix(".csv").name)
+        self.tcpdump_path: Path = self.pcapdir.joinpath(self.pcapfile.with_suffix(".tcpdump.pcap").name)
+        self.tshark_path: Path = self.pcapdir.joinpath(self.pcapfile.with_suffix(".dns.pcap").name)
+        self.dns_parse_path: Path = self.pcapdir.joinpath(self.pcapfile.with_suffix(".csv").name)
 
         self.qr = None
 
@@ -99,10 +105,23 @@ class PCAP:
                           self.tshark_path,
                           "tshark", [
                               self.config.bin.tshark,
-                              "-r", self.pcapfile,
+                              "-r", self.tcpdump_path,
                               "-Y", "dns && !_ws.malformed && !icmp",
                               "-w", self.tshark_path
                         ])
+        
+        pass
+
+    def run_tcpdump(self):
+        subprocess_launch(self.config,
+                          self.tcpdump_path,
+                          "tcpdump", [
+                              self.config.bin.tcpdump,
+                              "-r", self.pcapfile,
+                              "-w", self.tcpdump_path,
+                              "port", "53"
+                        ])
+        
         pass
 
     def run_dns_parse(self):
@@ -158,7 +177,7 @@ class PCAP:
         u = df.dn.drop_duplicates().shape[0]
         nx_ratio = self.nx_ratio(df)
 
-        fnreq_max = int(df.fnreq.max())
+        fnreq_max = int(df.fnreq.max()) if df.shape[0] > 0 else 0
 
         with self.config.psyconn.cursor() as cursor:
             cursor.execute(
@@ -260,6 +279,9 @@ class PCAP:
     pass
 
     def nx_ratio(self, df: pd.DataFrame):
+        if df.shape[0] == 0:
+            return 0
+        
         n_nx = (df.rcode == 3).sum()
         n = df.shape[0]
 
@@ -279,6 +301,7 @@ class PCAP:
             return
 
         self.run_psl_list()
+        self.run_tcpdump()
         self.run_tshark()
         self.run_dns_parse()
 
