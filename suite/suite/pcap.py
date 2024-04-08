@@ -45,7 +45,7 @@ class DBPCAP:
 def parse_config_pcap(pcapfile: Path):
     configpcap = ConfigPCAP()
     configpcap.path = pcapfile
-    with open(configpcap.path.parent.joinpath("pcap.json"), 'r') as fp_pcap:
+    with open(configpcap.path.with_suffix(".json"), 'r') as fp_pcap:
         pcap = json.load(fp_pcap)
         configpcap.name = pcap['name']
         if pcap["name"] != pcapfile.stem:
@@ -59,11 +59,9 @@ def parse_config_pcap(pcapfile: Path):
         configpcap.sha256 = pcap['sha256']
         if configpcap.infected:
             configpcap.malware.name = pcap['malware']['name']
-            configpcap.malware.year = pcap['malware']['year']
-            configpcap.malware.md5 = pcap['malware']['md5']
             configpcap.malware.sha256 = pcap['malware']['sha256']
-            configpcap.malware.binary = pcap['malware']['binary']
             configpcap.malware.dga = pcap['malware']['dga']
+            configpcap.malware.info = pcap['malware']['info']
             pass
         pass
     return configpcap
@@ -179,7 +177,7 @@ class PCAP:
                 RETURNING id;
                 """,
                 (
-                    self.pcapfile.name, malware.id, self.configpcap.sha256, self.configpcap.infected,
+                    self.configpcap.name, malware.id, self.configpcap.sha256, self.configpcap.infected,
                     self.configpcap.dataset, self.configpcap.day, self.configpcap.days, self.configpcap.terminal,
                     qr, q, r, u,
                     fnreq_max, nx_ratio, self.configpcap.year
@@ -320,5 +318,5 @@ class PCAP:
                 self.config.psyconn.commit()
                 pass
             pass
-
         pass
+    pass

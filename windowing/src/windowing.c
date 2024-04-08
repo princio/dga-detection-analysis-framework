@@ -6,10 +6,12 @@
 #include "io.h"
 #include "windowmany.h"
 #include "stratosphere.h"
+#include "stratosphere_windowing.h"
 // #include "logger.h"
 
 #include <assert.h>
 #include <stdint.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -55,6 +57,8 @@ void windowing_build(RWindowing windowing, RWindow0Many window0many, size_t wsiz
     windowing->wsize = wsize;
     windowing->source = source;
 
+    assert(source->fnreq_max > 0); // source having zero dn should not be processed
+
     window0many_buildby_size(window0many, N_WINDOWS(source->fnreq_max, wsize));
     
     windowing->window0many = window0many;
@@ -76,6 +80,8 @@ void windowing_build(RWindowing windowing, RWindow0Many window0many, size_t wsiz
 void windowing_apply(WSize wsize) {
     __MANY sourcemany = g2_array(G2_SOURCE);
 
+    assert(sourcemany.number > 0);
+
     for (size_t i = 0; i < sourcemany.number; i++) {
         RSource source = (RSource) sourcemany._[i];
 
@@ -87,8 +93,10 @@ void windowing_apply(WSize wsize) {
 
         windowing_build(windowing, window0many, wsize, source);
 
-        stratosphere_apply(windowing);
+        // stratosphere_apply(windowing);
     }
+
+    stratosphere_windowing_apply();
 }
 
 void _windowing_io(IOReadWrite rw, FILE* file, void** item) {

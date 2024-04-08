@@ -115,7 +115,8 @@ void _window0many_hash(void* item, SHA256_CTX* sha) {
         for (size_t c = 0; c < configsuite.configs.number; c++) {
             G2_IO_HASH_UPDATE(window->applies._[c].dn_bad);
             G2_IO_HASH_UPDATE(window->applies._[c].wcount);
-            G2_IO_HASH_UPDATE(window->applies._[c].whitelistened);
+            G2_IO_HASH_UPDATE(window->applies._[c].whitelistened_unique);
+            G2_IO_HASH_UPDATE(window->applies._[c].whitelistened_total);
             G2_IO_HASH_UPDATE_DOUBLE(window->applies._[c].logit);
         }
     }

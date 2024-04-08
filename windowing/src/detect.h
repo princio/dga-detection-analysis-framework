@@ -38,7 +38,7 @@ void detect_update(WApply const * const apply, RSource source, const double th, 
 
 void detect_run(Detection*, RWindowMany, size_t const, const double, const double[N_DETZONE]);
 
-void detect_alarms(Detection* detection, int a, DetectionValue* false_alarms, DetectionValue* true_alarms);
+void detect_alarms(DetectionZone*, DetectionValue* false_alarms, DetectionValue* true_alarms);
 
 double detect_performance(Detection[N_DGACLASSES], TCPC(Performance));
 int detect_performance_compare(Performance* performance, double new, double old);

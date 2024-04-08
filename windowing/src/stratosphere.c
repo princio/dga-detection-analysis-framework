@@ -47,7 +47,7 @@ int _stratosphere_connect() {
     return -1;
 }
 
-void parse_message(PGresult* res, int row, DNSMessage* message) {
+void _stratosphere_parse_message(PGresult* res, int row, DNSMessage* message) {
     int cursor = 0;
     message->fn_req = atoi(PQgetvalue(res, row, cursor++));
     message->is_response = PQgetvalue(res, row, cursor++)[0] == 't';
@@ -56,149 +56,19 @@ void parse_message(PGresult* res, int row, DNSMessage* message) {
     message->top10m = atoi(PQgetvalue(res, row, cursor++));
     for (size_t nn = 0; nn < N_NN; nn++) {
         message->value[nn] = atof(PQgetvalue(res, row,  cursor++));
+        message->logit[nn] = atof(PQgetvalue(res, row,  cursor++));
     }
 }
 
-void printdatastring(PGresult* res) {
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        printf("No data\n");
-    }
-    else {
-        int ncols = PQnfields(res);
-        int nrows = 5;
-
-        for(int r = 0; r < nrows; r++)
-        {
-            for (int c = 0; c < ncols; c++)
-            {
-                char* colname = PQfname(res, c);
-                char* value = PQgetvalue(res, r, c);
-                printf("%10s\t", colname);
-                printf("%25s\t", value);
-
-                Oid oid = PQftype(res, c);
-                switch (PQftype(res, c)) {
-                    case INT2OID:
-                        printf("%20s\n", "INT2OID");
-                    break;
-                    case INT4OID:
-                        printf("%20s\n", "INT4OID");
-                    break;
-                    case INT8OID: {
-                        int64_t iptr = atol(value);
-                        printf("%20ld\t", iptr);
-                        printf("%20s[%zu]\n", "INT8OID", sizeof (int64_t));
-                        break;
-                    }
-                    case FLOAT4OID: {
-                        double f4ptr = atoi(value);
-                        printf("%20f\t", f4ptr);
-                        printf("%20s\n", "FLOAT4OID");
-                        break;
-                    }
-                    case FLOAT8OID: {
-                        double f8ptr = atof(value);
-                        printf("%20f\t", f8ptr);
-                        printf("%20s[%zu]\n", "FLOAT8OID", sizeof (double));
-                        break;
-                    }
-                    case BOOLOID: {
-                        int _bool = value[0] == 't';
-                        printf("%20i\t", _bool);
-                        printf("%20s\n", "BOOLOID");
-                        break;
-                    }
-                    default:
-                        printf("%20u\n", oid);
-                }
-            }
-
-            puts("");
-        }
-    }
-}
-
-int get_pcaps_number() {
-    if (!_stratosphere_connect()) {
-        puts("Error!");
-        exit(1);
-    }
-
-    PGresult* res = PQexec(conn, "SELECT count(*) FROM pcap");
-    int64_t rownumber = -1;
-
-    if (PQresultStatus(res) != PGRES_TUPLES_OK) {
-        LOG_WARN("no data.");
-    }
-    else {
-        char* srownumber = PQgetvalue(res, 0, 0);
-
-        rownumber = atoi(srownumber);
-    }
-
-    return rownumber;
-}
-
-int32_t get_fnreq_max(int32_t id) {
-    int fnreq_max;
-    char sql[1000];
-    sprintf(sql, "SELECT MAX(FN_REQ) FROM MESSAGES_%d", id);
-
-    fnreq_max = 0;
-
-    PGresult* res_nrows = PQexec(conn, sql);
-    if (PQresultStatus(res_nrows) != PGRES_TUPLES_OK) {
-        LOG_WARN("get MAX(FN_REQ) for source %d failed.", id);
-    } else {
-        fnreq_max = atoi(PQgetvalue(res_nrows, 0, 0));
-    }
-    PQclear(res_nrows);
-
-    return fnreq_max;
-}
-
-void fetch_window(RSource source, uint64_t fn_req_min, uint64_t fn_req_max, PGresult** pgresult, int32_t* nrows) {
-    char sql[1000];
-    int pgresult_binary = 1;
-
-    sprintf(sql,
-            "SELECT M.ID, FN_REQ, "
-                "DN_NN_7.VALUE, "
-                "DN_NN_8.VALUE, "
-                "DN_NN_9.VALUE, "
-                "DN_NN_10.VALUE, "
-                "IS_RESPONSE, TOP10M, DYNDNS, M.ID "
-            "FROM MESSAGES_%d AS M "
-                "JOIN (SELECT * FROM DN_NN WHERE DN_NN.NN_ID = 7) AS DN_NN_7 ON M.DN_ID=DN_NN_7.DN_ID "
-                "JOIN (SELECT * FROM DN_NN WHERE DN_NN.NN_ID = 8) AS DN_NN_8 ON M.DN_ID=DN_NN_8.DN_ID "
-                "JOIN (SELECT * FROM DN_NN WHERE DN_NN.NN_ID = 9) AS DN_NN_9 ON M.DN_ID=DN_NN_9.DN_ID "
-                "JOIN (SELECT * FROM DN_NN WHERE DN_NN.NN_ID = 10) AS DN_NN_10 ON M.DN_ID=DN_NN_10.DN_ID "
-                "JOIN DN AS DN ON M.DN_ID=DN.ID "
-                "WHERE FN_REQ BETWEEN %ld AND %ld "
-            "ORDER BY FN_REQ, M.ID",
-            source->id, fn_req_min, fn_req_max
-    );
-
-    *pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
-
-    if (PQresultStatus(*pgresult) != PGRES_TUPLES_OK) {
-        LOG_ERROR("Select messages error for pcap %d: %s.", source->id, PQerrorMessage(conn));
-        PQclear(*pgresult);
-        return;
-    }
-
-    *nrows = PQntuples(*pgresult);
-}
-
-void fetch_source_messages(const __Source* source, int32_t* nrows, PGresult** pgresult) {
+void _stratosphere_fetch_message(const __Source* source, int32_t* nrows, PGresult** pgresult) {
     char sql[2000];
     int pgresult_binary = 1;
     
-    sprintf(sql, "SELECT   FN_REQ, IS_R, M.ID, RCODE, WL_NN.RANK_BDN");
+    sprintf(sql, "SELECT FN_REQ, IS_R, M.ID, RCODE, WL_NN.RANK_BDN");
 
     for (size_t nn = 0; nn < N_NN; nn++) {
-        char tmp[100];
-        sprintf(tmp, ", DN_NN%ld.VALUE AS LOGIT%ld", nn + 1, nn + 1);
+        char tmp[200];
+        sprintf(tmp, ", DN_NN%ld.VALUE AS VALUE%ld, DN_NN%ld.LOGIT AS LOGIT%ld ", nn + 1, nn + 1, nn + 1, nn + 1);
         strcat(sql, tmp);
     }
 
@@ -268,7 +138,7 @@ void* stratosphere_apply_producer(void* argsvoid) {
     int window_wcount = 0;
     queue_messages* qm = NULL;
     while (row < args->nrows) {
-        parse_message(args->pgresult, row, &window[window_wcount]);
+        _stratosphere_parse_message(args->pgresult, row, &window[window_wcount]);
         const int wnum = CALC_WNUM(window[window_wcount].fn_req, args->wsize);
 
         if (!qm) {
@@ -340,7 +210,7 @@ void stratosphere_apply(RWindowing windowing) {
         return;
     }
 
-    fetch_source_messages(source, &nrows, &pgresult);
+    _stratosphere_fetch_message(source, &nrows, &pgresult);
 
     queue_messages* qm[100];
 	queue_t queue = QUEUE_INITIALIZER(qm);
@@ -443,11 +313,13 @@ void _stratosphere_add(char dataset[100], size_t limit) {
     PGresult* pgresult = NULL;
     char sql[1000];
 
+    memset(DGA_CLASSES, 0, sizeof(DGA_CLASSES));
+
     sprintf(sql,
         "SELECT "
-        "pcap.id, mw.dga as dga, qr, q, r, fnreq_max, dga_ratio "
+        "pcap.id, pcap.name, mw.dga as dga, mw.name, qr, q, r, fnreq_max, dga_ratio, day, days "
         "FROM pcap JOIN malware as mw ON malware_id = mw.id "
-        "WHERE pcap.dataset = '%s' "
+        "WHERE pcap.dataset = '%s' AND FNREQ_MAX > 0"
         "ORDER BY qr ASC "
         // "LIMIT 3 "
         ,
@@ -468,32 +340,43 @@ void _stratosphere_add(char dataset[100], size_t limit) {
     for(int row = 0; row < nrows; row++) {
         int32_t id;
         int32_t dgaclass;
+        char pcapname[200];
+        char mwname[200];
         int32_t qr;
         int32_t q;
         int32_t r;
         int32_t fnreq_max;
         float dga_ratio;
+        int day, days;
 
         int z = 0;
         id = atoi(PQgetvalue(pgresult, row, z++));
+        strcpy(pcapname, PQgetvalue(pgresult, row, z++));
         dgaclass = atoi(PQgetvalue(pgresult, row, z++));
+        strcpy(mwname, PQgetvalue(pgresult, row, z++));
         qr = atoi(PQgetvalue(pgresult, row, z++));
         q = atoi(PQgetvalue(pgresult, row, z++));
         r = atoi(PQgetvalue(pgresult, row, z++));
         fnreq_max = atoi(PQgetvalue(pgresult, row, z++));
         dga_ratio = atof(PQgetvalue(pgresult, row, z++));
+        day = atoi(PQgetvalue(pgresult, row, z++));
+        days = atoi(PQgetvalue(pgresult, row, z++));
 
         RSource rsource = source_alloc();
 
         rsource->id = id;
-        sprintf(rsource->galaxy, "%s", GALAXY_NAME);
-        sprintf(rsource->name, "%s_%d", GALAXY_NAME, id);
+        strcpy(rsource->galaxy, GALAXY_NAME);
+        strcpy(rsource->name, pcapname);
         rsource->wclass.bc = dgaclass > 0;
-        rsource->wclass.mc = dgaclass > 0 ? 2 : 0; //dgaclass > 0 ? (dga_ratio > 0.3 ? 2 : 1) : 0; // (dgaclass == 0 || dgaclass == 2) ? dgaclass : 1;
+        rsource->wclass.mc = dgaclass; //dgaclass > 0 ? (dga_ratio > 0.3 ? 2 : 1) : 0; // (dgaclass == 0 || dgaclass == 2) ? dgaclass : 1;
+        strcpy(rsource->wclass.mwname, mwname);
+        strcpy(DGA_CLASSES[rsource->wclass.mc], mwname);
         rsource->qr = qr;
         rsource->q = q;
         rsource->r = r;
         rsource->fnreq_max = fnreq_max;
+        rsource->day = day;
+        rsource->days = days;
     }
 
     PQclear(pgresult);

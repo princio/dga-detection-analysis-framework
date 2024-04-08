@@ -56,6 +56,14 @@ const char parameters_format[N_PARAMETERS][5] = {
     "%f"
 };
 
+void parameters_int_print(ParameterValue ref, int width, char str[20]) {
+    int value;
+
+    memcpy(&value, &ref.value, sizeof(int));
+    
+    sprintf(str, "%*d", width, value);
+}
+
 void parameters_double_print(ParameterValue ref, int width, char str[20]) {
     double value;
 
@@ -95,6 +103,11 @@ void _parametersdefinition_init() {
 
     ParameterDefinition parameters_notconst[N_PARAMETERS];
 
+    strcpy(parameters_notconst[PE_UNIQUE].format, "d");
+    strcpy(parameters_notconst[PE_UNIQUE].name, "unique");
+    parameters_notconst[PE_UNIQUE].size = sizeof(unique_t);
+    parameters_notconst[PE_UNIQUE].print = parameters_int_print;
+
     strcpy(parameters_notconst[PE_NINF].format, "f");
     strcpy(parameters_notconst[PE_NINF].name, "ninf");
     parameters_notconst[PE_NINF].size = sizeof(ninf_t);
@@ -125,10 +138,10 @@ void _parametersdefinition_init() {
     parameters_notconst[PE_WINDOWING].size = sizeof(windowing_t);
     parameters_notconst[PE_WINDOWING].print = parameters_windowing_print;
 
-    strcpy(parameters_notconst[PE_NX_EPSILON_INCREMENT].format, "f");
-    strcpy(parameters_notconst[PE_NX_EPSILON_INCREMENT].name, "nx_eps");
-    parameters_notconst[PE_NX_EPSILON_INCREMENT].size = sizeof(nx_epsilon_increment_t);
-    parameters_notconst[PE_NX_EPSILON_INCREMENT].print = parameters_double_print;
+    strcpy(parameters_notconst[PE_NX_LOGIT_INCREMENT].format, "f");
+    strcpy(parameters_notconst[PE_NX_LOGIT_INCREMENT].name, "nx_eps");
+    parameters_notconst[PE_NX_LOGIT_INCREMENT].size = sizeof(nx_logit_increment_t);
+    parameters_notconst[PE_NX_LOGIT_INCREMENT].print = parameters_double_print;
 
     memcpy((void*) parameters_definition, parameters_notconst, sizeof(ParameterDefinition) * N_PARAMETERS);
 
@@ -144,13 +157,14 @@ void _configsuite_fill_pr(ConfigSuite* cs, ParameterGenerator pg) {
             memcpy(cs->realm[PE_ ## NAME_UP]._[i].value, &pg.NAME_LW[i], sizeof(NAME_LW ## _t));\
         }
 
+    __CPY(unique, UNIQUE);
     __CPY(ninf, NINF);
     __CPY(pinf, PINF);
     __CPY(nn, NN);
     __CPY(wl_rank, WL_RANK);
     __CPY(wl_value, WL_VALUE);
     __CPY(windowing, WINDOWING);
-    __CPY(nx_epsilon_increment, NX_EPSILON_INCREMENT);
+    __CPY(nx_logit_increment, NX_LOGIT_INCREMENT);
 
     #undef __CPY
 }
@@ -168,35 +182,38 @@ void _configsuite_fill_configs(ConfigSuite* cs) {
     size_t idxs[N_PARAMETERS];
     memset(idxs, 0, sizeof(size_t) * N_PARAMETERS);
     #define PE_FOR(NAME) for (idxs[PE_ ## NAME] = 0; idxs[PE_ ## NAME] < cs->realm[PE_ ## NAME].number; ++idxs[PE_ ## NAME])
-    PE_FOR(NINF) {
-        PE_FOR(PINF) {
-            PE_FOR(NN) {
-                PE_FOR(WL_RANK) {
-                    PE_FOR(WL_VALUE) {
-                        PE_FOR(WINDOWING) {
-                            PE_FOR(NX_EPSILON_INCREMENT) {
+    PE_FOR(UNIQUE) {
+        PE_FOR(NINF) {
+            PE_FOR(PINF) {
+                PE_FOR(NN) {
+                    PE_FOR(WL_RANK) {
+                        PE_FOR(WL_VALUE) {
+                            PE_FOR(WINDOWING) {
+                                PE_FOR(NX_LOGIT_INCREMENT) {
 
-                                Config* config = &cs->configs._[idxconfig];
+                                    Config* config = &cs->configs._[idxconfig];
 
-                                config->index = idxconfig;
+                                    config->index = idxconfig;
 
-                                idxconfig++;
+                                    idxconfig++;
 
-                                void* ptr[N_PARAMETERS] = {
-                                    &config->ninf,
-                                    &config->pinf,
-                                    &config->nn,
-                                    &config->wl_rank,
-                                    &config->wl_value,
-                                    &config->windowing,
-                                    &config->nx_epsilon_increment
-                                };
+                                    void* ptr[N_PARAMETERS] = {
+                                        &config->unique,
+                                        &config->ninf,
+                                        &config->pinf,
+                                        &config->nn,
+                                        &config->wl_rank,
+                                        &config->wl_value,
+                                        &config->windowing,
+                                        &config->nx_logit_increment
+                                    };
 
-                                // if (p >= 6) break;
+                                    // if (p >= 6) break;
 
-                                for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-                                    config->parameters[pp] = &cs->realm[pp]._[idxs[pp]];
-                                    memcpy(ptr[pp], &cs->realm[pp]._[idxs[pp]].value, parameters_definition[pp].size);
+                                    for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+                                        config->parameters[pp] = &cs->realm[pp]._[idxs[pp]];
+                                        memcpy(ptr[pp], &cs->realm[pp]._[idxs[pp]].value, parameters_definition[pp].size);
+                                    }
                                 }
                             }
                         }
@@ -217,7 +234,7 @@ size_t configsuite_pg_count(ParameterGenerator pg) {
     count *= pg.wl_rank_n;
     count *= pg.wl_value_n;
     count *= pg.windowing_n;
-    count *= pg.nx_epsilon_increment_n;
+    count *= pg.nx_logit_increment_n;
 
     return count;
 }
@@ -298,7 +315,7 @@ void _configsuite_hash(void* item, SHA256_CTX* sha) {
         G2_IO_HASH_UPDATE_DOUBLE(config->ninf);
         G2_IO_HASH_UPDATE_DOUBLE(config->pinf);
         G2_IO_HASH_UPDATE_DOUBLE(config->wl_value);
-        G2_IO_HASH_UPDATE_DOUBLE(config->nx_epsilon_increment);
+        G2_IO_HASH_UPDATE_DOUBLE(config->nx_logit_increment);
     }
 }
 
@@ -310,6 +327,6 @@ void configsuite_print(const size_t idxconfig) {
         NN_NAMES[config->nn],
         config->wl_rank, config->wl_value,
         WINDOWING_NAMES[config->nn],
-        config->nx_epsilon_increment
+        config->nx_logit_increment
     );
 }

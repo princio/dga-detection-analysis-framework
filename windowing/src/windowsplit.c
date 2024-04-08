@@ -50,7 +50,8 @@ RWindowSplit windowsplit_createby_day(const int day) {
             count += ((RWindowing) many._[i])->source->day == (int) day;
         }
         if (count == 0) {
-            LOG_ERROR("no data available for day %ld.", day);
+            LOG_ERROR("no data available for day %d.", day);
+            printf("no data available for day %d.", day);
             exit(1);
         }
     }
@@ -58,14 +59,12 @@ RWindowSplit windowsplit_createby_day(const int day) {
     split = (RWindowSplit) g2_insert_alloc_item(G2_WSPLIT);
     windowsplit_init(split);
 
-    #define DGA0_AND_FIRSTDAY windowing->source->wclass.bc == BINARYCLASS_0 && windowing->source->day == day
-
     { // counting to allocate
         train_counter = 0;
         memset(&test_counter, 0, sizeof(IndexMC));
         for (size_t w = 0; w < many.number; w++) {
             RWindowing windowing = (RWindowing) many._[w];
-            if (DGA0_AND_FIRSTDAY) {
+            if (windowing->source->wclass.bc == BINARYCLASS_0 && windowing->source->day == day) {
                 train_counter += windowing->window0many->number;
             } else {
                 test_counter.all += windowing->window0many->number;
@@ -86,7 +85,7 @@ RWindowSplit windowsplit_createby_day(const int day) {
             WClass wc = windowing->source->wclass;
 
             for (size_t w = 0; w < windowing->window0many->number; w++) {
-                if (DGA0_AND_FIRSTDAY) {
+                if (windowing->source->wclass.bc == BINARYCLASS_0 && windowing->source->day == day) {
                     split->train->_[train_counter++] = &windowing->window0many->_[w];
                 } else {
                     split->test->all->_[test_counter.all++] = &windowing->window0many->_[w];
@@ -96,8 +95,6 @@ RWindowSplit windowsplit_createby_day(const int day) {
             }
         }
     }
-
-    #undef DGA0_AND_FIRSTDAY
 
     return split;
 }

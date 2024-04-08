@@ -16,7 +16,8 @@ typedef struct WApplyTiny {
 typedef struct WApply {
     uint16_t wcount;
     double  logit;
-    uint16_t whitelistened;
+    uint16_t whitelistened_unique;
+    uint16_t whitelistened_total;
     uint16_t dn_bad[N_DETZONE - 1];
 } WApply;
 
@@ -31,8 +32,8 @@ typedef struct WApplyArgs
     Config* config;
 } WApplyArgs;
 
+void wapply_grouped_run(WApply* wapply, DNSMessageGrouped* message, Config* config);
 
-void wapply_run(WApply* wapply, TCPC(DNSMessage) message, Config* config);
-void* wapply_run_args(void*);
+void wapply_run(WApply* wapply, DNSMessage* message, Config* config);
 
 #endif

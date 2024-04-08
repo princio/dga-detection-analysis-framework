@@ -3,7 +3,6 @@
 #include "configsuite.h"
 #include "io.h"
 #include "performance_defaults.h"
-#include "reducer.h"
 #include "windowing.h"
 #include "windowmany.h"
 #include "windowmc.h"
@@ -41,13 +40,13 @@ G2Config g2_config_wsplitdet = {
     .printfn = NULL
 };
 
-typedef struct tdqueue_data {
+typedef struct _wsplitqueue_data {
     int id;
     RWindowSplit split;
-} tdqueue_data;
+} _wsplitqueue_data;
 
 typedef struct tdqueue {
-	tdqueue_data **qm;
+	_wsplitqueue_data **qm;
 	const int capacity;
 	int size;
 	int in;
@@ -56,29 +55,28 @@ typedef struct tdqueue {
 	pthread_mutex_t mutex;
 	pthread_cond_t cond_full;
 	pthread_cond_t cond_empty;
-} tdqueue_t;
+} _wsplitqueue_t;
 
 struct td_producer_args {
-    tdqueue_t* queue;
+    _wsplitqueue_t* queue;
     RTrainer trainer;
 };
 
 struct td_consumer_args {
     int id;
-    tdqueue_t* queue;
+    _wsplitqueue_t* queue;
 };
 
 typedef struct windowsplitdetection_context {
-	tdqueue_data** qm;
-	tdqueue_t queue;
+	_wsplitqueue_data** qm;
+	_wsplitqueue_t queue;
 	pthread_t producer;
 	pthread_t consumers[TD_NTHREADS];
 	struct td_producer_args producer_args;
 	struct td_consumer_args consumer_args[TD_NTHREADS];
-	Reducer logits;
 } windowsplitdetection_context;
 
-void tdqueue_enqueue(tdqueue_t *queue, tdqueue_data* value, int is_last) {
+void _wsplitqueue_enqueue(_wsplitqueue_t *queue, _wsplitqueue_data* value, int is_last) {
 	pthread_mutex_lock(&(queue->mutex));
 	while (queue->size == queue->capacity)
 		pthread_cond_wait(&(queue->cond_full), &(queue->mutex));
@@ -97,14 +95,14 @@ void tdqueue_enqueue(tdqueue_t *queue, tdqueue_data* value, int is_last) {
 	pthread_cond_broadcast(&(queue->cond_empty));
 }
 
-tdqueue_data* tdqueue_dequeue(tdqueue_t *queue) {
+_wsplitqueue_data* _wsplitqueue_dequeue(_wsplitqueue_t *queue) {
 	int isover;
 	pthread_mutex_lock(&(queue->mutex));
 	while (queue->size == 0 && !queue->end)
 		pthread_cond_wait(&(queue->cond_empty), &(queue->mutex));
 	// we get here if enqueue happened otherwise if we are over.
 	if (queue->size > 0) {
-		tdqueue_data* value = queue->qm[queue->out];
+		_wsplitqueue_data* value = queue->qm[queue->out];
 		-- queue->size;
 		++ queue->out;
 		queue->out %= queue->capacity;
@@ -123,14 +121,14 @@ tdqueue_data* tdqueue_dequeue(tdqueue_t *queue) {
 	}
 }
 
-void tdqueue_end(tdqueue_t *queue) {
+void _wsplitqueue_end(_wsplitqueue_t *queue) {
 	pthread_mutex_lock(&(queue->mutex));
 	queue->end = 1;
 	pthread_mutex_unlock(&(queue->mutex));
 	pthread_cond_broadcast(&(queue->cond_empty));
 }
 
-int tdqueue_isend(tdqueue_t *queue)
+int _wsplitqueue_isend(_wsplitqueue_t *queue)
 {
 	int end;
 	pthread_mutex_lock(&(queue->mutex));
@@ -142,7 +140,7 @@ int tdqueue_isend(tdqueue_t *queue)
 	return end;
 }
 
-int tdqueue_size(tdqueue_t *queue)
+int _wsplitqueue_size(_wsplitqueue_t *queue)
 {
 	pthread_mutex_lock(&(queue->mutex));
 	int size = queue->size;
@@ -168,22 +166,21 @@ void* _windowsplitdetection_producer(void* argsvoid) {
             continue;
         }
 
-        tdqueue_data* qm = calloc(1, sizeof(tdqueue_data));
+        _wsplitqueue_data* qm = calloc(1, sizeof(_wsplitqueue_data));
 
         qm->id = qm_id++;
 
         qm->split = split;
 
-        tdqueue_enqueue(args->queue, qm, 0);
+        _wsplitqueue_enqueue(args->queue, qm, 0);
     }
 
-    tdqueue_end(args->queue);
+    _wsplitqueue_end(args->queue);
 
     return NULL;
 }
 
 struct ConsumerVars {
-    Reducer ths;
     MANY(MinMaxIdx) minmaxidx;
     MANY(Detection)* detections;
     Detection* best_detections;
@@ -211,14 +208,14 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
 
     const size_t N_CONFIG = configsuite.configs.number;
 
-    while(!tdqueue_isend(args->queue)) {
+    while(!_wsplitqueue_isend(args->queue)) {
         char path[PATH_MAX];
-        tdqueue_data* qm;
+        _wsplitqueue_data* qm;
         FILE* file;
         Performance thchooser_fpr;
         RWindowSplit split;
 
-        qm = tdqueue_dequeue(args->queue);
+        qm = _wsplitqueue_dequeue(args->queue);
         
         if (qm == NULL) break;
 
@@ -235,6 +232,10 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
 
         for (size_t idxconfig = 0; idxconfig < N_CONFIG; idxconfig++) {
             WindowSplitDetection wsd;
+            DetectionZone* zones[2] = {
+                &wsd.detection.zone.dn,
+                &wsd.detection.zone.llr
+            };
 
             memset(&wsd, 0, sizeof(WindowSplitDetection));
 
@@ -282,7 +283,7 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
                 {
                     printf("%*s", pad, " ");
                     for (size_t z = 0; z < N_DETZONE; z++) {
-                        printf("%*g", -width, (double) wsd.detection.zone[zz].th[z]);
+                        printf("%*g", -width, (double) zones[zz]->th[z]);
                     }
                     printf("\n");
                 }
@@ -296,27 +297,48 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
                 DGAFOR(cl) {
                     if (zz == 0) {
                         int p = printf("%12.0g", (double) count.multi[cl]);
-                        printf("%*s", pad - p, " ");
+                        printf("%*s", 50 - p, " ");
                     } else {
-                        int p = printf("(%6.2d %6.2d) %6.2d", wsd.detection.windows[cl][0], wsd.detection.windows[cl][1], test_count.multi[cl]);
-                        printf("%*s", pad - p, " ");
+                        int p = printf("%2d %s", cl, DGA_CLASSES[cl]);
+                        // int p = printf("%2d (%6.2d %6.2d) %6ld", cl, wsd.detection.windows[cl][0], wsd.detection.windows[cl][1], test_count.multi[cl]);
+                        printf("%*s", 50 - p, " ");
                     }
                     for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                        if (wsd.detection.zone[zz].zone[z][cl] == 0) printf("|%*s", width-1, " ");
-                        else {
-                            int p = printf("|  %*d  %*.2g", width / 3, wsd.detection.zone[zz].zone[z][cl], width / 3, ((double) wsd.detection.zone[zz].zone[z][cl]) / count.all);
+                        if (zones[zz]->zone[z][cl] == 0) {
+                            printf("|%*s", width - 1, " ");
+                        } else {
+                            int p = printf("|  %*d  %*.2g", width / 3, zones[zz]->zone[z][cl], width / 3, ((double) zones[zz]->zone[z][cl]) / count.multi[cl]);
                             printf("%*s", width - p, " ");
                         }
                     }
-                    printf("|\n");
+                    printf("|");
+                    printf("\n");
                 }
                 {
                     DetectionValue fa, ta;
-                    detect_alarms(&wsd.detection, zz, &fa, &ta);
+                    detect_alarms(zones[zz], &fa, &ta);
                     printf("%5d - %5d --- %g\n", fa, ta, ((double) ta) / (fa + ta));
                     // calcolo degli allarmi relativamente per ogni classe 
                 }
             }
+            for (size_t day = 0; day < 7; day++) {
+                DetectionZone* dayzone = &wsd.detection.zone.days[day];
+                printf("day %ld)\n", day + 1);
+                
+                for (size_t cl = 0; cl < N_DGACLASSES; cl++) {
+                    if (cl == 2 || cl == 1) continue;
+                    printf("%50s\t", DGA_CLASSES[cl]);
+                    for (size_t z = 0; z < N_DETZONE; z++) {
+                        if (dayzone->zone[z][cl] == 0) {
+                            printf("\t%3s", "-");
+                        } else {
+                            printf("\t%3d", dayzone->zone[z][cl]);
+                        }
+                    }
+                    printf("\n");
+                }
+            }
+            
         } // filling Result
 
         // if (io_closefile(file, IO_WRITE, path))
@@ -338,8 +360,6 @@ void* windowsplitdetection_start() {
     const size_t nlogits_max = 200;
     const int64_t reducer = 100;
 
-    // Reducer logits = reducer_run(nblocks, nlogits_max, reducer);
-
     {
         io_path_concat(windowing_iodir, "trainer/", outdir);
         if (!io_direxists(outdir) && io_makedirs(outdir)) {
@@ -348,33 +368,21 @@ void* windowsplitdetection_start() {
         }
     }
 
-    // size_t a = 1000;
-    // BY_SETN(trainer->by, config, a);
-    // trainer->tb2d->tb2w->configsuite.configs.number = a;
-
-    // size_t blockconfig_step = (9e9 / TD_NTHREADS) / (sizeof(Detection) * logits.many.number);
-    // if (blockconfig_step > configsuite.configs.number) blockconfig_step = configsuite.configs.number;
-
     const int buffer_size = 100;
-    context->qm = calloc(buffer_size, sizeof(tdqueue_data));
-
-    // context->logits = logits;
+    context->qm = calloc(buffer_size, sizeof(_wsplitqueue_data));
 
     {
-        tdqueue_t queue = TDQUEUE_INITIALIZER(context->qm, buffer_size);
-        memcpy(&context->queue, &queue, sizeof(tdqueue_t));
+        _wsplitqueue_t queue = TDQUEUE_INITIALIZER(context->qm, buffer_size);
+        memcpy(&context->queue, &queue, sizeof(_wsplitqueue_t));
     }
 
     context->producer_args.queue = &context->queue;
-    // context->producer_args.ths = logits;
 
     pthread_create(&context->producer, NULL, _windowsplitdetection_producer, &context->producer_args);
 
     for (size_t i = 0; i < TD_NTHREADS; ++ i) {
         context->consumer_args[i].id = i;
         context->consumer_args[i].queue = &context->queue;
-        // context->consumer_args[i].ths = logits;
-        // context->consumer_args[i].blockconfig_step = blockconfig_step;
 
         pthread_create(&context->consumers[i], NULL, _windowsplitdetection_consumer, &context->consumer_args[i]);
     }
@@ -393,43 +401,6 @@ void windowsplitdetection_wait(void* context_void) {
         pthread_join(context->consumers[i], NULL);
     }
 
-    // FILE* file = fopen("/home/princio/Desktop/trainer.csv", "w");
-    // if (file) {
-    //     RTrainer trainer = context->producer_args.trainer;
-    //     BY_FOR1(trainer->by, fold) {
-    //         BY_FOR2(trainer->by, fold, try) {
-    //             BY_FOR3(trainer->by, fold, try, split) {
-    //                 BY_FOR4(trainer->by, fold, try, split, thchooser) {
-    //                     BY_FOR5(trainer->by, fold, try, split, thchooser, config) {
-    //                         TrainerBy_config* result = &BY_GET5(trainer->by, fold, try, split, thchooser, config);
-    //                         fprintf(file, "%ld,", idxfold);
-    //                         fprintf(file, "%ld,", idxtry);
-    //                         fprintf(file, "%ld,", idxsplit);
-    //                         fprintf(file, "%s,", windowing_thchooser._[idxthchooser].name);
-    //                         fprintf(file, "%ld,", idxconfig);
-    //                         Detection* dets[2] = {
-    //                             &result->best_train,
-    //                             &result->best_test,
-    //                         };
-    //                         for (int i = 0; i < 2; i++) {
-    //                             fprintf(file, "%f,", result->best_train.th);
-    //                             DGAFOR(cl) {
-    //                                 fprintf(file, "%d,", result->best_train.windows[cl][0]);
-    //                                 fprintf(file, "%d,", result->best_train.windows[cl][1]);
-    //                             }
-    //                         }
-    //                         fprintf(file, "\n");
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     fclose(file);
-    // } else {
-    //     LOG_ERROR("Impossible to open file: %s", strerror(errno));
-    // }
-
-    MANY_FREE(context->logits.many);
     free(context->qm);
     free(context);
 }
@@ -438,12 +409,7 @@ void windowsplitdetection_wait(void* context_void) {
 void _windowsplitdetection_io_detection(IOReadWrite rw, FILE* file, Detection* detection) {
     FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
 
-    FRW(detection->th);
-    FRW(detection->dn_count);
-    FRW(detection->dn_whitelistened_count);
-    FRW(detection->alarms);
-    FRW(detection->sources);
-    FRW(detection->windows);
+    FRWSIZE(detection, sizeof(Detection));
 }
 
 inline void _windowsplitdetection_io_path(char path[PATH_MAX], RWindowSplit split) {

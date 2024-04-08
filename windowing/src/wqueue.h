@@ -25,7 +25,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 #define QUEUE_INITIALIZER(buffer) { buffer, sizeof(buffer) / sizeof(buffer[0]), 0, 0, 0, 0, PTHREAD_MUTEX_INITIALIZER, PTHREAD_COND_INITIALIZER, PTHREAD_COND_INITIALIZER }
 
-#define WQUEUE_NTHREADS 8
+#define WQUEUE_NTHREADS 1
 #define QM_MAX_SIZE 50000
 
 typedef struct queue_messages {

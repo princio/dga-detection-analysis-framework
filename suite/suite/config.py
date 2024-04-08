@@ -36,12 +36,9 @@ class ConfigPostgre:
 @dataclass
 class ConfigMalware:
     name: str = ""
-    family: str = ""
-    year: int = 2000
-    md5: str = ""
     sha256: str = ""
-    binary: str = ""
     dga: int = -1
+    info: str = ""
     pass
 
 @dataclass

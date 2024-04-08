@@ -40,8 +40,9 @@ if __name__ == "__main__":
 
     malwares = Malwares(config)
 
-    for pcappath in config.pcaps:
+    for i, pcappath in enumerate(config.pcaps):
         pcap = PCAP(config, malwares, pcappath)
+        print("%s/%s" % (i, len(config.pcaps)), "Performing", pcap.configpcap.name)
         pcap.run()
         pass
 

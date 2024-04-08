@@ -38,7 +38,7 @@ char CACHE_DIR[DIR_MAX];
 #define MAX_WSIZES 20
 #define MAX_Sources 100
 
-#define N_DGACLASSES 3
+#define N_DGACLASSES 21
 #define DGABINARY(cl) (cl > 0)
 
 #define DGACURSOR ID_DGA_cursor
@@ -214,6 +214,7 @@ typedef enum DGAClass {
 typedef struct WClass {
     BinaryClass bc;
     DGAClass mc;
+    char mwname[200];
 } WClass;
 
 //   P A R A M E T E R S
@@ -236,7 +237,7 @@ typedef enum WindowingType {
 #define N_NN 4
 
 typedef enum NN {
-    NN_NONE = 1,
+    NN_NONE = 0,
     NN_TLD,
     NN_ICANN,
     NN_PRIVATE
@@ -250,7 +251,24 @@ typedef struct DNSMessage {
     int32_t dyndns;
     int32_t rcode;
     double value[N_NN];
+    double logit[N_NN];
 } DNSMessage;
+
+typedef struct DNSMessageGrouped {
+    int32_t count;
+    int32_t q;
+    int32_t r;
+    int32_t nx;
+    int64_t id;
+    int32_t top10m;
+    double value[N_NN];
+    double logit[N_NN];
+} DNSMessageGrouped;
+
+typedef struct DNSMessageWindowing {
+    int32_t wnum;
+    DNSMessageGrouped message;
+} DNSMessageWindowing;
 
 typedef enum CaptureType {
     CAPTURETYPE_PCAP,
@@ -272,7 +290,7 @@ typedef struct  {
     double* _;
 } DGA__s;
 
-extern char CLASSES[N_DGACLASSES][50];
+extern char DGA_CLASSES[N_DGACLASSES][200];
 
 typedef struct __Source* RSource;
 
@@ -281,6 +299,7 @@ typedef struct __Window* RWindow;
 typedef struct __WindowMC* RWindowMC;
 typedef struct __WindowFold* RWindowFold;
 typedef struct __WindowSplit* RWindowSplit;
+typedef struct __WindowZone* RWindowZone;
 typedef struct __Window0Many* RWindow0Many;
 typedef struct __WindowMany* RWindowMany;
 
@@ -332,13 +351,18 @@ typedef struct Detection {
     double th;
 
     size_t dn_count[N_DGACLASSES];
-    size_t dn_whitelistened_count[N_DGACLASSES];
+    size_t dn_whitelistened_unique_count[N_DGACLASSES];
+    size_t dn_whitelistened_total_count[N_DGACLASSES];
 
     DetectionValue alarms[N_DGACLASSES][N_DETZONE];
     DetectionPN windows[N_DGACLASSES];
     DetectionPN sources[100];
 
-    DetectionZone zone[3];
+    struct {
+        DetectionZone dn;
+        DetectionZone llr;
+        DetectionZone days[7];
+    } zone;
 } Detection;
 
 MAKEMANY(Detection);

@@ -13,10 +13,18 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
         for(size_t i = 0; i < pg.NAME_LW ## _n; i++) { pg.NAME_LW[i] = NAME_LW[i]; }
 
     {
-        ninf_t ninf[] = {
+        unique_t unique[] = {
             0,
-            -10,
-            -50,
+            1
+        };
+        __SET(unique);
+    }
+
+    {
+        ninf_t ninf[] = {
+            // 0,
+            // -10,
+            // -50,
             -150
         };
         __SET(ninf);
@@ -24,9 +32,9 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
 
     {
         pinf_t pinf[] = {
-            0,
-            10,
-            50,
+            // 0,
+            // 10,
+            // 50,
             150
         };
         __SET(pinf);
@@ -34,8 +42,8 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
 
     {
         nn_t nn[] = {
-            // NN_NONE
-            NN_TLD,
+            NN_NONE
+            // NN_TLD,
             // NN_ICANN,
             // NN_PRIVATE
         };
@@ -47,7 +55,7 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
             // 0,
             // 100,
             1000,
-            100000
+            // 100000
         };
         __SET(wl_rank);
     }
@@ -57,8 +65,8 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
             // 0,
             // -10,
             -50,
-            -100,
-            -150
+            // -100,
+            // -150
         };
         __SET(wl_value);
     }
@@ -73,12 +81,12 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
     }
 
     {
-        nx_epsilon_increment_t nx_epsilon_increment[] = {
+        nx_logit_increment_t nx_logit_increment[] = {
             0,
-            0.05,
-            0.1,
+            // 0.05,
+            // 0.1,
         };
-        __SET(nx_epsilon_increment);
+        __SET(nx_logit_increment);
     }
 
     #undef __SET
@@ -87,6 +95,11 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
 }
 
 void make_parameters_toignore(ConfigSuite* cs) {
+    {
+        size_t idx = 0;
+        cs->realm[PE_UNIQUE]._[idx++].disabled = 0; // 0
+        cs->realm[PE_UNIQUE]._[idx++].disabled = 0; // 1
+    }
     {
         size_t idx = 0;
         cs->realm[PE_NINF]._[idx++].disabled = 0; // 0
@@ -137,10 +150,10 @@ void make_parameters_toignore(ConfigSuite* cs) {
     }
     {
         size_t idx = 0;
-        cs->realm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 0; // 0
-        cs->realm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 0; // 0.05
-        cs->realm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 0; // 0.1
-        cs->realm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 0; // 0.25
-        cs->realm[PE_NX_EPSILON_INCREMENT]._[idx++].disabled = 0; // 0.5
+        cs->realm[PE_NX_LOGIT_INCREMENT]._[idx++].disabled = 0; // 0
+        cs->realm[PE_NX_LOGIT_INCREMENT]._[idx++].disabled = 0; // 0.05
+        cs->realm[PE_NX_LOGIT_INCREMENT]._[idx++].disabled = 0; // 0.1
+        cs->realm[PE_NX_LOGIT_INCREMENT]._[idx++].disabled = 0; // 0.25
+        cs->realm[PE_NX_LOGIT_INCREMENT]._[idx++].disabled = 0; // 0.5
     }
 }

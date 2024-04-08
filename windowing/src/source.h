@@ -19,7 +19,7 @@ typedef struct __Source {
 
     SourceIndex index;
 
-    char name[50];
+    char name[100];
     char galaxy[50];
 
     WClass wclass;
@@ -31,6 +31,7 @@ typedef struct __Source {
     int64_t fnreq_max;
     
     int day;
+    int days;
 } __Source;
 
 MAKEMANY(__Source);

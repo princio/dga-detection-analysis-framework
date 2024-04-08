@@ -30,6 +30,7 @@
 #include "windowfold.h"
 #include "windowsplit.h"
 #include "windowsplitdetection.h"
+#include "windowzonedetection.h"
 
 #include <assert.h>
 #include <math.h>
@@ -43,6 +44,29 @@ MANY(Performance) windowing_thchooser;
 enum BO {
     BO_LOAD_OR_GENERATE,
     BO_TEST
+};
+
+char DGA_CLASSES[N_DGACLASSES][200] = {
+    "no-infection",
+    "generic-malware",
+    "octo_rat",
+    "nukesped_rat",
+    "realtimespy_spyware",
+    "evilquest_ransomware",
+    "pwnrig_crypto_miner,human_attacker",
+    "pwnrig_crypto_miner",
+    "kinsing_malware",
+    "lupper_worm",
+    "nanocore_adware",
+    "nanocore_adware,rhadamanthys_info_stealer",
+    "redlinestealer",
+    "agenttesla",
+    "lockbit_2_0_ransomware,agenttesla",
+    "remcosrat",
+    "dns_exfiltrations",
+    "human_attack",
+    "trickbot_malware",
+    "lockbit_2_0_ransomware"
 };
 
 MANY(Performance) _main_training_performance() {
@@ -84,26 +108,27 @@ int main (int argc, char* argv[]) {
 
     char rootdir[PATH_MAX];
 
-    const int wsize = 100;
     const int nsources = 0;
     const size_t max_configs = 10;
     const size_t n_try = 1;
 
     const ParameterGenerator pg = parametergenerator_default(max_configs);
 
+
+    char dataset[20];
+    // strcpy(dataset, "CTU-13");
+    strcpy(dataset, "CTU-SME-13");
+
+    WSize wsize = 10;
     if (QM_MAX_SIZE < (wsize * 3)) {
         printf("Error: wsize too large\n");
         exit(0);
     }
-
-    char dataset[20];
-    strcpy(dataset, "CTU-13");
-    // strcpy(dataset, "CTU-SME-11");
     
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/dns3/%s/test_new_tld_1000/", dataset); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/princio/Desktop/results/dns2_2/%s/%ld/", dataset, wsize); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     io_setdir(rootdir);
@@ -117,12 +142,17 @@ int main (int argc, char* argv[]) {
 
         stratosphere_add(dataset, 0);
 
-        windowing_apply(1000);
+        windowing_apply(wsize);
 
         g2_io_call(G2_WING, IO_WRITE);
     }
 
 
+    __MANY many = g2_array(G2_WING);
+    for (size_t w = 0; w < many.number; w++) {
+        RWindowing windowing = (RWindowing) many._[w];
+        printf("id=%3d\tday=%d\tfnreqmax=%5ld\twnum=%5ld\t%s\n", windowing->source->id, windowing->source->day, windowing->source->fnreq_max, windowing->window0many->number, DGA_CLASSES[windowing->source->wclass.mc]);
+    }
 
     {
         __MANY many = g2_array(G2_W0MANY);
@@ -141,21 +171,26 @@ int main (int argc, char* argv[]) {
         }
     }
 
+int split = 0;
 if (compute) {
+ if (split == 0) {
+    void* context = windowzonedetection_start();
+    windowzonedetection_wait(context);
+ } else {
     RWindowMC windowmc;
 
     windowmc = g2_insert_alloc_item(G2_WMC);
     windowmc_init(windowmc);
     windowmc_buildby_windowing(windowmc);
- 
+
     WindowSplitConfig config = { 
         .how = WINDOWSPLIT_HOW_BY_DAY,
         .day = 1
     };
 
     
-    if (strcmp(dataset, "CTU-SME-11") == 0) {
-        windowsplit_createby_day(0);
+    if (strcmp(dataset, "CTU-SME-13") == 0) {
+        windowsplit_createby_day(1);
     } else {
         RWindowMC windowmc;
         windowmc = (RWindowMC) g2_insert_alloc_item(G2_WMC);
@@ -178,6 +213,7 @@ if (compute) {
             }
         }
     }
+ }
 } else {
     g2_io_all(IO_READ);
 }

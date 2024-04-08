@@ -7,31 +7,35 @@
 #include "io.h"
 #include "gatherer2.h"
 
-#define N_PARAMETERS 7
+#define N_PARAMETERS 8
 
-
+typedef int unique_t;
 typedef double ninf_t;
 typedef double pinf_t;
 typedef NN nn_t;
 typedef size_t wl_rank_t;
 typedef double wl_value_t;
 typedef WindowingType windowing_t;
-typedef double nx_epsilon_increment_t;
+typedef double nx_logit_increment_t;
 
 typedef enum ParametersEnum {
+    PE_UNIQUE,
     PE_NINF,
     PE_PINF,
     PE_NN,
     PE_WL_RANK,
     PE_WL_VALUE,
     PE_WINDOWING,
-    PE_NX_EPSILON_INCREMENT
+    PE_NX_LOGIT_INCREMENT
 } ParametersEnum;
 
 
 
 typedef struct ParameterGenerator {
     size_t max_size;
+
+    size_t unique_n;
+    unique_t unique[2];
     
     size_t ninf_n;
     ninf_t ninf[100];
@@ -51,8 +55,8 @@ typedef struct ParameterGenerator {
     size_t windowing_n;
     windowing_t windowing[100];
 
-    size_t nx_epsilon_increment_n;
-    nx_epsilon_increment_t nx_epsilon_increment[100];
+    size_t nx_logit_increment_n;
+    nx_logit_increment_t nx_logit_increment[100];
 } ParameterGenerator;
 
 
@@ -86,13 +90,14 @@ typedef struct Config {
 
     const ParameterValue* parameters[N_PARAMETERS];
     
+    int unique;
     double ninf;
     double pinf;
     NN nn;
     size_t wl_rank;
     double wl_value;
     WindowingType windowing;
-    double nx_epsilon_increment;
+    double nx_logit_increment;
 } Config;
 
 MAKEMANY(Config);

@@ -38,15 +38,7 @@ void _source_io(IOReadWrite rw, FILE* file, void** item) {
 
     size_t sources_number = 0;
 
-    FRW((*source)->index);
-    FRW((*source)->galaxy);
-    FRW((*source)->name);
-    FRW((*source)->wclass);
-    FRW((*source)->id);
-    FRW((*source)->qr);
-    FRW((*source)->q);
-    FRW((*source)->r);
-    FRW((*source)->fnreq_max);
+    FRWSIZE((**source), sizeof(__Source));
 }
 
 void _source_print(void* item) {
