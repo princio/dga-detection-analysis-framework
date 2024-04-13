@@ -150,7 +150,7 @@ int _wzonequeue_size(_wzonequeue_t *queue)
 
 void _windowzone_detect(RWindowMC windowmc, size_t const idxconfig, Detection* detection) {
     MinMax logitminmax;
-    double thzone[N_DETZONE];
+    double thzone[N_DETBOUND];
     double th;
 
     memset(&logitminmax, 0, sizeof(MinMax));
@@ -160,7 +160,7 @@ void _windowzone_detect(RWindowMC windowmc, size_t const idxconfig, Detection* d
     th = logitminmax.max + 1;
 
     thzone[0] = - DBL_MAX;
-    thzone[N_DETZONE - 1] = DBL_MAX;
+    thzone[N_DETZONE] = DBL_MAX;
 
     thzone[1] = logitminmax.min;
     thzone[2] = (logitminmax.max + logitminmax.min) / 2;
@@ -205,6 +205,171 @@ void* _windowzonedetection_producer(void* argsvoid) {
     return NULL;
 }
 
+void windowzonedetection_print(Detection* detection) {
+    const IndexMC window_count = windowmany_count(detection->windowmany);
+    
+    IndexMC dn_count;
+    {
+        memset(&dn_count, 0, sizeof(IndexMC));
+        for (size_t i = 0; i < detection->windowmany->number; i++) {
+            WClass wc = detection->windowmany->_[i]->windowing->source->wclass;
+            size_t c = detection->windowmany->_[i]->applies._[detection->idxconfig].wcount;
+            dn_count.all += c;
+            dn_count.binary[wc.bc] += c;
+            dn_count.multi[wc.mc] += c;
+        }
+    }
+
+    printf("windowzone %ld \tconfig#%ld: ", detection->windowmany->g2index, detection->idxconfig);
+    configsuite_print(detection->idxconfig);
+    printf("\n");
+
+    for (size_t z = 0; z < N_DETBOUND; z++) {
+        printf("%10.3g\t", detection->zone.dn.bounds[z]);
+    }
+    printf("\n");
+
+    for (size_t z = 0; z < N_DETBOUND; z++) {
+        printf("%10.3g\t", detection->zone.llr.bounds[z]);
+    }
+    printf("\n");
+
+    for (size_t day = 0; day < 7; day++) {
+        for (size_t z = 0; z < N_DETBOUND; z++) {
+            printf("%10.3g\t", detection->zone.llr.bounds[z]);
+        }
+        printf("\n");
+    }
+    
+    
+    for (size_t day = 0; day < 7; day++) {
+        printf("day %ld)\n", day + 1);
+        
+        DGAFOR(cl) {
+            {
+                int all0 = 0;
+                for (size_t z = 0; z < N_DETZONE; z++) {
+                    all0 += DETGETDAY(detection, dn, day, z, cl);
+                }
+                if (!all0) continue;
+            }
+            if (cl == 2 || cl == 1) continue;
+            printf("%-35s", DGA_CLASSES[cl]);
+            uint32_t totdn = 0, totllr = 0;
+            for (size_t z = 0; z < N_DETZONE; z++) {
+                totdn += DETGETDAY(detection, dn, day, z, cl);
+                totllr += DETGETDAY(detection, llr, day, z, cl);
+            }
+            printf(" (%5u %5u)", totdn, totllr);
+            for (size_t z = 0; z < N_DETZONE; z++) {
+                if (DETGETDAY(detection, dn, day, z, cl) == 0) {
+                    printf("   %4s", "  -");
+                } else {
+                    printf("   %4u", DETGETDAY(detection, dn, day, z, cl));
+                }
+            }
+            printf(" | ");
+            for (size_t z = 0; z < N_DETZONE; z++) {
+                if (DETGETDAY(detection, llr, day, z, cl) == 0) {
+                    printf("   %4s", "  -");
+                } else {
+                    printf("   %4u", DETGETDAY(detection, llr, day, z, cl));
+                }
+            }
+            printf("\n");
+        }
+        printf("\n");
+    }
+}
+
+void windowzonedetection_csv(FILE* fp, Detection* detection) {
+    const IndexMC window_count = windowmany_count(detection->windowmany);
+    
+    fprintf(fp, "g2index,idxconfig,");
+    for (size_t z = 0; z < N_DETBOUND; z++) {
+        fprintf(fp, "bound_dn_%ld,", z);
+    }
+    for (size_t z = 0; z < N_DETBOUND; z++) {
+        fprintf(fp, "bound_llr_%ld,", z);
+    }
+
+    fprintf(fp, "mwname,");
+    fprintf(fp, "dn_all_tot,");
+    for (size_t z = 0; z < N_DETZONE; z++) {
+        fprintf(fp, "dn_all_z%02ld,", z);
+    }
+    fprintf(fp, "llr_all_tot,");
+    for (size_t z = 0; z < N_DETZONE; z++) {
+        fprintf(fp, "llr_all_z%02ld,", z);
+    }
+    for (size_t day = 0; day < 7; day++) {
+        fprintf(fp, "dn_day%ld_tot,", day);
+        for (size_t z = 0; z < N_DETZONE; z++) {
+            fprintf(fp, "dn_day%ld_z%02ld,", day, z);
+        }
+        fprintf(fp, "llr_day%ld_tot,", day);
+        for (size_t z = 0; z < N_DETZONE; z++) {
+            fprintf(fp, "llr_day%ld_z%02ld,", day, z);
+        }
+    }
+
+    fprintf(fp, "\n");
+    
+    DGAFOR(cl) {
+        fprintf(fp, "%ld,%ld,", detection->g2index, detection->idxconfig);
+        for (size_t z = 0; z < N_DETBOUND; z++) {
+            fprintf(fp, "%f,", detection->zone.dn.bounds[z]);
+        }
+        for (size_t z = 0; z < N_DETBOUND; z++) {
+            fprintf(fp, "%f,", detection->zone.llr.bounds[z]);
+        }
+        fprintf(fp, "\"%s\",", DGA_CLASSES[cl]);
+        {
+            uint32_t totdn;
+            uint32_t totllr;
+
+            totdn = 0;
+            totllr = 0;
+            for (size_t z = 0; z < N_DETZONE; z++) {
+                totdn += DETGETALL_(dn);
+                totllr += DETGETALL_(llr);
+            }
+        
+            fprintf(fp, "%u,", totdn);
+            for (size_t z = 0; z < N_DETZONE; z++) {
+                fprintf(fp, "%u,", DETGETALL_(dn));
+            }
+
+            fprintf(fp, "%u,", totllr);
+            for (size_t z = 0; z < N_DETZONE; z++) {
+                fprintf(fp, "%u,", DETGETALL_(llr));
+            }
+        }
+
+        {
+            for (size_t day = 0; day < 7; day++) {
+                uint32_t totdn = 0;
+                uint32_t totllr = 0;
+                for (size_t z = 0; z < N_DETZONE; z++) {
+                    totdn += DETGETDAY_(dn);
+                    totllr += DETGETDAY_(llr);
+                }
+
+                fprintf(fp, "%u,", totdn);
+                for (size_t z = 0; z < N_DETZONE; z++) {
+                    fprintf(fp, "%u,", DETGETDAY_(dn));
+                }
+
+                fprintf(fp, "%u,", totllr);
+                for (size_t z = 0; z < N_DETZONE; z++) {
+                    fprintf(fp, "%u,", DETGETDAY_(llr));
+                }
+            }
+        }
+        fprintf(fp, "\n");
+    }
+}
+
 void* _windowzonedetection_consumer(void* argsvoid) {
     struct td_consumer_args* args = argsvoid;
 
@@ -223,97 +388,22 @@ void* _windowzonedetection_consumer(void* argsvoid) {
 
         windowmc = qm->windowmc;
         
-        // _windowzonedetection_io_path(path, zone);
-        // file = io_openfile(IO_WRITE, path);
-        // if (!file)
-        //     exit(1);
-
         LOG_TRACE("consumer: processing windowzone %ld.", windowmc->g2index);
 
-        // CLOCK_START(_windowzonedetection_consumer);
-
         {
-            Detection detection;
-            DetectionZone* zones[2] = {
-                &detection.zone.dn,
-                &detection.zone.llr
-            };
+            Detection* detection;
+            DetectionZone* zones[2];
+            
+            detection = detection_alloc();
 
             const size_t idxconfig = qm->idxconfig;
 
-            memset(&detection, 0, sizeof(Detection));
+            memset(detection, 0, sizeof(Detection));
 
-            _windowzone_detect(windowmc, idxconfig, &detection);
-
-            // _windowzonedetection_io_detection(IO_WRITE, file, &detection);
-
-            const IndexMC window_count = windowmany_count(windowmc->all);
-            IndexMC dn_count;
-            {
-                memset(&dn_count, 0, sizeof(IndexMC));
-                for (size_t i = 0; i < windowmc->all->number; i++) {
-                    WClass wc = windowmc->all->_[i]->windowing->source->wclass;
-                    size_t c = windowmc->all->_[i]->applies._[idxconfig].wcount;
-                    dn_count.all += c;
-                    dn_count.binary[wc.bc] += c;
-                    dn_count.multi[wc.mc] += c;
-                }
-            }
-
-            printf("windowzone %ld \tconfig#%ld: ", windowmc->g2index, idxconfig);
-            configsuite_print(idxconfig);
-            printf("\n");
-
-            for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                printf("%10.3g to %6.3g\t", zones[0]->th[z], zones[0]->th[z + 1]);
-            }
-            printf("\n");
-
-            for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                printf("%10.3g to %6.3g\t", zones[1]->th[z], zones[1]->th[z + 1]);
-            }
-            printf("\n");
-
-            for (size_t day = 0; day < 7; day++) {
-                for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                    printf("%10.3g to %6.3g\t", detection.zone.days[day].th[z], detection.zone.days[z].th[z + 1]);
-                }
-                printf("\n");
-            }
-            
-            
-            for (size_t day = 0; day < 7; day++) {
-                DetectionZone* dayzone = &detection.zone.days[day];
-                printf("day %ld)\n", day + 1);
-                
-                for (size_t cl = 0; cl < N_DGACLASSES; cl++) {
-                    {
-                        int all0 = 1;
-                        for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                            all0 &= dayzone->zone[z][cl] == 0;
-                        }
-                        if (all0) continue;
-                    }
-                    if (cl == 2 || cl == 1) continue;
-                    printf("%50s\t", DGA_CLASSES[cl]);
-                    for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                        if (dayzone->zone[z][cl] == 0) {
-                            printf("\t%3s", "-");
-                        } else {
-                            printf("\t%3u", dayzone->zone[z][cl]);
-                        }
-                    }
-                    printf("\n");
-                }
-            }
-            
+            _windowzone_detect(windowmc, idxconfig, detection);
         } // filling Result
 
-        // if (io_closefile(file, IO_WRITE, path))
-        //     exit(1);
-
         free(qm);
-        // CLOCK_END(_windowzonedetection_consumer);
     }
 
     return NULL;

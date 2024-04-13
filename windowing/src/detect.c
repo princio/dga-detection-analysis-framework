@@ -1,5 +1,6 @@
 #include "detect.h"
 
+#include "gatherer2.h"
 #include "stratosphere_window.h"
 #include "windowing.h"
 #include "windowmany.h"
@@ -33,7 +34,7 @@ void detect_update(WApply const * const apply, RSource source, const double th, 
     detection->windows[source->wclass.mc][tp]++;
     detection->sources[source->g2index][tp]++;
     
-    for (size_t idxdnbad = 0; idxdnbad < N_DETZONE; idxdnbad++) {
+    for (size_t idxdnbad = 0; idxdnbad < N_DETBOUND; idxdnbad++) {
         detection->alarms[source->wclass.mc][idxdnbad] += apply->dn_bad[idxdnbad];
     }
     detection->dn_count[source->wclass.mc] += apply->wcount;
@@ -41,16 +42,24 @@ void detect_update(WApply const * const apply, RSource source, const double th, 
     detection->dn_whitelistened_total_count[source->wclass.mc] += apply->whitelistened_total;
 }
 
-void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxconfig, const double th, const double thzone[N_DETZONE]) {
+void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxconfig, const double th, const double thzone[N_DETBOUND]) {
     memset(detection, 0, sizeof(Detection));
 
+    detection->windowmany = windowmany;
+
     detection->th = th;
+    detection->idxconfig = idxconfig;
+
+    memcpy(detection->zone.dn.bounds, WApplyDNBad_Values, N_DETBOUND * sizeof(double));
+    memcpy(detection->zone.llr.bounds, thzone, N_DETBOUND * sizeof(double));
 
     for (size_t w = 0; w < windowmany->number; w++) {
         RWindow window = windowmany->_[w];
         WApply* apply = &windowmany->_[w]->applies._[idxconfig];
         RSource source = window->windowing->source;
         WClass wc = window->windowing->source->wclass;
+
+        assert(source->day >= 0 && source->day < 7);
 
         const DetectionValue tp = apply->logit >= detection->th;
 
@@ -59,7 +68,7 @@ void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxco
         detection->windows[wc.mc][tp]++;
         detection->sources[source->g2index][tp]++;
     
-        for (size_t idxdnbad = 0; idxdnbad < N_DETZONE; idxdnbad++) {
+        for (size_t idxdnbad = 0; idxdnbad < N_DETBOUND; idxdnbad++) {
             detection->alarms[source->wclass.mc][idxdnbad] += apply->dn_bad[idxdnbad];
         }
 
@@ -67,56 +76,12 @@ void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxco
         detection->dn_whitelistened_total_count[source->wclass.mc] += apply->whitelistened_total;
         detection->dn_whitelistened_unique_count[source->wclass.mc] += apply->whitelistened_unique;
 
-        {
-            int z;
-            DetectionZone *zone;
-            zone = &detection->zone.dn;
-            memcpy(zone->th, WApplyDNBad_Values, N_DETZONE * sizeof(double));
-            int a = 0;
-            for (z = 0; z < N_DETZONE; z++) {
-                zone->zone[z][source->wclass.mc] += apply->dn_bad[z];
-                a += apply->dn_bad[z];
-            }
-            assert(a);
-        }
-        {
-            int z;
-            memcpy(detection->zone.llr.th, thzone, N_DETZONE * sizeof(double));
-            memcpy(detection->zone.days[source->day - 1].th, thzone, N_DETZONE * sizeof(double));
-            int nobreak = 1;
-            for (z = 0; z < N_DETZONE - 1; z++) {
-                if (apply->logit >= thzone[z] && apply->logit < thzone[z + 1]) {
-                    nobreak = 0;
-                    break;
-                }
-            }
-            assert(z >= 0 && z < N_DETZONE - 1);
-            detection->zone.llr.zone[z][source->wclass.mc]++;
-            detection->zone.days[source->day - 1].zone[z][wc.mc]++;
-
-            if (z == (N_DETZONE - 2) && source->wclass.mc == 0) {
-                printf(
-                    "\nSELECT  * "
-                    "FROM "
-                    "(SELECT *  FROM MESSAGE_%d WHERE FN_REQ >= %d AND FN_REQ < %d) M "
-                    "JOIN DN ON M.DN_ID = DN.ID "
-                    "JOIN DN_NN ON DN.ID = DN_NN.DN_ID "
-                    "AND DN_NN.NN_ID = %d\n",
-                    window->windowing->source->id,
-                    window->fn_req_min, window->fn_req_max,
-                    configsuite.configs._[idxconfig].nn
-                );
-                double llrs[4];
-                stratosphere_window_llr(window, llrs);
-
-                double llrdb = llrs[configsuite.configs._[0].nn];
-
-                double llr = window->applies._[0].logit;
-
-                if (fabs(llrdb - llr) > 0.001) {
-                    printf("%f - %f = %f\n", llrdb, llr, llrdb - llr);
-                    printf("\nwindow: %s -> %d to %d\n", window->windowing->source->name, window->fn_req_min, window->fn_req_max);
-                }
+        for (size_t z = 0; z < N_DETZONE; z++) {
+            detection->zone.dn.all._[z][wc.mc] += apply->dn_bad[z];
+            detection->zone.dn.days[source->day]._[z][wc.mc] += apply->dn_bad[z];
+            if (apply->logit >= thzone[z] && apply->logit < thzone[z + 1]) {
+                detection->zone.llr.all._[z][wc.mc]++;
+                detection->zone.llr.days[source->day]._[z][wc.mc]++;
             }
         }
     }
@@ -126,12 +91,12 @@ void detect_alarms(DetectionZone* detectionzone, DetectionValue* false_alarms, D
     *false_alarms = 0;
     *true_alarms = 0;
     
-    for (size_t z = (N_DETZONE - 1) / 2; z < N_DETZONE - 1; z++) {
+    for (size_t z = (N_DETZONE) / 2; z < N_DETZONE; z++) {
         DGAFOR(mc) {
             if (mc == 0) {
-                *false_alarms += detectionzone->zone[z][mc];
+                *false_alarms += detectionzone->_[z][mc];
             } else {
-                *true_alarms += detectionzone->zone[z][mc];
+                *true_alarms += detectionzone->_[z][mc];
             }
         }
     }
@@ -152,4 +117,112 @@ int detect_performance_compare(Performance* performance, double new, double old)
         diff *= -1;
 
     return diff > 0;
+}
+
+///////////////////////////////////////////////////////////////////////
+
+void _detect_free(void*);
+void _detect_io(IOReadWrite, FILE*, void**);
+void _detect_print(void*);
+void _detect_hash(void*, SHA256_CTX*);
+
+G2Config g2_config_detection = {
+    .element_size = sizeof(Detection),
+    .size = 0,
+    .freefn = _detect_free,
+    .iofn = _detect_io,
+    .printfn = _detect_print,
+    .hashfn = _detect_hash,
+    .id = G2_DETECTION
+};
+
+Detection* detection_alloc() {
+    return (Detection*) g2_insert_alloc_item(G2_DETECTION);
+}
+
+void _detect_free(void* item) {
+}
+
+void _detect_io(IOReadWrite rw, FILE* file, void** item) {
+    FRWNPtr __FRW = rw ? io_freadN : io_fwriteN;
+
+    g2_io_call(G2_WMANY, rw);
+
+    Detection** detection = (Detection**) item;
+
+    g2_io_index(file, rw, G2_WMANY, (void**) &(*detection)->windowmany);
+
+    FRWSIZE(((*detection)->th), sizeof(Detection) - sizeof(G2Index) - sizeof(size_t) - sizeof(RWindowMC));
+}
+
+void _detect_print(void* item) {
+    Detection* detection = (Detection*) item;
+
+}
+
+void _detect_hash(void* item, SHA256_CTX* sha) {
+    Detection* detection = (Detection*) item;
+
+    SHA256_Update(sha, &detection->th, sizeof(Detection) - sizeof(G2Index) - sizeof(size_t)  - sizeof(RWindowMC));
+}
+
+#define BIBO(A, B) (A)->B._[z][cl].avg += detection->zone.B._[z][cl]; \
+    (A)->B._[z][cl].avg_denominator++; \
+    if ((A)->B._[z][cl].min > detection->zone.B._[z][cl]) { \
+        (A)->B._[z][cl].min = detection->zone.B._[z][cl]; \
+    } \
+    if ((A)->B._[z][cl].max < detection->zone.B._[z][cl]) { \
+        (A)->B._[z][cl].max = detection->zone.B._[z][cl]; \
+    }
+
+void detection_stat(StatDetectionCountZone* avg[N_PARAMETERS]) {
+    __MANY many = g2_array(G2_DETECTION);
+
+    for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+        avg[pp] = calloc(configsuite.realm[pp].number, sizeof(StatDetectionCountZone));
+        for (size_t p = 0; p < configsuite.realm[pp].number; p++) {
+            for (size_t z = 0; z < N_DETZONE; z++) {
+                DGAFOR(cl) {
+                    avg[pp][p].dn.all._[z][cl].avg = 0;
+                    avg[pp][p].dn.all._[z][cl].min = UINT32_MAX;
+                    avg[pp][p].dn.all._[z][cl].max = 0;
+
+                    avg[pp][p].llr.all._[z][cl].avg = 0;
+                    avg[pp][p].llr.all._[z][cl].min = UINT32_MAX;
+                    avg[pp][p].llr.all._[z][cl].max = 0;
+
+                    for (size_t day = 0; day < 7; day++) {
+                        avg[pp][p].dn.days[day]._[z][cl].avg = 0;
+                        avg[pp][p].dn.days[day]._[z][cl].min = UINT32_MAX;
+                        avg[pp][p].dn.days[day]._[z][cl].max = 0;
+
+                        avg[pp][p].llr.days[day]._[z][cl].avg = 0;
+                        avg[pp][p].llr.days[day]._[z][cl].min = UINT32_MAX;
+                        avg[pp][p].llr.days[day]._[z][cl].max = 0;
+                    }
+                }
+            }
+        }
+    }
+
+    for (size_t d = 0; d < many.number; d++) {
+        Detection* detection = (Detection*) many._[d];
+        Config* config = &configsuite.configs._[detection->g2index];
+
+        for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+            for (size_t z = 0; z < N_DETZONE; z++) {
+                DGAFOR(cl) {
+                    StatDetectionCountZone* sdcz = &avg[pp][config->parameters[pp]->index];
+
+                    BIBO(sdcz, dn.all);
+                    BIBO(sdcz, llr.all);
+
+                    for (size_t day = 0; day < 7; day++) {
+                        BIBO(sdcz, dn.days[day]);
+                        BIBO(sdcz, llr.days[day]);
+                    }
+                }
+            }
+        }
+    }
 }

@@ -177,6 +177,7 @@ char CACHE_DIR[DIR_MAX];
 #define BY_INITFOR(BY, BYSUB, NAME, T) BY_INIT((BY), BYSUB, NAME, T); BY_FOR(BY, NAME)
 
 
+typedef size_t G2Index;
 typedef int32_t IDX;
 
 typedef struct IndexMC {
@@ -328,14 +329,23 @@ MAKEMANY(MinMax);
 typedef uint32_t DetectionValue;
 typedef DetectionValue DetectionPN[2];
 
-#define N_DETZONE 6
-
+#define N_DETBOUND 6
+#define N_DETZONE N_DETBOUND - 1
 typedef struct DetectionZone {
-    double th[N_DETZONE];
-    DetectionValue zone[N_DETZONE - 1][N_DGACLASSES]; 
+    DetectionValue _[N_DETZONE][N_DGACLASSES]; 
 } DetectionZone;
 
+typedef struct DetectionCount {
+    double bounds[N_DETBOUND];
+    DetectionZone all;
+    DetectionZone days[7];
+} DetectionCount;
+
 #define DETZONE_FOR for (size_t idxdetzone = 0; idxdetzone < N_DETZONE; idxdetzone++)
+#define DETGETALL(D, LLRDN, Z, CL) (D)->zone.LLRDN.all._[(Z)][(CL)]
+#define DETGETDAY(D, LLRDN, day, Z, CL) (D)->zone.LLRDN.days[(day)]._[(Z)][(CL)]
+#define DETGETALL_(LLRDN) DETGETALL(detection, LLRDN, z, cl)
+#define DETGETDAY_(LLRDN) DETGETDAY(detection, LLRDN, day, z, cl)
 
 typedef enum WApplyDNBad {
     WAPPLYDNBAD_0000,
@@ -345,24 +355,30 @@ typedef enum WApplyDNBad {
     WAPPLYDNBAD_1100
 } WApplyDNBad;
 
-extern const double WApplyDNBad_Values[N_DETZONE];
+extern const double WApplyDNBad_Values[N_DETBOUND];
+
+typedef struct DetectionCountZone {
+    DetectionCount dn;
+    DetectionCount llr;
+} DetectionCountZone;
 
 typedef struct Detection {
+    G2Index g2index;
+
+    RWindowMany windowmany;
+    G2Index idxconfig;
+
     double th;
 
     size_t dn_count[N_DGACLASSES];
     size_t dn_whitelistened_unique_count[N_DGACLASSES];
     size_t dn_whitelistened_total_count[N_DGACLASSES];
 
-    DetectionValue alarms[N_DGACLASSES][N_DETZONE];
+    DetectionValue alarms[N_DGACLASSES][N_DETBOUND];
     DetectionPN windows[N_DGACLASSES];
     DetectionPN sources[100];
 
-    struct {
-        DetectionZone dn;
-        DetectionZone llr;
-        DetectionZone days[7];
-    } zone;
+    DetectionCountZone zone;
 } Detection;
 
 MAKEMANY(Detection);

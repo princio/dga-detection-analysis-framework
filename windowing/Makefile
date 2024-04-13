@@ -205,7 +205,7 @@ tests:
 
 # Rule for cleaning the project
 clean:
-	@rm -rvf $(BINDIR)/* $(ALLLIBDIR)/* $(PRODLIBDIR)/* ;
+	@rm -rvf $(BINDIR)/* $(ALLLIBDIR)/* $(PRODLIBDIR)/* $(LOGDIR)/*;
 
 ca: clean all
 

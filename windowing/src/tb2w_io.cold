@@ -116,7 +116,7 @@ void tb2w_io_create(IOReadWrite rw, FILE* file, char rootdir[DIR_MAX], RTB2W* tb
         __PG(wl_rank, WL_RANK);
         __PG(wl_value, WL_VALUE);
         __PG(windowing, WINDOWING);
-        __PG(nx_epsilon_increment, NX_EPSILON_INCREMENT);
+        __PG(nx_logit_increment, NX_LOGIT_INCREMENT);
 
         #undef __PG
     }
@@ -359,7 +359,7 @@ void tb2w_md(char fpath[PATH_MAX], const RTB2W tb2w) {
             FP("|%*f", len_header,  pset->pinf);
             FP("|%*s", len_header,  NN_NAMES[pset->nn]);
             FP("|%*s", len_header,  WINDOWING_NAMES[pset->windowing]);
-            FP("|%*f", len_header,  pset->nx_epsilon_increment);
+            FP("|%*f", len_header,  pset->nx_logit_increment);
             FP("|%*ld", len_header, pset->wl_rank);
             FPNL(1, "|%*f|", len_header, pset->wl_value);
         }

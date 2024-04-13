@@ -133,7 +133,8 @@ typedef struct ConfigSuite {
     MANY(Config) configs;
 } ConfigSuite;
 
-ParameterDefinition parameters_definition[N_PARAMETERS];
+extern ParameterDefinition parameters_definition[N_PARAMETERS];
+extern const char parameters_format[N_PARAMETERS][5];
 
 size_t configsuite_pg_count(ParameterGenerator);
 

@@ -18,6 +18,9 @@ typedef struct WindowZoneDetection {
     Detection detection;
 } WindowZoneDetection;
 
+void windowzonedetection_print(Detection* detection);
+void windowzonedetection_csv(FILE* fp, Detection* detection);
+
 void* windowzonedetection_start();
 void windowzonedetection_wait(void*);
 

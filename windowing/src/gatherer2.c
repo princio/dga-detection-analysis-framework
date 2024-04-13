@@ -18,7 +18,8 @@ char g2_id_names[G2_NUM][G2_NAME_MAX] = {
     "windowfold",
     "windowsplit",
     "configsuite",
-    "wsplitdet"
+    "wsplitdet",
+    "detection"
 };
 
 __G2 gatherer_of_gatherers[G2_NUM];
@@ -37,7 +38,8 @@ static inline G2Config _g2_config_get(const G2Id id) {
         &g2_config_wfold,
         &g2_config_wsplit,
         &g2_config_configsuite,
-        &g2_config_wsplitdet
+        &g2_config_wsplitdet,
+        &g2_config_detection,
     };
     return *configs[id];
 }
@@ -321,7 +323,7 @@ int g2_io(RG2 gat, IOReadWrite rw) {
             }
         } else {
             if (!io_direxists(dirpath)) {
-                LOG_ERROR("[%s] impossible to load, directory not exist.", g2_id_names[gat->id]);
+                LOG_ERROR("[%s] impossible to load, directory <%s> not exist.", g2_id_names[gat->id], dirpath);
                 return -1;
             }
         }

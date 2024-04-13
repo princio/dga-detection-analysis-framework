@@ -47,6 +47,7 @@ char NN_NAMES[11][10] = {
 };
 
 const char parameters_format[N_PARAMETERS][5] = {
+    "%d",
     "%f",
     "%f",
     "%s",
@@ -148,7 +149,7 @@ void _parametersdefinition_init() {
     parametersdefinition_init_done = 1;
 }
 
-void _configsuite_fill_pr(ConfigSuite* cs, ParameterGenerator pg) {
+void _configsuite_buil_realm(ConfigSuite* cs, ParameterGenerator pg) {
 
     #define __CPY(NAME_LW, NAME_UP) \
         MANY_INIT(cs->realm[PE_ ## NAME_UP], pg.NAME_LW ## _n, ParameterValue);\
@@ -243,7 +244,7 @@ void _configsuite_build(ConfigSuite* cs, ParameterGenerator pg) {
 
     _parametersdefinition_init();
 
-    _configsuite_fill_pr(cs, pg);
+    _configsuite_buil_realm(cs, pg);
     _configsuite_fill_configs(cs);
 
     cs->generator = pg;
@@ -322,7 +323,8 @@ void _configsuite_hash(void* item, SHA256_CTX* sha) {
 void configsuite_print(const size_t idxconfig) {
     Config * config = &configsuite.configs._[idxconfig];
 
-    printf("inf(%g,%g) %s (%ld,%g) %s %g",
+    printf("%s inf(%g,%g) %s (%ld,%g) %s %g",
+        config->unique ? "U" : "!U",
         config->ninf, config->pinf,
         NN_NAMES[config->nn],
         config->wl_rank, config->wl_value,

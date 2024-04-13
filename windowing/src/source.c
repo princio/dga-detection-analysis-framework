@@ -38,7 +38,7 @@ void _source_io(IOReadWrite rw, FILE* file, void** item) {
 
     size_t sources_number = 0;
 
-    FRWSIZE((**source), sizeof(__Source));
+    FRWSIZE((*source)->index, sizeof(__Source) - sizeof(G2Index));
 }
 
 void _source_print(void* item) {

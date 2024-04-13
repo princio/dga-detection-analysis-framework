@@ -12,6 +12,7 @@
 #include <libpq-fe.h>
 #include <15/server/catalog/pg_type_d.h>
 
+#include <assert.h>
 #include <math.h>
 #include <pthread.h>
 #include <stdint.h>
@@ -359,8 +360,10 @@ void _stratosphere_add(char dataset[100], size_t limit) {
         r = atoi(PQgetvalue(pgresult, row, z++));
         fnreq_max = atoi(PQgetvalue(pgresult, row, z++));
         dga_ratio = atof(PQgetvalue(pgresult, row, z++));
-        day = atoi(PQgetvalue(pgresult, row, z++));
+        day = -1 + atoi(PQgetvalue(pgresult, row, z++)) ;
         days = atoi(PQgetvalue(pgresult, row, z++));
+
+        assert(day >= 0 && day < 7);
 
         RSource rsource = source_alloc();
 

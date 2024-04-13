@@ -49,24 +49,25 @@ enum BO {
 char DGA_CLASSES[N_DGACLASSES][200] = {
     "no-infection",
     "generic-malware",
+    "dga-malware",
     "octo_rat",
     "nukesped_rat",
     "realtimespy_spyware",
     "evilquest_ransomware",
-    "pwnrig_crypto_miner,human_attacker",
-    "pwnrig_crypto_miner",
+    "pwnrig_cryptominer,human_attacker",
+    "pwnrig_cryptominer",
     "kinsing_malware",
     "lupper_worm",
-    "nanocore_adware",
-    "nanocore_adware,rhadamanthys_info_stealer",
+    "nanocore",
+    "nanocore,rhadamanthys",
     "redlinestealer",
     "agenttesla",
-    "lockbit_2_0_ransomware,agenttesla",
+    "lockbit_ransomware,agenttesla",
     "remcosrat",
     "dns_exfiltrations",
     "human_attack",
     "trickbot_malware",
-    "lockbit_2_0_ransomware"
+    "lockbit_ransomware"
 };
 
 MANY(Performance) _main_training_performance() {
@@ -100,7 +101,7 @@ int main (int argc, char* argv[]) {
 #endif
 
 #ifdef LOGGING
-    logger_initFileLogger("log/log.txt", 1024 * 1024, 5);
+    logger_initFileLogger("log/log.txt", 100 * 1024 * 1024, 5);
     // logger_initConsoleLogger(stdout);
     logger_setLevel(LogLevel_TRACE);
     logger_autoFlush(5000);
@@ -119,7 +120,7 @@ int main (int argc, char* argv[]) {
     // strcpy(dataset, "CTU-13");
     strcpy(dataset, "CTU-SME-13");
 
-    WSize wsize = 10;
+    WSize wsize = 50;
     if (QM_MAX_SIZE < (wsize * 3)) {
         printf("Error: wsize too large\n");
         exit(0);
@@ -138,6 +139,7 @@ int main (int argc, char* argv[]) {
     g2_init();
 
     if (g2_io_call(G2_WING, IO_READ)) {
+        printf("Computing windowing...\n");
         configsuite_generate(pg);
 
         stratosphere_add(dataset, 0);
@@ -145,8 +147,10 @@ int main (int argc, char* argv[]) {
         windowing_apply(wsize);
 
         g2_io_call(G2_WING, IO_WRITE);
-    }
+    } else {
+        printf("Loaded windowing...\n");
 
+    }
 
     __MANY many = g2_array(G2_WING);
     for (size_t w = 0; w < many.number; w++) {
@@ -171,52 +175,119 @@ int main (int argc, char* argv[]) {
         }
     }
 
-int split = 0;
-if (compute) {
- if (split == 0) {
-    void* context = windowzonedetection_start();
-    windowzonedetection_wait(context);
- } else {
-    RWindowMC windowmc;
+    int split = 0;
+    if (compute) {
+        if (split == 0) {
+            void* context = windowzonedetection_start();
+            windowzonedetection_wait(context);
+            g2_io_call(G2_DETECTION, IO_WRITE);
+        } else {
+            RWindowMC windowmc;
 
-    windowmc = g2_insert_alloc_item(G2_WMC);
-    windowmc_init(windowmc);
-    windowmc_buildby_windowing(windowmc);
+            windowmc = g2_insert_alloc_item(G2_WMC);
+            windowmc_init(windowmc);
+            windowmc_buildby_windowing(windowmc);
 
-    WindowSplitConfig config = { 
-        .how = WINDOWSPLIT_HOW_BY_DAY,
-        .day = 1
-    };
+            WindowSplitConfig config = { 
+                .how = WINDOWSPLIT_HOW_BY_DAY,
+                .day = 1
+            };
 
-    
-    if (strcmp(dataset, "CTU-SME-13") == 0) {
-        windowsplit_createby_day(1);
-    } else {
-        RWindowMC windowmc;
-        windowmc = (RWindowMC) g2_insert_alloc_item(G2_WMC);
-        windowmc_init(windowmc);
-        windowmc_buildby_windowing(windowmc);
-        for (int k = 1; k <= 10; k++) {
-            windowsplit_createby_portion(windowmc, k, 10);
+            if (strcmp(dataset, "CTU-SME-13") == 0) {
+                windowsplit_createby_day(1);
+            } else {
+                RWindowMC windowmc;
+                windowmc = (RWindowMC) g2_insert_alloc_item(G2_WMC);
+                windowmc_init(windowmc);
+                windowmc_buildby_windowing(windowmc);
+                for (int k = 1; k <= 10; k++) {
+                    windowsplit_createby_portion(windowmc, k, 10);
+                }
+            }
+
+            {
+                __MANY many = g2_array(G2_W0MANY);
+                for (size_t i = 0; i < many.number; i++) {
+                    RWindow0Many w0many = (RWindow0Many) many._[i];
+                    assert(w0many->number);
+                    assert(w0many->_[0].applies.number);
+                    assert(w0many->_[0].applies._);
+                    for (size_t w = 0; w < w0many->number; w++) {
+                        assert(w0many->_[w].n_message > 0);
+                    }
+                }
+            }
         }
+        g2_io_all(IO_WRITE);
+    } else {
+        g2_io_all(IO_READ);
     }
 
     {
-        __MANY many = g2_array(G2_W0MANY);
-        for (size_t i = 0; i < many.number; i++) {
-            RWindow0Many w0many = (RWindow0Many) many._[i];
-            assert(w0many->number);
-            assert(w0many->_[0].applies.number);
-            assert(w0many->_[0].applies._);
-            for (size_t w = 0; w < w0many->number; w++) {
-                assert(w0many->_[w].n_message > 0);
+        FILE* fp = fopen("/tmp/detections.csv", "w");
+        __MANY many = g2_array(G2_DETECTION);
+        for (size_t d = 0; d < many.number; d++) {
+            Detection* detection = (Detection*) many._[d];
+            windowzonedetection_print(detection);
+            windowzonedetection_csv(fp, detection);
+        }
+        fclose(fp);
+    }
+    {
+        StatDetectionCountZone* stat[N_PARAMETERS];
+        detection_stat(stat);
+
+        for (size_t pp = 0; pp < 1; pp++) {
+            for (size_t p = 0; p < configsuite.realm[pp].number; p++) {
+                printf("Parameter %10s value ", parameters_definition[pp].name);
+                printf(parameters_format[pp], configsuite.realm[pp]._[p]);
+                printf("\n");
+
+                DGAFOR(cl) {
+                    for (size_t z = 0; z < N_DETZONE; z++) {
+                        printf("%5d ", stat[pp][p].dn.all._[z][cl].min);
+                        printf("%-5d   ", stat[pp][p].llr.all._[z][cl].min);
+
+                        printf("%5d ", stat[pp][p].dn.all._[z][cl].max);
+                        printf("%-5d   ", stat[pp][p].llr.all._[z][cl].max);
+
+                        printf("%5.0f ", stat[pp][p].dn.all._[z][cl].avg);
+                        printf("%-5.0f | ", stat[pp][p].llr.all._[z][cl].avg);
+                    }
+                    printf("\n");
+                }
+
+
+                for (size_t day = 0; day < 7; day++) {
+                    printf("day %ld)\n", day);
+                    DGAFOR(cl) {
+                        uint32_t sum = 0;
+                        for (size_t z = 0; z < N_DETZONE; z++) {
+                            sum += stat[pp][p].dn.days[day]._[z][cl].avg_denominator;
+                        }
+                        if (sum == 0) continue;
+                        printf("%30s  ", DGA_CLASSES[cl]);
+                        for (size_t z = 0; z < N_DETZONE; z++) {
+                            printf("%5d ", stat[pp][p].dn.days[day]._[z][cl].min);
+                            printf("%-5d   ", stat[pp][p].llr.days[day]._[z][cl].min);
+
+                            printf("%5d ", stat[pp][p].dn.days[day]._[z][cl].max);
+                            printf("%-5d   ", stat[pp][p].llr.days[day]._[z][cl].max);
+
+                            printf("%5.0f ", stat[pp][p].dn.days[day]._[z][cl].avg);
+                            printf("%-5.0f | ", stat[pp][p].llr.days[day]._[z][cl].avg);
+                        }
+                        printf("\n");
+                    }
+                }
+                printf("\n");
             }
         }
+
+        for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+            free(stat[pp]);
+        }
     }
- }
-} else {
-    g2_io_all(IO_READ);
-}
 
     // size_t wmany_0 = 0;
     // size_t wmc[3];

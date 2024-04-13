@@ -12,7 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-const double WApplyDNBad_Values[N_DETZONE] = { 0, 0.1, 0.25, 0.5, 0.9, 1.1  };
+const double WApplyDNBad_Values[N_DETBOUND] = { 0, 0.1, 0.25, 0.5, 0.9, 1.1  };
 
 void wapply_grouped_run(WApply* wapply, DNSMessageGrouped* message, Config* config) {
     int whitelistened;
@@ -25,19 +25,21 @@ void wapply_grouped_run(WApply* wapply, DNSMessageGrouped* message, Config* conf
     
     const double value = message->value[config->nn];
 
-    if (config->windowing == WINDOWING_Q) {
-        multiplier = message->q;
-    } else
-    if (config->windowing == WINDOWING_R) {
-        multiplier = message->r;
-    } else
-    if (config->windowing == WINDOWING_QR) {
-        multiplier = message->count;
+    if (0 == config->unique) {
+        if (config->windowing == WINDOWING_Q) {
+            multiplier = message->q;
+        } else
+        if (config->windowing == WINDOWING_R) {
+            multiplier = message->r;
+        } else
+        if (config->windowing == WINDOWING_QR) {
+            multiplier = message->count;
+        }
     }
 
     {
         int shouldbe_gt0 = 0;
-        for (size_t idxdnbad = 0; idxdnbad < N_DETZONE - 1; idxdnbad++) {
+        for (size_t idxdnbad = 0; idxdnbad < N_DETZONE; idxdnbad++) {
             if ((value >= WApplyDNBad_Values[idxdnbad]) && (value < WApplyDNBad_Values[idxdnbad + 1])) {
                 wapply->dn_bad[idxdnbad] += multiplier;
                 shouldbe_gt0++;
@@ -111,7 +113,7 @@ void wapply_run(WApply* wapply, DNSMessage* message, Config* config) {
     ++wapply->wcount;
 
     int a = 0;
-    for (size_t idxdnbad = 0; idxdnbad < N_DETZONE - 1; idxdnbad++) {
+    for (size_t idxdnbad = 0; idxdnbad < N_DETZONE; idxdnbad++) {
         if ((value >= WApplyDNBad_Values[idxdnbad]) && (value < WApplyDNBad_Values[idxdnbad + 1])) {
             wapply->dn_bad[idxdnbad]++;
             a++;

@@ -36,11 +36,38 @@ void detect_reset(Detection*);
 void detect_copy(TCPC(Detection) src, Detection* dst);
 void detect_update(WApply const * const apply, RSource source, const double th, Detection* detection);
 
-void detect_run(Detection*, RWindowMany, size_t const, const double, const double[N_DETZONE]);
+void detect_run(Detection*, RWindowMany, size_t const, const double, const double[N_DETBOUND]);
 
 void detect_alarms(DetectionZone*, DetectionValue* false_alarms, DetectionValue* true_alarms);
 
 double detect_performance(Detection[N_DGACLASSES], TCPC(Performance));
 int detect_performance_compare(Performance* performance, double new, double old);
 double detect_true0ratio(Detection[N_DGACLASSES], DGAClass);
+
+
+Detection* detection_alloc();
+
+typedef struct StatDetectionValue {
+    uint32_t min;
+    uint32_t max;
+    double avg;
+    uint32_t avg_denominator;
+} StatDetectionValue;
+
+typedef struct StatDetectionZone {
+    StatDetectionValue _[N_DETZONE][N_DGACLASSES]; 
+} StatDetectionZone;
+
+typedef struct StatDetectionCount {
+    StatDetectionZone all;
+    StatDetectionZone days[7];
+} StatDetectionCount;
+
+typedef struct StatDetectionCountZone {
+    StatDetectionCount dn;
+    StatDetectionCount llr;
+} StatDetectionCountZone;
+
+void detection_stat(StatDetectionCountZone* avg[N_PARAMETERS]);
+
 #endif

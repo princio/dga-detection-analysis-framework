@@ -176,7 +176,7 @@ RWindowSplit windowsplit_createby_portion(RWindowMC windowmc, const size_t _k, c
 
 void windowsplit_detect(RWindowSplit windowsplit, size_t const idxconfig, Detection* detection) {
     MinMax logitminmax;
-    double thzone[N_DETZONE];
+    double thzone[N_DETBOUND];
     double th;
 
     memset(&logitminmax, 0, sizeof(MinMax));
@@ -186,8 +186,8 @@ void windowsplit_detect(RWindowSplit windowsplit, size_t const idxconfig, Detect
     th = logitminmax.max + 1;
 
     thzone[0] = - DBL_MAX;
-    thzone[N_DETZONE - 1] = DBL_MAX;
-    double step = 1.0 / (N_DETZONE - 2);
+    thzone[N_DETZONE] = DBL_MAX;
+    double step = 1.0 / (N_DETBOUND - 2);
 
     thzone[1] = logitminmax.min;
     thzone[2] = (logitminmax.max + logitminmax.min) / 2;

@@ -232,7 +232,7 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
 
         for (size_t idxconfig = 0; idxconfig < N_CONFIG; idxconfig++) {
             WindowSplitDetection wsd;
-            DetectionZone* zones[2] = {
+            DetectionCount* zones[2] = {
                 &wsd.detection.zone.dn,
                 &wsd.detection.zone.llr
             };
@@ -282,14 +282,14 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
                 const int width = 30;
                 {
                     printf("%*s", pad, " ");
-                    for (size_t z = 0; z < N_DETZONE; z++) {
-                        printf("%*g", -width, (double) zones[zz]->th[z]);
+                    for (size_t z = 0; z < N_DETBOUND; z++) {
+                        printf("%*g", -width, (double) zones[zz]->bounds[z]);
                     }
                     printf("\n");
                 }
                 {
                     printf("%*s", pad, " ");
-                    for (size_t z = 0; z < N_DETZONE - 1; z++) {
+                    for (size_t z = 0; z < N_DETZONE; z++) {
                         printf("|%*szone %2ld%*s", width / 2 - 4, " ", z, width / 2 - 4, " ");
                     }
                     printf("|\n");
@@ -303,11 +303,11 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
                         // int p = printf("%2d (%6.2d %6.2d) %6ld", cl, wsd.detection.windows[cl][0], wsd.detection.windows[cl][1], test_count.multi[cl]);
                         printf("%*s", 50 - p, " ");
                     }
-                    for (size_t z = 0; z < N_DETZONE - 1; z++) {
-                        if (zones[zz]->zone[z][cl] == 0) {
+                    for (size_t z = 0; z < N_DETZONE; z++) {
+                        if (zones[zz]->all._[z][cl] == 0) {
                             printf("|%*s", width - 1, " ");
                         } else {
-                            int p = printf("|  %*d  %*.2g", width / 3, zones[zz]->zone[z][cl], width / 3, ((double) zones[zz]->zone[z][cl]) / count.multi[cl]);
+                            int p = printf("|  %*d  %*.2g", width / 3, zones[zz]->all._[z][cl], width / 3, ((double) zones[zz]->all._[z][cl]) / count.multi[cl]);
                             printf("%*s", width - p, " ");
                         }
                     }
@@ -316,23 +316,23 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
                 }
                 {
                     DetectionValue fa, ta;
-                    detect_alarms(zones[zz], &fa, &ta);
+                    detect_alarms(&zones[zz]->all, &fa, &ta);
                     printf("%5d - %5d --- %g\n", fa, ta, ((double) ta) / (fa + ta));
                     // calcolo degli allarmi relativamente per ogni classe 
                 }
             }
             for (size_t day = 0; day < 7; day++) {
-                DetectionZone* dayzone = &wsd.detection.zone.days[day];
+                DetectionZone* dayzone = &wsd.detection.zone.llr.days[day];
                 printf("day %ld)\n", day + 1);
                 
                 for (size_t cl = 0; cl < N_DGACLASSES; cl++) {
                     if (cl == 2 || cl == 1) continue;
                     printf("%50s\t", DGA_CLASSES[cl]);
-                    for (size_t z = 0; z < N_DETZONE; z++) {
-                        if (dayzone->zone[z][cl] == 0) {
+                    for (size_t z = 0; z < N_DETBOUND; z++) {
+                        if (dayzone->_[z][cl] == 0) {
                             printf("\t%3s", "-");
                         } else {
-                            printf("\t%3d", dayzone->zone[z][cl]);
+                            printf("\t%3d", dayzone->_[z][cl]);
                         }
                     }
                     printf("\n");

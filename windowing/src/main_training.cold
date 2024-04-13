@@ -42,7 +42,7 @@ void _main_training_csv(char fpath[PATH_MAX], RTrainer trainer) {
                         fprintf(file_csv, "%s,", WINDOWING_NAMES[tb2d->tb2w->configsuite.configs._[idxconfig].windowing]);
                         fprintf(file_csv, "%ld,", tb2d->tb2w->configsuite.configs._[idxconfig].wl_rank);
                         fprintf(file_csv, "%f,", tb2d->tb2w->configsuite.configs._[idxconfig].wl_value);
-                        fprintf(file_csv, "%f,", tb2d->tb2w->configsuite.configs._[idxconfig].nx_epsilon_increment);
+                        fprintf(file_csv, "%f,", tb2d->tb2w->configsuite.configs._[idxconfig].nx_logit_increment);
                         fprintf(file_csv, "%s", trainer->thchoosers._[idxthchooser].name);
 
                         DGAFOR(cl) {
