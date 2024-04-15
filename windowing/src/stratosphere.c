@@ -316,12 +316,18 @@ void _stratosphere_add(char dataset[100], size_t limit) {
 
     memset(DGA_CLASSES, 0, sizeof(DGA_CLASSES));
 
+    DGAFOR(cl) {
+        strcpy(DGA_CLASSES[cl], "freqmax=0");
+    }
+
     sprintf(sql,
         "SELECT "
         "pcap.id, pcap.name, mw.dga as dga, mw.name, qr, q, r, fnreq_max, dga_ratio, day, days "
         "FROM pcap JOIN malware as mw ON malware_id = mw.id "
-        "WHERE pcap.dataset = '%s' AND FNREQ_MAX > 0"
-        "ORDER BY qr ASC "
+        "WHERE "
+        " pcap.dataset = '%s' AND "
+        " FNREQ_MAX > 0 "
+        " ORDER BY qr ASC "
         // "LIMIT 3 "
         ,
         dataset
@@ -360,10 +366,15 @@ void _stratosphere_add(char dataset[100], size_t limit) {
         r = atoi(PQgetvalue(pgresult, row, z++));
         fnreq_max = atoi(PQgetvalue(pgresult, row, z++));
         dga_ratio = atof(PQgetvalue(pgresult, row, z++));
-        day = -1 + atoi(PQgetvalue(pgresult, row, z++)) ;
-        days = atoi(PQgetvalue(pgresult, row, z++));
 
-        assert(day >= 0 && day < 7);
+        {
+            char* _day = PQgetvalue(pgresult, row, z++);
+            char* _days = PQgetvalue(pgresult, row, z++);
+            day = -1 + (_day ? atoi(_day) : 0);
+            days = (_days ? atoi(_days) : -1);
+        }
+
+        assert(day >= -1 && day < 7);
 
         RSource rsource = source_alloc();
 

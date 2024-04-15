@@ -4,7 +4,8 @@
 
 #include "configsuite.h"
 
-ParameterGenerator parametergenerator_default(size_t max_size);
+ParameterGenerator parametergenerator_default_tiny();
+ParameterGenerator parametergenerator_default();
 
 void make_parameters_toignore(ConfigSuite* cs);
 

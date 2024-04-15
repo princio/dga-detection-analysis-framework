@@ -88,7 +88,7 @@ typedef struct Config {
     
     size_t index;
 
-    const ParameterValue* parameters[N_PARAMETERS];
+    ParameterValue* parameters[N_PARAMETERS];
     
     int unique;
     double ninf;
@@ -135,6 +135,8 @@ typedef struct ConfigSuite {
 
 extern ParameterDefinition parameters_definition[N_PARAMETERS];
 extern const char parameters_format[N_PARAMETERS][5];
+
+void parameters_print(ParametersEnum pid, ParameterValue* value, int width);
 
 size_t configsuite_pg_count(ParameterGenerator);
 

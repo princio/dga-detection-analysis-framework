@@ -52,9 +52,11 @@ typedef struct StatDetectionValue {
     uint32_t max;
     double avg;
     uint32_t avg_denominator;
+    int divided;
 } StatDetectionValue;
 
 typedef struct StatDetectionZone {
+    uint32_t detections_involved[N_DGACLASSES]; 
     StatDetectionValue _[N_DETZONE][N_DGACLASSES]; 
 } StatDetectionZone;
 
@@ -68,6 +70,8 @@ typedef struct StatDetectionCountZone {
     StatDetectionCount llr;
 } StatDetectionCountZone;
 
-void detection_stat(StatDetectionCountZone* avg[N_PARAMETERS]);
+MAKEMANY(StatDetectionCountZone);
+
+void detection_stat(MANY(StatDetectionCountZone) avg[N_PARAMETERS]);
 
 #endif

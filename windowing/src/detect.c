@@ -59,7 +59,7 @@ void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxco
         RSource source = window->windowing->source;
         WClass wc = window->windowing->source->wclass;
 
-        assert(source->day >= 0 && source->day < 7);
+        assert(source->day >= -1 && source->day < 7);
 
         const DetectionValue tp = apply->logit >= detection->th;
 
@@ -78,10 +78,14 @@ void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxco
 
         for (size_t z = 0; z < N_DETZONE; z++) {
             detection->zone.dn.all._[z][wc.mc] += apply->dn_bad[z];
-            detection->zone.dn.days[source->day]._[z][wc.mc] += apply->dn_bad[z];
+            if (source->day >= 0 && source->day < 7) {
+                detection->zone.dn.days[source->day]._[z][wc.mc] += apply->dn_bad[z];
+            }
             if (apply->logit >= thzone[z] && apply->logit < thzone[z + 1]) {
                 detection->zone.llr.all._[z][wc.mc]++;
-                detection->zone.llr.days[source->day]._[z][wc.mc]++;
+                if (source->day >= 0 && source->day < 7) {
+                    detection->zone.llr.days[source->day]._[z][wc.mc]++;
+                }
             }
         }
     }
@@ -166,39 +170,30 @@ void _detect_hash(void* item, SHA256_CTX* sha) {
     SHA256_Update(sha, &detection->th, sizeof(Detection) - sizeof(G2Index) - sizeof(size_t)  - sizeof(RWindowMC));
 }
 
-#define BIBO(A, B) (A)->B._[z][cl].avg += detection->zone.B._[z][cl]; \
-    (A)->B._[z][cl].avg_denominator++; \
-    if ((A)->B._[z][cl].min > detection->zone.B._[z][cl]) { \
-        (A)->B._[z][cl].min = detection->zone.B._[z][cl]; \
-    } \
-    if ((A)->B._[z][cl].max < detection->zone.B._[z][cl]) { \
-        (A)->B._[z][cl].max = detection->zone.B._[z][cl]; \
-    }
-
-void detection_stat(StatDetectionCountZone* avg[N_PARAMETERS]) {
+void detection_stat(MANY(StatDetectionCountZone) avg[N_PARAMETERS]) {
     __MANY many = g2_array(G2_DETECTION);
 
     for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-        avg[pp] = calloc(configsuite.realm[pp].number, sizeof(StatDetectionCountZone));
+        MANY_INIT(avg[pp], configsuite.realm[pp].number, StatDetectionCountZone);
         for (size_t p = 0; p < configsuite.realm[pp].number; p++) {
             for (size_t z = 0; z < N_DETZONE; z++) {
                 DGAFOR(cl) {
-                    avg[pp][p].dn.all._[z][cl].avg = 0;
-                    avg[pp][p].dn.all._[z][cl].min = UINT32_MAX;
-                    avg[pp][p].dn.all._[z][cl].max = 0;
+                    avg[pp]._[p].dn.all._[z][cl].avg = 0;
+                    avg[pp]._[p].dn.all._[z][cl].min = UINT32_MAX;
+                    avg[pp]._[p].dn.all._[z][cl].max = 0;
 
-                    avg[pp][p].llr.all._[z][cl].avg = 0;
-                    avg[pp][p].llr.all._[z][cl].min = UINT32_MAX;
-                    avg[pp][p].llr.all._[z][cl].max = 0;
+                    avg[pp]._[p].llr.all._[z][cl].avg = 0;
+                    avg[pp]._[p].llr.all._[z][cl].min = UINT32_MAX;
+                    avg[pp]._[p].llr.all._[z][cl].max = 0;
 
                     for (size_t day = 0; day < 7; day++) {
-                        avg[pp][p].dn.days[day]._[z][cl].avg = 0;
-                        avg[pp][p].dn.days[day]._[z][cl].min = UINT32_MAX;
-                        avg[pp][p].dn.days[day]._[z][cl].max = 0;
+                        avg[pp]._[p].dn.days[day]._[z][cl].avg = 0;
+                        avg[pp]._[p].dn.days[day]._[z][cl].min = UINT32_MAX;
+                        avg[pp]._[p].dn.days[day]._[z][cl].max = 0;
 
-                        avg[pp][p].llr.days[day]._[z][cl].avg = 0;
-                        avg[pp][p].llr.days[day]._[z][cl].min = UINT32_MAX;
-                        avg[pp][p].llr.days[day]._[z][cl].max = 0;
+                        avg[pp]._[p].llr.days[day]._[z][cl].avg = 0;
+                        avg[pp]._[p].llr.days[day]._[z][cl].min = UINT32_MAX;
+                        avg[pp]._[p].llr.days[day]._[z][cl].max = 0;
                     }
                 }
             }
@@ -207,13 +202,25 @@ void detection_stat(StatDetectionCountZone* avg[N_PARAMETERS]) {
 
     for (size_t d = 0; d < many.number; d++) {
         Detection* detection = (Detection*) many._[d];
-        Config* config = &configsuite.configs._[detection->g2index];
+        Config* config = &configsuite.configs._[detection->idxconfig];
 
         for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
             for (size_t z = 0; z < N_DETZONE; z++) {
                 DGAFOR(cl) {
-                    StatDetectionCountZone* sdcz = &avg[pp][config->parameters[pp]->index];
+                    StatDetectionCountZone* sdcz = &avg[pp]._[config->parameters[pp]->index];
 
+#define BIBO(A, B) \
+    if (detection->zone.B._[z][cl]) {\
+        (A)->B._[z][cl].avg += detection->zone.B._[z][cl]; \
+        (A)->B._[z][cl].avg_denominator++; \
+        (A)->B.detections_involved[cl]++; \
+        if ((A)->B._[z][cl].min > detection->zone.B._[z][cl]) { \
+            (A)->B._[z][cl].min = detection->zone.B._[z][cl]; \
+        } \
+        if ((A)->B._[z][cl].max < detection->zone.B._[z][cl]) { \
+            (A)->B._[z][cl].max = detection->zone.B._[z][cl]; \
+        }\
+    }
                     BIBO(sdcz, dn.all);
                     BIBO(sdcz, llr.all);
 
@@ -221,6 +228,31 @@ void detection_stat(StatDetectionCountZone* avg[N_PARAMETERS]) {
                         BIBO(sdcz, dn.days[day]);
                         BIBO(sdcz, llr.days[day]);
                     }
+#undef BIBO
+                }
+            }
+        }
+    }
+
+    for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+        for (size_t p = 0; p < configsuite.realm[pp].number; p++) {
+            for (size_t z = 0; z < N_DETZONE; z++) {
+                DGAFOR(cl) {
+                    StatDetectionCountZone* sdcz = &avg[pp]._[p];
+
+#define BIBOAVG(A, B) if ((A)->B._[z][cl].avg_denominator) {\
+    if ((A)->B._[z][cl].divided) printf("already divided\n");\
+        (A)->B._[z][cl].divided = 1;\
+        (A)->B._[z][cl].avg /= (A)->B._[z][cl].avg_denominator;\
+    }
+                    BIBOAVG(sdcz, dn.all);
+                    BIBOAVG(sdcz, llr.all);
+
+                    for (size_t day = 0; day < 7; day++) {
+                        BIBOAVG(sdcz, dn.days[day]);
+                        BIBOAVG(sdcz, llr.days[day]);
+                    }
+#undef BIBOAVG
                 }
             }
         }

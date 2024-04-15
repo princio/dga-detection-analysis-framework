@@ -57,6 +57,62 @@ const char parameters_format[N_PARAMETERS][5] = {
     "%f"
 };
 
+void parameters_print(ParametersEnum pid, ParameterValue* value, int width) {
+    switch (pid) {
+    case PE_UNIQUE: {
+        unique_t v;
+        memcpy(&v, value->value, sizeof(unique_t));
+        printf("%*d", width, v);
+        break;
+    }
+    case PE_NINF: {
+        ninf_t v;
+        memcpy(&v, value->value, sizeof(ninf_t));
+        printf("%*f", width, v);
+        break;
+    }
+    case PE_PINF: {
+        pinf_t v;
+        memcpy(&v, value->value, sizeof(pinf_t));
+        printf("%*f", width, v);
+        break;
+    }
+    case PE_NN: {
+        nn_t v;
+        memcpy(&v, value->value, sizeof(nn_t));
+        printf("%*s", width, NN_NAMES[v]);
+        break;
+    }
+    case PE_WL_RANK: {
+        wl_rank_t v;
+        memcpy(&v, value->value, sizeof(wl_rank_t));
+        printf("%*ld", width, v);
+        break;
+    }
+    case PE_WL_VALUE: {
+        wl_value_t v;
+        memcpy(&v, value->value, sizeof(wl_value_t));
+        printf("%*f", width, v);
+        break;
+    }
+    case PE_WINDOWING: {
+        windowing_t v;
+        memcpy(&v, value->value, sizeof(windowing_t));
+        printf("%*s", width, WINDOWING_NAMES[v]);
+        break;
+    }
+    case PE_NX_LOGIT_INCREMENT: {
+        nx_logit_increment_t v;
+        memcpy(&v, value->value, sizeof(nx_logit_increment_t));
+        printf("%*f", width, v);
+        break;
+    }
+    default:
+        break;
+    }
+
+}
+
 void parameters_int_print(ParameterValue ref, int width, char str[20]) {
     int value;
 

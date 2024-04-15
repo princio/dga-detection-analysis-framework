@@ -1,12 +1,11 @@
 
 #include "parameter_generator.h"
 
-ParameterGenerator parametergenerator_default(size_t max_size) {
+
+ParameterGenerator parametergenerator_default_tiny() {
     ParameterGenerator pg;
 
     memset(&pg, 0, sizeof(ParameterGenerator));
-
-    pg.max_size = max_size;
 
     #define __SET(NAME_LW) \
         pg.NAME_LW ## _n = sizeof(NAME_LW) / sizeof(NAME_LW ## _t);\
@@ -14,7 +13,7 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
 
     {
         unique_t unique[] = {
-            0,
+            // 0,
             1
         };
         __SET(unique);
@@ -24,7 +23,7 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
         ninf_t ninf[] = {
             // 0,
             // -10,
-            // -50,
+            -50,
             -150
         };
         __SET(ninf);
@@ -34,7 +33,7 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
         pinf_t pinf[] = {
             // 0,
             // 10,
-            // 50,
+            50,
             150
         };
         __SET(pinf);
@@ -42,8 +41,8 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
 
     {
         nn_t nn[] = {
-            NN_NONE
-            // NN_TLD,
+            NN_NONE,
+            NN_TLD,
             // NN_ICANN,
             // NN_PRIVATE
         };
@@ -64,9 +63,100 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
         wl_value_t wl_value[] = {
             // 0,
             // -10,
-            -50,
+            // -50,
             // -100,
-            // -150
+            -150
+        };
+        __SET(wl_value);
+    }
+
+    {
+        windowing_t windowing[] = {
+            // WINDOWING_Q,
+            // WINDOWING_R,
+            WINDOWING_QR
+        };
+        __SET(windowing);
+    }
+
+    {
+        nx_logit_increment_t nx_logit_increment[] = {
+            0,
+            // 0.05,
+            // 0.1,
+        };
+        __SET(nx_logit_increment);
+    }
+
+    #undef __SET
+
+    return pg;
+}
+
+ParameterGenerator parametergenerator_default() {
+    ParameterGenerator pg;
+
+    memset(&pg, 0, sizeof(ParameterGenerator));
+
+    #define __SET(NAME_LW) \
+        pg.NAME_LW ## _n = sizeof(NAME_LW) / sizeof(NAME_LW ## _t);\
+        for(size_t i = 0; i < pg.NAME_LW ## _n; i++) { pg.NAME_LW[i] = NAME_LW[i]; }
+
+    {
+        unique_t unique[] = {
+            0,
+            1
+        };
+        __SET(unique);
+    }
+
+    {
+        ninf_t ninf[] = {
+            0,
+            -10,
+            -50,
+            -150
+        };
+        __SET(ninf);
+    }
+
+    {
+        pinf_t pinf[] = {
+            0,
+            10,
+            50,
+            150
+        };
+        __SET(pinf);
+    }
+
+    {
+        nn_t nn[] = {
+            NN_NONE,
+            NN_TLD,
+            NN_ICANN,
+            NN_PRIVATE
+        };
+        __SET(nn);
+    }
+
+    {
+        wl_rank_t wl_rank[] = {
+            0,
+            100,
+            1000,
+            100000
+        };
+        __SET(wl_rank);
+    }
+
+    {
+        wl_value_t wl_value[] = {
+            0,
+            -10,
+            -50,
+            -100,
+            -150
         };
         __SET(wl_value);
     }
@@ -74,8 +164,8 @@ ParameterGenerator parametergenerator_default(size_t max_size) {
     {
         windowing_t windowing[] = {
             WINDOWING_Q,
-            // WINDOWING_R,
-            // WINDOWING_QR
+            WINDOWING_R,
+            WINDOWING_QR
         };
         __SET(windowing);
     }

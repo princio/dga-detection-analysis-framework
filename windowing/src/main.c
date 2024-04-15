@@ -109,16 +109,21 @@ int main (int argc, char* argv[]) {
 
     char rootdir[PATH_MAX];
 
-    const int nsources = 0;
-    const size_t max_configs = 10;
-    const size_t n_try = 1;
-
-    const ParameterGenerator pg = parametergenerator_default(max_configs);
-
-
     char dataset[20];
-    // strcpy(dataset, "CTU-13");
-    strcpy(dataset, "CTU-SME-13");
+    ParameterGenerator pg;
+    int configs_tiny;
+    
+    {
+        configs_tiny = 1;
+        // strcpy(dataset, "CTU-13");
+        strcpy(dataset, "CTU-SME-13");
+    
+        if (configs_tiny) {
+            pg = parametergenerator_default_tiny();
+        } else {
+            pg = parametergenerator_default();
+        }
+    }
 
     WSize wsize = 50;
     if (QM_MAX_SIZE < (wsize * 3)) {
@@ -129,7 +134,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/dns2_2/%s/%ld/", dataset, wsize); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/princio/Desktop/results/dns2_2/%s/%ld/%s/", dataset, wsize, configs_tiny ? "tiny" : "full"); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     io_setdir(rootdir);
@@ -228,110 +233,141 @@ int main (int argc, char* argv[]) {
         __MANY many = g2_array(G2_DETECTION);
         for (size_t d = 0; d < many.number; d++) {
             Detection* detection = (Detection*) many._[d];
-            windowzonedetection_print(detection);
+            // windowzonedetection_print(detection);
             windowzonedetection_csv(fp, detection);
         }
         fclose(fp);
     }
     {
-        StatDetectionCountZone* stat[N_PARAMETERS];
+        MANY(StatDetectionCountZone) stat[N_PARAMETERS];
+
+        memset(stat, 0, N_PARAMETERS * sizeof(MANY(StatDetectionCountZone)));
+
         detection_stat(stat);
 
-        for (size_t pp = 0; pp < 1; pp++) {
+        printf("\n\n--- Printing parameters statistics:\n\n");
+        for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
             for (size_t p = 0; p < configsuite.realm[pp].number; p++) {
-                printf("Parameter %10s value ", parameters_definition[pp].name);
-                printf(parameters_format[pp], configsuite.realm[pp]._[p]);
-                printf("\n");
+                printf("Parameter <%s> value \"", parameters_definition[pp].name);
+                parameters_print(pp, &configsuite.realm[pp]._[p], 0);
+                printf("\"\n\n");
 
                 DGAFOR(cl) {
-                    for (size_t z = 0; z < N_DETZONE; z++) {
-                        printf("%5d ", stat[pp][p].dn.all._[z][cl].min);
-                        printf("%-5d   ", stat[pp][p].llr.all._[z][cl].min);
-
-                        printf("%5d ", stat[pp][p].dn.all._[z][cl].max);
-                        printf("%-5d   ", stat[pp][p].llr.all._[z][cl].max);
-
-                        printf("%5.0f ", stat[pp][p].dn.all._[z][cl].avg);
-                        printf("%-5.0f | ", stat[pp][p].llr.all._[z][cl].avg);
+                    if (!strcmp(DGA_CLASSES[cl], "freqmax=0")) {
+                        continue;
                     }
-                    printf("\n");
-                }
+                    printf("%s\n", DGA_CLASSES[cl]);
 
-
-                for (size_t day = 0; day < 7; day++) {
-                    printf("day %ld)\n", day);
-                    DGAFOR(cl) {
-                        uint32_t sum = 0;
+                    {
+                        printf(" (all) ");
+                        printf("(%5u) ", stat[pp]._[p].dn.all.detections_involved[cl]);
+                        printf("(%5u) | ", stat[pp]._[p].llr.all.detections_involved[cl]);
                         for (size_t z = 0; z < N_DETZONE; z++) {
-                            sum += stat[pp][p].dn.days[day]._[z][cl].avg_denominator;
-                        }
-                        if (sum == 0) continue;
-                        printf("%30s  ", DGA_CLASSES[cl]);
-                        for (size_t z = 0; z < N_DETZONE; z++) {
-                            printf("%5d ", stat[pp][p].dn.days[day]._[z][cl].min);
-                            printf("%-5d   ", stat[pp][p].llr.days[day]._[z][cl].min);
+                            char substrings[10][100];
 
-                            printf("%5d ", stat[pp][p].dn.days[day]._[z][cl].max);
-                            printf("%-5d   ", stat[pp][p].llr.days[day]._[z][cl].max);
+                            if (stat[pp]._[p].dn.all._[z][cl].avg_denominator == 0) {
+                                sprintf(substrings[0], "%5s", "-");
+                                sprintf(substrings[2], "%5s", "-");
+                                sprintf(substrings[4], "%5s", "-");
+                            } else {
+                                sprintf(substrings[0], "%5u", stat[pp]._[p].dn.all._[z][cl].min);
+                                sprintf(substrings[2], "%5u", stat[pp]._[p].dn.all._[z][cl].max);
+                                sprintf(substrings[4], "%5.0f", stat[pp]._[p].dn.all._[z][cl].avg);
+                            }
 
-                            printf("%5.0f ", stat[pp][p].dn.days[day]._[z][cl].avg);
-                            printf("%-5.0f | ", stat[pp][p].llr.days[day]._[z][cl].avg);
+                            if (stat[pp]._[p].llr.all._[z][cl].avg_denominator == 0) {
+                                sprintf(substrings[1], "%-5s", "-");
+                                sprintf(substrings[3], "%-5s", "-");
+                                sprintf(substrings[5], "%-5s", "-");
+                            } else {
+                                sprintf(substrings[1], "%-5u", stat[pp]._[p].llr.all._[z][cl].min);
+                                sprintf(substrings[3], "%-5u", stat[pp]._[p].llr.all._[z][cl].max);
+                                sprintf(substrings[5], "%-5.0f", stat[pp]._[p].llr.all._[z][cl].avg);
+                            }
+
+                            for (size_t i = 0; i < 6; i+=2)
+                            {
+                                printf("%s ", substrings[i]);
+                                printf("%s   ", substrings[i + 1]);
+                            }
+                            
+                            printf(" | ");
                         }
                         printf("\n");
                     }
+
+                    for (size_t day = 0; day < 7; day++) {
+                        if (stat[pp]._[p].dn.days[day].detections_involved[cl] + stat[pp]._[p].llr.days[day].detections_involved[cl]) {
+                            printf("(day%ld) ", day);
+                            
+                            printf("(%5u) ", stat[pp]._[p].dn.days[day].detections_involved[cl]);
+                            printf("(%5u) | ", stat[pp]._[p].llr.days[day].detections_involved[cl]);
+                            for (size_t z = 0; z < N_DETZONE; z++) {
+                                char substrings[10][100];
+
+                                if (stat[pp]._[p].dn.days[day]._[z][cl].avg_denominator == 0) {
+                                    sprintf(substrings[0], "%5s", "-");
+                                    sprintf(substrings[2], "%5s", "-");
+                                    sprintf(substrings[4], "%5s", "-");
+                                } else {
+                                    sprintf(substrings[0], "%5u", stat[pp]._[p].dn.days[day]._[z][cl].min);
+                                    sprintf(substrings[2], "%5u", stat[pp]._[p].dn.days[day]._[z][cl].max);
+                                    sprintf(substrings[4], "%5.0f", stat[pp]._[p].dn.days[day]._[z][cl].avg);
+                                }
+
+                                if (stat[pp]._[p].llr.days[day]._[z][cl].avg_denominator == 0) {
+                                    sprintf(substrings[1], "%-5s", "-");
+                                    sprintf(substrings[3], "%-5s", "-");
+                                    sprintf(substrings[5], "%-5s", "-");
+                                } else {
+                                    sprintf(substrings[1], "%-5u", stat[pp]._[p].llr.days[day]._[z][cl].min);
+                                    sprintf(substrings[3], "%-5u", stat[pp]._[p].llr.days[day]._[z][cl].max);
+                                    sprintf(substrings[5], "%-5.0f", stat[pp]._[p].llr.days[day]._[z][cl].avg);
+                                }
+
+                                for (size_t i = 0; i < 6; i+=2)
+                                {
+                                    printf("%s ", substrings[i]);
+                                    printf("%s   ", substrings[i + 1]);
+                                }
+                                
+                                printf(" | ");
+                            }
+                            printf("\n");
+                        }
+                    }
+                    printf("\n");
                 }
-                printf("\n");
             }
         }
 
         for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
-            free(stat[pp]);
+            MANY_FREE(stat[pp]);
         }
     }
 
-    // size_t wmany_0 = 0;
-    // size_t wmc[3];
-    // size_t wsplit[4];
-    // {
-    //     __MANY many = g2_array(G2_WMANY);
-    //     for (size_t i = 0; i < many.number; i++) {
-    //         RWindowMany windowmany = (RWindowMany) many._[i];
-    //         wmany_0 += windowmany->number == 0;
-    //     }
-    //     printf("%20s\t%ld\n", "All many's having 0 length:", wmany_0);
-    // }
-    // {
-    //     memset(&wmc, 0, sizeof(wmc));
-    //     __MANY many = g2_array(G2_WMC);
-    //     for (size_t i = 0; i < many.number; i++) {
-    //         RWindowMC windowmc = (RWindowMC) many._[i];
 
-    //         wmc[0] += windowmc->all->number == 0;
-    //         BINFOR(bc) wmc[1] += windowmc->binary[bc]->number == 0;
-    //         DGAFOR(cl) wmc[2] += windowmc->multi[cl]->number == 0;
-    //     }
-    //     printf("%20s\t%ld\n", "All MC-all having 0 length:", wmc[0]);
-    //     printf("%20s\t%ld\n", "All MC-bin having 0 length:", wmc[1]);
-    //     printf("%20s\t%ld\n", "All MC-mul having 0 length:", wmc[2]);
-    // }
-    // {
-    //     memset(&wsplit, 0, sizeof(wmc));
-    //     __MANY many = g2_array(G2_WSPLIT);
-    //     for (size_t i = 0; i < many.number; i++) {
-    //         RWindowSplit windowsplit = (RWindowSplit) many._[i];
+    for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+        for (size_t p = 0; p < configsuite.realm[pp].number; p++) {
+            printf("%20s\t", parameters_definition[pp].name);
+            printf("%5ld\t", configsuite.realm[pp]._[p].index);
+            parameters_print(pp, &configsuite.realm[pp]._[p], 0);
+            printf("\n");
+        }
+    }
 
-    //         wmc[0] += windowsplit->train->number == 0;
-    //         wmc[1] += windowsplit->test->all->number == 0;
-    //         BINFOR(bc) wmc[2] += windowsplit->test->binary[bc]->number == 0;
-    //         DGAFOR(cl) wmc[3] += windowsplit->test->multi[cl]->number == 0;
-    //     }
-    //     printf("%20s\t%ld\n", "All SPLIT-train    having 0 length:", wsplit[0]);
-    //     printf("%20s\t%ld\n", "All SPLIT-test-all having 0 length:", wsplit[1]);
-    //     printf("%20s\t%ld\n", "All SPLIT-test-bin having 0 length:", wsplit[2]);
-    //     printf("%20s\t%ld\n", "All SPLIT-test-mul having 0 length:", wsplit[3]);
-    // }
 
-    {
+    for (size_t idxconfig = 0; idxconfig < configsuite.configs.number; idxconfig++) {
+        Config* config = &configsuite.configs._[idxconfig];
+        for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+            printf("%20s\t", parameters_definition[pp].name);
+            printf("%5ld\t", config->parameters[pp]->index);
+            parameters_print(pp, config->parameters[pp], 0);
+            printf("\n");
+        }
+    }
+
+    if (0) {
         FILE* fp = fopen("/tmp/csv.csv", "w");
         __MANY many;
         many = g2_array(G2_W0MANY);
@@ -400,13 +436,6 @@ int main (int argc, char* argv[]) {
         }
         fclose(fp);
     }
-
-    // {
-    //     __MANY many = g2_array(G2_WSPLIT);
-    //     for (size_t i = 0; i < many.number; i++) {
-    //        windowsplit_minmax((RWindowSplit) many._[i]);
-    //     }
-    // }
 
     void* context = windowsplitdetection_start();
     windowsplitdetection_wait(context);
