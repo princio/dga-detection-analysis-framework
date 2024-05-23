@@ -360,7 +360,6 @@ typedef struct DetectionZone {
 } DetectionZone;
 
 typedef struct DetectionCount {
-    double bounds[N_DETBOUND];
     DetectionZone all;
     DetectionZone days[7];
 } DetectionCount;
@@ -382,6 +381,7 @@ typedef enum WApplyDNBad {
 extern const double WApplyDNBad_Values[N_DETBOUND];
 
 typedef struct DetectionCountZone {
+    double bounds[N_DETBOUND];
     DetectionCount dn;
     DetectionCount llr;
 } DetectionCountZone;

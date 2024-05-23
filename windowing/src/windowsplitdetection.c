@@ -283,7 +283,7 @@ void* _windowsplitdetection_consumer(void* argsvoid) {
                 {
                     printf("%*s", pad, " ");
                     for (size_t z = 0; z < N_DETBOUND; z++) {
-                        printf("%*g", -width, (double) zones[zz]->bounds[z]);
+                        printf("%*g", -width, (double) wsd.detection.zone.bounds[z]);
                     }
                     printf("\n");
                 }

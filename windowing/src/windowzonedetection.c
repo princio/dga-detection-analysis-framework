@@ -225,18 +225,18 @@ void windowzonedetection_print(Detection* detection) {
     printf("\n");
 
     for (size_t z = 0; z < N_DETBOUND; z++) {
-        printf("%10.3g\t", detection->zone.dn.bounds[z]);
+        printf("%10.3g\t", WApplyDNBad_Values[z]);
     }
     printf("\n");
 
     for (size_t z = 0; z < N_DETBOUND; z++) {
-        printf("%10.3g\t", detection->zone.llr.bounds[z]);
+        printf("%10.3g\t", detection->zone.bounds[z]);
     }
     printf("\n");
 
     for (size_t day = 0; day < 7; day++) {
         for (size_t z = 0; z < N_DETBOUND; z++) {
-            printf("%10.3g\t", detection->zone.llr.bounds[z]);
+            printf("%10.3g\t", detection->zone.bounds[z]);
         }
         printf("\n");
     }
@@ -318,10 +318,10 @@ void windowzonedetection_csv(FILE* fp, Detection* detection) {
     DGAFOR(cl) {
         fprintf(fp, "%ld,%ld,", detection->g2index, detection->idxconfig);
         for (size_t z = 0; z < N_DETBOUND; z++) {
-            fprintf(fp, "%f,", detection->zone.dn.bounds[z]);
+            fprintf(fp, "%f,", WApplyDNBad_Values[z]);
         }
         for (size_t z = 0; z < N_DETBOUND; z++) {
-            fprintf(fp, "%f,", detection->zone.llr.bounds[z]);
+            fprintf(fp, "%f,", detection->zone.bounds[z]);
         }
         fprintf(fp, "\"%s\",", DGA_CLASSES[cl]);
         {

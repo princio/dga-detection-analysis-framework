@@ -47,6 +47,14 @@ double detect_true0ratio(Detection[N_DGACLASSES], DGAClass);
 
 Detection* detection_alloc();
 
+typedef struct StatDetectionBound {
+    double min;
+    double max;
+    double avg;
+    double avg_denominator;
+    int divided;
+} StatDetectionBound;
+
 typedef struct StatDetectionValue {
     uint32_t min;
     uint32_t max;
@@ -66,6 +74,7 @@ typedef struct StatDetectionCount {
 } StatDetectionCount;
 
 typedef struct StatDetectionCountZone {
+    StatDetectionBound zones_boundaries[N_DETBOUND];
     StatDetectionCount dn;
     StatDetectionCount llr;
 } StatDetectionCountZone;

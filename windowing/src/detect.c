@@ -50,8 +50,7 @@ void detect_run(Detection* detection, RWindowMany windowmany, size_t const idxco
     detection->th = th;
     detection->idxconfig = idxconfig;
 
-    memcpy(detection->zone.dn.bounds, WApplyDNBad_Values, N_DETBOUND * sizeof(double));
-    memcpy(detection->zone.llr.bounds, thzone, N_DETBOUND * sizeof(double));
+    memcpy(detection->zone.bounds, thzone, N_DETBOUND * sizeof(double));
 
     for (size_t w = 0; w < windowmany->number; w++) {
         RWindow window = windowmany->_[w];
@@ -176,6 +175,13 @@ void detection_stat(MANY(StatDetectionCountZone) avg[N_PARAMETERS]) {
     for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
         MANY_INIT(avg[pp], configsuite.realm[pp].number, StatDetectionCountZone);
         for (size_t p = 0; p < configsuite.realm[pp].number; p++) {
+            for (size_t b = 0; b < N_DETBOUND; b++) {
+                avg[pp]._[p].zones_boundaries[b].avg = 0;
+                avg[pp]._[p].zones_boundaries[b].avg_denominator = 0;
+                avg[pp]._[p].zones_boundaries[b].divided = 0;
+                avg[pp]._[p].zones_boundaries[b].min = DBL_MAX;
+                avg[pp]._[p].zones_boundaries[b].max = - DBL_MAX;
+            }
             for (size_t z = 0; z < N_DETZONE; z++) {
                 DGAFOR(cl) {
                     avg[pp]._[p].dn.all._[z][cl].avg = 0;
@@ -205,9 +211,16 @@ void detection_stat(MANY(StatDetectionCountZone) avg[N_PARAMETERS]) {
         Config* config = &configsuite.configs._[detection->idxconfig];
 
         for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
+            StatDetectionCountZone* sdcz = &avg[pp]._[config->parameters[pp]->index];
+
+            for (size_t b = 0; b < N_DETBOUND; b++) {
+                sdcz->zones_boundaries[b].avg += detection->zone.bounds[b];
+                sdcz->zones_boundaries[b].min = sdcz->zones_boundaries[b].min > detection->zone.bounds[b] ? detection->zone.bounds[b] : sdcz->zones_boundaries[b].min;
+                sdcz->zones_boundaries[b].max = sdcz->zones_boundaries[b].max < detection->zone.bounds[b] ? detection->zone.bounds[b] : sdcz->zones_boundaries[b].max;
+                sdcz->zones_boundaries[b].avg_denominator++;
+            }
             for (size_t z = 0; z < N_DETZONE; z++) {
                 DGAFOR(cl) {
-                    StatDetectionCountZone* sdcz = &avg[pp]._[config->parameters[pp]->index];
 
 #define BIBO(A, B) \
     if (detection->zone.B._[z][cl]) {\
@@ -236,9 +249,12 @@ void detection_stat(MANY(StatDetectionCountZone) avg[N_PARAMETERS]) {
 
     for (size_t pp = 0; pp < N_PARAMETERS; pp++) {
         for (size_t p = 0; p < configsuite.realm[pp].number; p++) {
+            StatDetectionCountZone* sdcz = &avg[pp]._[p];
+            for (size_t b = 0; b < N_DETBOUND; b++) {
+                sdcz->zones_boundaries[b].avg /= sdcz->zones_boundaries[b].avg_denominator;
+            }
             for (size_t z = 0; z < N_DETZONE; z++) {
                 DGAFOR(cl) {
-                    StatDetectionCountZone* sdcz = &avg[pp]._[p];
 
 #define BIBOAVG(A, B) if ((A)->B._[z][cl].avg_denominator) {\
     if ((A)->B._[z][cl].divided) printf("already divided\n");\
