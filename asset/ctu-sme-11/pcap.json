@@ -1,0 +1,37 @@
+{
+    "name": "Experiment-VM-Microsoft-Windows7AD-1",
+    "dataset": "CTU-SME-13",
+    "terminal": "192.168.1.108",
+    "year": 2023,
+    "days_regex": "r/2023-02-(\\d+).*/",
+    "days": [
+        {
+            "malware": null,
+            "description": "Attacked from Ubuntu Server"
+        },
+        {
+            "malware": [ "human-attack" ]
+        },
+        {
+            "malware": [ "trickbot" ]
+        },
+        {
+            "malware": [ "trickbot" ]
+        },
+        {
+            "malware": [
+                "trickbot",
+                "lockbit"
+            ]
+        },
+        {
+            "malware": [
+                "trickbot",
+                "lockbit"
+            ]
+        },
+        {
+            "malware": "null"
+        }
+    ]
+}

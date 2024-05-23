@@ -271,6 +271,14 @@ typedef struct DNSMessageWindowing {
     DNSMessageGrouped message;
 } DNSMessageWindowing;
 
+typedef struct DNSMessageDuration {
+    int32_t wnum;
+    int32_t fn_req_min;
+    int32_t fn_req_max;
+    double time_s_min;
+    double time_s_max;
+} DNSMessageDuration;
+
 typedef enum CaptureType {
     CAPTURETYPE_PCAP,
     CAPTURETYPE_LIST
@@ -328,6 +336,19 @@ MAKEMANY(MinMax);
 
 typedef uint32_t DetectionValue;
 typedef DetectionValue DetectionPN[2];
+
+
+#define N_WHITELISTINGRANK 5
+
+typedef enum WhitelistingRank {
+    WHITELISTINGRANK_100,
+    WHITELISTINGRANK_1000,
+    WHITELISTINGRANK_10000,
+    WHITELISTINGRANK_100000,
+    WHITELISTINGRANK_1000000
+} WhitelistingRank;
+
+extern const size_t WhitelistingRank_Values[N_WHITELISTINGRANK];
 
 #define N_DETBOUND 6
 #define N_DETZONE N_DETBOUND - 1

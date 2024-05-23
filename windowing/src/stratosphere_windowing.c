@@ -8,6 +8,7 @@
 #include "source.h"
 #include "windowmany.h"
 #include "windowing.h"
+#include "window0many.h"
 
 #include <ncurses.h>
 #include <libpq-fe.h>
@@ -156,6 +157,17 @@ void _stratosphere_windowing_parse_message(PGresult* res, int row, DNSMessageWin
     assert(message->message.count == (message->message.q + message->message.r));
 }
 
+void _stratosphere_windowing_parse_duration(PGresult* res, int row, DNSMessageDuration* message) {
+    int cursor = 0;
+    memset(message, 0, sizeof(DNSMessageDuration));
+
+    message->wnum = atoi(PQgetvalue(res, row, cursor++));
+    message->fn_req_min = atoi(PQgetvalue(res, row, cursor++));
+    message->fn_req_max = atoi(PQgetvalue(res, row, cursor++));
+    message->time_s_min = atof(PQgetvalue(res, row, cursor++));
+    message->time_s_max = atof(PQgetvalue(res, row, cursor++));
+}
+
 void _stratosphere_windowing_fetch(PGconn* conn, const RWindowing windowing, int32_t* nrows, PGresult** pgresult) {
     char sql[2000];
     int pgresult_binary = 1;
@@ -163,7 +175,7 @@ void _stratosphere_windowing_fetch(PGconn* conn, const RWindowing windowing, int
     sprintf(sql, "SELECT ");
     strcat(sql, "M.WNUM,");
     strcat(sql, "M.DN_ID,");
-    strcat(sql, "WL_NN.RANK_BDN,");
+    strcat(sql, "CASE WHEN WL_NN.RANK_BDN IS NULL THEN -1 ELSE 0 END AS RANK_BDN,");
     strcat(sql, "M.QR AS QR,");
     strcat(sql, "M.Q AS Q,");
     strcat(sql, "M.R AS R,");
@@ -208,7 +220,7 @@ void _stratosphere_windowing_fetch(PGconn* conn, const RWindowing windowing, int
     strcat(sql, "GROUP BY ");
     strcat(sql, "M.WNUM, ");
     strcat(sql, "M.DN_ID, ");
-    strcat(sql, "WL_NN.RANK_BDN, ");
+    strcat(sql, "RANK_BDN, ");
     strcat(sql, "QR, ");
     strcat(sql, "Q, ");
     strcat(sql, "R, ");
@@ -228,6 +240,35 @@ void _stratosphere_windowing_fetch(PGconn* conn, const RWindowing windowing, int
     if (PQresultStatus(*pgresult) != PGRES_TUPLES_OK) {
         LOG_ERROR("select messages error for pcap %d: %s.", windowing->source->id, PQerrorMessage(conn));
         printf("select messages error for pcap %d: %s.", windowing->source->id, PQerrorMessage(conn));
+        PQclear(*pgresult);
+        return;
+    }
+
+    *nrows = PQntuples(*pgresult);
+}
+
+void _stratosphere_windowing_durations(PGconn* conn, const RWindowing windowing, int32_t* nrows, PGresult** pgresult) {
+    char sql[2000];
+    int pgresult_binary = 1;
+    
+    sprintf(sql,
+        "SELECT M.FN_REQ / %ld as WNUM, "
+        "MIN(M.fn_req), "
+        "MAX(M.fn_req), "
+        "MIN(M.TIME_S), "
+        "MAX(M.TIME_S) "
+        "FROM MESSAGE_%d AS M "
+        "GROUP BY WNUM ORDER BY WNUM"
+        ";",
+        windowing->wsize, windowing->source->id);
+
+    *pgresult = PQexecParams(conn, sql, 0, NULL, NULL, NULL, NULL, !pgresult_binary);
+
+    printf("\n%s\n", sql);
+
+    if (PQresultStatus(*pgresult) != PGRES_TUPLES_OK) {
+        LOG_ERROR("select durations error for pcap %d: %s.", windowing->source->id, PQerrorMessage(conn));
+        printf("select durations error for pcap %d: %s.", windowing->source->id, PQerrorMessage(conn));
         PQclear(*pgresult);
         return;
     }
@@ -309,14 +350,38 @@ void* _stratosphere_windowing_apply_consumer(void* argsvoid) {
         for (int row = 0; row < nrows; row++) {
             _stratosphere_windowing_parse_message(pgresult, row, &message);
 
+            const RWindow window = &windowing->window0many->_[message.wnum];
+
+            window0many_updatewindow(window, &message.message);
+
             for (size_t idxconfig = 0; idxconfig < configsuite.configs.number; idxconfig++) {
-                RWindow window = &windowing->window0many->_[message.wnum];
                 wapply_grouped_run(&window->applies._[idxconfig], &message.message, &configsuite.configs._[idxconfig]);
                 window->n_message++;
             }
         }
 
         {
+            PGresult* pgresult2;
+            int nrows2;
+            DNSMessageDuration duration;
+            _stratosphere_windowing_durations(thread_conn, windowing, &nrows2, &pgresult2);
+
+            for (int row = 0; row < nrows; row++) {
+                RWindow window;
+
+                _stratosphere_windowing_parse_duration(pgresult, row, &duration);
+
+                assert(((size_t) duration.wnum) < windowing->window0many->number);
+                
+                window = &windowing->window0many->_[duration.wnum];
+                window->time_s_start = duration.time_s_min;
+                window->time_s_end = duration.time_s_max;
+            }
+            PQclear(pgresult2);
+        }
+
+
+        { // FOR TESTING
             RWindow window = &windowing->window0many->_[0];
             double llr[4];
             stratosphere_window_llr(window, llr);

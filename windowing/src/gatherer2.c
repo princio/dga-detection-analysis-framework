@@ -253,7 +253,9 @@ void _g2_io_node_hash(FILE* file, IOReadWrite rw, G2Node* node) {
         FR(digest_stored);
 
         if (memcmp(digest_computed, digest_stored, IO_DIGEST_LENGTH)) {
-            LOG_DEBUG("[%s] index %ld digests not correspond.", g2_id_names[node->g2->id], node->index, digest_stored, digest_computed);
+            LOG_DEBUG("[%s] index %ld digests not correspond.", g2_id_names[node->g2->id], node->index);
+            printf("[%s] index %ld digests not correspond.", g2_id_names[node->g2->id], node->index);
+            assert(0);
         } else {
             LOG_DEBUG("[%s] index %ld digests correspond.", g2_id_names[node->g2->id], node->index);
         }

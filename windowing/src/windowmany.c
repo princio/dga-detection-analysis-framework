@@ -198,7 +198,8 @@ void windowmany_hash_update(SHA256_CTX* sha, RWindowMany a) {
         G2_IO_HASH_UPDATE(a->_[w]->fn_req_min);
         G2_IO_HASH_UPDATE(a->_[w]->fn_req_max);
 
-        G2_IO_HASH_UPDATE_DOUBLE(a->_[w]->duration);
+        G2_IO_HASH_UPDATE_DOUBLE(a->_[w]->time_s_start);
+        G2_IO_HASH_UPDATE_DOUBLE(a->_[w]->time_s_end);
     }
 }
 
