@@ -341,7 +341,7 @@ typedef uint32_t DetectionValue;
 typedef DetectionValue DetectionPN[2];
 
 
-#define N_WHITELISTINGRANK 5
+#define N_WHITELISTINGRANK 4
 
 typedef enum WhitelistingRank {
     WHITELISTINGRANK_100,

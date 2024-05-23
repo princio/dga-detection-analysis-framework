@@ -15,7 +15,7 @@
 const double WApplyDNBad_Values[N_DETBOUND] = { 0, 0.1, 0.25, 0.5, 0.9, 1.1  };
 
 // const size_t WhitelistingRank_Values[N_WHITELISTINGRANK] = { 0, 1000, 10000, 100000, 1000000 };
-const size_t WhitelistingRank_Values[N_WHITELISTINGRANK] = { 0, 10, 15, 50, 100 };
+const size_t WhitelistingRank_Values[N_WHITELISTINGRANK] = { 0, 10, 15, 50 };
 
 void wapply_grouped_run(WApply* wapply, DNSMessageGrouped* message, Config* config) {
     int whitelistened;
