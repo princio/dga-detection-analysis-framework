@@ -334,37 +334,47 @@ void* _stratosphere_windowing_apply_consumer(void* argsvoid) {
         swing_queue_windowing* qm = _swing_queue_dequeue(args->queue);
         if (qm == NULL) break;
 
-        PGresult* pgresult;
-        int nrows;
         DNSMessageWindowing message;
         RWindowing windowing;
 
-        pgresult = NULL;
-        nrows = 0;
         windowing = qm->windowing;
 
-        _stratosphere_windowing_fetch(thread_conn, windowing, &nrows, &pgresult);
+        {
+            PGresult* pgresult;
+            int nrows;
 
-        assert(nrows > 0);
+            pgresult = NULL;
+            nrows = 0;
 
-        for (int row = 0; row < nrows; row++) {
-            _stratosphere_windowing_parse_message(pgresult, row, &message);
+            _stratosphere_windowing_fetch(thread_conn, windowing, &nrows, &pgresult);
 
-            const RWindow window = &windowing->window0many->_[message.wnum];
+            assert(nrows > 0);
 
-            window0many_updatewindow(window, &message.message);
+            for (int row = 0; row < nrows; row++) {
+                _stratosphere_windowing_parse_message(pgresult, row, &message);
 
-            for (size_t idxconfig = 0; idxconfig < configsuite.configs.number; idxconfig++) {
-                wapply_grouped_run(&window->applies._[idxconfig], &message.message, &configsuite.configs._[idxconfig]);
-                window->n_message++;
+                const RWindow window = &windowing->window0many->_[message.wnum];
+
+                window0many_updatewindow(window, &message.message);
+
+                for (size_t idxconfig = 0; idxconfig < configsuite.configs.number; idxconfig++) {
+                    wapply_grouped_run(&window->applies._[idxconfig], &message.message, &configsuite.configs._[idxconfig]);
+                    window->n_message++;
+                }
             }
+            PQclear(pgresult);
         }
 
+
         {
-            PGresult* pgresult2;
-            int nrows2;
             DNSMessageDuration duration;
-            _stratosphere_windowing_durations(thread_conn, windowing, &nrows2, &pgresult2);
+            PGresult* pgresult;
+            int nrows;
+
+            pgresult = NULL;
+            nrows = 0;
+
+            _stratosphere_windowing_durations(thread_conn, windowing, &nrows, &pgresult);
 
             for (int row = 0; row < nrows; row++) {
                 RWindow window;
@@ -377,7 +387,7 @@ void* _stratosphere_windowing_apply_consumer(void* argsvoid) {
                 window->time_s_start = duration.time_s_min;
                 window->time_s_end = duration.time_s_max;
             }
-            PQclear(pgresult2);
+            PQclear(pgresult);
         }
 
 
@@ -395,7 +405,6 @@ void* _stratosphere_windowing_apply_consumer(void* argsvoid) {
             }
         }
 
-        PQclear(pgresult);
         free(qm);
     }
 

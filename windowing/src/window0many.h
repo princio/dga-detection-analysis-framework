@@ -59,4 +59,6 @@ RWindowMany window0many_create(size_t);
 
 void window0many_updatewindow(RWindow window, DNSMessageGrouped* message);
 
+void window0many_tocsv(FILE* file);
+
 #endif

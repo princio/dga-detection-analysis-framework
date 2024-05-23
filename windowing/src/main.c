@@ -135,7 +135,7 @@ int main (int argc, char* argv[]) {
     if (argc == 2) {
         sprintf(rootdir, "%s", argv[1]);
     } else {
-        sprintf(rootdir, "/home/princio/Desktop/results/dns2_2/%s/%ld/%s/", dataset, wsize, configs_tiny ? "tiny" : "full"); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
+        sprintf(rootdir, "/home/princio/Desktop/results/dns_ml/%s/%ld/%s/", dataset, wsize, configs_tiny ? "tiny" : "full"); //, wsize, nsources, (max_configs ? max_configs : pg.max_size));
     }
 
     io_setdir(rootdir);
@@ -234,6 +234,10 @@ int main (int argc, char* argv[]) {
     } else {
         g2_io_all(IO_READ);
     }
+
+    FILE* fp = fopen("/home/princio/Desktop/windowing windows/windows.csv", "w");
+    window0many_tocsv(fp);
+    fclose(fp);
 
     {
         FILE* fp = fopen("/tmp/detections.csv", "w");
