@@ -328,9 +328,14 @@ void _stratosphere_add(char dataset[100], size_t limit) {
         " pcap.dataset = '%s' AND "
         " FNREQ_MAX > 0 "
         " ORDER BY qr ASC "
-        // "LIMIT 3 "
+    #ifdef DEBUG_TEST
+        "LIMIT %d"
+    #endif
         ,
         dataset
+    #ifdef DEBUG_TEST
+        , DEBUG_TEST_STRATOSPHERE_SOURCE_LIMIT
+    #endif
     );
 
     pgresult = PQexec(conn, sql);

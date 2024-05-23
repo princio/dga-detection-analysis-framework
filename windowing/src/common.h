@@ -16,6 +16,9 @@
 
 #define BENCHMARKING
 
+#define DEBUG_TEST 1
+#define DEBUG_TEST_STRATOSPHERE_SOURCE_LIMIT 5
+
 #define DELLINE "\033[A\033[2K"
 #define DELCHARS(N) { for (int i = 0; i < N; i++) { printf("\b"); }  }
 

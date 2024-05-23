@@ -37,6 +37,7 @@
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 ConfigSuite configsuite;
 MANY(Performance) windowing_thchooser;
@@ -142,6 +143,12 @@ int main (int argc, char* argv[]) {
     int compute = 1;
     
     g2_init();
+
+#ifdef DEBUG_TEST
+    printf("##### DEBUG MODE ######\n");
+    printf("\t SOURCE LIMITED TO %d\n", DEBUG_TEST_STRATOSPHERE_SOURCE_LIMIT);
+    sleep(1);
+#endif
 
     if (g2_io_call(G2_WING, IO_READ)) {
         printf("Computing windowing...\n");
