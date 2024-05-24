@@ -1,5 +1,7 @@
 **/__pycache__/**
 
+**/.ipynb_checkpoints/**
+
 venv
 
 outdir/
@@ -55,3 +57,4 @@ pslregex2/python/.~lock.psllist.csv#
 asset/psl_list/data/flashstart/dataset.txt
 asset/psl_list/data/suffixies/public_suffix_list.dat
 asset/whitelisting/top10m.tar.gz
+.DS_Store
