@@ -1,17 +1,29 @@
+from cgi import test
+import enum
+import math
+from os import name
+import pickle
+from typing import Dict, List
+import warnings
 import pandas as pd
+from dataclasses import dataclass
+from mlxtend.feature_selection import SequentialFeatureSelector
+from sklearn.metrics import confusion_matrix, make_scorer
+from sklearn.model_selection import RandomizedSearchCV, train_test_split, cross_validate, StratifiedKFold, cross_val_predict
+import numpy as np
 
 csv = None
 
 label_col = ('-',      'source',             'mc')
 
 features_cols = [
-    (  '-',           '-',      'n_message'),
+    # (  '-',           '-',      'n_message'),
     
-    (  '-',           '-',     'fn_req_min'),
-    (  '-',           '-',     'fn_req_max'),
+    # (  '-',           '-',     'fn_req_min'),
+    # (  '-',           '-',     'fn_req_max'),
     
-    (  '-',           '-',   'time_s_start'),
-    (  '-',           '-',     'time_s_end'),
+    # (  '-',           '-',   'time_s_start'),
+    # (  '-',           '-',     'time_s_end'),
     (  '-',           '-',       'duration'),
     
     (  '-',           '-',             'qr'),
@@ -80,10 +92,197 @@ features_cols = [
     ('llr',     'PRIVATE',             '1000000')
 ]
 
-def load_dataset():
-    global csv
-    if csv is None:
-        csv = pd.read_csv("./windows.csv", header=[0,1,2])
-        csv[('-', '-', 'duration')] = csv[('-', '-', 'time_s_end')] - csv[('-', '-', 'time_s_start')]
+
+class DatasetFlags(enum.Flag):
+    ALL = enum.auto()
+    ONLY_1M = enum.auto()
+    ONLY_TLD = enum.auto()
+
+class Dataset:
+    def __init__(self):
+        
+        df = pd.read_csv("./windows.csv", header=[0,1,2], index_col=0)
+
+        cols = []
+        for col in df.columns:
+            col = list(col)
+            if col[0] == "eps":
+                col[2] = col[2][8:13] # [1:6]
+            cols.append("_".join([a for a in col if a != "-"]))
+            pass
+        df.columns = cols
+
+        df["duration"] = df["time_s_end"] - df["time_s_start"]
+        df["time_s_start_norm"] = df.groupby("source_id")["time_s_start"].transform(lambda x: x - x.min())
+        df["time_s_end_norm"] = df["time_s_start_norm"] + df["duration"]
+
+        self.df = df
+
+        self.DAY_SEC = 24 * 60 * 60
         pass
-    return csv[features_cols].copy(), csv[label_col].copy()
+     
+    def feature(self, flags: DatasetFlags = DatasetFlags.ALL):
+        df = self.df[features_cols].copy()
+        if DatasetFlags.ALL in flags:
+            return df
+        else:
+            df = self.df
+            if DatasetFlags.ONLY_1M in flags:
+                tmp = []
+                for col in df.columns:
+                    if col[0] == 'llr' and col[2] == '1000000':
+                        tmp.append(col)
+                df = df[tmp]
+                pass
+
+            if DatasetFlags.ONLY_TLD in flags:
+                tmp = []
+                for col in df.columns:
+                    if col[0] == 'llr' and col[1] == 'TLD':
+                        tmp.append(col)
+                df = df[tmp]
+                pass
+
+        return df.copy()
+    
+    def label(self):
+        return self.df[label_col].copy()
+    
+    def slot(self, SEC_PER_SLOT = 1 * 60 * 60):
+        self.SEC_PER_SLOT = SEC_PER_SLOT
+        self.SLOTS_PER_DAY = self.DAY_SEC / SEC_PER_SLOT
+
+        self.df["slot"] =  np.floor(self.df["time_s_end_norm"] / SEC_PER_SLOT)
+        pass
+    
+    def slots(self, days=5):
+        return self.SLOTS_PER_DAY * days
+
+    def slot_value_counts(self, columns: List):
+        return self.df[columns + [ "slot"]].reset_index(drop=True).value_counts().unstack().T.fillna(0)
+    
+    
+    def slot_sum(self, columns: List, groups: List, days=-1):
+        df = self.df.copy()
+        if days > 0:
+            df = df[df["slot"] < self.SLOTS_PER_DAY * days]
+            pass
+        tmp = df[columns + ["slot"]].groupby(groups + ["slot"]).sum()
+        # for _ in range(len(groups)):
+        #     tmp.reset_index(level=0, inplace=True)
+        return tmp.unstack().T.fillna(0)
+    
+    def th(self, th, nn):
+        cols = [ col for col in self.df.columns if col.startswith("eps_%s" % nn)]
+
+        n_cols = [ col for col in cols if float(col.split("_")[2]) <= th]
+        p_cols = [ col for col in cols if float(col.split("_")[2]) > th]
+
+        self.df["neg"] = self.df[n_cols].sum(axis=1)
+        self.df["pos"] = self.df[p_cols].sum(axis=1)
+        pass
+
+
+class XY:
+    def __init__(self):
+        self.X = np.ndarray(2)
+        self.Y = np.ndarray(2)
+    pass
+
+class TT:
+    def __init__(self):
+        self.Train = XY()
+        self.Test = XY()
+
+    def split(self, dataset, label, test_size):
+            tmp = train_test_split(dataset, label, test_size=test_size)
+
+            self.Train.X = tmp[0]
+            self.Test.X = tmp[1]
+            self.Train.Y = tmp[2]
+            self.Test.Y = tmp[3]
+
+            for a in range(4):
+                 print(tmp[a].shape)
+
+            if self.Train.X.shape[0] != self.Train.Y.shape[0]:
+                 raise Exception("Train sizes not match: %s != %s" % (self.Train.X.shape[0], self.Train.Y.shape[0]))
+            
+            if self.Test.X.shape[0] != self.Test.Y.shape[0]:
+                 raise Exception("Test sizes not match: %s != %s" % (self.Test.X.shape[0], self.Test.Y.shape[0]))
+            
+            if self.Train.X.shape[0] == self.Test.X.shape[0]:
+                 raise Exception("Train/Test X features not match: %s != %s" % (self.Train.X.shape, self.Test.X.shape))
+            
+            pass
+    pass
+
+
+
+def fpr(y, y_pred):
+    false_positives = (y_pred[y == 0] > 0).sum()
+    return false_positives / (y == 0).shape[0]
+
+def fp(y, y_pred):
+    return (y_pred[y == 0] > 0).sum()
+    
+def cm(y, y_pred):
+    cm = confusion_matrix(y, y_pred)
+    return { 'tn': cm[0, 0], 'fp': cm[0, 1], 'fn': cm[1, 0], 'tp': cm[1, 1] }
+
+@dataclass
+class Scoring:
+    FPR = make_scorer(fpr, greater_is_better=True)
+    ROC_AUC = "roc_auc"
+    pass
+
+class Trainer:
+    def __init__(self, dataset: Dataset):
+        self.dataset = dataset
+        pass
+
+    def save(self, model, filename):
+        pickle.dump(model, open(filename, 'wb'))
+        pass
+
+    def load(self, filename):
+        return pickle.load(open(filename, 'rb'))
+
+    def ff(self, model, scorer, flags: DatasetFlags, cv=5, test_size=0.8):
+        xy = TT()
+
+        xy.split(self.dataset.feature(flags), self.dataset.label(), test_size=test_size)
+
+        scorer = make_scorer(fpr, greater_is_better=True)
+        sfs_fpr = SequentialFeatureSelector(
+            model, 
+            cv=cv,
+            forward=False, 
+            verbose=2,
+            k_features=(1, xy.Train.X.shape[1]),
+            scoring=scorer)
+
+        with warnings.catch_warnings():
+            warnings.filterwarnings("ignore")
+            sfs_fpr = sfs_fpr.fit(xy.Train.X, xy.Train.Y)
+
+        return sfs_fpr
+
+    def stratifiedkfold(self, model, flags: DatasetFlags, n_splits=5, scoring = {"prec_macro": 'precision_macro', "fpr_macro": make_scorer(fpr)}):
+        skf = StratifiedKFold(n_splits=n_splits, shuffle=True)
+
+        scoring = {
+            "prec_macro": 'precision_macro',
+            "fpr_macro": Scoring.FPR,
+            # "fp": make_scorer(fp),
+            # "cm": make_scorer(cm)
+        }
+
+        return cross_validate(
+            model,
+            self.dataset.feature(flags),
+            self.dataset.label(),
+            cv=skf,
+            scoring=scoring)
+    
+    
