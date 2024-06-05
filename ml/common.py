@@ -1,6 +1,4 @@
-from cgi import test
 import enum
-import math
 from os import name
 import pickle
 from typing import Dict, List
@@ -8,9 +6,11 @@ import warnings
 import pandas as pd
 from dataclasses import dataclass
 from mlxtend.feature_selection import SequentialFeatureSelector
+import psycopg2
 from sklearn.metrics import confusion_matrix, make_scorer
 from sklearn.model_selection import RandomizedSearchCV, train_test_split, cross_validate, StratifiedKFold, cross_val_predict
 import numpy as np
+from sqlalchemy import create_engine
 
 csv = None
 
@@ -98,6 +98,100 @@ class DatasetFlags(enum.Flag):
     ONLY_1M = enum.auto()
     ONLY_TLD = enum.auto()
 
+
+@dataclass
+class Database:
+    uri = f"postgresql+psycopg2://postgres:@localhost:5432/dns_mac"
+
+    def __init__(self):
+        self.engine = create_engine(self.uri)
+        self.conn = self.engine.connect()
+        pass
+
+
+class Slot:
+    def __init__(self, db: Database, SEC_PER_SLOT, TH, DATASET="CTU-13"):
+        self.db = db
+        self.SEC_PER_SLOT = SEC_PER_SLOT
+        self.SLOTS_PER_DAY = (24 * 60 * 60) / SEC_PER_SLOT
+        self.HOUR_PER_SLOT = SEC_PER_SLOT / (60 * 60)
+        self.TH = TH
+        self.DATASET = DATASET
+        self.df = pd.read_sql(f"""
+WITH WHITELIST AS (SELECT * FROM WHITELIST_DN WHERE WHITELIST_ID = 1),
+DN_NN1 AS (SELECT * FROM DN_NN WHERE NN_ID = 1),
+DN_NN2 AS (SELECT * FROM DN_NN WHERE NN_ID = 2),
+DN_NN3 AS (SELECT * FROM DN_NN WHERE NN_ID = 3),
+DN_NN4 AS (SELECT * FROM DN_NN WHERE NN_ID = 4),
+PCAPMW AS (SELECT PCAP.ID, DGA FROM PCAP JOIN MALWARE ON PCAP.MALWARE_ID = MALWARE.ID WHERE PCAP.DATASET='{DATASET}'),
+MESSAGES AS (
+  SELECT 
+    __M.DN_ID,
+    __M.PCAP_ID, 
+    FLOOR(__M.TIME_S_TRANSLATED / ({SEC_PER_SLOT})) AS SLOTNUM, 
+    COUNT(*) AS QR,
+    SUM(CASE WHEN __M.IS_R IS FALSE THEN 1 ELSE 0 END) AS Q,
+    SUM(CASE WHEN __M.IS_R IS TRUE THEN 1 ELSE 0 END) AS R,
+    SUM(CASE WHEN __M.IS_R IS TRUE AND RCODE = 3 THEN 1 ELSE 0 END ) AS NX
+  FROM
+      MESSAGE __M
+  GROUP BY
+    __M.DN_ID,
+    __M.PCAP_ID,
+    SLOTNUM
+)
+SELECT
+  M.PCAP_ID,
+  PCAPMW.DGA,
+  M.SLOTNUM,
+  SUM(CASE WHEN WHITELIST.RANK_BDN > 1000000 THEN 1 ELSE 0 END) AS RANK_BDN,
+  COUNT(DISTINCT M.DN_ID) AS U,
+  SUM(M.QR) AS QR,
+  SUM(M.Q) AS Q,
+  SUM(M.R) AS R,
+  SUM(M.NX) AS NX,
+  SUM(CASE WHEN DN_NN1.VALUE <= {TH} THEN 1 ELSE 0 END) AS NEG_NN1,
+  SUM(CASE WHEN DN_NN2.VALUE <= {TH} THEN 1 ELSE 0 END) AS NEG_NN2,
+  SUM(CASE WHEN DN_NN3.VALUE <= {TH} THEN 1 ELSE 0 END) AS NEG_NN3,
+  SUM(CASE WHEN DN_NN4.VALUE <= {TH} THEN 1 ELSE 0 END) AS NEG_NN4,
+  SUM(CASE WHEN DN_NN1.VALUE > {TH} THEN 1 ELSE 0 END) AS POS_NN1,
+  SUM(CASE WHEN DN_NN2.VALUE > {TH} THEN 1 ELSE 0 END) AS POS_NN2,
+  SUM(CASE WHEN DN_NN3.VALUE > {TH} THEN 1 ELSE 0 END) AS POS_NN3,
+  SUM(CASE WHEN DN_NN4.VALUE > {TH} THEN 1 ELSE 0 END) AS POS_NN4
+FROM
+  MESSAGES M
+  JOIN PCAPMW ON M.PCAP_ID = PCAPMW.ID
+  LEFT JOIN WHITELIST ON M.DN_ID = WHITELIST.DN_ID
+  JOIN DN_NN1 ON M.DN_ID = DN_NN1.DN_ID
+  JOIN DN_NN2 ON M.DN_ID = DN_NN2.DN_ID
+  JOIN DN_NN3 ON M.DN_ID = DN_NN3.DN_ID
+  JOIN DN_NN4 ON M.DN_ID = DN_NN4.DN_ID
+GROUP BY
+  M.PCAP_ID,
+  PCAPMW.DGA,
+  M.SLOTNUM
+ORDER BY M.SLOTNUM
+""", self.db.engine).astype(int)
+        pass
+
+    def value_counts(self, columns: List):
+        return self.df[columns + [ "slotnum`"]].reset_index(drop=True).value_counts().unstack().T.fillna(0)
+
+    def groupsum(self, columns: List, groups: List, days=-1):
+        df = self.df.copy()
+        if days > 0:
+            df = df[df["slotnum"] < self.SLOTS_PER_DAY * days]
+            pass
+        tmp = df[columns + ["slotnum"]].groupby(groups + ["slotnum"]).sum()
+        # for _ in range(len(groups)):
+        #     tmp.reset_index(level=0, inplace=True)
+        return tmp.unstack().T.fillna(0)
+     
+
+
+
+
+
 class Dataset:
     def __init__(self):
         
@@ -158,19 +252,6 @@ class Dataset:
     def slots(self, days=5):
         return self.SLOTS_PER_DAY * days
 
-    def slot_value_counts(self, columns: List):
-        return self.df[columns + [ "slot"]].reset_index(drop=True).value_counts().unstack().T.fillna(0)
-    
-    
-    def slot_sum(self, columns: List, groups: List, days=-1):
-        df = self.df.copy()
-        if days > 0:
-            df = df[df["slot"] < self.SLOTS_PER_DAY * days]
-            pass
-        tmp = df[columns + ["slot"]].groupby(groups + ["slot"]).sum()
-        # for _ in range(len(groups)):
-        #     tmp.reset_index(level=0, inplace=True)
-        return tmp.unstack().T.fillna(0)
     
     def th(self, th, nn):
         cols = [ col for col in self.df.columns if col.startswith("eps_%s" % nn)]
@@ -181,6 +262,8 @@ class Dataset:
         self.df["neg"] = self.df[n_cols].sum(axis=1)
         self.df["pos"] = self.df[p_cols].sum(axis=1)
         pass
+
+
 
 
 class XY:
