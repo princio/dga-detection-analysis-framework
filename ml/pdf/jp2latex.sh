@@ -9,13 +9,14 @@ for f in ../book/*.ipynb; do
     bn=$(basename "$f")
     bn=${bn%.*}
 
-    jupyter nbconvert --execute --to markdown --output-dir "$out" --no-input "$f"
+    
+    TO_LATEX=True jupyter nbconvert --execute --to markdown --output-dir "$out" --no-input "$f"
 
-    markdownlint-cli2 --fix "./$out/$bn.md"
+    markdownlint-cli2 --fix "$out/$bn.md"
 
     (cd ./$out/ && pandoc -f markdown+lists_without_preceding_blankline --write=latex --output="$bn.tex" "$bn.md")
     # cat head.tex "./$out/$bn.tex" tail.tex >> "./$out/main.tex"
-    cat "./$out/$bn.tex" >> "./$out/book.tex"
+    cat "$out/$bn.tex" >> "$out/book.tex"
 done
 
 cp ../book/*.pdf "$out"
