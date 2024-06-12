@@ -2,6 +2,7 @@
 # the above tag defines encoding for this document and is for Python 2.x compatibility
 
 import re
+import sys
 
 regexs = []
 
@@ -14,7 +15,7 @@ regexs.append((r":@", r"}"))
 regexs.append((r"@q", r"["))
 regexs.append((r"q@", r"]"))
 
-with open("/Users/princio/Repo/princio/malware-detection-predict-file/ml/pdf/out/main.tex", "r") as f:
+with open(sys.argv[1], "r") as f:
     print(f.name)
     lines = f.readlines()
 
@@ -23,8 +24,8 @@ subst = r"\\\1(\2)"
 for regex in regexs:
     for line in lines:
         result = re.sub(regex[0], regex[1], line, 0, re.MULTILINE)
-        if result != line:
-            print(f"{regex[0]}|-\t\t-|{line}|-\t\t-|{result}")
+        # if result != line:
+        #     print(f"{regex[0]}|-\t\t-|{line}|-\t\t-|{result}")
 
 # print(len(lines))
 
@@ -34,7 +35,7 @@ for regex in regexs:
 text = re.sub(r"\n{2,}", r"\n", text, 0, re.MULTILINE)
 
 # if result:
-with open("/Users/princio/Repo/princio/malware-detection-predict-file/ml/pdf/out/main.tex", "w") as f:
+with open(sys.argv[1], "w") as f:
     f.write(text)
 
 # Note: for Python 2.7 compatibility, use ur"" to prefix the regex and u"" to prefix the test string and substitution.
