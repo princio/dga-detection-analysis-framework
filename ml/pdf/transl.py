@@ -3,26 +3,38 @@
 
 import re
 
-regex = r"@(label)@(.*?)@"
+regexs = []
 
-with open("./out/main.tex", "r") as f:
+# regexs.append((r"@@(begin|end)@@(.*?)@@", r"\\\1{\2}"))
+# regexs.append((r"@@(label)@@(.*?)@@", r"\\\1{\2}"))
+# regexs.append((r"@@(caption)@@(.*?)@@", r"\\\1{\2}"))
+regexs.append((r"@@", r"\\"))
+regexs.append((r"@:", r"{"))
+regexs.append((r":@", r"}"))
+regexs.append((r"@q", r"["))
+regexs.append((r"q@", r"]"))
+
+with open("/Users/princio/Repo/princio/malware-detection-predict-file/ml/pdf/out/main.tex", "r") as f:
     print(f.name)
-    test_str = "\n".join(f.readlines())
     lines = f.readlines()
 
 subst = r"\\\1(\2)"
 
-# You can manually specify the number of replacements by changing the 4th argument
-for line in lines:
-    result = re.sub(regex, subst, test_str, 0, re.MULTILINE)
-    if result:
-        print(result)
+for regex in regexs:
+    for line in lines:
+        result = re.sub(regex[0], regex[1], line, 0, re.MULTILINE)
+        if result != line:
+            print(f"{regex[0]}|-\t\t-|{line}|-\t\t-|{result}")
 
-print(len(lines))
+# print(len(lines))
 
-result = re.sub(regex, subst, test_str, 0, re.MULTILINE)
-if result:
-    with open("./out/main.tex", "w") as f:
-        f.write(result)
+text = "\n".join(lines)
+for regex in regexs:
+    text = re.sub(regex[0], regex[1], text, 0, re.MULTILINE)
+text = re.sub(r"\n{2,}", r"\n", text, 0, re.MULTILINE)
+
+# if result:
+with open("/Users/princio/Repo/princio/malware-detection-predict-file/ml/pdf/out/main.tex", "w") as f:
+    f.write(text)
 
 # Note: for Python 2.7 compatibility, use ur"" to prefix the regex and u"" to prefix the test string and substitution.
