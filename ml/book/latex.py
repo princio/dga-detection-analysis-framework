@@ -96,6 +96,8 @@ class Tables(Label):
     AVERAGE_Q = 1
     Q_PER_S = 2
     DURATION = 3
+    SLOTS = 4
+    TOTALS = 5
 
     def __init__(self, *args, **kwargs):
         self.prefix = "tab"
@@ -106,6 +108,9 @@ class Tables(Label):
 class Figures(Label):
     Q_PER_S = 0
     DURATION = 1
+    SLOTS = 2
+    SLOTS_PCAP = 3
+    SLOTS_DGA = 4
 
     def __init__(self, *args, **kwargs):
         self.prefix = "fig"
@@ -123,8 +128,8 @@ class Figure:
         pass
 
     def show(self):
-        fname = f"{self.label._}.{'pdf' if TO_LATEX else 'svg'}"
-        if TO_LATEX is False:
+        fname = f"{self.label._}.{'pdf' if is_latex() else 'svg'}"
+        if not is_latex():
             self.fig.suptitle(self.label.label())
             self.fig.text(.5, self.ycaption, self.caption, ha='center')
             # self.fig.show()

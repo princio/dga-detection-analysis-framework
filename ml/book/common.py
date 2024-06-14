@@ -175,17 +175,24 @@ ORDER BY M.SLOTNUM
         pass
 
     def value_counts(self, columns: List):
-        return self.df[columns + [ "slotnum`"]].reset_index(drop=True).value_counts().unstack().T.fillna(0)
+        return self.df[columns + [ "slotnum"]].reset_index(drop=True).value_counts().unstack().T.fillna(0)
 
-    def groupsum(self, columns: List, groups: List, days=-1):
+    def groupsum(self, column: str, use_timestamps=False, days=-1):
         df = self.df.copy()
         if days > 0:
             df = df[df["slotnum"] < self.SLOTS_PER_DAY * days]
             pass
-        tmp = df[columns + ["slotnum"]].groupby(groups + ["slotnum"]).sum()
+        tmp = df[[column] + ["slotnum"]].groupby("slotnum").sum()
+        tmp = tmp.unstack().T.fillna(0).reset_index(level=0, drop=True)
+        if use_timestamps:
+            last_row = tmp.iloc[-1]
+            tmp_shifted = tmp.shift(fill_value=0)
+            tmp = pd.concat([tmp_shifted, pd.Series([last_row], index=[tmp_shifted.shape[0]])])
+
         # for _ in range(len(groups)):
         #     tmp.reset_index(level=0, inplace=True)
-        return tmp.unstack().T.fillna(0)
+        return tmp
+
      
 
 
