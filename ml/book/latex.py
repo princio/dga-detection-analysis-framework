@@ -24,14 +24,8 @@ def pp(rows):
         dm(rows)
     return
 
-def ptime(hours):
-    if hours < 1:
-        return qq.Quantity(hours * 60, units="min").render(prec=1)
-    if hours < 24:
-        return qq.Quantity(hours, units="hr").render(prec=1)
-    if hours >= 24:
-        return qq.Quantity(hours / 24, units="days").render(prec=1)
-    return
+def ptime(v, unit="hour"):
+        return qq.Quantity(v * 60, units="min").render(prec=1)
 
 class Label(enum.Enum):
     def __init__(self, *args, **kwargs):
@@ -92,12 +86,14 @@ class Cites(enum.Enum):
     pass
 
 class Tables(Label):
-    TOTAL_Q = 0
-    AVERAGE_Q = 1
-    Q_PER_S = 2
-    DURATION = 3
-    SLOTS = 4
-    TOTALS = 5
+    TOTAL_Q = "TOTAL_Q"
+    AVERAGE_Q = "AVERAGE_Q"
+    Q_PER_S = "Q_PER_S"
+    Q_PER_S_1D = "Q_PER_S_1D"
+    DURATION = "DURATION"
+    SLOTS = "SLOTS"
+    SLOTS_U = "SLOTS_U"
+    TOTALS = "TOTALS"
 
     def __init__(self, *args, **kwargs):
         self.prefix = "tab"
@@ -111,6 +107,9 @@ class Figures(Label):
     SLOTS = 2
     SLOTS_PCAP = 3
     SLOTS_DGA = 4
+    SLOTS_PCAP_U = 5
+    SLOTS_DGA_U = 6
+    SLOTS_U = 7
 
     def __init__(self, *args, **kwargs):
         self.prefix = "fig"
