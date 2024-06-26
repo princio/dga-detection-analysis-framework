@@ -1,7 +1,9 @@
 
 from IPython.display import display, Markdown, Latex, HTML
-import enum, os
+import enum, os, pathlib
 import quantiphy as qq
+import random
+from datetime import datetime
 
 def is_latex():
     return "TO_LATEX" in os.environ
@@ -57,6 +59,7 @@ class AC(enum.Enum):
     MCFP = "Malware Capture FaciICty Project"
     PCAP = "Packet CAPture"
     CSV = "Comma Separeted Values"
+    LSTM = "Long Short-Term Memory"
     BIBO = "Bibo"
 
     def __str__(self):
@@ -110,6 +113,7 @@ class Figures(Label):
     SLOTS_PCAP_U = 5
     SLOTS_DGA_U = 6
     SLOTS_U = 7
+    SLOTS_FP = 8
 
     def __init__(self, *args, **kwargs):
         self.prefix = "fig"
@@ -124,25 +128,32 @@ class Figure:
         self.label = label
         self.caption = caption
         self.ycaption = -0.1
+        self.saved = False
+        self.now = datetime.now()
         pass
 
     def show(self):
-        fname = f"{self.label._}.{'pdf' if is_latex() else 'svg'}"
         if not is_latex():
-            self.fig.suptitle(self.label.label())
-            self.fig.text(.5, self.ycaption, self.caption, ha='center')
-            # self.fig.show()
-            self.fig.savefig(fname, bbox_inches="tight")
-            dm(f"![]({fname} \"Example\")")
+            dirpath = pathlib.Path("./images").joinpath(self.label._)
+            dirpath.mkdir(exist_ok=True)
+            fpath = dirpath.joinpath(f"{self.now.strftime("%Y%m%d_%H%M%S%f")}.{'pdf' if is_latex() else 'svg'}")
+            if not self.saved:
+                self.fig.suptitle(self.label.label())
+                self.fig.text(.5, self.ycaption, self.caption, ha='center')
+                self.fig.savefig(fpath, bbox_inches="tight")
+                pass
+            dm(f"![]({fpath} \"Example\")")
         else:
-            self.fig.savefig(fname)
+            fpath = f"{self.label._}.pdf"
+            self.fig.savefig(fpath)
             dm(f"@@begin@:figure:@")
             dm(f"@@centering")
-            dm(f"@@includegraphics@qwidth=@@textwidthq@ @:{fname}:@")
+            dm(f"@@includegraphics@qwidth=@@textwidthq@ @:{fpath}:@")
             dm(f"@@caption@:{self.caption}:@")
             dm(self.label.label())
             dm(f"@@end@:figure:@")
             pass
+        self.saved = True
         pass
 
 class Table:

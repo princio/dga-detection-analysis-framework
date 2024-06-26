@@ -108,37 +108,78 @@ class Database:
         self.conn = self.engine.connect()
         pass
 
+@dataclass(frozen=True)
+class SlotConfig:
+    SEC_PER_SLOT: int = 1 * 60 * 60
+    TH: float = 0.999
+    WL_TH: int = 10000
+    DATASET: str = "DATASET"  # Sostituisci con il tipo corretto se diverso da stringa
+    onlyfirsts: bool = False
+    WL_COL: str = "DN"
+
+    def __hash__(self):
+        return hash((self.SEC_PER_SLOT, self.TH, self.WL_TH, self.DATASET, self.onlyfirsts, self.WL_COL))
+
+    def __eq__(self, other):
+        if not isinstance(other, SlotConfig):
+            return NotImplemented
+        return (self.SEC_PER_SLOT == other.SEC_PER_SLOT and
+                self.TH == other.TH and
+                self.WL_TH == other.WL_TH and
+                self.DATASET == other.DATASET and
+                self.onlyfirsts == other.onlyfirsts and
+                self.WL_COL == other.WL_COL)
+    
+    def __str__(self):
+        return (f"SlotConfig: [SEC_PER_SLOT: {self.SEC_PER_SLOT}, TH: {self.TH}, WL_TH: {self.WL_TH}, "
+                f"DATASET: {self.DATASET}, onlyfirsts: {self.onlyfirsts}, WL_COL: {self.WL_COL}]")
+
+    def __repr__(self):
+        return self.__str__()
 
 class Slot:
-    def __init__(self, db: Database, SEC_PER_SLOT, TH, DATASET="CTU-13", onlyfirsts=False):
+    def __init__(self, db: Database, config: SlotConfig):
         self.db = db
-        self.SEC_PER_SLOT = SEC_PER_SLOT
-        self.SLOTS_PER_DAY = (24 * 60 * 60) / SEC_PER_SLOT
-        self.HOUR_PER_SLOT = SEC_PER_SLOT / (60 * 60)
-        self.TH = TH
-        self.DATASET = DATASET
-        all_or_firsts = "(SELECT DISTINCT ON (DN_ID, PCAP_ID) * FROM MESSAGE)" if onlyfirsts else "MESSAGE"
-        self.df = pd.read_sql(f"""
+        self.config = config
+        self.SEC_PER_SLOT = config.SEC_PER_SLOT
+        self.SLOTS_PER_DAY = (24 * 60 * 60) / config.SEC_PER_SLOT
+        self.HOUR_PER_SLOT = config.SEC_PER_SLOT / (60 * 60)
+        self.TH = config.TH
+        self.DATASET = config.DATASET
+        def nnjoin(s, sep=",\n"):
+            return sep.join([ s.format(i=i) for i in range(1,5) ])
+        TH = config.TH
+        WLTH = config.WL_TH
+        WL_COL = config.WL_COL
+        self.sql = f"""
 WITH WHITELIST AS (SELECT * FROM WHITELIST_DN WHERE WHITELIST_ID = 1),
 DN_NN1 AS (SELECT * FROM DN_NN WHERE NN_ID = 1),
 DN_NN2 AS (SELECT * FROM DN_NN WHERE NN_ID = 2),
 DN_NN3 AS (SELECT * FROM DN_NN WHERE NN_ID = 3),
 DN_NN4 AS (SELECT * FROM DN_NN WHERE NN_ID = 4),
-PCAPMW AS (SELECT PCAP.ID, DGA FROM PCAP JOIN MALWARE ON PCAP.MALWARE_ID = MALWARE.ID WHERE PCAP.DATASET='{DATASET}'),
+PCAPMW AS (SELECT PCAP.ID, DGA FROM PCAP JOIN MALWARE ON PCAP.MALWARE_ID = MALWARE.ID WHERE PCAP.DATASET='{config.DATASET}'),
+SUBMESSAGES AS (
+	SELECT {'DISTINCT ON (M.DN_ID, M.PCAP_ID)' if config.onlyfirsts else ''} * FROM MESSAGE AS M
+),
+SUBMESSAGES_DN AS (
+	SELECT SM.*, DN.BDN FROM SUBMESSAGES AS SM JOIN DN ON SM.DN_ID = DN.ID
+),
 MESSAGES AS (
   SELECT 
     __M.DN_ID,
-    __M.PCAP_ID, 
-    FLOOR(__M.TIME_S_TRANSLATED / ({SEC_PER_SLOT})) AS SLOTNUM, 
+    __M.PCAP_ID,
+    __M.BDN,
+    FLOOR(__M.TIME_S_TRANSLATED / ({config.SEC_PER_SLOT})) AS SLOTNUM, 
     COUNT(*) AS QR,
     SUM(CASE WHEN __M.IS_R IS FALSE THEN 1 ELSE 0 END) AS Q,
     SUM(CASE WHEN __M.IS_R IS TRUE THEN 1 ELSE 0 END) AS R,
     SUM(CASE WHEN __M.IS_R IS TRUE AND RCODE = 3 THEN 1 ELSE 0 END ) AS NX
   FROM
-      {all_or_firsts} __M
+      SUBMESSAGES_DN __M
   GROUP BY
     __M.DN_ID,
     __M.PCAP_ID,
+    __M.BDN,
     SLOTNUM
 )
 SELECT
@@ -148,33 +189,27 @@ SELECT
   P.DURATION AS D,
   PCAPMW.DGA,
   M.SLOTNUM,
-  SUM(CASE WHEN WHITELIST.RANK_BDN > 1000000 THEN 1 ELSE 0 END) AS RANK_BDN,
+  SUM(CASE WHEN WL.RANK_BDN > 1000000 THEN 1 ELSE 0 END) AS RANK_BDN,
   COUNT(DISTINCT M.DN_ID) AS U,
+  -- array_agg(DISTINCT CASE WHEN DN_NN1.VALUE > {TH} THEN M.DN_ID ELSE NULL END) AS DNU,
+  COUNT(DISTINCT M.BDN) AS BDN,
+  { nnjoin(f'COUNT(DISTINCT CASE WHEN DN_NN{{i}}.VALUE <= {TH} THEN M.BDN ELSE NULL END) AS NEG_BDN{{i}}')},
+  { nnjoin(f'COUNT(DISTINCT CASE WHEN DN_NN{{i}}.VALUE > {TH} THEN M.BDN ELSE NULL END) AS POS_BDN{{i}}')},
+  { nnjoin(f'COUNT(DISTINCT CASE WHEN WL.RANK_BDN < {WLTH} AND DN_NN{{i}}.VALUE <= {TH} THEN M.BDN ELSE NULL END) AS NEGWL_BDN{{i}}')},
+  { nnjoin(f'COUNT(DISTINCT CASE WHEN WL.RANK_BDN < {WLTH} AND DN_NN{{i}}.VALUE > {TH} THEN M.BDN ELSE NULL END) AS POSWL_BDN{{i}}')},
   SUM(M.QR) AS QR,
   SUM(M.Q) AS Q,
   SUM(M.R) AS R,
   SUM(M.NX) AS NX,
-  SUM(CASE WHEN DN_NN1.VALUE <= {TH} THEN 1 ELSE 0 END) AS NEG_NN1,
-  SUM(CASE WHEN DN_NN2.VALUE <= {TH} THEN 1 ELSE 0 END) AS NEG_NN2,
-  SUM(CASE WHEN DN_NN3.VALUE <= {TH} THEN 1 ELSE 0 END) AS NEG_NN3,
-  SUM(CASE WHEN DN_NN4.VALUE <= {TH} THEN 1 ELSE 0 END) AS NEG_NN4,
-  SUM(CASE WHEN DN_NN1.VALUE > {TH} THEN 1 ELSE 0 END) AS POS_NN1,
-  SUM(CASE WHEN DN_NN2.VALUE > {TH} THEN 1 ELSE 0 END) AS POS_NN2,
-  SUM(CASE WHEN DN_NN3.VALUE > {TH} THEN 1 ELSE 0 END) AS POS_NN3,
-  SUM(CASE WHEN DN_NN4.VALUE > {TH} THEN 1 ELSE 0 END) AS POS_NN4,
-  SUM(CASE WHEN WHITELIST.RANK_BDN <= 1000000 THEN 1 ELSE (CASE WHEN DN_NN1.VALUE <= 0.5 THEN 1 ELSE 0 END) END) AS NEGWL_NN1,
-  SUM(CASE WHEN WHITELIST.RANK_BDN <= 1000000 THEN 1 ELSE (CASE WHEN DN_NN2.VALUE <= 0.5 THEN 1 ELSE 0 END) END) AS NEGWL_NN2,
-  SUM(CASE WHEN WHITELIST.RANK_BDN <= 1000000 THEN 1 ELSE (CASE WHEN DN_NN3.VALUE <= 0.5 THEN 1 ELSE 0 END) END) AS NEGWL_NN3,
-  SUM(CASE WHEN WHITELIST.RANK_BDN <= 1000000 THEN 1 ELSE (CASE WHEN DN_NN4.VALUE <= 0.5 THEN 1 ELSE 0 END) END) AS NEGWL_NN4,
-  SUM(CASE WHEN WHITELIST.RANK_BDN <= 1000000 THEN 0 ELSE (CASE WHEN DN_NN1.VALUE > 0.5 THEN 1 ELSE 0 END) END) AS POSWL_NN1,
-  SUM(CASE WHEN WHITELIST.RANK_BDN <= 1000000 THEN 0 ELSE (CASE WHEN DN_NN2.VALUE > 0.5 THEN 1 ELSE 0 END) END) AS POSWL_NN2,
-  SUM(CASE WHEN WHITELIST.RANK_BDN <= 1000000 THEN 0 ELSE (CASE WHEN DN_NN3.VALUE > 0.5 THEN 1 ELSE 0 END) END) AS POSWL_NN3,
-  SUM(CASE WHEN WHITELIST.RANK_BDN <= 1000000 THEN 0 ELSE (CASE WHEN DN_NN4.VALUE > 0.5 THEN 1 ELSE 0 END) END) AS POSWL_NN4
+  { nnjoin(f'SUM(CASE WHEN DN_NN{{i}}.VALUE <= {TH} THEN M.Q ELSE 0 END) AS NEG_DN{{i}}') },
+  { nnjoin(f'SUM(CASE WHEN DN_NN{{i}}.VALUE > {TH} THEN M.Q ELSE 0 END) AS POS_DN{{i}}') },
+  { nnjoin(f'SUM(CASE WHEN WL.RANK_{WL_COL} <= {WLTH} THEN M.Q ELSE (CASE WHEN DN_NN{{i}}.VALUE <= {TH} THEN M.Q ELSE 0 END) END) AS NEGWL_DN{{i}}') },
+  { nnjoin(f'SUM(CASE WHEN WL.RANK_{WL_COL} <= {WLTH} THEN 0 ELSE (CASE WHEN DN_NN{{i}}.VALUE > {TH} THEN M.Q ELSE 0 END) END) AS POSWL_DN{{i}}') }
 FROM
   MESSAGES M
   JOIN PCAP P ON M.PCAP_ID = P.ID
   JOIN PCAPMW ON M.PCAP_ID = PCAPMW.ID
-  LEFT JOIN WHITELIST ON M.DN_ID = WHITELIST.DN_ID
+  LEFT JOIN WHITELIST_DN AS WL ON M.DN_ID = WL.DN_ID
   JOIN DN_NN1 ON M.DN_ID = DN_NN1.DN_ID
   JOIN DN_NN2 ON M.DN_ID = DN_NN2.DN_ID
   JOIN DN_NN3 ON M.DN_ID = DN_NN3.DN_ID
@@ -187,7 +222,8 @@ GROUP BY
   PCAPMW.DGA,
   M.SLOTNUM
 ORDER BY M.SLOTNUM
-""", self.db.engine).astype(int)
+"""
+        self.df = pd.read_sql(self.sql, self.db.engine).astype(int)
     pass
 
     def value_counts(self, columns: List):
