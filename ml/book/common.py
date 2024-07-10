@@ -15,8 +15,9 @@ from typing import Optional, List
 
 
 class DATASETS(enum.StrEnum):
-    CTU13="CTU-13"
-    CTUSME="CTU-SME-13"
+    CTU13="ctu13"
+    CTUSME="ctusme"
+    INFECTED_PLUS_DGA="infectedplusdga"
     def __str__(self):
         return self.value
     def __repr(self):
@@ -44,7 +45,7 @@ class MWTYPE(enum.StrEnum):
 class SlotConfig:
     dataset: DATASETS = DATASETS.CTU13  # Sostituisci con il tipo corretto se diverso da stringa
     sps: int = 1 * 60 * 60
-    onlyfirsts: Optional[str] = False
+    onlyfirsts: Optional[str] = None
     th: float = 0.999
     wl_th: int = 10000
 
@@ -72,117 +73,84 @@ class SlotConfig:
         return self.__str__()
 
 
-def build_sql(c: SlotConfig, slotnum: Optional[int] = None, mwtype: Optional[MWTYPE] = None, with_dn = False):
+def build_sql(c: SlotConfig, slotnum: Optional[int] = None, mwtype: Optional[int] = None, with_dn = False):
 
+    if c.dataset != DATASETS.CTU13 and c.dataset != DATASETS.INFECTED_PLUS_DGA:
+        raise NotImplementedError()
     def nnjoin(s, sep=",\n\t"):
         return sep.join([ s.format(i=i) for i in range(1,5) ])
 
-    messages_select = []
-    messages_where = []
+    messages_select = f"message_{c.dataset}_slot"
     if c.onlyfirsts:
         if c.onlyfirsts == "pcap":
-            messages_select.append("DISTINCT ON (M.DN_ID, M.PCAP_ID) M.*")
+            messages_select = f"message_{c.dataset}_firstbypcap"
         elif c.onlyfirsts == "global":
-            messages_select.append("DISTINCT ON (M.DN_ID) M.*")
-        else:
-            messages_select.append("M.*")
-    else:
-        messages_select.append("M.*")
-    dn_agg_neg = ""
-    dn_agg_pos = ""
-    if with_dn:
-        messages_select.append("DN.DN")
-        dn_agg_neg = nnjoin(f'array_remove(array_agg(CASE WHEN DN_NN{{i}}.VALUE <= {c.th} THEN M.DN ELSE NULL END), NULL) AS DNAGG_NN{{i}}_NEG' )
-        dn_agg_pos = nnjoin(f'array_remove(array_agg(CASE WHEN DN_NN{{i}}.VALUE > {c.th} THEN M.DN ELSE NULL END), NULL) AS DNAGG_NN{{i}}_POS' )
-        dn_agg_neg = f"{dn_agg_neg},"
-        dn_agg_pos = f"{dn_agg_pos},"
-    messages_select.append("DN.BDN")
-        
+            messages_select = f"message_{c.dataset}_firstglobal"
+    final_where = []
     if slotnum is not None:
-        messages_where.append("FLOOR(TIME_S_TRANSLATED / (%d)) = %d" % (c.sps, slotnum))
+        final_where.append("SLOTNUM = %d" % (slotnum))
         pass
     if mwtype:
-        messages_where.append("(M.STATUS).MALWARE_TYPE='%s'" % (mwtype))
+        final_where.append("DGA=%s" % (mwtype))
         pass
-    if len(messages_where):
-        messages_where = "WHERE " + " AND ".join(messages_where)
+    if len(final_where):
+        final_where = "WHERE " + " AND ".join(final_where)
     else:
-        messages_where = ""
+        final_where = ""
         
-    submessages = f"""
+    slots = f"""
 SELECT
-    { ",".join(messages_select) }
+	FLOOR(M.TIME_S_TRANSLATED / {c.sps}) AS SLOTNUM,
+
+	PMW.DGA AS PCAP_DGA,
+    array_position(ARRAY['no-malware', 'non-dga', 'dga']::malware_type[], (M.status).malware_type) - 1 AS DGA,
+    (M.status).PCAP_STATUS,
+
+	COUNT(DISTINCT PCAP_ID) AS PCAPS_COUNT,
+	ARRAY_AGG(DISTINCT PCAP_ID) AS PCAPS,
+
+	SUM(
+		CASE
+			WHEN RANK_BDN > {c.wl_th} THEN 1
+			ELSE 0
+		END
+	) AS RANK_BDN,
+
+	{ nnjoin(f'COUNT(DISTINCT CASE WHEN EPS{{i}} > {c.th} THEN M.PCAP_ID ELSE NULL END) AS PCAPS_COUNT_POS{{i}}') },
+	{ nnjoin(f'ARRAY_AGG(DISTINCT CASE WHEN EPS{{i}} > {c.th} THEN M.PCAP_ID ELSE NULL END) AS PCAPS_POS{{i}}') },
+    
+	COUNT(*) AS COUNT,
+	SUM(CASE WHEN M.IS_R THEN 0 ELSE 1 END) AS Q,
+	SUM(CASE WHEN M.IS_R THEN 1 ELSE 0 END) AS R,
+	COUNT(DISTINCT DN_ID) AS U,
+	{ nnjoin(f'SUM(CASE WHEN EPS{{i}} <= {c.th} THEN 1 ELSE NULL END) AS NEG{{i}}') },
+	{ nnjoin(f'SUM(CASE WHEN EPS{{i}} > {c.th} THEN 1 ELSE NULL END) AS POS{{i}}') },
+
+    -- add materialized view with just queries, nx, responses with first_by_(pcap/global).
+
+	{ nnjoin(f'SUM(CASE WHEN RANK_{c.wl_col} <= {c.wl_th} OR  EPS{{i}} <= {c.th} THEN 1 ELSE 0 END) AS NEG{{i}}_WL') },
+	{ nnjoin(f'SUM(CASE WHEN RANK_{c.wl_col} >  {c.wl_th} AND EPS{{i}} >  {c.th} THEN 1 ELSE 0 END) AS POS{{i}}_WL') },
+
+	{ nnjoin(f'ARRAY_REMOVE(ARRAY_AGG(CASE WHEN EPS{{i}} <= {c.th} THEN DN ELSE NULL END), NULL) AS NEG{{i}}_DNAGG') },
+	{ nnjoin(f'ARRAY_REMOVE(ARRAY_AGG(CASE WHEN EPS{{i}} > {c.th} THEN DN ELSE NULL END), NULL) AS POS{{i}}_DNAGG') }
+
+	{ '' if True else '' if True else nnjoin(f'SUM(CASE WHEN EPS{{i}} <= {c.th} THEN M.Q ELSE NULL END) AS NEG{{i}}_Q') }
+	{ '' if True else nnjoin(f'SUM(CASE WHEN EPS{{i}} > {c.th} THEN M.Q ELSE NULL END) AS POS{{i}}_Q') }
+	{ '' if True else nnjoin(f'SUM(CASE WHEN EPS{{i}} <= {c.th} THEN M.R ELSE NULL END) AS NEG{{i}}_R') }
+	{ '' if True else nnjoin(f'SUM(CASE WHEN EPS{{i}} > {c.th} THEN M.R ELSE NULL END) AS POS{{i}}_R') }
+    { '' if True else nnjoin(f'SUM(CASE WHEN RANK_{c.wl_col} <= {c.wl_th} OR  EPS{{i}} <= {c.th} THEN M.Q ELSE 0 END) AS NEG{{i}}_Q_WL') }
+	{ '' if True else nnjoin(f'SUM(CASE WHEN RANK_{c.wl_col} >  {c.wl_th} AND EPS{{i}} >  {c.th} THEN M.Q ELSE 0 END) AS POS{{i}}_Q_WL') }
+	{ '' if True else nnjoin(f'SUM(CASE WHEN RANK_{c.wl_col} <= {c.wl_th} OR  EPS{{i}} <= {c.th} THEN M.R ELSE 0 END) AS NEG{{i}}_R_WL') }
+	{ '' if True else nnjoin(f'SUM(CASE WHEN RANK_{c.wl_col} >  {c.wl_th} AND EPS{{i}} >  {c.th} THEN M.R ELSE 0 END) AS POS{{i}}_R_WL') }
+
 FROM
-    MESSAGE AS M JOIN DN ON M.DN_ID = DN.ID
-    { messages_where }
+	{messages_select} AS M
+	JOIN pcap_malware pmw on M.pcap_id=pmw.id
+GROUP BY SLOTNUM, PCAP_DGA, (M.status).malware_type, (M.status).PCAP_STATUS, PCAP_STATUS
 """
-    sql = f"""
-WITH
-WHITELIST AS (SELECT * FROM WHITELIST_DN WHERE WHITELIST_ID = 1),
-{ nnjoin('DN_NN{i} AS (SELECT * FROM DN_NN WHERE NN_ID = {i})') },
-PCAPMW AS (SELECT PCAP.ID, DGA FROM PCAP JOIN MALWARE ON PCAP.MALWARE_ID = MALWARE.ID WHERE PCAP.DATASET='{c.dataset}'),
-SUBMESSAGES AS ({submessages}),
-MESSAGES AS (
-  SELECT 
-    __M.DN_ID,
-    __M.PCAP_ID,
-    __M.BDN,
-    { '__M.DN,' if with_dn else '' }
-    FLOOR(__M.TIME_S_TRANSLATED / ({c.sps})) AS SLOTNUM, 
-    COUNT(*) AS QR,
-    SUM(CASE WHEN __M.IS_R IS FALSE THEN 1 ELSE 0 END) AS Q,
-    SUM(CASE WHEN __M.IS_R IS TRUE THEN 1 ELSE 0 END) AS R,
-    SUM(CASE WHEN __M.IS_R IS TRUE AND RCODE = 3 THEN 1 ELSE 0 END ) AS NX
-  FROM
-      SUBMESSAGES __M
-  GROUP BY
-    __M.DN_ID,
-    __M.PCAP_ID,
-    __M.BDN,
-    { '__M.DN,' if with_dn else '' }
-    SLOTNUM
-)
-SELECT
-  M.PCAP_ID,
-  P.Q AS QQ,
-  P.U AS UU,
-  P.DURATION AS D,
-  PCAPMW.DGA,
-  M.SLOTNUM,
-  SUM(CASE WHEN WL.RANK_BDN > 1000000 THEN 1 ELSE 0 END) AS RANK_BDN,
-  COUNT(DISTINCT M.DN_ID) AS U,
-  { dn_agg_neg }
-  { dn_agg_pos }
-  -- array_agg(DISTINCT CASE WHEN DN_NN1.VALUE > {c.th} THEN M.DN_ID ELSE NULL END) AS DNU,
-  COUNT(DISTINCT M.BDN) AS BDN,
-  { nnjoin(f'COUNT(DISTINCT CASE WHEN DN_NN{{i}}.VALUE <= {c.th} THEN M.BDN ELSE NULL END) AS NEG_BDN{{i}}')},
-  { nnjoin(f'COUNT(DISTINCT CASE WHEN DN_NN{{i}}.VALUE > {c.th} THEN M.BDN ELSE NULL END) AS POS_BDN{{i}}')},
-  { nnjoin(f'COUNT(DISTINCT CASE WHEN WL.RANK_BDN < {c.wl_th} AND DN_NN{{i}}.VALUE <= {c.th} THEN M.BDN ELSE NULL END) AS NEGWL_BDN{{i}}')},
-  { nnjoin(f'COUNT(DISTINCT CASE WHEN WL.RANK_BDN < {c.wl_th} AND DN_NN{{i}}.VALUE > {c.th} THEN M.BDN ELSE NULL END) AS POSWL_BDN{{i}}')},
-  SUM(M.QR) AS QR,
-  SUM(M.Q) AS Q,
-  SUM(M.R) AS R,
-  SUM(M.NX) AS NX,
-  { nnjoin(f'SUM(CASE WHEN DN_NN{{i}}.VALUE <= {c.th} THEN 1 ELSE 0 END) AS NEG_DN{{i}}') },
-  { nnjoin(f'SUM(CASE WHEN DN_NN{{i}}.VALUE > {c.th} THEN 1 ELSE 0 END) AS POS_DN{{i}}') },
-  { nnjoin(f'SUM(CASE WHEN WL.RANK_{c.wl_col} <= {c.wl_th} THEN 1 ELSE (CASE WHEN DN_NN{{i}}.VALUE <= {c.th} THEN 1 ELSE 0 END) END) AS NEGWL_DN{{i}}') },
-  { nnjoin(f'SUM(CASE WHEN WL.RANK_{c.wl_col} <= {c.wl_th} THEN 0 ELSE (CASE WHEN DN_NN{{i}}.VALUE > {c.th} THEN 1 ELSE 0 END) END) AS POSWL_DN{{i}}') }
-FROM
-  MESSAGES M
-  JOIN PCAP P ON M.PCAP_ID = P.ID
-  JOIN PCAPMW ON M.PCAP_ID = PCAPMW.ID
-  LEFT JOIN WHITELIST_DN AS WL ON M.DN_ID = WL.DN_ID
-    { nnjoin('JOIN DN_NN{i} ON M.DN_ID = DN_NN{i}.DN_ID', sep="\n\t") }
-GROUP BY
-  M.PCAP_ID,
-  P.Q,
-  P.U,
-  P.DURATION,
-  PCAPMW.DGA,
-  M.SLOTNUM
-ORDER BY M.SLOTNUM
+    return f"""
+WITH SLOTS AS ({slots}) SELECT * FROM SLOTS {final_where}
 """
-    return sql
 
 
 
@@ -208,7 +176,7 @@ class Slot:
         self.config = config
         self.SLOTS_PER_DAY = (24 * 60 * 60) / config.sps
         self.HOUR_PER_SLOT = config.sps / (60 * 60)
-        self.df = pd.read_sql(build_sql(config), self.db.engine).astype(int)
+        self.df = pd.read_sql(build_sql(config), self.db.engine)
     pass
 
     def value_counts(self, columns: List):

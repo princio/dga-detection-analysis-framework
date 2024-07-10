@@ -132,11 +132,11 @@ class Figure:
         self.now = datetime.now()
         pass
 
-    def show(self):
+    def show(self, name=None, to_pdf=False):
         if not is_latex():
             dirpath = pathlib.Path("./images").joinpath(self.label._)
             dirpath.mkdir(exist_ok=True)
-            fpath = dirpath.joinpath(f"{self.now.strftime("%Y%m%d_%H%M%S%f")}.{'pdf' if is_latex() else 'svg'}")
+            fpath = dirpath.joinpath(f"{self.now.strftime("%Y%m%d_%H%M%S%f") if name is None else name}.{'pdf' if to_pdf else 'svg'}")
             if not self.saved:
                 self.fig.suptitle(self.label.label())
                 self.fig.text(.5, self.ycaption, self.caption, ha='center')

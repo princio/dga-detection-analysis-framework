@@ -61,3 +61,23 @@ asset/whitelisting/top10m.tar.gz
 
 ml/pdf/out*
 ml/book/*.pdf
+ml/book/images/**/
+ml/pcap_analysis/mcfp/**
+ml/latex/beamer/main.aux
+ml/latex/beamer/main.bcf
+ml/latex/beamer/main.log
+ml/latex/beamer/main.nav
+ml/latex/beamer/main.out
+ml/latex/beamer/main.pdf
+ml/latex/beamer/main.run.xml
+ml/latex/beamer/main.snm
+ml/latex/beamer/main.tex
+ml/latex/beamer/main.toc
+ml/latex/beamer/pitfalls.png
+ml/latex/beamer/when_are_we_infected_nosuptitle.pdf
+ml/latex/main.aux
+ml/latex/main.log
+ml/latex/main.out
+ml/latex/main.pdf
+ml/latex/main.tex
+ml/latex/sample.bib
