@@ -1,0 +1,82 @@
+
+(
+    WITH whitelist AS (
+         SELECT whitelist_dn.id,
+            whitelist_dn.dn_id,
+            whitelist_dn.whitelist_id,
+            whitelist_dn.rank_dn,
+            whitelist_dn.rank_bdn
+           FROM whitelist_dn
+          WHERE whitelist_dn.whitelist_id = 1
+        ),
+        message_dataset AS (
+         SELECT m.id,
+            m.pcap_id,
+            m.time_s,
+            m.fn,
+            m.fn_req,
+            m.dn_id,
+            m.qcode,
+            m.is_r,
+            m.rcode,
+            m.server,
+            m.answer,
+            m.time_s_translated,
+            m.tmp_min_time,
+            m.pcap_infected,
+            m.pcap_malware_type,
+            m.time_s_plus100ms
+           FROM message_52 m
+            WHERE m.RCODE=3 
+        ), message_dataset_rownumber AS (
+         SELECT message_dataset.id,
+            message_dataset.pcap_id,
+            message_dataset.time_s,
+            message_dataset.fn,
+            message_dataset.fn_req,
+            message_dataset.dn_id,
+            message_dataset.qcode,
+            message_dataset.is_r,
+            message_dataset.rcode,
+            message_dataset.server,
+            message_dataset.answer,
+            message_dataset.time_s_translated,
+            message_dataset.tmp_min_time,
+            message_dataset.pcap_infected,
+            message_dataset.pcap_malware_type,
+            message_dataset.time_s_plus100ms,
+            row_number() OVER (PARTITION BY message_dataset.dn_id ORDER BY message_dataset.time_s_translated) AS __rn
+           FROM message_dataset
+        )
+ SELECT mdr.id,
+    mdr.pcap_id,
+    mdr.time_s,
+    mdr.fn,
+    mdr.fn_req,
+    mdr.dn_id,
+    mdr.qcode,
+    mdr.is_r,
+    mdr.rcode,
+    mdr.server,
+    mdr.answer,
+    mdr.time_s_translated,
+    mdr.tmp_min_time,
+    mdr.pcap_infected,
+    mdr.pcap_malware_type,
+    mdr.time_s_plus100ms,
+    mdr.__rn,
+    dn.dn,
+    dn.bdn,
+    dn_nn_all.eps1,
+    dn_nn_all.eps2,
+    dn_nn_all.eps3,
+    dn_nn_all.eps4,
+    whitelist.rank_dn,
+    whitelist.rank_bdn
+   FROM message_dataset_rownumber mdr
+     JOIN dn ON mdr.dn_id = dn.id
+     JOIN dn_nn_all ON dn_nn_all.dn_id = mdr.dn_id
+     JOIN whitelist ON whitelist.dn_id = mdr.dn_id
+  WHERE mdr.__rn = 1
+  ORDER BY mdr.time_s_translated
+)

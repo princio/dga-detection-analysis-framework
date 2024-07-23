@@ -39,7 +39,7 @@ export class Pcap {
   terminal: string | null;
 
   @Column('bigint', { name: 'qr' })
-  qr: string;
+  qr: number;
 
   @Column('bigint', { name: 'q' })
   q: string;
@@ -48,7 +48,7 @@ export class Pcap {
   r: string;
 
   @Column('bigint', { name: 'u' })
-  u: string;
+  u: number;
 
   @Column('bigint', { name: 'fnreq_max' })
   fnreqMax: string;
@@ -78,10 +78,23 @@ export class Pcap {
   @Column('json', { name: 'mcfp_info', nullable: true })
   mcfpInfo: object | null;
 
+  @Column('boolean', { name: 'selected' })
+  selected: boolean;
+
+  @Column('real', { name: 'translation', nullable: true, precision: 24 })
+  translation: number | null;
+
+  @Column('real', {
+    name: 'first_message_time_s',
+    nullable: true,
+    precision: 24,
+  })
+  first_message_time_s: number | null;
+
   @ManyToMany(() => Dataset, (dataset) => dataset.pcaps)
   datasets: Dataset[];
 
-  @ManyToOne(() => Malware, (malware) => malware.pcaps)
+  @ManyToOne(() => Malware, (malware) => malware.pcaps, { eager: true })
   @JoinColumn([{ name: 'malware_id', referencedColumnName: 'id' }])
   malware: Malware;
 }

@@ -7,9 +7,15 @@ import { Pcap } from './typeorm/entities/Pcap';
 import { Malware } from './typeorm/entities/Malware';
 import { Dataset } from './typeorm/entities/Dataset';
 import { DatasetModule } from './dataset/dataset.module';
+import { MessageModule } from './message/message.module';
+import { Message } from './typeorm/entities/Message';
+import { CacheModule } from '@nestjs/cache-manager';
 
 @Module({
   imports: [
+    CacheModule.register({
+      isGlobal: true,
+    }),
     TypeOrmModule.forRoot({
       type: 'postgres',
       host: 'localhost',
@@ -17,11 +23,12 @@ import { DatasetModule } from './dataset/dataset.module';
       username: 'postgres',
       password: 'postgres',
       database: 'dns_mac',
-      entities: [Pcap, Malware, Dataset],
+      entities: [Pcap, Malware, Dataset, Message],
       synchronize: false,
     }),
     PcapModule,
     DatasetModule,
+    MessageModule,
   ],
   controllers: [AppController],
   providers: [AppService],
