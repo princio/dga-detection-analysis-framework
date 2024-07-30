@@ -2,12 +2,15 @@
 
 import enum
 from io import BytesIO
-from typing import Optional, Tuple, cast
+from shutil import which
+from typing import Any, Optional, Tuple, Union, cast
 from xml.etree.ElementTree import QName
 import matplotlib
+from matplotlib.axes import Axes
 import matplotlib.pyplot as plt
 import pandas as pd
-from defs import MWTYPE, NN, Database, FetchConfig, OnlyFirsts
+from pyparsing import col
+from defs import MWTYPE, NN, Database, FetchConfig, OnlyFirsts, PacketType
 import matplotlib.colors as mpcolors
 from sqlalchemy import create_engine, text
 import quantiphy as qq
@@ -298,10 +301,12 @@ class Plot:
 
     def by_fp_r(self, title='', maxslots: Optional[int] = None):
         dfs = []
-        fig, axss = plt.subplots(1, 2, figsize=(12, 4), sharey=False, tight_layout=True)
+        fig, axss = plt.subplots(1, 3, figsize=(12, 4), sharey=False, tight_layout=True)
 
         with self.db.engine.connect() as conn:
             df = pd.read_sql(sql_healthy_dataset(self.config), conn)
+
+        upper_slot = df.slotnum.max()
 
         for ofenu, of in enumerate([OnlyFirsts.GLOBAL, OnlyFirsts.ALL]):
             axs = axss[ofenu]
@@ -331,18 +336,26 @@ class Plot:
             ticks_pos = []
 
 
+            is_verbose = (maxslots is None) and upper_slot > 20
             # if _range and self.config.sps == 3600 and f'{self.config.pcap_id}' == '54':
             #     df = df.loc[770:780]
-            
             ymax = 0
             i = 0
+            fullW = W * (2 if is_verbose else 4)
             for slotnum, row in df.iterrows():
                 slotnum = cast(int, slotnum)
                 i += 1
                 if maxslots and i > maxslots: break
-                ticks_label.append(slotnum)
-                ticks_pos.append(slotnum * 4*W)
+
+                text_toprint = not is_verbose or i % 5 == 0
+
+                if text_toprint:
+                    ticks_label.append(slotnum)
+                    ticks_pos.append(slotnum * fullW)
+                    pass
+
                 for enu, oknx in enumerate(['ok', 'nx']):
+                    x = slotnum * fullW + [-W/2, W/2][enu]
                     try:
                         neg = cast(int, row[ls[oknx]['neg']])
                         pos = cast(int, row[ls[oknx]['pos']])
@@ -351,11 +364,13 @@ class Plot:
                         neg = 0
                         pos = 0
                         pass
-                    rects = axs.bar(slotnum * 4*W + [-W/2, W/2][enu], neg, color=mpcolors.to_rgba("blue", [1,0.2][enu]))
-                    rects = axs.bar(slotnum * 4*W + [-W/2, W/2][enu], pos, bottom=neg, color=mpcolors.to_rgba("red", [1,0.2][enu]))
-                    if (pos+neg) > 0:
-                        axs.bar_label(rects, labels=[pos], padding=10)
-                    axs.bar_label(rects, labels=[neg], padding=0)
+                    rects = axs.bar(x, neg, width=W, color=mpcolors.to_rgba("blue", [1, 0.2][enu]))
+                    rects = axs.bar(x, pos, width=W, bottom=neg, color=mpcolors.to_rgba("red", [1, 0.2][enu]))
+                    if text_toprint:
+                        if (pos+neg) > 0:
+                            axs.bar_label(rects, labels=[pos], padding=10)
+                        axs.bar_label(rects, labels=[neg], padding=0)
+                        pass
                     pass
 
                 pass

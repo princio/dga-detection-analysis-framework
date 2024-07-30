@@ -1,25 +1,26 @@
 {
     "bin": {
-        "dns_parse": "/home/princio/Repo/princio/malware_detection_preditc_file/dns_parse/bin/dns_parse",
+        "python": "/Users/princio/.pyenv/versions/3.9.19/bin/python",
+        "dns_parse": "/Users/princio/Repo/princio/malware-detection-predict-file/dns_parse/bin/dns_parse",
         "tcpdump": "/usr/sbin/tcpdump",
-        "tshark": "/usr/bin/tshark",
-        "python_lstm": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/venv/bin/python",
-        "python_psl_list": "/home/princio/Repo/princio/malware_detection_preditc_file/psl_list/venv/bin/python",
-        "psltrie": "/usr/local/bin/psltrie"
+        "tshark": "/opt/homebrew/bin/tshark",
+        "python_lstm": "/Users/princio/Repo/princio/malware-detection-predict-file/lstm_dga/venv3.9/bin/python",
+        "python_psl_list": "/Users/princio/Repo/princio/malware-detection-predict-file/psl_list/venv3.9/bin/python",
+        "psltrie": "/Users/princio/Repo/princio/malware-detection-predict-file/psltrie/bin/binary_prod"
     },
     "pyscript": {
-        "lstm": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/predict_dns_parse_output.py",
-        "psl_list": "/home/princio/Repo/princio/malware_detection_preditc_file/psl_list/python/run.py"
+        "lstm": "/Users/princio/Repo/princio/malware-detection-predict-file/lstm_dga/predict_dns_parse_output.py",
+        "psl_list": "/Users/princio/Repo/princio/malware-detection-predict-file/psl_list/python/run.py"
     },
-    "nndir": "/home/princio/Repo/princio/malware_detection_preditc_file/lstm_dga/nns",
+    "nndir": "/Users/princio/Repo/princio/malware-detection-predict-file/lstm_dga/nns",
     "postgre": {
         "host": "localhost", 
-        "dbname": "dns2",
+        "dbname": "dns_mac",
         "user": "postgres",
         "password": "postgres"
     },
     "pcaps": [
-        "/media/princio/ssd512/dns_detection_datasets/ctu-sme-11/workdir/pcap"
+        "/Users/princio/Documents/pcaps/mixed/2015-07-28_mixed.pcap"
     ],
     "comments": {
         "pcaps": [
@@ -38,7 +39,7 @@
     "whitelists": [
         {
             "name": "top10m",
-            "path": "/home/princio/Repo/princio/malware_detection_preditc_file/asset/whitelisting/top_10m.csv",
+            "path": "/Users/princio/Repo/princio/malware_detection_preditc_file/asset/whitelisting/top_10m.csv",
             "year": 2020,
             "dn_col": "bdn",
             "bdn_col": "bdn",

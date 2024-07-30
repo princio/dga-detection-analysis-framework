@@ -12,7 +12,8 @@ def set_latex():
     os.environ["TO_LATEX"] = "yes"
 
 def unset_latex():
-    del os.environ["TO_LATEX"]
+    if os.environ.get("TO_LATEX"):
+        del os.environ["TO_LATEX"]
 
 
 def dm(x):

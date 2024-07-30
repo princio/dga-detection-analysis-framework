@@ -68,7 +68,6 @@ class LSTM:
             pass
         pass
 
-
     def count(self, nn: NN):
         cursor = self.config.psyconn.cursor()
         
@@ -109,8 +108,8 @@ class LSTM:
 
                 df = pd.DataFrame.from_records(rows, columns=["id", "dn", "tld", "icann", "private", "nn_id"])
 
-                df["icann"].fillna(value=df["tld"], inplace=True)
-                df["private"].fillna(value=df["icann"], inplace=True)
+                df["icann"] = df["icann"].fillna(value=df["tld"])
+                df["private"] = df["private"].fillna(value=df["icann"])
 
                 self.run_lstm(df, nn)
                 pass # while true

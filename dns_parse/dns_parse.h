@@ -6,7 +6,12 @@
 #include <pcap.h>
 // For standard int type declarations.
 #include <stdint.h>
+
+#ifdef __APPLE__
+#define PATH_MAX 4096
+#else
 #include <linux/limits.h>
+#endif
 
 typedef unsigned int u_int;
 

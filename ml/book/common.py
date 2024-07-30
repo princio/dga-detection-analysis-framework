@@ -47,13 +47,14 @@ class SlotConfig:
     sps: int = 1 * 60 * 60
     onlyfirsts: Optional[str] = None
     th: float = 0.999
+    packet_type: str = "qr"
     wl_th: int = 10000
 
     nn: Optional[Union[int, List[int]]] = None
     wl_col: Optional[WLFIELD] = None
 
     def __hash__(self):
-        return hash((self.sps, self.th, self.wl_th, self.dataset, self.onlyfirsts, self.nn, self.wl_col))
+        return hash((self.sps, self.th, self.wl_th, self.dataset, self.onlyfirsts, self.nn, self.wl_col, self.packet_type))
 
     def __eq__(self, other):
         if not isinstance(other, SlotConfig):
@@ -63,11 +64,13 @@ class SlotConfig:
                 self.wl_th == other.wl_th and
                 self.dataset == other.dataset and
                 self.onlyfirsts == other.onlyfirsts and
+                self.packet_type == other.packet_type and
                 self.wl_col == other.wl_col)
     
     def __str__(self):
         return (f"SlotConfig: [SPS: {self.sps}, TH: {self.th}, WL_TH: {self.wl_th}, "
-                f"DATASET: {self.dataset}, onlyfirsts: {self.onlyfirsts}, WL_COL: {self.wl_col}]")
+                f"onlyfirsts: {self.onlyfirsts}, WL_COL: {self.wl_col} "
+                f"packet_type: {self.packet_type}]")
 
     def __repr__(self):
         return self.__str__()
@@ -80,12 +83,7 @@ def build_sql(c: SlotConfig, slotnum: Optional[int] = None, mwtype: Optional[int
     def nnjoin(s, sep=",\n\t"):
         return sep.join([ s.format(i=i) for i in range(1,5) ])
 
-    messages_select = f"message_{c.dataset}_slot"
-    if c.onlyfirsts:
-        if c.onlyfirsts == "pcap":
-            messages_select = f"message_{c.dataset}_firstbypcap"
-        elif c.onlyfirsts == "global":
-            messages_select = f"message_{c.dataset}_firstglobal"
+    table_from = f"{c.packet_type}_{c.onlyfirsts}"
     final_where = []
     if slotnum is not None:
         final_where.append("SLOTNUM = %d" % (slotnum))
@@ -103,8 +101,8 @@ SELECT
 	FLOOR(M.TIME_S_TRANSLATED / {c.sps}) AS SLOTNUM,
 
 	PMW.DGA AS PCAP_DGA,
-    array_position(ARRAY['no-malware', 'non-dga', 'dga']::malware_type[], (M.status).malware_type) - 1 AS DGA,
-    (M.status).PCAP_STATUS,
+    array_position(ARRAY['no-malware', 'non-dga', 'dga']::malware_type[], M.pcap_malware_type) - 1 AS DGA,
+    M.PCAP_infected,
 
 	COUNT(DISTINCT PCAP_ID) AS PCAPS_COUNT,
 	ARRAY_AGG(DISTINCT PCAP_ID) AS PCAPS,
@@ -144,9 +142,9 @@ SELECT
 	{ '' if True else nnjoin(f'SUM(CASE WHEN RANK_{c.wl_col} >  {c.wl_th} AND EPS{{i}} >  {c.th} THEN M.R ELSE 0 END) AS POS{{i}}_R_WL') }
 
 FROM
-	{messages_select} AS M
+	{table_from} AS M
 	JOIN pcap_malware pmw on M.pcap_id=pmw.id
-GROUP BY SLOTNUM, PCAP_DGA, (M.status).malware_type, (M.status).PCAP_STATUS, PCAP_STATUS
+GROUP BY SLOTNUM, PCAP_DGA, M.pcap_malware_type, M.PCAP_infected
 """
     return f"""
 WITH SLOTS AS ({slots}) SELECT * FROM SLOTS {final_where}

@@ -15,7 +15,6 @@
 
 #include "psltrie.h"
 
-#include <linux/limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -44,7 +43,7 @@ void _print_test_domain(PSLT* pslt, PSLTDomain domain) {
     }
 }
 
-void print_help() {
+void print_help(void) {
     printf(
     "Usage: dns_parse PSLLIST_PATH [print|test|csv|csvtest] [OPTIONS]\n\n"
     "- print\n"

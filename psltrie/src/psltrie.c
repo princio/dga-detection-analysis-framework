@@ -350,7 +350,7 @@ int _pslt_trie_load_build(PSLTSuffixes suffixes, PSLTNode** root) {
             LOG_TRACE("is not ascii: %s\n", suffixes._[i].suffix);
         }
         if (suffixes._[i].suffix[0] == '*') {
-            LOG_TRACE("skipping asterisk");
+            LOG_TRACE("skipping asterisk", "");
         } else {
             _trie_insert(*root, &suffixes._[i]);
         }
@@ -381,7 +381,7 @@ PSLT* pslt_trie_load(char suffixlistpath[PATH_MAX]) {
     _pslt_trie_load_build(pslt->suffixes, &pslt->trie);
 
     if (pslt->trie == NULL) {
-        LOG_ERROR("impossible to load the prefix trie.");
+        LOG_ERROR("impossible to load the prefix trie.", "");
         return NULL;
     }
 
@@ -564,7 +564,7 @@ int _pslt_domain_remove_suffixes(PSLT* pslt, PSLTObject* obj) {
 
 int _pslt_domain_basedomain(PSLT* pslt, PSLTObject* object) {
     if (strlen(object->domain) == 0) {
-        LOG_ERROR("domain length is zero.");
+        LOG_ERROR("domain length is zero.", "");
         return 1;
     }
 
@@ -624,11 +624,11 @@ int pslt_domain_run(PSLT* pslt, PSLTObject* obj) {
     int suffixes_found;
 
     if (!pslt) {
-        LOG_WARN("PSLT is null");
+        LOG_WARN("PSLT is null", "");
         return -1;
     }
     if (!obj) {
-        LOG_WARN("PSLT object is null");
+        LOG_WARN("PSLT object is null", "");
         return -1;
     }
     if (obj->domain[0] == '.') {

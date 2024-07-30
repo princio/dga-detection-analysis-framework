@@ -36,7 +36,7 @@ class Whitelisting:
     def __init__(self, config: Config, whitelist: ConfigWhitelist) -> None:
         self.config = config
         self.whitelistconfig = whitelist
-        self.id = -1
+        self.id = 1
         self.rows_inserted = 0
         pass
 

@@ -56,7 +56,7 @@ if __name__ == "__main__":
     from whitelisting import Whitelisting
     for whitelist in config.whitelists:
         wl = Whitelisting(config, whitelist)
-        wl.run_add()
+        # wl.run_add()
         wl.run_merge_dn()
         pass
 

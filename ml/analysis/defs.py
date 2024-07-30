@@ -19,11 +19,12 @@ class NN(enum.Enum):
         return self.__str__()
     pass
 
-class PacketType(enum.Enum):
+class PacketType(enum.StrEnum):
     QR = "QR"
     Q = "Q"
     R = "R"
     NX = "NX"
+    OK = "OK"
     def __str__(self):
         return self.value
     def __repr__(self):
@@ -73,16 +74,16 @@ class FetchConfig:
     sps: int = 1 * 60 * 60
     nn: NN = NN.NONE
     th: float = 0.5
-    table_from: Optional[int] = None
-    pcap_offset: int = 0
+    pcap_id: Optional[int] = None
+    # pcap_offset: int = 0
 
     def __hash__(self):
         return hash((
             self.sps,
-            self.nn,
+            self.nn.value,
             self.th,
-            self.table_from,
-            self.pcap_offset
+            self.pcap_id,
+            # self.pcap_offset
         ))
 
     def __eq__(self, other):
@@ -92,22 +93,23 @@ class FetchConfig:
             self.sps == other.sps and
             self.nn == other.nn and
             self.th == other.th and
-            self.table_from == other.table_from and
-            self.pcap_offset == other.pcap_offset
+            self.pcap_id == other.pcap_id
+            # and self.pcap_offset == other.pcap_offset
         )
     
     def __str__(self):
         return (
-            f"SlotConfig: [" +
+            f"FetchConfig: [" +
             ", ".join([
                 f"sps: {self.sps}",
                 f"nn: {self.nn}",
                 f"th: {self.th}",
-                f"table_from: {self.table_from}",
-                f"pcap_offset: {self.pcap_offset}"
+                f"pcap_id: {self.pcap_id}"
+                # , f"pcap_offset: {self.pcap_offset}"
             ]) +
             "]"
         )
 
     def __repr__(self):
         return self.__str__()
+

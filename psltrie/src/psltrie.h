@@ -3,7 +3,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <linux/limits.h>
 
 
 #define PSLT_LIST_ROW_FIELDS_NUMBER 7
@@ -15,6 +14,8 @@
 // origin               5
 // section              14
 // isprivate            7
+
+#define PATH_MAX 4096
 
 #define PSLT_DOMAIN_ALPHABET_SIZE 484
 
@@ -163,35 +164,44 @@ extern FILE* pslt_logger_file;
 extern char PSLT_GROUP_STR[N_PSLTSUFFIXGROUP][30];
 extern enum PSLTLogLevel pslt_logger_level;
 
+#ifdef __linux__
+
 #define LOG_ERROR(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_ERROR) {\
     fprintf(PSLT_LOG_OUT, "[erro]: ");  \
-    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, (F), __VA_ARGS__);\
     fprintf(PSLT_LOG_OUT, "\n");\
 }
 
 #define LOG_WARN(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_WARN) {\
     fprintf(PSLT_LOG_OUT, "[warn]: "); \
-    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, (F), __VA_ARGS__);\
     fprintf(PSLT_LOG_OUT, "\n");\
 }
 
 #define LOG_INFO(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_INFO) {\
     fprintf(PSLT_LOG_OUT, "[info]: "); \
-    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, (F), __VA_ARGS__);\
     fprintf(PSLT_LOG_OUT, "\n");\
 }
 
 #define LOG_DEBUG(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_DEBUG) {\
     fprintf(PSLT_LOG_OUT, "[debug]: "); \
-    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, (F), __VA_ARGS__);\
     fprintf(PSLT_LOG_OUT, "\n");\
 }
 
 #define LOG_TRACE(F, ...) if (PSLT_LOG_OUT && PSLT_LOG_LEVEL >= PSLT_LOG_LEVEL_TRACE) {\
     fprintf(PSLT_LOG_OUT, "[trace]: "); \
-    fprintf(PSLT_LOG_OUT, (F), ##__VA_ARGS__);\
+    fprintf(PSLT_LOG_OUT, (F), __VA_ARGS__);\
     fprintf(PSLT_LOG_OUT, "\n");\
 }
 
+#else
+#define LOG_ERROR(F, ...)
+#define LOG_WARN(F, ...)
+#define LOG_INFO(F, ...)
+#define LOG_DEBUG(F, ...)
+#define LOG_TRACE(F, ...)
+#endif
 
 #endif

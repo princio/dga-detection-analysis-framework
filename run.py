@@ -243,7 +243,7 @@ if __name__ == "__main__":
 
     binaries.launch(paths.output.dns_parse, "dns_parse", [
         binaries.dns_parse,
-        "-i", paths.output.psl_list,
+        # "-i", paths.output.psl_list,
         "-o", paths.output.dns_parse,
         paths.output.tshark
     ])

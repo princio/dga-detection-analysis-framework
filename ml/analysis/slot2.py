@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 import pandas as pd
 
-from defs import FetchConfig
+from defs import NN, FetchConfig
 
 
 
@@ -72,42 +72,30 @@ Return a sql that will fetch:
     gnx_neg1_dnagg, gnx_pos1_dnagg, gok_neg1_dnagg, gok_pos1_dnagg
 where 1 could be 1,2,3,4.
 """
-def sql_healthy_dataset(c: FetchConfig):
+def sql_healthy_dataset(config: FetchConfig):
+    sps = config.sps
+    nn = config.nn
+    th = config.th
+    pcap_id = config.pcap_id
+    pcap_offset = 0
 
-    if c.table_from is None:
+    if pcap_id is None:
         table_from = 'get_message_healthy_all2()'
     else:
-        table_from = f'get_message_pcap_all3({c.table_from}, {c.pcap_offset})'
+        table_from = f'get_message_pcap_all3({pcap_id}, {pcap_offset})'
     
-    glob = [False, True]
-    pt=['qr','q','r','nx','ok']
-    eps = [False, c.nn]
-    pn = ['pos']
-    combinations_sum = [list(combo) + [c.th] for combo in list(itertools.product(eps, glob, pt, pn))]
-    cws_sum = []
-    for combo in combinations_sum:
-        cws_sum.append(cw_sum(*combo))
-        pass
-
-    glob = [True]
-    pt=['nx','ok']
-    eps = [c.nn]
-    pn = ['neg', 'pos']
-    combinations_agg = [list(combo) + [c.th] for combo in list(itertools.product(eps, glob, pt, pn))]
-    cws_agg = []
-    for combo in combinations_agg:
-        cws_agg.append(cw_agg(*combo))
-        pass
+    cws_sum = [cw_sum(*(list(combo) + [th])) for combo in list(itertools.product([False, nn], [False, True], ['qr','q','r','nx','ok'], ['pos']))]
+    cws_agg = [cw_agg(*(list(combo) + [th])) for combo in list(itertools.product([nn], [True], ['nx','ok'], ['neg', 'pos']))]
 
     slots = f"""
 SELECT
-	FLOOR(M.TIME_S_TRANSLATED / {c.sps}) AS SLOTNUM,
+	FLOOR(M.TIME_S_TRANSLATED / {sps}) AS SLOTNUM,
 
 	COUNT(DISTINCT PCAP_ID) AS PCAPS_COUNT,
 	ARRAY_AGG(DISTINCT PCAP_ID) AS PCAPS,
 
-	{ f'COUNT(DISTINCT CASE WHEN EPS{c.nn} > {c.th} THEN M.PCAP_ID ELSE NULL END) AS PCAP_POS{c.nn}' },
-	{ f'ARRAY_AGG(DISTINCT CASE WHEN EPS{c.nn} > {c.th} THEN M.PCAP_ID ELSE NULL END) AS PCAPID_POS{c.nn}' },
+	{ f'COUNT(DISTINCT CASE WHEN EPS{nn} > {th} THEN M.PCAP_ID ELSE NULL END) AS PCAP_POS{nn}' },
+	{ f'ARRAY_AGG(DISTINCT CASE WHEN EPS{nn} > {th} THEN M.PCAP_ID ELSE NULL END) AS PCAPID_POS{nn}' },
     
 	COUNT(DISTINCT DN_ID) AS U,
 

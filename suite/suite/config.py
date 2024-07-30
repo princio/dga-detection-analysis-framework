@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 import shutil
-from typing import List
+from typing import List, Optional
 import psycopg2
 
 import sqlalchemy
@@ -52,7 +52,7 @@ class ConfigPCAP:
     day: int = 0
     days: int = 0
     sha256: str = ""
-    malware: ConfigMalware = ConfigMalware()
+    malware: Optional[ConfigMalware] = None #ConfigMalware()
     year: int = 0
     pass
 
@@ -134,7 +134,7 @@ class Config:
                 else:
                     self.pcaps.append(pd)
                     pass
-
+            
             self.nndir = conf["nndir"]
 
             url = sqlalchemy.URL.create(
