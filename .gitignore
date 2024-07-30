@@ -81,3 +81,9 @@ ml/latex/main.out
 ml/latex/main.pdf
 ml/latex/main.tex
 ml/latex/sample.bib
+
+ml/analysis/images/
+ml/analysis/tmp/
+
+ml/simulation/*.pdf
+ml/simulation/*.svg
