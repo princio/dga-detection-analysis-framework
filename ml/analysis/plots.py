@@ -7,13 +7,13 @@ from matplotlib import pyplot as plt
 import numpy as np
 from typing import Optional
 from defs import NN, FetchConfig, OnlyFirsts, PacketType
-from plot2 import AxesConfig, DataConfig, PlotConfig, Plotter
+from plot import AxesConfig, DataConfig, PlotConfig, Plotter
 
 
 def plot_rowsource_colposneg(plotter: Plotter, pcaps, pcaps_offset: Optional[Dict[None | int, int]], maxslots = None, rolled = None):
     sources = (
         [ { 'mw_name': 'healthy', 'pcap_id': None }]
-        + [ (pcap) for _, pcap in pcaps.iterrows() ]
+        + [ { 'mw_name': mw_name, 'pcap_id': pcap_id } for mw_name, pcap_id in pcaps ]
     )
 
     pts = [PacketType.Q, PacketType.NX] #, PacketType.NX]
@@ -39,7 +39,7 @@ def plot_rowsource_colposneg(plotter: Plotter, pcaps, pcaps_offset: Optional[Dic
             matrix[s, d] = AxesConfig(fc, data, pc)
             pass
 
-    return plotter.rowpt_colsource(matrix, sharey=(0,0))
+    return plotter.rowpt_colsource(matrix, sharey=(0,0)) # type: ignore
 
 
 def plot_pcaps(plotter: Plotter, pcaps, rolled = None):

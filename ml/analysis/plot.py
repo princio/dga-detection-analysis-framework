@@ -1,502 +1,287 @@
 
-
-import enum
+from dataclasses import dataclass
 from io import BytesIO
-from shutil import which
-from typing import Any, Optional, Tuple, Union, cast
-from xml.etree.ElementTree import QName
-import matplotlib
+from pathlib import Path
+from typing import Any, List, Literal, Optional, Tuple, Union, cast
+
+from matplotlib import pyplot as plt
 from matplotlib.axes import Axes
-import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
-from pyparsing import col
-from defs import MWTYPE, NN, Database, FetchConfig, OnlyFirsts, PacketType
+from defs import NN, Database, FetchConfig, OnlyFirsts, PacketType, pgshow
 import matplotlib.colors as mpcolors
-from sqlalchemy import create_engine, text
-import quantiphy as qq
-from dataclasses import dataclass, replace
 
 from slot2 import sql_healthy_dataset
 
-matplotlib.use('agg')
 
-class SlotField(enum.StrEnum):
-    PACKET = "dn"
-    PCAP = "pcap"
+@dataclass
+class PNLabel:
+    row: Any
+    of: OnlyFirsts
+    nn: NN
+    pt: PacketType
 
-class Plot:
-    def __init__(self, database: Database, config: FetchConfig):
-        self.db = database
-        self.config: FetchConfig = config
-        self.df = None
-        pass
-
-    def load(self, slotnum: Optional[int] = None, mwtype: Optional[MWTYPE] = None, bydga:bool=False):
-        sql = build_sql(self.config, slotnum, mwtype, bydga)
-        with self.db.engine.connect() as conn:
-            self.df = pd.read_sql(sql, conn)
-        pass
-
-    def bydga(self, field: SlotField = SlotField.PACKET, _range: Optional[Tuple[int, int]] = None):
-        if self.df is None:
-            self.load(bydga=True)
-        
-        df = cast(pd.DataFrame, self.df).copy()
-
-        labelpos = f"pos_{self.config.nn}"
-
-        if "dga" not in df.columns:
-            df["dga"] = 1
-
-        dgas = df["dga"].drop_duplicates().values
-
-        df = df.groupby(["dga", "slotnum"]).agg({
-            f"total": "sum",
-            f"{labelpos}": "sum"
-        }).unstack(0).fillna(0)#.reset_index().copy()
-        
-        for dga in dgas:
-            df["neg", dga] = df["total", dga] - df[labelpos, dga]
-        
-        fig, axs = plt.subplots(figsize=(10, 6), tight_layout=True)
-        
-        W = 1
-        ticks_label = []
-        ticks_pos = []
-        for slotnum, row in df.iterrows():
-            slotnum = cast(int, slotnum)
-            if _range is None or (slotnum >= _range[0] and slotnum <= _range[1]):
-                ticks_label.append(slotnum)
-                ticks_pos.append(slotnum * 4*W)
-                for dga in dgas:
-                    # if True and dga == 1:
-                    #     continue
-                    neg, pos = row[("neg", dga)], row[(labelpos, dga)]
-                    neg = cast(int, neg)
-                    pos = cast(int, pos)
-                    rects = axs.bar(slotnum * 4*W + [-W, 0, W][dga], neg, color=mpcolors.to_rgba(["blue","orange","red"][dga], 0.2))
-                    rects = axs.bar(slotnum * 4*W + [-W, 0, W][dga], pos, bottom=neg, color=mpcolors.to_rgba(["blue","orange","red"][dga], 1))
-                    if (pos+neg) > 0:
-                        axs.bar_label(rects, labels=[qq.Quantity(int(pos)).render(prec=1)], padding=10)
-                    axs.bar_label(rects, labels=[qq.Quantity(int(pos+neg)).render(prec=1)], padding=0)
-            pass
-        
-        axs.set_xticks(ticks_pos, ticks_label)
-
-        txt = str(self.config)
-        txt += f"\nslotnum max: {df.index.max()}"
-        fig.text(.5, -.1, txt, ha='center')
-        # fig.savefig(f"tmp/{fig.__hash__()}", bbox_inches="tight")
-        
-        buffer = BytesIO()
-        fig.savefig(buffer, format='svg', bbox_inches="tight")
-        buffer.seek(0)
-
-        # Get the SVG image as a string
-        svg_image = buffer.getvalue().decode('utf-8')
-        
-        with open('tmp/svg.txt', 'w') as fp:
-            fp.write(svg_image)
-
-        return (svg_image, df, fig)
+    def _pt(self, pt: PacketType):
+        self.pt = pt
+        return self
     
-    def bypcap(self, field: SlotField = SlotField.PACKET, _range: Optional[Tuple[int, int]] = None):
-        if self.df is None:
-            self.load()
-        
-        df = cast(pd.DataFrame, self.df).copy()
+    def lneg(self) -> str:
+        return f"{'g' if self.of == OnlyFirsts.GLOBAL else ''}{self.pt}_neg{self.nn}".lower()
+    
+    def lpos(self) -> str:
+        return f"{'g' if self.of == OnlyFirsts.GLOBAL else ''}{self.pt}_pos{self.nn}".lower()
+    
+    def ltot(self) -> str:
+        return f"{'g' if self.of == OnlyFirsts.GLOBAL else ''}{self.pt}".lower()
+    
+    def neg(self) -> int:
+        return self.row[self.ltot()] - self.row[self.lpos()] if self.row is not None  else 0
+    
+    def pos(self) -> int:
+        return self.row[self.lpos()] if self.row is not None else 0
+    
+    def tot(self) -> int:
+        return self.row[self.ltot()] if self.row is not None else 0
 
-        labelpos = f"pos_{self.config.nn}"
-        labelneg = f"neg"
 
+@dataclass
+class DataConfig:
+    pt: PacketType
+    of: OnlyFirsts
+    nn: NN
+    only: Optional[Literal['pos','neg']]
+    distinct_nx: bool
+    maxslots: Optional[int]
+    pcap_offset: int
+    rolled_slots: Optional[int]
 
-        df = df.groupby(["pcap_id", "dga", "slotnum"]).agg({
-            f"total": "sum",
-            f"{labelpos}": "sum"
-        }).reset_index()#.unstack(0).fillna(0)#.reset_index().copy()
+    def clone(self):
+        return DataConfig(
+            self.pt,
+            self.of,
+            self.nn,
+            self.only,
+            self.distinct_nx,
+            self.maxslots,
+            self.pcap_offset,
+            self.rolled_slots
+        )
+    pass
 
-        df[labelneg] = df["total"] - df[labelpos]
+@dataclass
+class PlotConfig:
+    figsize: Tuple[int, int]
+    print_every: int = 1
+    fullW: Optional[float] = None
+    ylabel: str = ''
+    print_barlabel: bool = True
+    print_ticks_updown: bool = False
+    logy : bool =True
+    pass
 
-        # print(df.reset_index())
-        
-        fig, axs = plt.subplots(figsize=(10, 6), tight_layout=True)
+@dataclass
+class AxesConfig:
+    fetch: FetchConfig
+    data: DataConfig
+    plot: PlotConfig
+    pass
 
-        df = df[df.dga == 2]
-        
-        W = 1
-        ticks_label = []
-        ticks_pos = []
-        slotnums = df.slotnum.drop_duplicates().values
-        for slotnum in slotnums:
-            slotnum = cast(int, slotnum)
-            if _range is None or (slotnum >= _range[0] and slotnum <= _range[1]):
-                df_slotnum = df[df.slotnum == slotnum]
-                ticks_label.append(slotnum)
-                ticks_pos.append(slotnum * 4*W)
+class Plotter:
+    def __init__(self, dir: Path, db: Database):
+        self.db = db
+        self.dir = dir
+        pass
 
-                bottom = 0
-                for index, row in df_slotnum.iterrows():
-                    print(index, "\n", row, "\n\n", sep="")
-
-                    neg, pos = row[labelneg], row[labelpos]
-                    neg, pos = cast(int, neg), cast(int, pos)
-                    total = neg + pos
-
-                    if total > 0:
-                        rects = axs.bar(slotnum * 4*W, total, bottom=bottom)
-                        bottom += total
-                        axs.bar_label(rects, labels=[row["pcap_id"]], padding=0, label_type='center')
-                        pass
-                    pass
+    def get_df(self, config: FetchConfig):
+        fpath = self.dir.joinpath(f'{config.__hash__()}.csv')
+        if Path(fpath).exists():
+            df = pd.read_csv(fpath)
+        else:
+            with self.db.engine.connect() as conn:
+                df = pd.read_sql(sql_healthy_dataset(config), conn)
+                df.to_csv(fpath)
             pass
-        
-        axs.set_xticks(ticks_pos, ticks_label)
 
-        txt = str(self.config)
-        txt += f"\nslotnum max: {df[df.total > 0].slotnum.max()}"
-        fig.text(.5, -.1, txt, ha='center')
-        # fig.savefig(f"tmp/{fig.__hash__()}", bbox_inches="tight")
-        
-        buffer = BytesIO()
-        fig.savefig(buffer, format='svg', bbox_inches="tight")
-        buffer.seek(0)
+        # print(config.pcap_id, config.pcap_offset, df.shape[0], df.slotnum.max())
+        # if config.pcap_id == 57:
+        #     pgshow(df)
+        return df
 
-        # Get the SVG image as a string
-        svg_image = buffer.getvalue().decode('utf-8')
-        
-        with open('tmp/svg.txt', 'w') as fp:
-            fp.write(svg_image)
+    def axes(self, ax: Axes, ac: AxesConfig):
+        df = self.get_df(ac.fetch)
+        dc = ac.data
+        pc = ac.plot
 
-        return svg_image, df
-
-    def byfp(self, _range: Optional[Tuple[int, int]] = None):
-        if self.df is None:
-            self.load(bydga=True)
-        
-        df = cast(pd.DataFrame, self.df).copy()
-
-        labelpos = f"pos_{self.config.nn}"
-
-        if "dga" not in df.columns:
-            df["dga"] = 1
-
-        dgas = df["dga"].drop_duplicates().values
-
-        df = df.groupby(["dga", "slotnum"]).agg({
-            f"total": "sum",
-            f"{labelpos}": "sum"
-        }).unstack(0).fillna(0)#.reset_index().copy()
-        
-        for dga in dgas:
-            df["neg", dga] = df["total", dga] - df[labelpos, dga]
-        
-        fig, axs = plt.subplots(figsize=(10, 6), tight_layout=True)
-        
-        W = 1
-        ticks_label = []
-        ticks_pos = []
-        for slotnum, row in df.iterrows():
-            slotnum = cast(int, slotnum)
-            if _range is None or (slotnum >= _range[0] and slotnum <= _range[1]):
-                ticks_label.append(slotnum)
-                ticks_pos.append(slotnum * 4*W)
-                for dga in dgas:
-                    if True and dga != 0:
-                        continue
-                    neg, pos = row[("neg", dga)], row[(labelpos, dga)]
-                    neg = cast(int, neg)
-                    pos = cast(int, pos)
-                    rects = axs.bar(slotnum * 4*W + [0, 0, W][dga], neg, color=mpcolors.to_rgba(["blue","orange","red"][dga], 0.2))
-                    rects = axs.bar(slotnum * 4*W + [0, 0, W][dga], pos, bottom=neg, color=mpcolors.to_rgba(["blue","orange","red"][dga], 1))
-                    if (pos+neg) > 0:
-                        axs.bar_label(rects, labels=[qq.Quantity(int(pos)).render(prec=1)], padding=10)
-                    axs.bar_label(rects, labels=[qq.Quantity(int(pos+neg)).render(prec=1)], padding=0)
-            pass
-        
-        axs.set_xticks(ticks_pos, ticks_label)
-
-        txt = str(self.config)
-        txt += f"\nslotnum max: {df.index.max()}"
-        fig.text(.5, -.1, txt, ha='center')
-        # fig.savefig(f"tmp/{fig.__hash__()}", bbox_inches="tight")
-        
-        buffer = BytesIO()
-        fig.savefig(buffer, format='svg', bbox_inches="tight")
-        buffer.seek(0)
-
-        # Get the SVG image as a string
-        svg_image = buffer.getvalue().decode('utf-8')
-        
-        with open('tmp/svg.txt', 'w') as fp:
-            fp.write(svg_image)
-
-        return (svg_image, df, fig)
-
-    def bytp(self, field: SlotField = SlotField.PACKET):
-        if self.df is None:
-            self.load(bydga=True)
-        
-        df = cast(pd.DataFrame, self.df).copy()
-
-        labelpos = f"pos_{self.config.nn}"
-
-        if "dga" not in df.columns:
-            df["dga"] = 2
-
-        dgas = df["dga"].drop_duplicates().values
-
-        df = df.groupby(["dga", "slotnum"]).agg({
-            f"total": "sum",
-            f"{labelpos}": "sum"
-        }).unstack(0).fillna(0)#.reset_index().copy()
-        
-        for dga in dgas:
-            df["neg", dga] = df["total", dga] - df[labelpos, dga]
-        
-        fig, axs = plt.subplots(figsize=(10, 6), tight_layout=True)
-        
-        W = 1
-        ticks_label = []
-        ticks_pos = []
-        
-        for slotnum in range(int(df.index.max())):
-            ticks_label.append(slotnum + 1)
-            ticks_pos.append(slotnum * 4*W)
-            try:
-                row = df.loc[slotnum]
-                neg, pos = row[("neg", 2)], row[(labelpos, 2)]
-                neg = cast(int, neg)
-                pos = cast(int, pos)
-            except:
-                neg = 0
-                pos = 0
-                pass
-            rects = axs.bar(slotnum * 4*W, neg, color=mpcolors.to_rgba(["blue","orange","red"][2], 0.2))
-            rects = axs.bar(slotnum * 4*W, pos, bottom=neg, color=mpcolors.to_rgba(["blue","orange","red"][2], 1))
-            if (pos+neg) > 0:
-                axs.bar_label(rects, labels=[qq.Quantity(int(pos)).render(prec=1)], padding=10)
-            axs.bar_label(rects, labels=[qq.Quantity(int(pos+neg)).render(prec=1)], padding=0)
-            pass
-        
-        axs.set_xticks(ticks_pos, ticks_label)
-        axs.set_ylim(0,5000)
-
-        txt = str(self.config)
-        txt += f"\nslotnum max: {df.index.max()}"
-        fig.text(.5, -.1, txt, ha='center')
-        # fig.savefig(f"tmp/{fig.__hash__()}", bbox_inches="tight")
-        
-        buffer = BytesIO()
-        fig.savefig(buffer, format='svg', bbox_inches="tight")
-        axs.set_title(f"pcap {self.config.table_from}")
-        buffer.seek(0)
-
-        # Get the SVG image as a string
-        svg_image = buffer.getvalue().decode('utf-8')
-        
-        with open('tmp/svg.txt', 'w') as fp:
-            fp.write(svg_image)
-
-        return (svg_image, df, fig)
-
-    def by_fp_r(self, title='', maxslots: Optional[int] = None):
-        dfs = []
-        fig, axss = plt.subplots(1, 3, figsize=(12, 4), sharey=False, tight_layout=True)
-
-        with self.db.engine.connect() as conn:
-            df = pd.read_sql(sql_healthy_dataset(self.config), conn)
+        negcolor = (127/255, 127/255, 255/255, 1)
+        poscolor = (255/255, 127/255, 127/255, 1)
 
         upper_slot = df.slotnum.max()
+        if upper_slot < 10:
+            ac.plot.print_every = 1
+        elif upper_slot < 50:
+            ac.plot.print_every = 5
+        elif upper_slot < 200:
+            ac.plot.print_every = 10
+        elif upper_slot < 500:
+            ac.plot.print_every = 25
+        elif upper_slot < 1000:
+            ac.plot.print_every = 50
 
-        for ofenu, of in enumerate([OnlyFirsts.GLOBAL, OnlyFirsts.ALL]):
-            axs = axss[ofenu]
+        W = 1
+        ticks_label = []
+        ticks_pos = []
 
-            gg = 'g' if of == OnlyFirsts.GLOBAL else ''
+        is_verbose = (dc.maxslots is None) and upper_slot > 20
+        ymax = 0
+        fullW = pc.fullW if pc.fullW else (W * (1 if is_verbose else 2))
+        t = PNLabel(None, dc.of, dc.nn, dc.pt)
 
-            ls = {}
-            for oknx in ['ok','nx']:
-                ls[oknx] = {
-                    'tot': f"{gg}{oknx}",
-                    'pos': f"{gg}{oknx}_pos{self.config.nn}",
-                    'neg': f"{gg}{oknx}_neg{self.config.nn}",
-                    'pos_dnagg': f"g{oknx}_neg{self.config.nn}_dnagg",
-                    'neg_dnagg': f"g{oknx}_neg{self.config.nn}_dnagg",
-                }
+        if ac.data.rolled_slots:
+            df = df[[t.lpos(), t.ltot()]].rolling(ac.data.rolled_slots, center=True).sum().fillna(0)
+        values = []
+        i = 0
+        ln = 0
+        if dc.pcap_offset:
+            df = df.iloc[dc.pcap_offset:]
+        for i in range(int(upper_slot+1)):
+            t.row = None
+            slotnum = None
+            try:
+                t.row = df.loc[i]
+                slotnum = i
+            except:
                 pass
+            i += 1
 
-            df[f'{ls['nx']['neg_dnagg']}_count'] = df[ls['nx']['neg_dnagg']].apply(lambda x: len(set(x)))
+            slotnum = cast(int, slotnum)
+            if dc.maxslots and i > dc.maxslots: break
 
-            for oknx in ['ok','nx']:
-                df[ls[oknx]['neg']] = df[ls[oknx]['tot']] - df[ls[oknx]['pos']]
-            
-            # fig, axs = plt.subplots(figsize=(10, 6), tight_layout=True)
-            
-            W = 1
-            ticks_label = []
-            ticks_pos = []
+            text_toprint = not is_verbose or (i == 1 or i % pc.print_every == 0)
+
+            ln += int(text_toprint)
 
 
-            is_verbose = (maxslots is None) and upper_slot > 20
-            # if _range and self.config.sps == 3600 and f'{self.config.pcap_id}' == '54':
-            #     df = df.loc[770:780]
-            ymax = 0
-            i = 0
-            fullW = W * (2 if is_verbose else 4)
-            for slotnum, row in df.iterrows():
-                slotnum = cast(int, slotnum)
-                i += 1
-                if maxslots and i > maxslots: break
+            if text_toprint:
+                ticks_pos.append(i * fullW)
+                if pc.print_ticks_updown:
+                    ticks_label.append((f'\n{i}' if ln % 2 == 0 else f'{i}') if text_toprint else '')
+                else:
+                    ticks_label.append(f'{i}')
 
-                text_toprint = not is_verbose or i % 5 == 0
+            x = i * fullW
 
-                if text_toprint:
-                    ticks_label.append(slotnum)
-                    ticks_pos.append(slotnum * fullW)
+            bars = []
+            negs = []
+            poss = []
+            if not dc.only or dc.only == 'neg':
+                if dc.distinct_nx:
+                    negs.append((t._pt(PacketType.OK).neg(), negcolor, t))
+                    negs.append((t._pt(PacketType.NX).neg(), negcolor, t))
+                else:
+                    negs.append((t.neg(), negcolor, t))
                     pass
-
-                for enu, oknx in enumerate(['ok', 'nx']):
-                    x = slotnum * fullW + [-W/2, W/2][enu]
-                    try:
-                        neg = cast(int, row[ls[oknx]['neg']])
-                        pos = cast(int, row[ls[oknx]['pos']])
-                        ymax = (neg+pos) if ymax < (neg+pos) else ymax
-                    except:
-                        neg = 0
-                        pos = 0
-                        pass
-                    rects = axs.bar(x, neg, width=W, color=mpcolors.to_rgba("blue", [1, 0.2][enu]))
-                    rects = axs.bar(x, pos, width=W, bottom=neg, color=mpcolors.to_rgba("red", [1, 0.2][enu]))
-                    if text_toprint:
-                        if (pos+neg) > 0:
-                            axs.bar_label(rects, labels=[pos], padding=10)
-                        axs.bar_label(rects, labels=[neg], padding=0)
-                        pass
-                    pass
-
+            if dc.only and dc.only == 'pos':
+                poss.append((t._pt(PacketType.OK).pos(), poscolor, t))
+                poss.append((t._pt(PacketType.NX).pos(), poscolor, t))
+            else:
+                poss.append((t.pos(), poscolor, t))
                 pass
+            bars = poss + negs if sum([p[0] for p in poss]) > sum([n[0] for n in negs]) else negs + poss
+
+            bottom = 0
+            _row_ = [x]
             
-            axs.set_xticks(ticks_pos, ticks_label)
-            # axs.set_ylim(0,5000)
-            axs.set_ylim(0,ymax + ymax*0.10)
-
-            txt = str(self.config)
-            txt += f"\nslotnum max: {df.index.max()}"
-            fig.text(.5, -.1, txt, ha='center')
-            # fig.savefig(f"tmp/{fig.__hash__()}", bbox_inches="tight")
-            axs.set_xlabel(str(self.config) + '\n' + 'slotnum max: ' + str(df.index.max()))
-            buffer = BytesIO()
-            fig.savefig(buffer, format='svg', bbox_inches="tight")
-            axs.set_title(gg + ' ' + title)
-            buffer.seek(0)
-
-            # Get the SVG image as a string
-            svg_image = buffer.getvalue().decode('utf-8')
-            
-            with open('tmp/svg.txt', 'w') as fp:
-                fp.write(svg_image)
-
-            dfs.append((df))
+            for bar in bars:
+                _row_.append(bar[0])
+                rects = ax.bar(x, bar[0], width=W, bottom=0, color=mpcolors.to_rgba(bar[1]))
+                bottom += bar[0]
+                if pc.print_barlabel and text_toprint:
+                    ax.bar_label(rects, labels=[bar[0]], label_type='edge', padding=2,  fontsize='x-small')
+                pass
+            ymax = ymax if ymax > bottom else bottom
+            values.append(_row_)
             pass
-        return fig, dfs
+
+        ax.set_xticks(ticks_pos, ticks_label, fontsize='x-small')
+        ax.tick_params(axis='x', which='both', pad=-0.01)
+
+        if pc.logy:
+            ax.set_yscale('log')
+            ax.tick_params(axis='y', which='both', labelsize='x-small')
+            ax.grid(True, axis='y', alpha=0.2, color='black')
+            # ax.set_axisbelow(True)
+        else:
+            ax.set_ylim(0, ymax + ymax*0.10)
+
+        cols = ['slotnum']
+        if not dc.only or dc.only == 'neg':
+            if dc.distinct_nx:
+                cols.append(t._pt(PacketType.OK).lneg())
+                cols.append(t._pt(PacketType.NX).lneg())
+            else:
+                cols.append(t.lneg())
+        if not dc.only or dc.only == 'pos':
+            if dc.distinct_nx:
+                cols.append(t._pt(PacketType.OK).lpos())
+                cols.append(t._pt(PacketType.NX).lpos())
+            else:
+                cols.append(t.lpos())
+
+        return pd.DataFrame(values, columns=cols).set_index('slotnum')
     
-
-    def by_r(self, title: str = '', maxslots: Optional[int] = None):
+    def rowpt_colsource(self, matrix: np.ndarray, sharey: Optional[Literal['row','col']]):
+        rows, cols = matrix.shape
+        fig, axes = plt.subplots(rows, cols, sharex=False)
+        axes = cast(np.ndarray, axes)
+        if rows == 1:
+            axes = cast(List[List[Axes]], [[axis for axis in axes]])
+        if cols == 1:
+            axes = cast(List[List[Axes]], [[axis] for axis in axes])
+        
         dfs = []
-        fig, axss = plt.subplots(1, 2, figsize=(12, 4), sharey=False, tight_layout=True)
-
-        for ofenu, of in enumerate([OnlyFirsts.GLOBAL, OnlyFirsts.ALL]):
-            axs = axss[ofenu]
-            self.config = replace(self.config, onlyfirsts=of)
-            print(maxslots, self.config)
-            self.df = None
-            self.load(bydga=True)
-
-            df = cast(pd.DataFrame, self.df).copy()
-                # df.index = df.index - 770
-            labelpos = {
-                'ok': f"r_ok_pos_{self.config.nn}",
-                'nx': f"r_nx_pos_{self.config.nn}"
-            }
-
-            if "dga" not in df.columns:
-                df["dga"] = 2
-
-            dgas = df["dga"].drop_duplicates().values
-
-            df = df.groupby(["dga", "slotnum"]).agg({
-                f"r_ok": "sum",
-                f"r_nx": "sum",
-                f"{labelpos['ok']}": 'sum',
-                f"{labelpos['nx']}": 'sum',
-                f"r_ok_pos_{self.config.nn}_dnagg": lambda x: x,
-                f"r_ok_neg_{self.config.nn}_dnagg": lambda x: x
-            }).unstack(0).fillna(0)#.reset_index().copy()
-
-
-            
-            df[('r_ok_pos_1_dnagg_tot', 2)] = df[('r_ok_pos_1_dnagg', 2)].apply(lambda x: len(set(x)))
-
-            for dga in dgas:
-                for oknx in labelpos:
-                    df[f"r_{oknx}_neg", dga] = df[f"r_{oknx}", dga] - df[labelpos[oknx], dga]
-            
-            # fig, axs = plt.subplots(figsize=(10, 6), tight_layout=True)
-            
-            W = 1
-            ticks_label = []
-            ticks_pos = []
-
-
-            # if _range and self.config.sps == 3600 and f'{self.config.pcap_id}' == '54':
-            #     df = df.loc[770:780]
-            
-            ymax = 0
-            i = 0
-            for slotnum, row in df.iterrows():
-                slotnum = cast(int, slotnum)
-                i += 1
-                if maxslots and i > maxslots: break
-                ticks_label.append(slotnum)
-                ticks_pos.append(slotnum * 4*W)
-                for enu, oknx in enumerate(['ok', 'nx']):
-                    try:
-                        neg, pos = row[(f"r_{oknx}_neg", 2)], row[(labelpos[oknx], 2)]
-                        neg = cast(int, neg)
-                        pos = cast(int, pos)
-                        ymax = (neg+pos) if ymax < (neg+pos) else ymax
-                    except:
-                        neg = 0
-                        pos = 0
-                        pass
-                    rects = axs.bar(slotnum * 4*W + [-W/2, W/2][enu], neg, color=mpcolors.to_rgba("blue", [1,0.2][enu]))
-                    rects = axs.bar(slotnum * 4*W + [-W/2, W/2][enu], pos, bottom=neg, color=mpcolors.to_rgba("red", [1,0.2][enu]))
-                    if (pos+neg) > 0:
-                        axs.bar_label(rects, labels=[pos], padding=10)
-                    axs.bar_label(rects, labels=[neg], padding=0)
-                    pass
-
+        for i in range(rows):
+            dfs.append([])
+            for j in range(cols):
+                df = self.axes(axes[i][j], matrix[i,j])
+                dfs[i].append(df)
                 pass
-            
-            axs.set_xticks(ticks_pos, ticks_label)
-            # axs.set_ylim(0,5000)
-            axs.set_ylim(0,ymax + ymax*0.10)
-
-            txt = str(self.config)
-            txt += f"\nslotnum max: {df.index.max()}"
-            fig.text(.5, -.1, txt, ha='center')
-            # fig.savefig(f"tmp/{fig.__hash__()}", bbox_inches="tight")
-            
-            buffer = BytesIO()
-            fig.savefig(buffer, format='svg', bbox_inches="tight")
-            axs.set_title(title)
-            buffer.seek(0)
-
-            # Get the SVG image as a string
-            svg_image = buffer.getvalue().decode('utf-8')
-            
-            with open('tmp/svg.txt', 'w') as fp:
-                fp.write(svg_image)
-
-            dfs.append((df))
             pass
-        return fig, dfs
+
+        if sharey == 'row':
+            for i in range(rows):
+                _max = max([ df.sum(axis=1).max() for df in dfs[i] ])
+                for j in range(cols):
+                    axes[i][j].set_ylim(0, 1.5 * _max)
+                    pass
+        elif sharey == 'col':
+            _maxs = [ max([ dfs[row][j].sum(axis=1).max() for row in range(rows) ]) for j in range(cols) ]
+            for i in range(rows):
+                for j in range(cols):
+                    axes[i][j].set_ylim(1, 1.2 * _maxs[j])
+                    # print(0, 1.5 * _maxs[j])
+                    if matrix[i][j].plot.logy:
+                        _ = [1,10,100,1000] + [10000] if _maxs[j] > 1000 else []
+                        axes[i][j].set_yticks(_, [str(__) for __ in _])
+                pass
+        elif type(sharey) == tuple:
+            _max = dfs[sharey[0]][sharey[1]].sum(axis=1).max()
+            for i in range(rows):
+                for j in range(cols):
+                    axes[i][j].set_ylim(1, 1.2 * _max)
+                    # print(0, 1.5 * _maxs[j])
+
+                    if matrix[i][j].plot.logy:
+                        _ = [10,100,1000] + [10000] if _max > 1000 else []
+                        if j == 0:
+                            axes[i][j].set_yticks(_, [str(__) for __ in _])
+                        else:
+                            axes[i][j].set_yticks(_, ['' for __ in _])
+                pass
+        for i in range(rows):
+            axes[i][0].set_ylabel(f'''{matrix[i,j].plot.ylabel}''',
+                                   labelpad=10, rotation='vertical', ha='center', va='center', fontsize='small', weight='bold')
+            pass
+
+        
+        return fig, axes
+    

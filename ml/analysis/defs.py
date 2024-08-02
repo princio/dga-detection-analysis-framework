@@ -3,9 +3,19 @@
 from dataclasses import dataclass
 import enum
 from typing import Optional, Tuple, Union, List
+import warnings
 
+import pandasgui
 from sqlalchemy import create_engine
 
+def pgshow(dfs):
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        if type(dfs) == list:
+            pandasgui.show(*dfs)
+        else:
+            pandasgui.show(dfs)
+    pass
 
 class NN(enum.Enum):
     NONE = 1
@@ -75,7 +85,14 @@ class FetchConfig:
     nn: NN = NN.NONE
     th: float = 0.5
     pcap_id: Optional[int] = None
-    # pcap_offset: int = 0
+    pcap_offset: float = 0
+    pass
+
+    def new_fromsource(self, pcap_id: Optional[int]):
+        return FetchConfig(self.sps, self.nn, self.th, pcap_id)
+    
+    def new_offset(self, offset: float):
+        return FetchConfig(self.sps, self.nn, self.th, self.pcap_id, offset)
 
     def __hash__(self):
         return hash((
@@ -83,7 +100,7 @@ class FetchConfig:
             self.nn.value,
             self.th,
             self.pcap_id,
-            # self.pcap_offset
+            self.pcap_offset
         ))
 
     def __eq__(self, other):
@@ -94,7 +111,7 @@ class FetchConfig:
             self.nn == other.nn and
             self.th == other.th and
             self.pcap_id == other.pcap_id
-            # and self.pcap_offset == other.pcap_offset
+            and self.pcap_offset == other.pcap_offset
         )
     
     def __str__(self):
@@ -105,7 +122,7 @@ class FetchConfig:
                 f"nn: {self.nn}",
                 f"th: {self.th}",
                 f"pcap_id: {self.pcap_id}"
-                # , f"pcap_offset: {self.pcap_offset}"
+                , f"pcap_offset: {self.pcap_offset}"
             ]) +
             "]"
         )

@@ -1,9 +1,10 @@
 import itertools
-from typing import Optional, Union
+from typing import Literal, LiteralString, Optional, Union
 
 import pandas as pd
 
 from defs import NN, FetchConfig
+import enum
 
 
 
@@ -61,9 +62,69 @@ def cw_agg(eps, glob, pt, pn, th):
     label, condition = cw(eps, glob, pt, pn, th)
     return f'ARRAY_REMOVE(ARRAY_AGG(CASE WHEN ({condition}) THEN DN ELSE NULL END), NULL) AS {label}_DNAGG'
 
+
+class FetchField(enum.StrEnum):
+    slotnum = 'slotnum'
+    time_s_min = 'time_s_min'
+    time_s_max = 'time_s_max'
+    pcap_infected="pcap_infected"
+    pcaps_count="pcaps_count"
+    pcaps="pcaps"
+    pcap_pos_1="pcap_pos_1"
+    pcapid_pos1="pcapid_pos1"
+    gnx_neg1_dnagg="gnx_neg1_dnagg"
+    gnx_pos1_dnagg="gnx_pos1_dnagg"
+    gok_neg1_dnagg="gok_neg1_dnagg"
+    gok_pos1_dnagg="gok_pos1_dnagg"
+    pass
+
+class FetchFieldMetric(enum.StrEnum):
+    u="u"
+    qr="qr"
+    q="q"
+    r="r"
+    nx="nx"
+    ok="ok"
+    gqr="gqr"
+    gq="gq"
+    gr="gr"
+    gnx="gnx"
+    gok="gok"
+    qr_pos1="qr_pos1"
+    q_pos1="q_pos1"
+    r_pos1="r_pos1"
+    nx_pos1="nx_pos1"
+    ok_pos1="ok_pos1"
+    gqr_pos1="gqr_pos1"
+    gq_pos1="gq_pos1"
+    gr_pos1="gr_pos1"
+    gnx_pos1="gnx_pos1"
+    gok_pos1="gok_pos1"
+
+    @staticmethod
+    def g_pos1(l: str):
+        ls = ['qr', 'q', 'r', 'ok', 'nx']
+        if l not in ls: raise Exception(f'Label {l} not equal to {" or ".join(ls)}.')
+        return f'g{l}_pos1'
+
+    @staticmethod
+    def g_pos1_dnagg(l: str):
+        ls = ['ok', 'nx']
+        if l not in ls: raise Exception(f'Label {l} not equal to {" or ".join(ls)}.')
+        return f'g{l}_pos1_dnagg'
+    
+    @staticmethod
+    def pos1(l: str):
+        if l not in ['ok','nx']: raise Exception(f'Label {l} not equal to nx or ok.')
+        return f'{l}_pos1'
+    
+    pass # FetchField
+
+
 """
 Return a sql that will fetch:
     slotnum,
+    time_s_min, time_s_max,
     pcap_infected, pcaps_count, pcaps, pcap_pos_1, pcapid_pos1,
     u, qr, q, r, nx, ok,
     gqr, gq, gr, gnx, gok,
@@ -77,7 +138,7 @@ def sql_healthy_dataset(config: FetchConfig):
     nn = config.nn
     th = config.th
     pcap_id = config.pcap_id
-    pcap_offset = 0
+    pcap_offset = config.pcap_offset
 
     if pcap_id is None:
         table_from = 'get_message_healthy_all2()'
@@ -90,6 +151,9 @@ def sql_healthy_dataset(config: FetchConfig):
     slots = f"""
 SELECT
 	FLOOR(M.TIME_S_TRANSLATED / {sps}) AS SLOTNUM,
+    
+    MIN(M.TIME_S) AS TIME_S_MIN,
+    MAX(M.TIME_S) AS TIME_S_MAX,
 
 	COUNT(DISTINCT PCAP_ID) AS PCAPS_COUNT,
 	ARRAY_AGG(DISTINCT PCAP_ID) AS PCAPS,

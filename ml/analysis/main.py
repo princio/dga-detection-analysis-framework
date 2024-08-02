@@ -1,46 +1,73 @@
+
+import pandas as pd
+
+aa = pd.DataFrame.from_dict({'a': [False, False, True, True], 'p': [False, True, False, True]})
+
+aa['TP'] = aa.a & aa.p
+aa['FP'] = (~aa.a & aa.p)
+aa['FN'] = (aa.a & ~aa.p)
+aa['TN'] = ~(aa.a | aa.p)
+
+print(aa.astype(int))
+
 from dataclasses import dataclass
 from io import BytesIO
 import itertools
+from logging import warning
 from pathlib import Path
 from typing import Optional, Union, cast
-from xml.dom.minidom import parseString
+import warnings
 import numpy as np
-import pandas as pd
-from plot2 import PlotConfig, Plotter, DataConfig
+from plot import PlotConfig, Plotter, DataConfig
 from defs import FetchConfig, NN, Database, OnlyFirsts, PacketType
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib import rc
 import json
 from plots import plot_pcaps, plot_rowsource_colposneg
-from slot2 import sql_healthy_dataset
+from qt import QT, QTRowCM
+from qts import qt_pcaps
+from slot2 import FetchField, sql_healthy_dataset
 
-matplotlib.use('Qt5Agg')
+# matplotlib.use('Qt5Agg')
+
+
+
+
+
 
 db = Database()
 
-pcaps = pd.read_sql("SELECT * FROM PCAPMW WHERE DGA=2 and duration > 8", db.engine)[["pcap_id","pcap_name","qr","q","u","r","duration","dga",'mw_name']]
+df_pcaps = pd.read_sql("SELECT * FROM PCAPMW WHERE DGA=2 and duration > 8", db.engine)[["pcap_id","pcap_name","qr","q","u","r","duration","dga",'mw_name']]
 
-print(pcaps)
 
-pcaps = pcaps[pcaps['pcap_id'].isin([46, 58, 57, 54])]
+pcaps = [('zbot', 46), ('simda', 58), ('unknown', 57), ('caphaw', 54)]
+df_pcaps = df_pcaps[df_pcaps['pcap_id'].isin([p[1] for p in pcaps])]
 
-cols = [ (None, 'healthy', 0) ] + [ (pcap['pcap_id'], pcap['mw_name'], 0) for _, pcap in pcaps.iterrows() ]
+print(df_pcaps)
 
 #######################
 
-plotter = Plotter(Path('./tmp'), db)
+if False:
+    plotter = Plotter(Path('./tmp'), db)
 
-# plot_pcaps(plotter, pcaps)
+    fig, axes = plot_rowsource_colposneg(plotter, pcaps, None, maxslots = None, rolled = None)
 
+    plt.show()
 
-fig, axes = plot_rowsource_colposneg(plotter, pcaps, None, maxslots = None, rolled = None)
+    exit()
+#######################
 
-plt.show()
+#######################
+
+qt = QT(Path('./tmp'), db)
+
+qt_pcaps(qt, pcaps, FetchConfig(3600, NN.NONE, 0.5, None, 0), 1, [False, True], th_s=1.5)
 
 exit()
 #######################
 
+cols = [ (None, 'healthy', 0) ] + [ (pcap['pcap_id'], pcap['mw_name'], 0) for _, pcap in pcaps.iterrows() ]
 fig, axs = plt.subplots(len(cols), 1, sharey=True)
 axs = cast(np.ndarray, axs)
 for i, col in enumerate(cols):
