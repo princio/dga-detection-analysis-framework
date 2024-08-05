@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 from pandasgui import show
 
-from defs import Database, FetchConfig, pgshow
+from defs import NN, Database, FetchConfig, pgshow
 from slot2 import FetchField, FetchFieldMetric, sql_healthy_dataset
 
 
@@ -121,7 +121,26 @@ class QT:
     def compare(self, config: FetchConfig, pcap_id: int, step: int = 1, renew = True, th_s=1.):
         DFH = self.get_df(config.new_fromsource(None))
         DFDGA = self.get_df(config.new_fromsource(pcap_id).new_offset(0))
+
+        dfs = []
+        # for nn in NN:
+        #     print(config.new_fromsource(pcap_id).new_offset(0).new_nn(nn).__hash__())
+        #     dfs.append(self.get_df(config.new_fromsource(pcap_id).new_offset(0).new_nn(nn)))
+        # test_i = []
+        # for i in range(0, DFDGA.slotnum.max() - 8, step):
+        #     test_i.append([])
+        #     for df in dfs:
+        #         dfdga = self.df_fill_missing_slotnum(df, i, i + 8)
+        #         test_i[-1].append(dfdga[['gnx', 'gok']].sum().to_list())
+        #         pass
         
+        # k = pd.DataFrame(test_i)
+        # print(k)
+        # print(all([(k[0] == k[1]).all(), (k[1] == k[2]).all(), (k[2] == k[3]).all()]))
+        # for i in range(0, DFDGA.slotnum.max() - 8, step):
+        #     for df in dfs:
+        #         df = self.df_fill_missing_slotnum(DFDGA, i, i + 8)
+
         time_s_first = pd.read_sql("SELECT TIME_S FROM MESSAGE_%s WHERE FN=0" % pcap_id, self.db.engine).astype(np.float64).loc[0, 'time_s']
         time_s_first=cast(float, time_s_first)
 
@@ -138,9 +157,12 @@ class QT:
             print(dfh.columns)
             print(config.new_fromsource(pcap_id).new_offset(0).__hash__())
             exit(0)
+        p = 0
         for i in range(0, DFDGA.slotnum.max() - 8, step):
-            if i % 100:
-                print(i, DFDGA.slotnum.max() - 8, sep='/')
+            pnew = int(i/DFDGA.slotnum.max() * 100)
+            if pnew % 10 == 0 and p != pnew:
+                print(int(i/DFDGA.slotnum.max() * 100), end='%\n')
+            p = pnew
             if renew:
                 dfdga = self.get_df(config.new_fromsource(pcap_id).new_offset(time_s_first + i * 3600))
                 # print(dfdga.slotnum.iloc[7] - dfdga.slotnum.iloc[0], end='\t')
@@ -184,7 +206,7 @@ class QT:
                 overlap[QTRowCM._2(poscol, 'mean')] = dfdga[poscol].mean()
                 overlap[QTRowCM._2(poscol, 'sum')] = dfdga[poscol].sum()
                 overlap[f'{poscol}: pos'] = (dfdga[poscol] > 0).sum()
-                A = dfdga[poscol] > 0
+                A = dfdga[f'g{l}'] > 0 # IMPORTANT: we choose Positives Alarms towards any-kind malware activity or predicted-positive malware activity ('r' vs poscol)
                 P = dfsum[poscol] > th[l]
                 TA = (A & P)
                 MA = (A & ~P)
@@ -193,12 +215,17 @@ class QT:
                 FIRST_TA = np.nan if (TA.sum() == 0) else (TA.idxmax() + 1)
                 FIRST_MA = np.nan if (MA.sum() == 0) else (MA.idxmax() + 1)
                 if (TA.sum() + MA.sum() + FA.sum() + TN.sum()) != 8:
-                    df = pd.DataFrame.from_dict({'A': A, 'P': P})
-                    df['TP'] = df.A & df.P
-                    df['FP'] = (~df.A & df.P)
-                    df['FN'] = (df.A & ~df.P)
-                    df['TN'] = ~(df.A | df.P)
                     raise Exception(f'{TA} + {MA} + {FA} + {TN} < 8')
+                if (TA.sum() + MA.sum()) != A.sum():
+                    print(A.sum(), P.sum())
+                    raise Exception('error')
+                
+                overlap[QTRowCM._('ADay', 'gr')] = (dfdga[FetchFieldMetric.gr] > 0).sum() > 0
+                overlap[QTRowCM._('ADay', 'gok')] = (dfdga[FetchFieldMetric.gok] > 0).sum() > 0
+                overlap[QTRowCM._('ADay', 'gnx')] = (dfdga[FetchFieldMetric.gnx] > 0).sum() > 0
+                overlap[QTRowCM._('ADay', FetchFieldMetric.g_pos('r'))] = (dfdga[FetchFieldMetric.g_pos('r')] > 0).sum()
+                overlap[QTRowCM._('ADay', FetchFieldMetric.g_pos('ok'))] = (dfdga[FetchFieldMetric.g_pos('ok')] > 0).sum()
+                overlap[QTRowCM._('ADay', FetchFieldMetric.g_pos('nx'))] = (dfdga[FetchFieldMetric.g_pos('nx')] > 0).sum()
                 overlap[f'{poscol}: ADay'] = A.sum() > 0 # type: ignore
                 overlap[f'{poscol}: PDay'] = TA.sum() > 0 # type: ignore
                 overlap[QTRowCM._first('TA', poscol)] = FIRST_TA

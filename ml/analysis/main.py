@@ -26,7 +26,7 @@ db = Database()
 df_pcaps = pd.read_sql("SELECT * FROM PCAPMW WHERE DGA=2 and duration > 8", db.engine)[["pcap_id","pcap_name","qr","q","u","r","duration","dga",'mw_name']]
 
 
-pcaps = [('zbot', 46), ('simda', 58), ('unknown', 57), ('caphaw', 54)]
+pcaps = [('caphaw', 54), ('zbot', 46), ('simda', 58), ('unknown', 57)]
 df_pcaps = df_pcaps[df_pcaps['pcap_id'].isin([p[1] for p in pcaps])]
 
 print(df_pcaps)
@@ -51,9 +51,9 @@ if False:
 qt = QT(Path('./tmp'), db)
 
 for nn in NN:
-    qt_pcaps(qt, pcaps, FetchConfig(3600, nn, 0.5, None, 0), 1, [False], th_s=1.5)
+    qt_pcaps(qt, pcaps, FetchConfig(3600, nn, 0.5, None, 0), 1, [False], th_s=[1.0,1.5])
     print(f'NN {nn} done.')
-    break
+    pass
 
 exit()
 #######################

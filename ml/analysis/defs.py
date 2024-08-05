@@ -93,6 +93,9 @@ class FetchConfig:
     
     def new_offset(self, offset: float):
         return FetchConfig(self.sps, self.nn, self.th, self.pcap_id, offset)
+    
+    def new_nn(self, nn: NN):
+        return FetchConfig(self.sps, nn, self.th, self.pcap_id, self.pcap_offset)
 
     def __hash__(self):
         return hash((
