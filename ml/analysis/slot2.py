@@ -40,10 +40,10 @@ def cw(eps, glob, pt, pn, th):
 
     if eps:
         if pn == 'pos':
-            label.append(f'POS{eps}')
+            label.append(f'POS')
             condition.append(f"EPS{eps} > {th}")
         elif pn == 'neg':
-            label.append(f'NEG{eps}')
+            label.append(f'NEG')
             condition.append(f"EPS{eps} <= {th}")
         else:
             raise Exception('PN must be defined.')
@@ -70,12 +70,12 @@ class FetchField(enum.StrEnum):
     pcap_infected="pcap_infected"
     pcaps_count="pcaps_count"
     pcaps="pcaps"
-    pcap_pos_1="pcap_pos_1"
-    pcapid_pos1="pcapid_pos1"
-    gnx_neg1_dnagg="gnx_neg1_dnagg"
-    gnx_pos1_dnagg="gnx_pos1_dnagg"
-    gok_neg1_dnagg="gok_neg1_dnagg"
-    gok_pos1_dnagg="gok_pos1_dnagg"
+    pcap_pos_1="pcap_pos"
+    pcapid_pos="pcapid_pos"
+    gnx_neg1_dnagg="gnx_neg_dnagg"
+    gnx_pos_dnagg="gnx_pos_dnagg"
+    gok_neg1_dnagg="gok_neg_dnagg"
+    gok_pos_dnagg="gok_pos_dnagg"
     pass
 
 class FetchFieldMetric(enum.StrEnum):
@@ -90,33 +90,33 @@ class FetchFieldMetric(enum.StrEnum):
     gr="gr"
     gnx="gnx"
     gok="gok"
-    qr_pos1="qr_pos1"
-    q_pos1="q_pos1"
-    r_pos1="r_pos1"
-    nx_pos1="nx_pos1"
-    ok_pos1="ok_pos1"
-    gqr_pos1="gqr_pos1"
-    gq_pos1="gq_pos1"
-    gr_pos1="gr_pos1"
-    gnx_pos1="gnx_pos1"
-    gok_pos1="gok_pos1"
+    qr_pos="qr_pos"
+    q_pos="q_pos"
+    r_pos="r_pos"
+    nx_pos="nx_pos"
+    ok_pos="ok_pos"
+    gqr_pos="gqr_pos"
+    gq_pos="gq_pos"
+    gr_pos="gr_pos"
+    gnx_pos="gnx_pos"
+    gok_pos="gok_pos"
 
     @staticmethod
-    def g_pos1(l: str):
+    def g_pos(l: str):
         ls = ['qr', 'q', 'r', 'ok', 'nx']
         if l not in ls: raise Exception(f'Label {l} not equal to {" or ".join(ls)}.')
-        return f'g{l}_pos1'
+        return f'g{l}_pos'
 
     @staticmethod
-    def g_pos1_dnagg(l: str):
+    def g_pos_dnagg(l: str):
         ls = ['ok', 'nx']
         if l not in ls: raise Exception(f'Label {l} not equal to {" or ".join(ls)}.')
-        return f'g{l}_pos1_dnagg'
+        return f'g{l}_pos_dnagg'
     
     @staticmethod
     def pos1(l: str):
         if l not in ['ok','nx']: raise Exception(f'Label {l} not equal to nx or ok.')
-        return f'{l}_pos1'
+        return f'{l}_pos'
     
     pass # FetchField
 
@@ -125,12 +125,12 @@ class FetchFieldMetric(enum.StrEnum):
 Return a sql that will fetch:
     slotnum,
     time_s_min, time_s_max,
-    pcap_infected, pcaps_count, pcaps, pcap_pos_1, pcapid_pos1,
+    pcap_infected, pcaps_count, pcaps, pcap_pos_1, pcapid_pos,
     u, qr, q, r, nx, ok,
     gqr, gq, gr, gnx, gok,
-    qr_pos1, q_pos1, r_pos1, nx_pos1, ok_pos1,
-    gqr_pos1, gq_pos1, gr_pos1, gnx_pos1, gok_pos1,
-    gnx_neg1_dnagg, gnx_pos1_dnagg, gok_neg1_dnagg, gok_pos1_dnagg
+    qr_pos, q_pos, r_pos, nx_pos, ok_pos,
+    gqr_pos, gq_pos, gr_pos, gnx_pos, gok_pos,
+    gnx_neg1_dnagg, gnx_pos_dnagg, gok_neg1_dnagg, gok_pos_dnagg
 where 1 could be 1,2,3,4.
 """
 def sql_healthy_dataset(config: FetchConfig):
@@ -158,8 +158,8 @@ SELECT
 	COUNT(DISTINCT PCAP_ID) AS PCAPS_COUNT,
 	ARRAY_AGG(DISTINCT PCAP_ID) AS PCAPS,
 
-	{ f'COUNT(DISTINCT CASE WHEN EPS{nn} > {th} THEN M.PCAP_ID ELSE NULL END) AS PCAP_POS{nn}' },
-	{ f'ARRAY_AGG(DISTINCT CASE WHEN EPS{nn} > {th} THEN M.PCAP_ID ELSE NULL END) AS PCAPID_POS{nn}' },
+	{ f'COUNT(DISTINCT CASE WHEN EPS{nn} > {th} THEN M.PCAP_ID ELSE NULL END) AS PCAP_POS' },
+	{ f'ARRAY_AGG(DISTINCT CASE WHEN EPS{nn} > {th} THEN M.PCAP_ID ELSE NULL END) AS PCAPID_POS' },
     
 	COUNT(DISTINCT DN_ID) AS U,
 

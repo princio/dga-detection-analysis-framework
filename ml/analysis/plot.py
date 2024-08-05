@@ -13,6 +13,9 @@ import matplotlib.colors as mpcolors
 
 from slot2 import sql_healthy_dataset
 
+# import matplotlib
+# matplotlib.use('Qt5Agg')
+
 
 @dataclass
 class PNLabel:

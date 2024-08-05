@@ -31,17 +31,17 @@ class QTRow(enum.StrEnum):
     slotnum_dga_gnx_gt0 = 'gnx: pos'
 
     slotnum_dga_gr_pos_gt0 = 'gr_pos: pos'
-    slotnum_dga_gnx_pos_gt0 = 'gnx_pos1: pos'
-    slotnum_dga_gok_pos_gt0 = 'gok_pos1: pos'
+    slotnum_dga_gnx_pos_gt0 = 'gnx_pos: pos'
+    slotnum_dga_gok_pos_gt0 = 'gok_pos: pos'
 
-    slotnum_dga_ok_min = 'gok_pos1: dga-slotnum min'
-    slotnum_dga_nx_min = 'gnx_pos1: dga-slotnum min'
-    slotnum_dga_ok_max = 'gok_pos1: dga-slotnum max'
-    slotnum_dga_nx_max = 'gnx_pos1: dga-slotnum max'
-    slotnum_dga_ok_mean = 'gok_pos1: dga-slotnum mean'
-    slotnum_dga_nx_mean = 'gnx_pos1: dga-slotnum mean'
-    slotnum_dga_ok_sum = 'gok_pos1: dga-slotnum sum'
-    slotnum_dga_nx_sum = 'gnx_pos1: dga-slotnum sum'
+    slotnum_dga_ok_min = 'gok_pos: dga-slotnum min'
+    slotnum_dga_nx_min = 'gnx_pos: dga-slotnum min'
+    slotnum_dga_ok_max = 'gok_pos: dga-slotnum max'
+    slotnum_dga_nx_max = 'gnx_pos: dga-slotnum max'
+    slotnum_dga_ok_mean = 'gok_pos: dga-slotnum mean'
+    slotnum_dga_nx_mean = 'gnx_pos: dga-slotnum mean'
+    slotnum_dga_ok_sum = 'gok_pos: dga-slotnum sum'
+    slotnum_dga_nx_sum = 'gnx_pos: dga-slotnum sum'
     r = 'r'
     gr = 'gr'
     gr_missed_hours = 'gr_missed_hours'
@@ -50,30 +50,34 @@ class QTRow(enum.StrEnum):
     pass
 
 class QTRowOverall(enum.StrEnum):
-    min_1hr_sum_gok_pos1_of_8hr = 'gok_pos1: min 1hr sum of 8hr'
-    max_1hr_sum_gok_pos1_of_8hr = 'gok_pos1: max 1hr sum of 8hr'
-    sum_1hr_sum_gok_pos1_of_8hr = 'gok_pos1: sum 1hr sum of 8hr'
-    min_1hr_sum_gnx_pos1_of_8hr = 'gnx_pos1: min 1hr sum of 8hr'
-    max_1hr_sum_gnx_pos1_of_8hr = 'gnx_pos1: max 1hr sum of 8hr'
-    sum_1hr_sum_gnx_pos1_of_8hr = 'gnx_pos1: sum 1hr sum of 8hr'
+    min_1hr_sum_gok_pos_of_8hr = 'gok_pos: min 1hr sum of 8hr'
+    max_1hr_sum_gok_pos_of_8hr = 'gok_pos: max 1hr sum of 8hr'
+    sum_1hr_sum_gok_pos_of_8hr = 'gok_pos: sum 1hr sum of 8hr'
+    min_1hr_sum_gnx_pos_of_8hr = 'gnx_pos: min 1hr sum of 8hr'
+    max_1hr_sum_gnx_pos_of_8hr = 'gnx_pos: max 1hr sum of 8hr'
+    sum_1hr_sum_gnx_pos_of_8hr = 'gnx_pos: sum 1hr sum of 8hr'
 
     @staticmethod
-    def _(cm: Union[str, Literal['TN', 'FA', 'MA', 'TA']], l: Union[str, Literal['gok_pos1', 'gnx_pos']]):
+    def _(cm: Union[str, Literal['TN', 'FA', 'MA', 'TA']], l: Union[str, Literal['gok_pos', 'gnx_pos']]):
         return f'{l}: {cm}'
 
     pass
 
 class QTRowCM(enum.StrEnum):
-    # first_TA_of_8hr_overlap_with_ok = 'gok_pos1: first TA of 8hr overlap'
-    # first_TA_of_8hr_overlap_with_nx = 'gnx_pos1: first TA of 8hr overlap'
+    # first_TA_of_8hr_overlap_with_ok = 'gok_pos: first TA of 8hr overlap'
+    # first_TA_of_8hr_overlap_with_nx = 'gnx_pos: first TA of 8hr overlap'
 
     @staticmethod
-    def _(cm: Union[str, Literal['A', 'TN', 'FA', 'MA', 'TA']], l: Union[str, Literal['gok_pos1', 'gnx_pos']]):
+    def _(cm: Union[str, Literal['A', 'TN', 'FA', 'MA', 'TA']], l: Union[str, Literal['gok_pos', 'gnx_pos']]):
         return f'{l}: {cm}'
 
     @staticmethod
-    def _2(l: Union[str, Literal['gok_pos1', 'gnx_pos']], m: str):
+    def _2(l: Union[str, Literal['gok_pos', 'gnx_pos']], m: str):
         return f'{l}: dga-slotnum {m}'
+
+    @staticmethod
+    def _first(m: str, l: Union[str, Literal['gok_pos', 'gnx_pos']]):
+        return f'{l}: first {m}'
 
     pass
 
@@ -125,8 +129,18 @@ class QT:
         records = []
         dfh = DFH.iloc[0:8].reset_index(drop=True)
         dfh['slotnum_added'] = 0
-        th = { f'{l}': dfh[FetchFieldMetric.g_pos1(l)].max() * th_s for l in ls }
+
+
+        try:
+            th = { f'{l}': dfh[FetchFieldMetric.g_pos(l)].max() * th_s for l in ls }
+        except:
+            print(dfh)
+            print(dfh.columns)
+            print(config.new_fromsource(pcap_id).new_offset(0).__hash__())
+            exit(0)
         for i in range(0, DFDGA.slotnum.max() - 8, step):
+            if i % 100:
+                print(i, DFDGA.slotnum.max() - 8, sep='/')
             if renew:
                 dfdga = self.get_df(config.new_fromsource(pcap_id).new_offset(time_s_first + i * 3600))
                 # print(dfdga.slotnum.iloc[7] - dfdga.slotnum.iloc[0], end='\t')
@@ -136,7 +150,13 @@ class QT:
                 dfdga = self.df_fill_missing_slotnum(DFDGA, i, i + 8)
                 pass
 
-            dfsum = dfh[[e for e in FetchFieldMetric]] + dfdga[[e for e in FetchFieldMetric]]
+            try:
+                dfsum = dfh[[e for e in FetchFieldMetric]] + dfdga[[e for e in FetchFieldMetric]]
+            except:
+                print(dfdga)
+                print(dfdga.columns)
+                print(config.new_fromsource(pcap_id).new_offset(0).__hash__())
+                exit(0)
             
             overlap = {
                 'slotnum1': dfdga.slotnum.min(),
@@ -146,7 +166,7 @@ class QT:
                 'overlap translation step': step,
                 'r': dfdga[FetchFieldMetric.r].sum(),
                 'gr': dfdga[FetchFieldMetric.gr].sum(),
-                'gr_missed_hours': dfdga[FetchFieldMetric.gr][(dfdga[FetchFieldMetric.g_pos1('ok')].between(0, th['ok'], inclusive='both'))].sum(),
+                'gr_missed_hours': dfdga[FetchFieldMetric.gr][(dfdga[FetchFieldMetric.g_pos('ok')].between(0, th['ok'], inclusive='both'))].sum(),
             }
             for l in ls:
                 overlap[f'th_{l}'] = th[l]
@@ -154,11 +174,11 @@ class QT:
             overlap[QTRowCM._('A', 'gr')] = (dfdga[FetchFieldMetric.gr] > 0).sum()
             overlap[QTRowCM._('A', 'gok')] = (dfdga[FetchFieldMetric.gok] > 0).sum()
             overlap[QTRowCM._('A', 'gnx')] = (dfdga[FetchFieldMetric.gnx] > 0).sum()
-            overlap[QTRowCM._('A', FetchFieldMetric.g_pos1('r'))] = (dfdga[FetchFieldMetric.g_pos1('r')] > 0).sum()
-            overlap[QTRowCM._('A', FetchFieldMetric.g_pos1('ok'))] = (dfdga[FetchFieldMetric.g_pos1('ok')] > 0).sum()
-            overlap[QTRowCM._('A', FetchFieldMetric.g_pos1('nx'))] = (dfdga[FetchFieldMetric.g_pos1('nx')] > 0).sum()
+            overlap[QTRowCM._('A', FetchFieldMetric.g_pos('r'))] = (dfdga[FetchFieldMetric.g_pos('r')] > 0).sum()
+            overlap[QTRowCM._('A', FetchFieldMetric.g_pos('ok'))] = (dfdga[FetchFieldMetric.g_pos('ok')] > 0).sum()
+            overlap[QTRowCM._('A', FetchFieldMetric.g_pos('nx'))] = (dfdga[FetchFieldMetric.g_pos('nx')] > 0).sum()
             for l in ls:
-                poscol = FetchFieldMetric.g_pos1(l)
+                poscol = FetchFieldMetric.g_pos(l)
                 overlap[QTRowCM._2(poscol, 'min')] = dfdga[poscol].min()
                 overlap[QTRowCM._2(poscol, 'max')] = dfdga[poscol].max()
                 overlap[QTRowCM._2(poscol, 'mean')] = dfdga[poscol].mean()
@@ -170,8 +190,8 @@ class QT:
                 MA = (A & ~P)
                 FA = (~A & P)
                 TN = (~(A | P))
-                FIRST_TA = np.nan if (TA.sum() == 0) else TA.idxmax()
-                FIRST_MA = np.nan if (MA.sum() == 0) else MA.idxmax()
+                FIRST_TA = np.nan if (TA.sum() == 0) else (TA.idxmax() + 1)
+                FIRST_MA = np.nan if (MA.sum() == 0) else (MA.idxmax() + 1)
                 if (TA.sum() + MA.sum() + FA.sum() + TN.sum()) != 8:
                     df = pd.DataFrame.from_dict({'A': A, 'P': P})
                     df['TP'] = df.A & df.P
@@ -179,10 +199,10 @@ class QT:
                     df['FN'] = (df.A & ~df.P)
                     df['TN'] = ~(df.A | df.P)
                     raise Exception(f'{TA} + {MA} + {FA} + {TN} < 8')
-                overlap[f'{poscol}: whole-day actual malicious'] = A.sum() > 0 # type: ignore
-                overlap[f'{poscol}: whole-day predicted malicious'] = TA.sum() > 0 # type: ignore
-                overlap['first ' + QTRowCM._('TA', poscol)] = FIRST_TA
-                overlap['first ' + QTRowCM._('MA', poscol)] = FIRST_MA
+                overlap[f'{poscol}: ADay'] = A.sum() > 0 # type: ignore
+                overlap[f'{poscol}: PDay'] = TA.sum() > 0 # type: ignore
+                overlap[QTRowCM._first('TA', poscol)] = FIRST_TA
+                overlap[QTRowCM._first('MA', poscol)] = FIRST_MA
                 overlap[QTRowCM._('TA', poscol)] = TA.sum()
                 overlap[QTRowCM._('MA', poscol)] = MA.sum()
                 overlap[QTRowCM._('FA', poscol)] = FA.sum()
@@ -191,11 +211,11 @@ class QT:
                     overlap[f'{poscol}: {agg}'] = dfsum[poscol].agg(agg)
                 pass
             # for l in ls:
-            #     dnagg_pos1_missed = dfdga[(dfdga[FetchField.g_pos1(l)].between(0, th[l], inclusive='both'))][FetchField.g_pos1_dnagg(l)]
-            #     s = dnagg_pos1_missed.apply(lambda x: json.loads(x.replace("'",'"')) if type(x) == str else x).explode().dropna().sort_values()
-            #     dnagg_pos1_missed = s.to_list()
-            #     record[f'{l} dn missed count'] = len(dnagg_pos1_missed)
-            #     record[f'{l} dn missed'] = '  '.join(dnagg_pos1_missed) # type: ignore
+            #     dnagg_pos_missed = dfdga[(dfdga[FetchField.g_pos(l)].between(0, th[l], inclusive='both'))][FetchField.g_pos_dnagg(l)]
+            #     s = dnagg_pos_missed.apply(lambda x: json.loads(x.replace("'",'"')) if type(x) == str else x).explode().dropna().sort_values()
+            #     dnagg_pos_missed = s.to_list()
+            #     record[f'{l} dn missed count'] = len(dnagg_pos_missed)
+            #     record[f'{l} dn missed'] = '  '.join(dnagg_pos_missed) # type: ignore
             #     pass
 
             records.append(overlap)

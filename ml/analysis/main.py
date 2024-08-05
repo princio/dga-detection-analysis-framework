@@ -10,31 +10,16 @@ aa['TN'] = ~(aa.a | aa.p)
 
 print(aa.astype(int))
 
-from dataclasses import dataclass
 from io import BytesIO
-import itertools
 from logging import warning
 from pathlib import Path
 from typing import Optional, Union, cast
-import warnings
 import numpy as np
-from plot import PlotConfig, Plotter, DataConfig
 from defs import FetchConfig, NN, Database, OnlyFirsts, PacketType
-import matplotlib
-import matplotlib.pyplot as plt
-from matplotlib import rc
 import json
-from plots import plot_pcaps, plot_rowsource_colposneg
 from qt import QT, QTRowCM
 from qts import qt_pcaps
 from slot2 import FetchField, sql_healthy_dataset
-
-# matplotlib.use('Qt5Agg')
-
-
-
-
-
 
 db = Database()
 
@@ -49,6 +34,9 @@ print(df_pcaps)
 #######################
 
 if False:
+    from plot import Plotter
+    from plots import plot_rowsource_colposneg
+    from matplotlib import pyplot as plt, rc
     plotter = Plotter(Path('./tmp'), db)
 
     fig, axes = plot_rowsource_colposneg(plotter, pcaps, None, maxslots = None, rolled = None)
@@ -62,7 +50,10 @@ if False:
 
 qt = QT(Path('./tmp'), db)
 
-qt_pcaps(qt, pcaps, FetchConfig(3600, NN.NONE, 0.5, None, 0), 1, [False, True], th_s=1.5)
+for nn in NN:
+    qt_pcaps(qt, pcaps, FetchConfig(3600, nn, 0.5, None, 0), 1, [False], th_s=1.5)
+    print(f'NN {nn} done.')
+    break
 
 exit()
 #######################
