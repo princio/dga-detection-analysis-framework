@@ -133,7 +133,7 @@ Return a sql that will fetch:
     gnx_neg1_dnagg, gnx_pos_dnagg, gok_neg1_dnagg, gok_pos_dnagg
 where 1 could be 1,2,3,4.
 """
-def sql_healthy_dataset(config: FetchConfig):
+def sql_dataset(config: FetchConfig):
     sps = config.sps
     nn = config.nn
     th = config.th

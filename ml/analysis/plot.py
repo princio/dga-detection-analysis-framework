@@ -11,7 +11,7 @@ import pandas as pd
 from defs import NN, Database, FetchConfig, OnlyFirsts, PacketType, pgshow
 import matplotlib.colors as mpcolors
 
-from slot2 import sql_healthy_dataset
+from slot2 import sql_dataset
 
 # import matplotlib
 # matplotlib.use('Qt5Agg')
@@ -101,7 +101,7 @@ class Plotter:
             df = pd.read_csv(fpath)
         else:
             with self.db.engine.connect() as conn:
-                df = pd.read_sql(sql_healthy_dataset(config), conn)
+                df = pd.read_sql(sql_dataset(config), conn)
                 df.to_csv(fpath)
             pass
 

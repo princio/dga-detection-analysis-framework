@@ -12,7 +12,7 @@ import pandas as pd
 from pandasgui import show
 
 from defs import NN, Database, FetchConfig, pgshow
-from slot2 import FetchField, FetchFieldMetric, sql_healthy_dataset
+from slot2 import FetchField, FetchFieldMetric, sql_dataset
 
 
 
@@ -82,6 +82,8 @@ class QTRowCM(enum.StrEnum):
     pass
 
 
+
+
 class QT:
     def __init__(self, dir: Path, db: Database):
         self.db = db
@@ -94,7 +96,7 @@ class QT:
             df = pd.read_csv(fpath, index_col=0)
         else:
             with self.db.engine.connect() as conn:
-                df = pd.read_sql(sql_healthy_dataset(config), conn)
+                df = pd.read_sql(sql_dataset(config), conn)
                 df.to_csv(fpath)
             pass
         df.slotnum = df.slotnum.astype(int)

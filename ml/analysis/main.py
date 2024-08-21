@@ -19,7 +19,7 @@ from defs import FetchConfig, NN, Database, OnlyFirsts, PacketType
 import json
 from qt import QT, QTRowCM
 from qts import qt_pcaps
-from slot2 import FetchField, sql_healthy_dataset
+from slot2 import FetchField, sql_dataset
 
 db = Database()
 
@@ -69,7 +69,7 @@ for i, col in enumerate(cols):
         df = pd.read_csv(fpath)
     else:
         with db.engine.connect() as conn:
-            df = pd.read_sql(sql_healthy_dataset(config), conn)
+            df = pd.read_sql(sql_dataset(config), conn)
             df.to_csv(fpath)
         pass
 
@@ -149,7 +149,7 @@ axs = cast(np.ndarray, axs)
 
 for i, row in enumerate(cols):
     with db.engine.connect() as conn:
-        df = pd.read_sql(sql_healthy_dataset(3600, NN.NONE, 0.5, pcap_id=row[0], pcap_offset=row[1]), conn)
+        df = pd.read_sql(sql_dataset(3600, NN.NONE, 0.5, pcap_id=row[0], pcap_offset=row[1]), conn)
 
     by_config(df, PacketType.Q, OnlyFirsts.GLOBAL, NN.NONE, axs[i], maxslots=8)
     pass
