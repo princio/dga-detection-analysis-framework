@@ -50,12 +50,6 @@ def get_df(db: Database, mwname, pcap_id, g: bool, pt: str):
     where {where} and FLOOR(time_s_translated / 3600) < 24*30
     """, db.engine)
 
-    print(f'''SELECT time_s_translated, FLOOR(time_s_translated / 3600) as "hour" from public.get_message_pcap_all3(
-        {pcap_id},
-        0
-    )
-    where {where} and FLOOR(time_s_translated / 3600) < 24*30''')
-
     df["p"] = 1
 
     df = df.groupby("hour").aggregate({"p": 'sum'})
@@ -63,7 +57,7 @@ def get_df(db: Database, mwname, pcap_id, g: bool, pt: str):
 
     index2 = []
     missing = []
-    for i in range(idx.max()):
+    for i in range(24*30):
         if i not in idx:
             index2.append(i)
             missing.append(0)
