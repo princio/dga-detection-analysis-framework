@@ -21,7 +21,7 @@ class Database:
         # self.conn = self.engine.connect()
         pass
 
-def get_df(db: Database, mwname, pcap_id, g: bool, pt: str):
+def get_df(db: Database, mwname, pcap_id, g: bool, pt: str, slot_h=1.0, nn=1):
 
     if g:
         if pt == 'q':
@@ -42,29 +42,29 @@ def get_df(db: Database, mwname, pcap_id, g: bool, pt: str):
         elif pt == 'nx':
             where = 'rcode = 3'
 
-    df = pd.read_sql(f"""
-    SELECT time_s_translated, FLOOR(time_s_translated / 3600) as "hour" from public.get_message_pcap_all3(
-        {pcap_id},
-        0
-    )
-    where {where} and FLOOR(time_s_translated / 3600) < 24*30
-    """, db.engine)
+    if pcap_id:
+        df = pd.read_sql(f"""
+        SELECT EPS{nn} > 0.5 AS pp, time_s_translated, FLOOR(time_s_translated / 3600) as "hour" from public.get_message_pcap_all3({pcap_id},0)
+        where {where} and FLOOR(time_s_translated / {3600 * slot_h}) < {24*30/slot_h}
+        """, db.engine)
+    else:
+        df = pd.read_sql(f"""
+        SELECT EPS{nn} > 0.5 AS pp, time_s_translated, FLOOR(time_s_translated / 3600) as "hour" from public.get_message_healthy_all2()
+        where {where} and FLOOR(time_s_translated / {3600 * slot_h}) < {8/slot_h}
+        """, db.engine)
 
-    df["p"] = 1
 
-    df = df.groupby("hour").aggregate({"p": 'sum'})
+    df = df.groupby("hour").aggregate({"pp": 'sum'})
     idx  = df.index.to_numpy().astype(int)
 
     index2 = []
     missing = []
-    for i in range(24*30):
+    for i in range(int(24*30/slot_h) if pcap_id is not None else int(8/slot_h)):
         if i not in idx:
             index2.append(i)
             missing.append(0)
-
-    df.to_csv(f'{mwname}.csv')
-
     if len(missing) > 0:
-        return pd.concat([df, pd.Series(missing, index2, name='p')]).sort_index()
-    else:
-        return df
+        df = pd.concat([df, pd.Series(missing, index2, name='pp')]).sort_index()
+        pass
+
+    return df
