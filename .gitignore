@@ -93,3 +93,4 @@ ml/rule/beamer/main.nav
 ml/rule/beamer/main.out
 ml/rule/beamer/main.snm
 ml/rule/beamer/main.toc
+ml/rule/tmp/*
