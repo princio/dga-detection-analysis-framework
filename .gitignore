@@ -87,3 +87,9 @@ ml/analysis/tmp/
 
 ml/simulation/*.pdf
 ml/simulation/*.svg
+ml/rule/beamer/main.aux
+ml/rule/beamer/main.log
+ml/rule/beamer/main.nav
+ml/rule/beamer/main.out
+ml/rule/beamer/main.snm
+ml/rule/beamer/main.toc
