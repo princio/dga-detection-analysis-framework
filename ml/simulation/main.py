@@ -12,7 +12,6 @@ from matplotlib.colors import to_rgba
 matplotlib.use('Qt5Agg')
 
 DF = pd.read_csv("simulated_dns_traffic.csv").pivot(index=["day","hour"], columns="variance", values="domains").reset_index()
-DF
 
 # Genera un numero casuale tra 0 e 24
 random_number = random.randint(0, 24)
@@ -133,7 +132,7 @@ def bo():
             # if day > 0:
             #     ax.set_yticks([])
             ax.set_xticks([])
-            ax.set_xlabel(f"${day+1}^{{{p.ordinal(day+1)[1:]}}}$ day hours")We simulate four days of a small network, using the first day - when we are certain that there are no infections - to set the threshold of false positives. When this threshold is exceeded, an alarm is raised.
+            ax.set_xlabel(f"${day+1}^{{{p.ordinal(day+1)[1:]}}}$ day hours")
             ax.set_ylim(0, TOTs.max() + 10)
             ax.set_xlim(-0.5,23.5)
             ax.set_facecolor(background_color)
