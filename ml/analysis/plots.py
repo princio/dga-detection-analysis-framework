@@ -38,6 +38,7 @@ def plot_rowsource_colposneg(plotter: Plotter, pcaps, pcaps_offset: Optional[Dic
             pc = PlotConfig((40,30), 25, 1, f'{source['mw_name']}', False, False, logy=True)
             matrix[s, d] = AxesConfig(fc, data, pc)
             pass
+        pass
 
     return plotter.rowpt_colsource(matrix, sharey=(0,0)) # type: ignore
 

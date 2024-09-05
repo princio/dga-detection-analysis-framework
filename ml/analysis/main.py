@@ -29,11 +29,12 @@ df_pcaps = pd.read_sql("SELECT * FROM PCAPMW WHERE DGA=2 and duration > 8", db.e
 pcaps = [('caphaw', 54), ('zbot', 46), ('simda', 58), ('unknown', 57)]
 df_pcaps = df_pcaps[df_pcaps['pcap_id'].isin([p[1] for p in pcaps])]
 
+
 print(df_pcaps)
 
-#######################
 
-if False:
+#######################
+if True:
     from plot import Plotter
     from plots import plot_rowsource_colposneg
     from matplotlib import pyplot as plt, rc
@@ -46,8 +47,8 @@ if False:
     exit()
 #######################
 
-#######################
 
+#######################
 qt = QT(Path('./tmp'), db)
 
 for nn in NN:

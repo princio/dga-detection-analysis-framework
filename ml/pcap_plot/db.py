@@ -44,12 +44,11 @@ def get_df(db: Database, mwname, pcap_id, g: bool, pt: str, slot_h=1.0, nn=1):
 
     if pcap_id:
         df = pd.read_sql(f"""
-        SELECT EPS{nn} >= 0.5 AS pp, time_s_translated, FLOOR(time_s_translated / 3600) as "hour" from public.get_message_pcap_all3({pcap_id},0)
-        where {where} and FLOOR(time_s_translated / {3600 * slot_h}) < {24*30/slot_h}
+        SELECT EPS{nn} > 0.5 AS pp, time_s_translated, FLOOR(time_s_translated / {3600 * slot_h}) as "hour" from public.get_message_pcap_all3({pcap_id},0) where {where} and FLOOR(time_s_translated / {3600 * slot_h}) < {24*30/slot_h}
         """, db.engine)
     else:
         df = pd.read_sql(f"""
-        SELECT EPS{nn} >= 0.5 AS pp, time_s_translated, FLOOR(time_s_translated / 3600) as "hour" from public.get_message_healthy_all2()
+        SELECT EPS{nn} > 0.5 AS pp, time_s_translated, FLOOR(time_s_translated / {3600 * slot_h}) as "hour" from public.get_message_healthy_all2()
         where {where} and FLOOR(time_s_translated / {3600 * slot_h}) < {8/slot_h}
         """, db.engine)
 
