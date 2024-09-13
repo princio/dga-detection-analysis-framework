@@ -1,0 +1,93 @@
+
+    \documentclass{standalone}
+    \usepackage{tikz}
+
+    \begin{document}
+
+    \begin{tikzpicture}
+
+    
+\draw[fill=blue!20] (0.25, 0) rectangle ++(0.30000000000000004, 5.34);
+\draw[fill=blue!20] (1.05, 0) rectangle ++(0.30000000000000004, 5.0);
+\draw[fill=blue!20] (1.85, 0) rectangle ++(0.30000000000000004, 3.36);
+\draw[fill=blue!20] (2.6500000000000004, 0) rectangle ++(0.30000000000000004, 2.77);
+\draw[fill=blue!20] (3.45, 0) rectangle ++(0.30000000000000004, 3.67);
+\draw[fill=blue!20] (4.25, 0) rectangle ++(0.30000000000000004, 4.9);
+\draw[fill=blue!20] (5.050000000000001, 0) rectangle ++(0.30000000000000004, 5.59);
+\draw[fill=blue!20] (5.8500000000000005, 0) rectangle ++(0.30000000000000004, 4.33);
+\node at (0.4, -0.35) {$h_0$};
+\node at (1.2000000000000002, -0.35) {$h_1$};
+\node at (2.0, -0.35) {$h_2$};
+\node at (2.8000000000000003, -0.35) {$h_3$};
+\node at (3.6, -0.35) {$h_4$};
+\node at (4.4, -0.35) {$h_5$};
+\node at (5.200000000000001, -0.35) {$h_6$};
+\node at (6.000000000000001, -0.35) {$h_7$};
+\draw[|-|,thick] (0.16999999999999998, 1.3975) -- (3.83, 1.3975) node[inner sep=2pt, fill=white, draw, thin, midway, centered] {$H_0$};
+\draw[|-|,thick] (0.9700000000000001, 1.9975) -- (4.63, 1.9975) node[inner sep=2pt, fill=white, draw, thin, midway, centered] {$H_1$};
+\draw[|-|,thick] (1.77, 2.5975) -- (5.43, 2.5975) node[inner sep=2pt, fill=white, draw, thin, midway, centered] {$H_2$};
+\draw[|-|,thick] (2.5700000000000003, 3.1975) -- (6.23, 3.1975) node[inner sep=2pt, fill=white, draw, thin, midway, centered] {$H_3$};
+\draw[thin] (0, 0) rectangle ++(6.4, 6.149);
+\node[fill=white,draw,thin,anchor=center] at (3.2, 6.149) {$T^h$};
+\draw[fill=red!20] (8.65, 0) rectangle ++(0.30000000000000004, 2.27);
+\draw[fill=red!20] (9.450000000000001, 0) rectangle ++(0.30000000000000004, 3.13);
+\draw[fill=red!20] (10.25, 0) rectangle ++(0.30000000000000004, 3.59);
+\draw[fill=red!20] (11.05, 0) rectangle ++(0.30000000000000004, 3.5);
+\draw[fill=red!20] (11.850000000000001, 0) rectangle ++(0.30000000000000004, 3.35);
+\draw[fill=red!20] (12.65, 0) rectangle ++(0.30000000000000004, 2.48);
+\draw[fill=red!20] (13.450000000000001, 0) rectangle ++(0.30000000000000004, 3.21);
+\draw[fill=red!20] (14.25, 0) rectangle ++(0.30000000000000004, 2.54);
+\node at (8.8, -0.35) {$m_0$};
+\node at (9.600000000000001, -0.35) {$m_1$};
+\node at (10.4, -0.35) {$m_2$};
+\node at (11.200000000000001, -0.35) {$m_3$};
+\node at (12.000000000000002, -0.35) {$m_4$};
+\node at (12.8, -0.35) {$m_5$};
+\node at (13.600000000000001, -0.35) {$m_6$};
+\node at (14.4, -0.35) {$m_7$};
+\draw[|-|,thick] (8.57, 0.8975) -- (12.23, 0.8975) node[inner sep=2pt, fill=white, draw, thin, midway, centered] {$M_0$};
+\draw[|-|,thick] (9.370000000000001, 1.4975) -- (13.030000000000001, 1.4975) node[inner sep=2pt, fill=white, draw, thin, midway, centered] {$M_1$};
+\draw[|-|,thick] (10.17, 2.0975) -- (13.83, 2.0975) node[inner sep=2pt, fill=white, draw, thin, midway, centered] {$M_2$};
+\draw[|-|,thick] (10.97, 2.6975) -- (14.63, 2.6975) node[inner sep=2pt, fill=white, draw, thin, midway, centered] {$M_3$};
+\draw[thin] (8.4, 0) rectangle ++(6.4, 6.149);
+\node[fill=white,draw,thin,anchor=center] at (11.600000000000001, 6.149) {$T^m$};
+\draw[fill=blue!20] (1.4500000000000004, -7) rectangle ++(0.3, 3.36);
+\draw[fill=red!20] (2.2500000000000004, -7) rectangle ++(0.3, 2.77);
+\node[anchor=west] at (1.3000000000000003, -7.35) {$h_2$};
+\node[anchor=west] at (2.1000000000000005, -7.35) {$m_3$};
+\node[anchor=west] at (1.3000000000000003, -7.75) {$h_{2_0}$};
+\node[anchor=west] at (2.1000000000000005, -7.75) {$m_{3_0}$};
+\draw[fill=blue!20] (4.15, -7) rectangle ++(0.3, 2.77);
+\draw[fill=red!20] (4.95, -7) rectangle ++(0.3, 3.67);
+\node[anchor=west] at (4.000000000000001, -7.35) {$h_3$};
+\node[anchor=west] at (4.800000000000001, -7.35) {$m_4$};
+\node[anchor=west] at (4.000000000000001, -7.75) {$h_{2_1}$};
+\node[anchor=west] at (4.800000000000001, -7.75) {$m_{3_1}$};
+\draw[fill=blue!20] (6.8500000000000005, -7) rectangle ++(0.3, 3.67);
+\draw[fill=red!20] (7.65, -7) rectangle ++(0.3, 4.9);
+\node[anchor=west] at (6.700000000000001, -7.35) {$h_4$};
+\node[anchor=west] at (7.500000000000001, -7.35) {$m_5$};
+\node[anchor=west] at (6.700000000000001, -7.75) {$h_{2_2}$};
+\node[anchor=west] at (7.500000000000001, -7.75) {$m_{3_2}$};
+\draw[fill=blue!20] (9.550000000000002, -7) rectangle ++(0.3, 4.9);
+\draw[fill=red!20] (10.350000000000003, -7) rectangle ++(0.3, 5.59);
+\node[anchor=west] at (9.400000000000002, -7.35) {$h_5$};
+\node[anchor=west] at (10.200000000000003, -7.35) {$m_6$};
+\node[anchor=west] at (9.400000000000002, -7.75) {$h_{2_3}$};
+\node[anchor=west] at (10.200000000000003, -7.75) {$m_{3_3}$};
+\draw[fill=blue!20] (12.250000000000002, -7) rectangle ++(0.3, 5.59);
+\draw[fill=red!20] (13.050000000000002, -7) rectangle ++(0.3, 4.33);
+\node[anchor=west] at (12.100000000000001, -7.35) {$h_6$};
+\node[anchor=west] at (12.900000000000002, -7.35) {$m_7$};
+\node[anchor=west] at (12.100000000000001, -7.75) {$h_{2_4}$};
+\node[anchor=west] at (12.900000000000002, -7.75) {$m_{3_4}$};
+\draw[thin] (0.6500000000000004, 0) rectangle ++(2.4, 6.149);
+\node[fill=white,draw,thin,anchor=center] at (1.8500000000000003, 6.149) {$O_{2,3$}$};
+
+
+            \node at (5,10) {ciao};
+    \end{tikzpicture}
+
+    \end{document}
+
+    

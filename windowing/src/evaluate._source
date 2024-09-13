@@ -1,0 +1,71 @@
+#include "evaluate.h"
+
+#include <float.h>
+#include <stdlib.h>
+#include <string.h>
+
+
+#define UNUSED(x) (void)(x)
+
+// TODO: check if is passed by refence with %p printf
+
+const char evaluate_dgadetection_names[N_PERFORMANCE_DGAHANDLINGs][50] = {
+    "ignore",
+    "merge"
+};
+
+const char evaluate_functions_names[3][50] = {
+    "f1score",
+    "fpr",
+    "tpr"
+};
+
+void _evaluate_statistic_reset(EvaluationStatisticOutput* output) {
+    switch (output->input->range) {
+        case PERFORMANCE_RANGE_01:
+            output->avg = 0;
+            output->min = 1;
+            output->max = 0;
+        break;
+        case PERFORMANCE_RANGE_INF:
+            output->avg = 0;
+            output->min = DBL_MAX;
+            output->max = -1 * DBL_MAX;
+        break;
+        case PERFORMANCE_RANGE_INT_POS:
+            output->avg = 0;
+            output->min = INT32_MAX;
+            output->max = 0;
+        break;
+    }
+}
+
+void _evaluate__statisticoutput_init(EvaluationStatisticInput* input, EvaluationStatisticOutput* output) {
+    output->input = input;
+    _evaluate_statistic_reset(output);
+}
+
+int evaluate_isbetter(EvaluationOutput* a, EvaluationOutput* b) {
+    assert(a->input->greater_is_better == b->input->greater_is_better);
+
+    double diff = a->score - b->score;
+    if (a->input->greater_is_better) {
+        diff *= -1;
+    }
+
+    return diff > 0;
+}
+
+void evaluate_run(EvaluationInput* input, Detection* det, EvaluationOutput* output) {
+    output->input = input;
+    output->detection = det;
+    output->score = (*input->func)(input, det);
+}
+
+void evaluate_statistic(EvaluationStatisticInput input, MANY(Detection) detection, EvaluationStatisticOutput* output) {
+    _evaluate__statisticoutput_init(&input, output);
+
+    for (int d = 0; d < detection.number; d++) {
+        output->input->func(&detection._[d], output);
+    }
+}

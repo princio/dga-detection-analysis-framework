@@ -4,19 +4,27 @@
             "name": "Linux",
             "includePath": [
                 "${workspaceFolder}/**",
-                "${workspaceFolder}/pslregex/pslregex/c",
                 "/usr/include/postgresql/",
-                "/usr/include/postgresql/15/server"
+                "/usr/include/arpa",
+                "/usr/include/"
             ],
-            "defines": [],
-            "compilerPath": "/usr/bin/clang",
-            "cStandard": "c17",
+            "defines": ["__USE_MISC"],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c99",
             "cppStandard": "c++14",
-            "intelliSenseMode": "linux-clang-x64",
+            "intelliSenseMode": "linux-gcc-x64",
             "configurationProvider": "ms-vscode.cmake-tools",
             "compilerArgs": [
                 "-libpq"
-            ]
+            ],
+            "browse": {
+                "limitSymbolsToIncludedHeaders": true,
+                "path": [
+                    "${workspaceFolder}/windowing/src/**",
+                    "${workspaceFolder}/dns_parse/**",
+                    "${workspaceFolder}/psltrie/export/include/**"
+                ]
+            }
         }
     ],
     "version": 4

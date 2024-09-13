@@ -51,7 +51,8 @@ END_COLOR=\$(COLOR_PREFIX)[0m
 BINDIR := bin
 SRCDIR := src
 LOGDIR := log
-LIBDIR := lib
+ALLLIBDIR := lib/all
+PRODLIBDIR := lib/prod
 TESTDIR := test
 
 
@@ -67,23 +68,26 @@ CC := gcc
 STD := -std=gnu99 # See man gcc for more options
 
 # Protection for stack-smashing attack
-STACK := -Wstack-protector # -fstack-protector-all
+STACK := #-Wstack-protector # -fstack-protector-all
 
 # Specifies to GCC the required warnings
-WARNS := -Wall -Wextra -pedantic # -pedantic warns on language standards
+ERRORS := -fmax-errors=5
+
+WARNS := $(ERRORS) -Wall -Wextra -pedantic # -pedantic warns on language standards
+
+NOWARNS := -Wno-unused-parameter -Wno-unused-variable -Wno-unused-variable -Wno-unused-but-set-variable
 
 INCLUDES := -I/usr/include/postgresql/
 
 # Flags for compiling
 # CFLAGS := -O3 $(STD) $(STACK) $(WARNS) -I/usr/include/postgresql/
-CFLAGS := $(STD) $(STACK) $(WARNS) -I/usr/include/postgresql/
-
-# Debug options
+CFLAGS := $(STD) $(STACK) $(WARNS) $(NOWARNS) -I/usr/include/postgresql/
+PROD_CFLAGS := -O3 $(STD) $(STACK) $(WARNS) $(NOWARNS) -I/usr/include/postgresql/
 DEBUG := -g3 -DDEBUG=1
 
 # Dependency libraries
-POSTGRES_LIBS := -lpq  -lm -lssl -lcrypto -ldl -pthread # -lpgcommon -lpgport -lgssapi_krb5 -lldap_r 
-LIBS := $(POSTGRES_LIBS) # -lm  -I some/path/to/library
+POSTGRES_LIBS := -lpq  -lm -lssl -lcrypto -ldl -pthread -lncurses # -lpgcommon -lpgport -lgssapi_krb5 -lldap_r 
+LIBS := $(POSTGRES_LIBS) #-I /home/princio/Repo/b64.c/build/libb64c.so # -lm  -I some/path/to/library
 
 # Test libraries
 TEST_LIBS := -l cmocka -L /usr/lib
@@ -92,12 +96,16 @@ TEST_LIBS := -l cmocka -L /usr/lib
 
 # Tests binary file
 TEST_BINARY := $(BINARY)_test_runner
+PROD_BINARY := $(BINARY)_prod
 
 
 
 # %.o file names
 NAMES := $(notdir $(basename $(wildcard $(SRCDIR)/*.$(SRCEXT))))
-OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
+
+ALLOBJECTS :=$(patsubst %,$(ALLLIBDIR)/%.o,$(NAMES))
+
+PRODOBJECTS :=$(patsubst %,$(PRODLIBDIR)/%.o,$(NAMES))
 
 
 #
@@ -131,17 +139,27 @@ start:
 
 
 # Rule for link and generate the binary file
-all: $(OBJECTS)
+all: $(ALLOBJECTS)
 	@echo -en "$(BROWN)LD $(END_COLOR)";
 	$(CC) -o $(BINDIR)/$(BINARY) $+ $(DEBUG) $(CFLAGS) $(LIBS)
 	@echo -en "\n--\nBinary file placed at" \
 			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
 
+prod: $(PRODOBJECTS)
+	@echo -en "$(BROWN)LD $(END_COLOR)";
+	$(CC) -o $(BINDIR)/$(PROD_BINARY) $+ $(PROD_CFLAGS) $(LIBS)
+	@echo -en "\n--\nBinary file placed at" \
+			  "$(BROWN)$(BINDIR)/$(PROD_BINARY)$(END_COLOR)\n";
 
 # Rule for object binaries compilation
-$(LIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
+$(ALLLIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
 	@echo -en "$(BROWN)CC $(END_COLOR)";
 	$(CC) -c $^ -o $@ $(DEBUG) $(CFLAGS) $(LIBS)
+
+# Rule for object binaries compilation
+$(PRODLIBDIR)/%.o: $(SRCDIR)/%.$(SRCEXT)
+	@echo -en "$(BROWN)CC $(END_COLOR)";
+	$(CC) -c $^ -o $@ $(PROD_CFLAGS) $(LIBS)
 
 
 # Rule for run valgrind tool
@@ -151,9 +169,30 @@ valgrind:
 		--leak-check=full \
 		--leak-resolution=high \
 		--log-file=$(LOGDIR)/$@.log \
+		--main-stacksize=838860800\
 		$(BINDIR)/$(BINARY)
 	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 
+valgrind_prod:
+	valgrind \
+		--track-origins=yes \
+		--leak-check=full \
+		--leak-resolution=high \
+		--log-file=$(LOGDIR)/$@.log \
+		--main-stacksize=838860800\
+		$(BINDIR)/$(BINARY)_prod
+	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
+
+valgrind2:
+	valgrind \
+		--track-origins=yes \
+		--leak-check=full \
+		--leak-resolution=high \
+		--show-leak-kinds=all \
+		--log-file=$(LOGDIR)/$@.log \
+		--main-stacksize=838860800\
+		$(BINDIR)/$(BINARY)
+	@echo -en "\nCheck the log file: $(LOGDIR)/$@.log\n"
 
 # Compile tests and run the test binary
 tests:
@@ -166,4 +205,23 @@ tests:
 
 # Rule for cleaning the project
 clean:
-	@rm -rvf $(BINDIR)/* $(LIBDIR)/* $(LOGDIR)/*;
+	@rm -rvf $(BINDIR)/* $(ALLLIBDIR)/* $(PRODLIBDIR)/* $(LOGDIR)/*;
+
+ca: clean all
+
+ab: all
+	clear; bin/binary
+
+av: all valgrind
+
+cab: clean all
+	clear; bin/binary
+
+cp: clean prod
+
+cpb: clean prod
+	clear; bin/binary_prod
+
+cav: clean all valgrind
+
+cav2: clean all valgrind2

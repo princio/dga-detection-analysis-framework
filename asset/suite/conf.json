@@ -1,0 +1,35 @@
+{
+    "bin": {
+        "dns_parse": "",
+        "tshark": "",
+        "python_lstm": "",
+        "python_psl_list": "",
+        "psltrie": ""
+    },
+    "pyscript": {
+        "lstm": "",
+        "psl_list": ""
+    },
+    "nndir": "",
+    "postgre": {
+        "host": "",
+        "dbname": "",
+        "user": "",
+        "password": ""
+    },
+    "pcaps": [
+        "pcap-path",
+        "pcap-path"
+    ],
+    "lstm_batch_size": 10000,
+    "whitelists": [
+        {
+            "name": "",
+            "path": "",
+            "year": 2020,
+            "dn_col": "",
+            "bdn_col": "",
+            "rank_col": ""
+        }
+    ]
+}

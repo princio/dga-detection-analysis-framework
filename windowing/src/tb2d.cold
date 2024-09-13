@@ -1,0 +1,46 @@
+
+#include "tb2d.h"
+
+#include "windowmc.h"
+#include "windowfold.h"
+
+RTB2D tb2d_create(RTB2W tb2w, size_t n_try, MANY(WindowFoldConfig) foldconfigs) {
+    RTB2D tb2d;
+
+    tb2d = calloc(1, sizeof(__TB2D));
+
+    tb2d->tb2w = tb2w;
+
+    BY_SETN(*tb2d, try, n_try);
+    BY_SETN(*tb2d, fold, foldconfigs.number);
+
+    MANY_CLONE(tb2d->folds, foldconfigs);
+
+    BY_INIT1(*tb2d, try, TB2DBy);
+    BY_FOR(*tb2d, try) {
+        BY_INIT2(*tb2d, try, fold, TB2DBy);
+    }
+
+    return tb2d;
+}
+
+void tb2d_run(RTB2D tb2d) {
+    BY_FOR(*tb2d, try) {
+        BY_GET(*tb2d, try).windowmc = windowmc_alloc_by_windowingmany(tb2d->tb2w->windowing.bysource);
+
+        windowmc_shuffle(BY_GET(*tb2d, try).windowmc);
+
+        BY_FOR(*tb2d, fold) {
+            BY_GET2(*tb2d, try, fold) = windowfold_alloc(BY_GET(*tb2d, try).windowmc, tb2d->folds._[idxfold]);
+        }
+    }
+}
+
+void tb2d_free(RTB2D tb2d) {
+    BY_FOR((*tb2d), try) {
+        MANY_FREE(BY_GET((*tb2d), try).byfold);
+    }
+    MANY_FREE(tb2d->bytry);
+    MANY_FREE(tb2d->folds);
+    free(tb2d);
+}
