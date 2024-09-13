@@ -94,3 +94,7 @@ ml/rule/beamer/main.out
 ml/rule/beamer/main.snm
 ml/rule/beamer/main.toc
 ml/rule/tmp/*
+ml/pcap_plot/tikz/main.aux
+ml/pcap_plot/tikz/main.log
+ml/pcap_plot/tikz2/main.aux
+ml/pcap_plot/tikz2/main.log
