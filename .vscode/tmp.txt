@@ -1,0 +1,16 @@
+
+We decided to carry out the experiment by selecting the domain names to be classified by the \ac{mAGD}. The selection of each packet \ac{DNS} depends on two aspects: its type and whether the transported domain name has already appeared (i.e. is duplicated).
+
+In fact, each packet \ac{DNS} may be of different types, with requests and replies, the latter with different possible outcomes \cite{rfc1035}.
+The possible types of DNS packets are as follows:%.
+\begin{itemize}
+\item $q^{qr}$, all types \ac{DNSp}.
+\item $q^{q}$, only requests \ac{DNS}.
+\item $q^{r}$, \ac{DNS} responses only.
+\item $q^{ok}$, only \ac{DNS} responses with return code equal to $0$.
+\item $q^{nx}$, only \ac{DNS} responses with return code equal to $3$.
+\fine{itemize}%
+Depending on the type selected, the analysed \ac{DNS} traffic will consist only of \acp{DNS} of that type, discarding all others as if they had never occurred.
+
+Regarding the presence of duplicate domains. Since many DNS packets may provide the same domain name, and since it is more efficient to analyse each domain name only once, for each domain name in the traffic, we only consider the first occurrence.%
+It is slightly different to consider only unique domain names, because we keep the chronological order of domain names. If we filter the traffic with a value of $q^*$, in this case the first occurrence will be the domain name belonging to the first packet of type $q^*$.
