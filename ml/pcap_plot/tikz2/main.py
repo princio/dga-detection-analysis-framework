@@ -38,15 +38,15 @@ def ciao():
     for kappa in kappas:
 
 
-        write(rf'\node [align=center, font=\small] at ({xorigin + (kappa) * W + alpha/2*W}, {yorigin + H*2.5}) {{slot group\\with slide step {kappa}}};')
+        # write(rf'\node [align=center, font=\small] at ({xorigin + (kappa) * W + alpha/2*W}, {yorigin + H*2.5}) {{window group\\with slide step {kappa}}};')
 
-        write(rf'\node [align=center, font=\small] at ({xorigin + (kappa) * W + alpha/2*W}, {yorigin - H*1.75}) {{pair slot group\\with slide step {kappa}}};')
+        write(rf'\node [align=center, font=\small] at ({xorigin + (kappa) * W + alpha/2*W}, {yorigin - H*1.75}) {{window group\\with slide step {kappa}}};')
         for i, l in enumerate(['h', 'm'][::-1]):
             if l == 'h':
-                write(rf'\node[anchor=center,align=center] at (-1, {yorigin + H/2}) {{healthy\\slots}};')
+                write(rf'\node[anchor=center,align=center] at (-1, {yorigin + H/2}) {{healthy\\windows}};')
             else:
-                write(rf'\node[anchor=center,align=center] at (-1, {yorigin + H/2}) {{malicious\\slots}} ;')
-                write(rf'\node[anchor=center,align=center] at (-1, {yorigin - H/2 - H/4}) {{slot\\pair}} ;')
+                write(rf'\node[anchor=center,align=center] at (-1, {yorigin + H/2}) {{malicious\\windows}} ;')
+                write(rf'\node[anchor=center,align=center] at (-1, {yorigin - H/2 - H/4}) {{window\\pairs}} ;')
             xx = kappa if l == 'h' else 0
             group_width = W * bars[l]
 
@@ -66,8 +66,10 @@ def ciao():
 
                 nodetext = f'${l}_{{{x}}}$'
 
-                if l == 'm' and (x + 1) == bars[l]:
+                if l == 'm' and (x + 2) == bars[l]:
                     nodetext = r'\dots'
+                if l == 'm' and (x + 1) == bars[l]:
+                    nodetext = r'$m_{\alpha^m}$'
                 
                 write(rf'\node[] at ({x0 + Wa/2}, {yorigin + H/2}) {{{nodetext}}};')
 
