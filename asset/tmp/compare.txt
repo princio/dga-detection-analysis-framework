@@ -1,0 +1,8 @@
+
+\begin{itemize}
+    \item The metrics for both slot pairs and slot groups are worse than those obtained during the training phase, with the average ratio of true positives for slot pairs within a group potentially falling to 0.02.
+    
+    \item The number of false negative slot pairs, $\#\text{FN}_p$, is considerable across all malicious traffic. However, since we require only one true positive per slot, the number of undetected slot pairs is acceptable for certain $\gamma$ values. For example, regarding \textit{caphaw} and $\bar{\gamma}$, we obtain $211/384$ false negative slot pairs, yet still achieve the optimal result of correctly classifying all positive slot groups, i.e., $\text{TPR}_g = 1.0$.
+    
+    \item When healthy traffic significantly exceeds malicious traffic, the number of correctly classified true positive slot pairs deteriorates. Nonetheless, the $\text{TPR}_g$ deteriorates to a lesser extent.
+\end{itemize}

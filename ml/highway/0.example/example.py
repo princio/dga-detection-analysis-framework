@@ -29,12 +29,12 @@ class SlotGroup24:
         pass
 
     def healthy(self, magnitude):
-        self._healthy[0, :] = np.array([magnitude * traffic_model(hour, std_dev=8, variance=0.15) for hour in range(24)], dtype=np.int32)
+        self._healthy[0, :] = np.array([magnitude * traffic_model(hour, std_dev=12, variance=0.15) for hour in range(24)], dtype=np.int32)
         return self
     
     def malicious(self, p_magnitude, n_magnitude=1):
-        self._malicious[0, :] = np.array([n_magnitude * traffic_model(hour, std_dev=8, variance=0.15) for hour in range(24)], dtype=np.int32)
-        self._malicious[1, :] = np.array([p_magnitude * traffic_model(hour, std_dev=8, variance=0.15) for hour in range(24)], dtype=np.int32)
+        self._malicious[0, :] = np.array([n_magnitude * traffic_model(hour, std_dev=12, variance=0.15) for hour in range(24)], dtype=np.int32)
+        self._malicious[1, :] = np.array([p_magnitude * traffic_model(hour, std_dev=12, variance=0.15) for hour in range(24)], dtype=np.int32)
         return self
     
     def both(self, h_magnitude, p_m_magnitude, n_m_magnitude):
@@ -77,6 +77,18 @@ class SlotGroup24:
     
     def fna(self, th):
         return (self.p() <= th) & (self.mp() > 0)
+    
+    def alert(self, name, th):
+        if 'tn' == name:
+            return self.tna(th)
+        if 'fp' == name:
+            return self.fpa(th)
+        if 'tp' == name:
+            return self.tpa(th)
+        if 'fn' == name:
+            return self.fna(th)
+        raise Exception(f'Alert name {name} not correct.')
+        pass
     
     def pa(self):
         return (self.mp() == 0)
