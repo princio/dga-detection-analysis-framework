@@ -500,7 +500,21 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
         rr_text text;
         memset(&text, 0, sizeof(text));
         print_rr_section(dns->answers, qnext->name, conf, &text, qnext->type, dns->id);
-        fprintf(conf->csv_file, "\"%s\",", text.A);
+        size_t q_begin = 0;
+        char quote[1] = { '"' };
+        fwrite(quote, 1, 1, conf->csv_file);
+        for (size_t q = 0; q < strlen(text.A); q++) {
+            if (text.A[q] == '"') {
+                fwrite(&text.A[q_begin], 1, q - q_begin - 1, conf->csv_file);
+                fwrite(quote, 1, 1, conf->csv_file);
+                fwrite(quote, 1, 1, conf->csv_file);
+                q_begin = q + 1;
+            }
+        }
+        if (q_begin == 0) {
+            fprintf(conf->csv_file, "%s", text.A);
+        }
+        fwrite(quote, 1, 1, conf->csv_file);
     }
 
     fprintf(conf->csv_file, "\n");
