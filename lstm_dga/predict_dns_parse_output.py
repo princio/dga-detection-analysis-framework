@@ -61,8 +61,8 @@ for model_name in [ 'none', 'tld', 'icann', 'private' ]:
     models[model_name] = {
         'name': model_name,
         'nn': load_model_json(
-            os.path.join(nndir, f'json_tf2.4/model_{model_name}.json'),
-            os.path.join(nndir, f'json_tf2.4/model_{model_name}.h5')
+            os.path.join(nndir, f'json_tf2.13/model_{model_name}.json'),
+            os.path.join(nndir, f'json_tf2.13/model_{model_name}.h5')
         )
     }
     pass
