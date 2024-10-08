@@ -1,14 +1,12 @@
 
-from logging import Logger
-import logging
 from pathlib import Path
 import subprocess
-import traceback
 
 class Subprocess:
     INPUT_FLAG = f'%input'
     OUTPUT_FLAG = f'%output'
-    def __init__(self, name, binary: Path, outdir: Path):
+    def __init__(self, logger, name, binary: Path, outdir: Path):
+        self.logger = logger
         self.name = name
         self.binary = binary
         self.outdir = outdir
@@ -24,16 +22,16 @@ class Subprocess:
 
     def rename_file_if_error(self, is_test_failed: bool):
         if is_test_failed and self.output is not None and self.output.exists():
-            logging.debug(f"Renaming output file {self.output} with suffix «.error».")
+            self.logger.debug(f"Renaming output file {self.output} with suffix «.error».")
             self.output.rename(f"{self.output}.error")
         pass
     
     def launch(self, input: Path, args):
         if self.already_done():
-            logging.debug(f"{self.name} already done for input: «{input}»")
+            self.logger.debug(f"{self.name} already done for input: «{input}»")
             return
         
-        logging.debug(f"Proceeding with {self.name} with input: «{input}»")
+        self.logger.debug(f"Proceeding with {self.name} with input: «{input}»")
         
         args = [ input if arg == Subprocess.INPUT_FLAG else arg for arg in args ]
         args = [ self.output if arg == Subprocess.OUTPUT_FLAG else arg for arg in args ]
@@ -49,7 +47,7 @@ class Subprocess:
                     text=True
                 )
             except Exception as e:
-                logging.error("Error with arguments:\n> %s" % "\n> ".join([ str(arg) for arg in args ]))
+                self.logger.error("Error with arguments:\n> %s" % "\n> ".join([ str(arg) for arg in args ]))
                 raise Exception('Subprocess failure.') from e
 
             output, errors = p.communicate(timeout=100000)

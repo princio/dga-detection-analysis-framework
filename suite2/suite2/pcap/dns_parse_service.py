@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from logging import Logger
+import logging
 from pathlib import Path
-from ..utils import Subprocess
+from ..subprocess import Subprocess
 
 @dataclass
 class PCAPBinaries:
@@ -26,7 +27,7 @@ class DNSParseService:
     def run(self, pcapfile: Path):
         workdir = self.workdir.joinpath(pcapfile.name)
 
-        subproc = Subprocess(self.name, self.binary, workdir)
+        subproc = Subprocess(logging.getLogger(), self.name, self.binary, workdir)
         subproc.launch(
             pcapfile, [
                 "-o", Subprocess.OUTPUT_FLAG,

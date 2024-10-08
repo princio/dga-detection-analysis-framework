@@ -1,5 +1,6 @@
+import logging
 from pathlib import Path
-from ..utils import Subprocess
+from ..subprocess import Subprocess
 
 class TCPDumpService:
     def __init__(self, binary: Path, workdir: str) -> None:
@@ -10,19 +11,17 @@ class TCPDumpService:
         if not self.workdir.exists():
             self.workdir.mkdir(exist_ok=True)
             pass
+
+        self.tcpdump = Subprocess(logging.getLogger(), self.name, self.binary, self.workdir)
         pass
 
     def run(self, pcapfile: Path):
-        workdir = self.workdir.joinpath(pcapfile.name)
-
-        subproc = Subprocess(self.name, self.binary, workdir)
-
-        subproc.launch(
+        self.tcpdump.launch(
             pcapfile, [
                 "-r", Subprocess.INPUT_FLAG,
                 "-w", Subprocess.OUTPUT_FLAG,
                 "port", "53"
             ])
-        return subproc.output
+        return self.tcpdump.output
 
     pass

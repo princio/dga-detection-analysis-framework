@@ -27,9 +27,9 @@ class MessageService:
             df["pcap_id"] = pcap_id
             df["is_r"] = df["qr"] == "r"
 
-            values = df[["fn", "pcap_id", "time", "fn", "fnreq", "dn_id", "qcode", "qr", "xcode", "server", "answer"]].to_numpy().tolist()
+            values = df[["fn", "pcap_id", "time", "fn", "fnreq", "dn_id", "qcode", "is_r", "rcode", "server", "answer"]].to_numpy().tolist()
             
-            args_str = b",".join([cursor.mogrify("(%s,%s,%s,%s, %s,%s,%s, %s,%s,%s, %s)", x) for x in values])
+            args_str = b",".join([cursor.mogrify("(%s, %s,%s,%s,%s, %s, %s, %s,%s,%s, %s)", x) for x in values])
 
             cursor.execute(f"""
                 INSERT INTO public.message_{pcap_id}(

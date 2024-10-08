@@ -1,8 +1,9 @@
 
 
+import logging
 from pathlib import Path
 import pandas as pd
-from ..utils import Subprocess
+from ..subprocess import Subprocess
 from ..psl_list.psl_list_service import PSLListService
 
 class PSLTrieService:
@@ -14,7 +15,7 @@ class PSLTrieService:
         if not self.workdir.exists():
             self.workdir.mkdir(exist_ok=True)
 
-        self.psltrie = Subprocess('psltrie', binary, self.workdir)
+        self.psltrie = Subprocess(logging.getLogger(), 'psltrie', binary, self.workdir)
 
         pass
 

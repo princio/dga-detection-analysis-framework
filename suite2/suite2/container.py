@@ -1,5 +1,5 @@
 import sys
-import logging
+from logging import basicConfig, DEBUG
 
 from dependency_injector import containers, providers
 
@@ -19,14 +19,14 @@ from .pcap.pcap_service import PCAPService
 
 
 class Suite2Container(containers.DeclarativeContainer):
+    
+    config = providers.Configuration()
 
     logging = providers.Resource(
-        logging.basicConfig,
-        level=logging.INFO,
+        basicConfig,
+        level=DEBUG,
         stream=sys.stdout,
     )
-
-    config = providers.Configuration()
 
     db = providers.Resource(
         Database,

@@ -1,7 +1,8 @@
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 
-from ..utils import Subprocess
+from ..subprocess import Subprocess
 
 @dataclass
 class PCAPBinaries:
@@ -16,8 +17,6 @@ class TSharkService:
         self.binary = binary
         self.workdir = Path(workdir).joinpath('tshark')
 
-        print(f"[tshark]: {self.workdir}")
-
         if not self.workdir.exists():
             self.workdir.mkdir(exist_ok=True)
             pass
@@ -26,7 +25,7 @@ class TSharkService:
     def run(self, pcapfile: Path):
         workdir = self.workdir.joinpath(pcapfile.name)
 
-        subproc = Subprocess(self.name, self.binary, workdir)
+        subproc = Subprocess(logging.getLogger(), self.name, self.binary, workdir)
 
         subproc.launch(
             pcapfile, [

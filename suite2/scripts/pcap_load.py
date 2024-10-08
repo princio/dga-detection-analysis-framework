@@ -4,6 +4,8 @@ from dependency_injector.wiring import Provide, inject
 import sys
 from pathlib import Path
 
+import psycopg2
+
 sys.path.append(str(Path(__file__).parent.parent.absolute()))
 
 import pandas as pd
@@ -19,7 +21,7 @@ from suite2.pcap.pcap_service import PCAPService
 from suite2.container import Suite2Container
 
 @inject
-def test_lstm(
+def test_pcap(
         pcap_service: PCAPService = Provide[
             Suite2Container.pcap_service
         ],
@@ -38,6 +40,31 @@ def test_lstm(
 ) -> None:
     pcapfile = Path("/Users/princio/Downloads/Day0/20160423_235403.pcap")
     
+    outputcsvfile = pcap_service.process(pcapfile)
+
+    try:
+        pcap_id = pcap_service.insert(pcapfile, '8136749e3b1ad273db938032f49f23780805a90214e3d9df62fafa393e3405cc', 2016, 'IT16', None)
+    except psycopg2.errors.UniqueViolation as e:
+        e.cursor.connection.rollback()
+        pcap_id = pcap_service.findby_hash('8136749e3b1ad273db938032f49f23780805a90214e3d9df62fafa393e3405cc')
+        pass
+    pcap_service.message_service.insert_pcapcsvfile(pcap_id, outputcsvfile)
+
+    print(outputcsvfile)
+    pass
+
+@inject
+def test_lstm(
+        dn_service: DBDNService = Provide[
+            Suite2Container.dbdn_service
+        ],
+        lstm_service: LSTMService = Provide[
+            Suite2Container.lstm_service
+        ],
+        nn_service: NNService = Provide[
+            Suite2Container.nn_service
+        ],
+) -> None:
     nns = nn_service.get_all()
 
     for nn in nns:
@@ -57,49 +84,12 @@ def test_lstm(
         y2 = y2.astype(int)
         mask = (0 == y2)
 
-        print(mask.all(), mask.sum())
-        if not mask.all():
+        print(mask.all(), mask.sum()) # type: ignore
+        if not mask.all(): # type: ignore
             df_dn['y1'] = y1
             df_dn['y2'] = y2
             print(df_dn[~mask].to_markdown())
         pass
-    pass
-
-@inject
-def main(
-        pcap_service: PCAPService = Provide[
-            Suite2Container.pcap_service
-        ],
-        dn_service: DBDNService = Provide[
-            Suite2Container.dbdn_service
-        ],
-        lstm_service: LSTMService = Provide[
-            Suite2Container.lstm_service
-        ],
-        nn_service: NNService = Provide[
-            Suite2Container.nn_service
-        ],
-) -> None:
-    pcapfile = Path("/Users/princio/Downloads/Day0/20160423_235403.pcap")
-
-    nn = nn_service.get_model(1)
-    model = lstm_service.load_model(nn.model_json, Path(nn.hf5_file.name))
-
-    dn_s = dn_service.get(100)
-
-    dn_rev, Y = lstm_service.run(model, dn_s['dn'], None)
-
-    dn_s['rev'] = dn_rev
-    dn_s['Y'] = Y
-
-    print(dn_s)
-
-    dn_s['Y.2'] = dn_s['Y'].round(2)
-    dn_s['eps.2'] = dn_s['eps'].round(2)
-    dn_s['diff.2_'] = ((dn_s['Y.2'] - dn_s['eps.2']) * 10e6).astype(int)
-    mask = (dn_s['Y.2'] == dn_s['eps.2'])
-    print(dn_s[~mask])
-    print((dn_s['diff.2_'] == 0).all())
     pass
 
 if __name__ == "__main__":
@@ -117,11 +107,16 @@ if __name__ == "__main__":
         "tcpdump": "/usr/sbin/tcpdump",
         "dns_parse": "/Users/princio/Repo/princio/malware-detection-predict-file/dns_parse/bin/dns_parse",
         "psltrie": "/Users/princio/Repo/princio/malware-detection-predict-file/psltrie/bin/binary_prod",
-        "workdir": "/tmp/suite2_workdir"
+        "workdir": "/tmp/suite2_workdir",
+        "logging": 1
     })
+
+    application.init_resources()
 
     application.wire(modules=[__name__])
 
-    test_lstm()
+    test_pcap()
+
+    application.shutdown_resources()
 
     pass

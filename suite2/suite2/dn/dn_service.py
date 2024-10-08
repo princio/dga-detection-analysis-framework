@@ -30,8 +30,9 @@ class DBDNService:
         codes, uniques = dn.factorize()
 
         with self.db.psycopg2().cursor() as cursor:
+            print([ cursor.mogrify("(%s)", (x,)) for x in uniques[0:5] ])
 
-            args_str = b",".join([ cursor.mogrify("(%s)", x) for x in uniques ])
+            args_str = b",".join([ cursor.mogrify("(%s)", (x,)) for x in uniques ])
             cursor.execute(b"""
                 INSERT INTO public.dn(
                     dn)
@@ -39,19 +40,20 @@ class DBDNService:
                 args_str +
                 b" ON CONFLICT DO NOTHING RETURNING id")
         
-            cursor.connection.commit()
-
-        if cursor.rowcount < uniques.shape[0]:
-            tuples = tuple( item for item in uniques )
-            cursor.execute("""SELECT id from dn WHERE dn.dn IN %s""", (tuples, ))
+            if cursor.rowcount < uniques.shape[0]:
+                tuples = tuple( item for item in uniques )
+                cursor.execute("""SELECT id from dn WHERE dn.dn IN %s""", (tuples, ))
+                pass
+            
+            ids = [t[0] for t in cursor.fetchall()]
+            # cursor.connection.commit()
             pass
 
-        ids = [t[0] for t in cursor.fetchall()]
 
-        cursor.connection.commit()
-        cursor.close()
-
-        return pd.Index(ids).take(codes).to_series()
+        # self.db.psycopg2().commit()
+        s = pd.Series(ids).take(codes)
+        s.index = dn.index
+        return s
 
 
     def lstm_to_do(self, nn_id: int):

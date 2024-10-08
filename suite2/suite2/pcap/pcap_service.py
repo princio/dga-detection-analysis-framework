@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import logging
 from pathlib import Path
 
 from .pcap import PCAP
@@ -25,7 +26,12 @@ class PCAPService:
         self.message_service = message_service
         pass
 
-    def _insert(self, pcapfile: Path, sha256: str, year: int, dataset: str, infected = None):
+    def findby_hash(self, sha256: str):
+        with self.db.psycopg2().cursor() as cursor:
+            cursor.execute("SELECT id FROM pcap WHERE sha256=%s", ( sha256, ))
+            return cursor.fetchone()[0]
+
+    def insert(self, pcapfile: Path, sha256: str, year: int, dataset: str, infected = None):
         with self.db.psycopg2().cursor() as cursor:
             cursor.execute(
                 """
@@ -44,7 +50,7 @@ class PCAPService:
                 raise Exception('Returning id is None.')
             retid = retid[0]
             
-            self.log.info("pcap successfully inserted with id %s" % retid)
+            logging.info("pcap successfully inserted with id %s" % retid)
 
             cursor.execute(
                 """
@@ -54,13 +60,24 @@ class PCAPService:
                 (retid, retid, )
             )
 
-            cursor.connection.commit()
+            # cursor.connection.commit()
             
             return retid
         pass
     pass
 
-    def process(self, pcapfile: Path):
+    def process(self, pcapfile: Path) -> Path:
+        """Process a pcap file with the following consequential steps:
+        - tcpdump: filtering DNS packets using `port 53` filter (fast).
+        - tshark: further filter step (slow).
+        - dns_parse: generate the csv.
+
+        Args:
+            pcapfile (Path): The path to the pcap file.
+
+        Returns:
+            Path: The output path of the csv files.
+        """
         o1 = self.tcpdump_service.run(pcapfile)
         o2 = self.tshark_service.run(o1)
         return self.dns_parse_service.run(o2)
@@ -82,7 +99,7 @@ class PCAPService:
     def new(self, pcapfile: Path, sha256: str, year: int, dataset: str, infected = None):
         csvfile = self.process(pcapfile)
 
-        pcap_id = self._insert(pcapfile, sha256, year, dataset, infected)
+        pcap_id = self.insert(pcapfile, sha256, year, dataset, infected)
 
         self.message_service.insert_pcapcsvfile(pcap_id, csvfile)
     pass
