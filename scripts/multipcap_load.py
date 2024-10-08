@@ -73,7 +73,7 @@ if __name__ == "__main__":
     application = Suite2Container()
     
     application.config.from_dict({
-        "env": "debug",
+        "env": "prod",
         "db": {
             "host": "localhost",
             "user": "postgres",

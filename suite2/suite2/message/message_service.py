@@ -39,7 +39,8 @@ class MessageService:
         pass
 
     def _insert(self, partition, df: pd.DataFrame, how):
-        df = df.sort_values(by='time_s').reset_index(names='fn')
+        df = df.sort_values(by='time_s')
+        df = df.reset_index(drop=True).reset_index(names='fn')
         df['id'] = df['fn']
         with self.db.psycopg2().cursor() as cursor:
             logging.info(f"MessageService inserts {df.shape[0]} rows in message_{partition} corresponding to {df.memory_usage(index=False).sum() / (1024 ** 2)} MB.")
