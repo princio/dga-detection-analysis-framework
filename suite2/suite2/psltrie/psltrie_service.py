@@ -19,7 +19,16 @@ class PSLTrieService:
         pass
 
     def run(self, input: pd.Series) -> pd.DataFrame:
+        """Return the dataframe output of prsltrie.
 
+        Args:
+            input (pd.Series): A pandas Series containing a list of domain names.
+
+        Returns:
+            pd.DataFrame: A dataframe with the following columns:
+            dn, bdn, rcode, tld, icann, private, dn_tld, dn_icann, dn_private.
+            Missing suffixes has np.NaN value.
+        """
         input_path = self.workdir.joinpath('s_dn.csv')
         input.to_csv(input_path, index=False)
 

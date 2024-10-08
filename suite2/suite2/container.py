@@ -1,6 +1,5 @@
 import sys
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 from dependency_injector import containers, providers
 
@@ -21,6 +20,12 @@ from .pcap.pcap_service import PCAPService
 
 class Suite2Container(containers.DeclarativeContainer):
 
+    logging = providers.Resource(
+        logging.basicConfig,
+        level=logging.INFO,
+        stream=sys.stdout,
+    )
+
     config = providers.Configuration()
 
     db = providers.Resource(
@@ -34,7 +39,7 @@ class Suite2Container(containers.DeclarativeContainer):
 
     lstm_service = providers.Singleton(LSTMService)
     psl_list_service = providers.Singleton(PSLListService, workdir=config.workdir)
-    psltrie_service = providers.Singleton(PSLTrieService, psl_list_service=psl_list_service, binary=config.plstrie, workdir=config.workdir)
+    psltrie_service = providers.Singleton(PSLTrieService, psl_list_service=psl_list_service, binary=config.psltrie, workdir=config.workdir)
 
     nn_service = providers.Singleton(NNService, db=db)
     dbdn_service = providers.Singleton(DBDNService, db=db, nn_service=nn_service, lstm_service=lstm_service, psltrie_service=psltrie_service)

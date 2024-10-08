@@ -15,6 +15,8 @@ class NN:
     def __init__(self, id: int, name: str, nntype: NNType, model_json: str, hf5):
         self.id = id
         self.name = name
+        if isinstance(nntype, str):
+            nntype = NNType[nntype.upper()]
         self.nntype = nntype
         self.model_json = model_json
         self.hf5_data = hf5

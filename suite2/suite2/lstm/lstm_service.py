@@ -1,3 +1,5 @@
+import json
+import logging
 from pathlib import Path
 from typing import Optional, Union
 import pandas as pd
@@ -18,8 +20,8 @@ class LSTMService:
         pass
 
     def remove_suffix(self, s_dn: pd.Series, suffix: Optional[pd.Series]):
-        if suffix:
-            suffix_lens = suffix.str.len().to_list()
+        if suffix is not None:
+            suffix_lens = suffix.fillna('').str.len().to_list()
             s_X = pd.Series([ dn[:len(dn) - 1 - suffix_lens[idx]]  for idx, dn in enumerate(s_dn.to_list()) ])
             pass
         else:
@@ -27,6 +29,8 @@ class LSTMService:
         return s_X
 
     def load_model(self, model_json: str, model_hf5: Path):
+        if isinstance(model_json, dict):
+            model_json = json.dumps(model_json)
         model = model_from_json(model_json)
         model.load_weights(model_hf5)
         return model

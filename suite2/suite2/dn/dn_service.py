@@ -1,6 +1,7 @@
 
 
 from pathlib import Path
+from typing import Optional, Tuple, Union, Any
 import numpy as np
 import pandas as pd
 from psycopg2.extras import execute_values
@@ -18,6 +19,12 @@ class DBDNService:
         self.lstm_service = lstm_service
         self.psltrie_service = psltrie_service
         pass
+
+    def get(self, limit: int, nn_id: int) -> pd.DataFrame:
+        with self.db.psycopg2().cursor() as cursor:
+            cursor.execute("SELECT DN.ID,DN,TLD,ICANN,PRIVATE, VALUE as EPS FROM DN JOIN (SELECT * FROM DN_NN WHERE NN_ID=%s) DN_NN ON (DN.ID=DN_NN.DN_ID) LIMIT %s", (nn_id, limit,))
+            rows = cursor.fetchall()
+            return pd.DataFrame(rows, columns=['id','dn','tld','icann','private','eps'])
 
     def add(self, dn: pd.Series) -> pd.Series:
         codes, uniques = dn.factorize()
@@ -63,6 +70,40 @@ class DBDNService:
         return dn_count[0] - dn_nn_count[0]
 
 
+    def run(self, dn_s: pd.Series, nn: Union[NN, Tuple[NNType, Any]], df_suffixes: Optional[pd.DataFrame] = None):
+        """Execute psltrie and then run the nn-model.
+
+        Args:
+            nn (NN): The neural network entity.
+            dn_s (pd.Series): A series containing domain names.
+            df_suffixes (pd.DataFrame): A dataframe having columns
+            ['tld','icann','private'] corresponding to the domain names in dn_s.
+
+        Returns:
+            (dn_reversed, Y): Output of LSTM module.
+        """
+        if isinstance(nn, NN):
+            nntype = nn.nntype
+            model = self.lstm_service.load_model(nn.model_json, Path(nn.hf5_file.name))
+        else:
+            nntype = nn[0]
+            model = nn[1]
+            pass
+
+        if df_suffixes is None:
+            df_suffixes = self.psltrie_service.run(dn_s)
+
+        suffixes = None 
+        if nntype != NNType.NONE:
+            df_suffixes["icann"] = df_suffixes["icann"].fillna(value=df_suffixes["tld"])
+            df_suffixes["private"] = df_suffixes["private"].fillna(value=df_suffixes["icann"])
+            suffixes = df_suffixes[nntype.name.lower()]
+            suffixes = suffixes.fillna('')
+            pass
+            
+        return self.lstm_service.run(model, dn_s, suffixes)
+
+
     def lstm(self, nn: NN, batch_size = 10_000):
         model = self.lstm_service.load_model(nn.model_json, Path(nn.hf5_file.name))
         count = self.lstm_to_do(nn.id)
@@ -80,14 +121,7 @@ class DBDNService:
 
                 df = pd.DataFrame.from_records(rows, columns=["id", "dn", "tld", "icann", "private", "nn_id", "psltrie_rcode"])
                 
-                suffixes = None 
-                if nn.nntype is not None:
-                    df["icann"] = df["icann"].fillna(value=df["tld"])
-                    df["private"] = df["private"].fillna(value=df["icann"])
-                    suffixes = df[nn.nntype.name.lower()]
-                    pass
-            
-                _, Y = self.lstm_service.run(model, df['dn'], suffixes)
+                _, Y = self.run(df['dn'], (nn.nntype, model), df)
 
                 df["Y"] = Y
                 df["logit"] = np.log(Y / (1 - Y))

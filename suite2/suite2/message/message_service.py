@@ -40,7 +40,7 @@ class MessageService:
                 VALUES""" + args_str.decode("utf-8") + 
                 " ON CONFLICT DO NOTHING")
             
-            cursor.connection.commit()
+            # cursor.connection.commit()
             cursor.close()
             pass
         

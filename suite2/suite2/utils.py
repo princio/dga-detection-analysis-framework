@@ -1,6 +1,9 @@
 
+from logging import Logger
+import logging
 from pathlib import Path
 import subprocess
+import traceback
 
 class Subprocess:
     INPUT_FLAG = f'%input'
@@ -17,25 +20,26 @@ class Subprocess:
         pass
 
     def already_done(self):
-        if self.output is not None and self.output.exists():
-            return True
-        return False
+        return self.output is not None and self.output.exists()
 
     def rename_file_if_error(self, is_test_failed: bool):
         if is_test_failed and self.output is not None and self.output.exists():
+            logging.debug(f"Renaming output file {self.output} with suffix «.error».")
             self.output.rename(f"{self.output}.error")
         pass
     
     def launch(self, input: Path, args):
         if self.already_done():
+            logging.debug(f"{self.name} already done for input: «{input}»")
             return
+        
+        logging.debug(f"Proceeding with {self.name} with input: «{input}»")
         
         args = [ input if arg == Subprocess.INPUT_FLAG else arg for arg in args ]
         args = [ self.output if arg == Subprocess.OUTPUT_FLAG else arg for arg in args ]
         args = [ arg.absolute() if isinstance(arg, Path) else arg for arg in args ]
         args = [self.binary] + args
 
-        print(f"[info]: {self.name} step...")
         with open(self.logfile, "w") as fplog:
             try:
                 p = subprocess.Popen(
@@ -45,7 +49,8 @@ class Subprocess:
                     text=True
                 )
             except Exception as e:
-                raise Exception(e, "\n\n".join([ str(arg) for arg in args ]))
+                logging.error("Error with arguments:\n> %s" % "\n> ".join([ str(arg) for arg in args ]))
+                raise Exception('Subprocess failure.') from e
 
             output, errors = p.communicate(timeout=100000)
 
@@ -55,9 +60,9 @@ class Subprocess:
             self.rename_file_if_error(p.returncode != 0)
 
             if p.returncode != 0:
-                print(output)
-                print(errors)
-                raise Exception(f"{self.name} execution failed")
+                logoutput = '\n> '.join(output.split('\n'))
+                logerror = '\n~ '.join(output.split('\n'))
+                raise Exception(f"{self.name} execution failed:\n{logoutput}\n{logerror}")
             pass
         pass # method launch
     pass # class Subprocess

@@ -8,13 +8,7 @@ from ..pcap.dns_parse_service import DNSParseService
 from ..pcap.tcpdump_service import TCPDumpService
 from ..pcap.tshark_service import TSharkService
 from ..message.message_service import MessageService
-
-@dataclass
-class PCAPBinaries:
-    dns_parse: Path = Path()
-    tcpdump: Path = Path()
-    tshark: Path = Path()
-    pass
+from logging import Logger
 
 class PCAPService:
     def __init__(self,
@@ -50,7 +44,7 @@ class PCAPService:
                 raise Exception('Returning id is None.')
             retid = retid[0]
             
-            print("[info]: pcap successfully inserted with id %s" % retid)
+            self.log.info("pcap successfully inserted with id %s" % retid)
 
             cursor.execute(
                 """
@@ -86,10 +80,9 @@ class PCAPService:
         pass
 
     def new(self, pcapfile: Path, sha256: str, year: int, dataset: str, infected = None):
-        
-        pcap_id = self._insert(pcapfile, sha256, year, dataset, infected)
-
         csvfile = self.process(pcapfile)
 
-        self.message_service.insert_pcap(pcap_id, csvfile)
+        pcap_id = self._insert(pcapfile, sha256, year, dataset, infected)
+
+        self.message_service.insert_pcapcsvfile(pcap_id, csvfile)
     pass
