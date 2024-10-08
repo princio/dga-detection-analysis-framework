@@ -11,7 +11,7 @@ class Subprocess:
     def __init__(self, name, binary: Path, outdir: Path):
         self.name = name
         self.binary = binary
-        self.outdir = outdir.joinpath(self.name)
+        self.outdir = outdir
         if not self.outdir.exists():
             self.outdir.mkdir(parents=False, exist_ok=True)
             pass
