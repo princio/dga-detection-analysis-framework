@@ -1,70 +1,50 @@
 from dataclasses import dataclass
 import logging
 from pathlib import Path
+import subprocess
+from tempfile import TemporaryFile
+from typing import List
+
+import pandas as pd
+import psycopg2
+
+from ..subprocess.subprocess_service import SubprocessService
 
 from .pcap import PCAP
 
 from ..db import Database
-from ..pcap.dns_parse_service import DNSParseService
-from ..pcap.tcpdump_service import TCPDumpService
-from ..pcap.tshark_service import TSharkService
 from ..message.message_service import MessageService
-from logging import Logger
 
 class PCAPService:
     def __init__(self,
                  db: Database,
-                 tcpdump_service: TCPDumpService,
-                 tshark_service: TSharkService,
-                 dns_parse_service: DNSParseService,
+                 subprocess_service: SubprocessService,
                  message_service: MessageService,
                 ) -> None:
         self.db = db
-        self.tcpdump_service = tcpdump_service
-        self.tshark_service = tshark_service
-        self.dns_parse_service = dns_parse_service
+        self.subprocess_service = subprocess_service
         self.message_service = message_service
         pass
 
     def findby_hash(self, sha256: str):
         with self.db.psycopg2().cursor() as cursor:
             cursor.execute("SELECT id FROM pcap WHERE sha256=%s", ( sha256, ))
-            return cursor.fetchone()[0]
+            return cursor.fetchone()[0] # type: ignore
 
     def insert(self, pcapfile: Path, sha256: str, year: int, dataset: str, infected = None):
         with self.db.psycopg2().cursor() as cursor:
             cursor.execute(
                 """
-                INSERT INTO pcap (
-                    name, sha256, infected, dataset, year
-                ) VALUES (
-                    %s, %s, %s, %s, %s
-                )
+                INSERT INTO pcap ( name, sha256, infected, dataset, year )
+                VALUES ( %s, %s, %s, %s, %s )
                 RETURNING id;
                 """,
                 ( pcapfile.name, sha256, infected, dataset, year )
             )
-            
-            retid = cursor.fetchone()
-            if retid is None:
-                raise Exception('Returning id is None.')
-            retid = retid[0]
-            
-            logging.info("pcap successfully inserted with id %s" % retid)
-
-            cursor.execute(
-                """
-                CREATE TABLE IF NOT EXISTS public.message_%s
-                PARTITION OF public.message FOR VALUES IN (%s);
-                """,
-                (retid, retid, )
-            )
-
-            # cursor.connection.commit()
-            
-            return retid
+            pcap_id = cursor.fetchone()[0] # type: ignore
+            logging.info("pcap successfully inserted with id %s" % pcap_id)
+            return pcap_id
         pass
-    pass
 
     def process(self, pcapfile: Path) -> Path:
         """Process a pcap file with the following consequential steps:
@@ -78,9 +58,9 @@ class PCAPService:
         Returns:
             Path: The output path of the csv files.
         """
-        o1 = self.tcpdump_service.run(pcapfile)
-        o2 = self.tshark_service.run(o1)
-        return self.dns_parse_service.run(o2)
+        o1 = self.subprocess_service.launch_tcpdump(pcapfile)
+        o2 = self.subprocess_service.launch_tshark(o1)
+        return self.subprocess_service.launch_dns_parse(o2)
     
     def get(self, pcap_id: int) -> PCAP:
         with self.db.psycopg2().cursor() as cursor:
@@ -96,10 +76,32 @@ class PCAPService:
             return PCAP(pcap[0], pcap[1], pcap[2], pcap[3], pcap[4], pcap[5])
         pass
 
-    def new(self, pcapfile: Path, sha256: str, year: int, dataset: str, infected = None):
-        csvfile = self.process(pcapfile)
+    def new_partition(self, pcapfiles: List[Path], partition_name: str):
+        pcap_ids = []
+        dfs = []
+        for pcapfile in pcapfiles:
+            sha256 = subprocess.getoutput(f"shasum -a 256 {pcapfile}").split(' ')[0]
+            try:
+                pcap_id = self.insert(pcapfile, sha256, 2016, 'IT16', infected=None)
+            except psycopg2.errors.UniqueViolation as e:
+                e.cursor.connection.rollback() # type: ignore
+                pcap_id = self.findby_hash(sha256)
+                pass
+            pcap_ids.append(pcap_id)
+            pass
 
-        pcap_id = self.insert(pcapfile, sha256, year, dataset, infected)
+        for idx, pcapfile in enumerate(pcapfiles):
+            print('Processing: ', pcapfile)
+            pcap_id = pcap_ids[idx]
+            outputcsvfile = self.process(pcapfile)
+            df = pd.read_csv(outputcsvfile)
+            df = df.head(1000)
+            dfs.append(self.message_service.dns_parse_preprocess(df, pcap_id))
+            pass
 
-        self.message_service.insert_pcapcsvfile(pcap_id, csvfile)
+        self.message_service.create_partition(partition_name, pcap_ids)
+        df = pd.concat(dfs)
+        self.message_service.copy(partition_name, df)
+        pass
+    
     pass

@@ -1,5 +1,6 @@
 
 from dataclasses import dataclass
+import logging
 from math import ceil
 
 import pandas as pd
@@ -8,7 +9,8 @@ from sqlalchemy import create_engine
 
 class Database:
     # uri = f"postgresql+psycopg2://postgres:@localhost:5432/dns_mac"
-    def __init__(self, host, user, password, dbname, port=5432):
+    def __init__(self, env, host, user, password, dbname, port=5432):
+        self.dev : bool = env == "debug"
         self.host = host
         self.user = user
         self.password = password
@@ -22,6 +24,13 @@ class Database:
         if self._psyconn is None or self._psyconn.closed:
             self._psyconn = psycopg2.connect("host=%s dbname=%s user=%s password=%s" % (self.host, self.dbname, self.user, self.password))
         return self._psyconn
+    
+    def commit(self, connection):
+        if self.dev:
+            logging.debug("Commit disabled: environment is «debug».")
+        else:
+            connection.commit()
+        pass
     
     def sqlalchemy(self):
         return create_engine(f"postgresql+psycopg2://{self.user}:@{self.host}:{self.port}/{self.dbname}")

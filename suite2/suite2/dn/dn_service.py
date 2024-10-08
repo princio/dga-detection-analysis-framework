@@ -30,8 +30,6 @@ class DBDNService:
         codes, uniques = dn.factorize()
 
         with self.db.psycopg2().cursor() as cursor:
-            print([ cursor.mogrify("(%s)", (x,)) for x in uniques[0:5] ])
-
             args_str = b",".join([ cursor.mogrify("(%s)", (x,)) for x in uniques ])
             cursor.execute(b"""
                 INSERT INTO public.dn(
@@ -46,30 +44,14 @@ class DBDNService:
                 pass
             
             ids = [t[0] for t in cursor.fetchall()]
-            # cursor.connection.commit()
             pass
 
 
-        # self.db.psycopg2().commit()
-        s = pd.Series(ids).take(codes)
+        self.db.commit(cursor.connection)
+
+        s = pd.Series(ids).take(codes) # type: ignore
         s.index = dn.index
         return s
-
-
-    def lstm_to_do(self, nn_id: int):
-        with self.db.psycopg2().cursor() as cursor:
-            cursor.execute("""SELECT COUNT(DN.ID) FROM DN;""")
-            dn_count = cursor.fetchone()
-            if dn_count is None:
-                raise Exception('Query failed.')
-
-            cursor.execute("""SELECT COUNT(DN_NN.DN_ID) FROM DN_NN WHERE DN_NN.NN_ID=%s;""", (nn_id,))
-            dn_nn_count = cursor.fetchone()
-            if dn_nn_count is None:
-                raise Exception('Query failed.')
-            pass
-        
-        return dn_count[0] - dn_nn_count[0]
 
 
     def run(self, dn_s: pd.Series, nn: Union[NN, Tuple[NNType, Any]], df_suffixes: Optional[pd.DataFrame] = None):
@@ -106,9 +88,25 @@ class DBDNService:
         return self.lstm_service.run(model, dn_s, suffixes)
 
 
-    def lstm(self, nn: NN, batch_size = 10_000):
+    def db_lstm_to_do(self, nn_id: int):
+        with self.db.psycopg2().cursor() as cursor:
+            cursor.execute("""SELECT COUNT(DN.ID) FROM DN;""")
+            dn_count = cursor.fetchone()
+            if dn_count is None:
+                raise Exception('Query failed.')
+
+            cursor.execute("""SELECT COUNT(DN_NN.DN_ID) FROM DN_NN WHERE DN_NN.NN_ID=%s;""", (nn_id,))
+            dn_nn_count = cursor.fetchone()
+            if dn_nn_count is None:
+                raise Exception('Query failed.')
+            pass
+        
+        return dn_count[0] - dn_nn_count[0]
+
+
+    def db_lstm(self, nn: NN, batch_size = 10_000):
         model = self.lstm_service.load_model(nn.model_json, Path(nn.hf5_file.name))
-        count = self.lstm_to_do(nn.id)
+        count = self.db_lstm_to_do(nn.id)
 
         if count == 0:
             print("[info] no dn to be `lstm` processed.")
@@ -136,14 +134,14 @@ class DBDNService:
                             VALUES """ +
                             args_str
                     )
-                    cursor.connection.commit()
+                    self.db.commit(cursor.connection)
                 pass # while true
             pass
 
         print("Done %d dn for %s." % (count, nn.name))
         pass
 
-    def psltrie(self, batch_size=10_000):
+    def db_psltrie(self, batch_size=10_000):
         psyconn = self.db.psycopg2()
         cursor = psyconn.cursor()
 
@@ -176,9 +174,8 @@ class DBDNService:
 
             values = df[values_cols].values.tolist()
 
-            # PSLTRIE of TYPE TEXT
-            with psyconn.cursor() as cursor2:
-                execute_values(cursor2, sql, values)
-                cursor2.connection.commit()
+            execute_values(cursor, sql, values)
+
+            self.db.commit(cursor.connection)
             pass # while true
         pass # for nns

@@ -1,14 +1,14 @@
-"""Main module."""
-
-import subprocess
-from dependency_injector.wiring import Provide, inject
-import sys
+import logging
 from pathlib import Path
-
+import subprocess
+import sys
+from tempfile import TemporaryFile
+from dependency_injector.wiring import Provide, inject
+import pandas as pd
 import psycopg2
 
-sys.path.append(str(Path(__file__).parent.parent.absolute()))
-
+sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
+from suite2.message import message_service
 from suite2.psltrie.psltrie_service import PSLTrieService
 from suite2.defs import NNType
 from suite2.dn.dn_service import DBDNService
@@ -22,37 +22,13 @@ def test_pcap(
         pcap_service: PCAPService = Provide[
             Suite2Container.pcap_service
         ],
-        dn_service: DBDNService = Provide[
-            Suite2Container.dbdn_service
-        ],
-        lstm_service: LSTMService = Provide[
-            Suite2Container.lstm_service
-        ],
-        nn_service: NNService = Provide[
-            Suite2Container.nn_service
-        ],
-        psltrie_service: PSLTrieService = Provide[
-            Suite2Container.psltrie_service
-        ],
 ) -> None:
     
-    it2016_day_partition = 'it16_0'
-    pcapfile = Path("/Users/princio/Downloads/Day0/20160423_235403.pcap")
+    pcapfiles = list(Path('/Users/princio/Downloads/Day0').glob('./*.pcap'))
+    pcapfiles = pd.Series(pcapfiles).sort_values().to_list()
+    pcap_service.new_partition(pcapfiles[0:5], 'it16_0')
 
-    sha256 = subprocess.getoutput(f"shasum -a 256 {pcapfile}").split(' ')[0]
-
-    outputcsvfile = pcap_service.process(pcapfile)
-
-    try:
-        pcap_id = pcap_service.insert(pcapfile, sha256, 2016, 'IT16', partition=it2016_day_partition, infected=None)
-    except psycopg2.errors.UniqueViolation as e:
-        e.cursor.connection.rollback() # type: ignore
-        pcap_id = pcap_service.findby_hash(sha256)
-        pass
-
-    pcap_service.message_service.insert_pcapcsvfile(pcap_id, it2016_day_partition, outputcsvfile)
-
-    pass
+    return
 
 @inject
 def test_lstm(
@@ -105,12 +81,14 @@ if __name__ == "__main__":
             "dbname": "dns_mac",
             "port": 5432
         },
-        "tshark": "/opt/homebrew/bin/tshark",
-        "tcpdump": "/usr/sbin/tcpdump",
-        "dns_parse": "/Users/princio/Repo/princio/malware-detection-predict-file/dns_parse/bin/dns_parse",
-        "psltrie": "/Users/princio/Repo/princio/malware-detection-predict-file/psltrie/bin/binary_prod",
+        "binaries": {
+            "tshark": "/opt/homebrew/bin/tshark",
+            "tcpdump": "/usr/sbin/tcpdump",
+            "dns_parse": "/Users/princio/Repo/princio/malware-detection-predict-file/dns_parse/bin/dns_parse",
+            "psltrie": "/Users/princio/Repo/princio/malware-detection-predict-file/psltrie/bin/binary_prod"
+        },
         "workdir": "/tmp/suite2_workdir",
-        "logging": 1
+        "logging": logging.INFO
     })
 
     application.init_resources()

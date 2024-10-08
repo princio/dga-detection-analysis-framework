@@ -2,21 +2,16 @@
 
 import logging
 from pathlib import Path
+from tempfile import TemporaryFile
 import pandas as pd
-from ..subprocess import Subprocess
+from ..subprocess.subprocess_service import SubprocessService
 from ..psl_list.psl_list_service import PSLListService
 
 class PSLTrieService:
-    def __init__(self, psl_list_service: PSLListService, binary: Path, workdir: Path):
+    def __init__(self, subprocess_service: SubprocessService, psl_list_service: PSLListService, binary: Path, workdir: Path):
         self.binary = binary
+        self.subprocess_service = subprocess_service
         self.psl_list_service = psl_list_service
-
-        self.workdir: Path = Path(workdir).joinpath('psltrie')
-        if not self.workdir.exists():
-            self.workdir.mkdir(exist_ok=True)
-
-        self.psltrie = Subprocess(logging.getLogger(), 'psltrie', binary, self.workdir)
-
         pass
 
     def run(self, input: pd.Series) -> pd.DataFrame:
@@ -30,21 +25,17 @@ class PSLTrieService:
             dn, bdn, rcode, tld, icann, private, dn_tld, dn_icann, dn_private.
             Missing suffixes has np.NaN value.
         """
-        input_path = self.workdir.joinpath('s_dn.csv')
-        input.to_csv(input_path, index=False)
-
         self.psl_list_service.run()
 
-        self.psltrie.launch(
-            input_path, [
-                self.psl_list_service._listfile,
-                "csv",
-                "0",
-                Subprocess.INPUT_FLAG,
-                Subprocess.OUTPUT_FLAG
-            ])
+        with TemporaryFile('w') as inputfile:
+            input.to_csv(inputfile, index=False)
+            output = self.subprocess_service.launch_psltrie(
+                Path(inputfile.name),
+                self.psl_list_service._listfile
+            )
+            pass
         
-        return pd.read_csv(self.psltrie.output)
+        return pd.read_csv(output)
 
 
         
