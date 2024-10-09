@@ -11,7 +11,7 @@ sys.path.append(str(Path(__file__).parent.parent.absolute()))
 
 from suite2.psltrie.psltrie_service import PSLTrieService
 from suite2.defs import NNType
-from suite2.dn.dn_service import DBDNService
+from suite2.dn.dn_service import DNService
 from suite2.lstm.lstm_service import LSTMService
 from suite2.nn.nn_service import NNService
 from suite2.pcap.pcap_service import PCAPService
@@ -22,7 +22,7 @@ def test_pcap(
         pcap_service: PCAPService = Provide[
             Suite2Container.pcap_service
         ],
-        dn_service: DBDNService = Provide[
+        dn_service: DNService = Provide[
             Suite2Container.dbdn_service
         ],
         lstm_service: LSTMService = Provide[
@@ -56,7 +56,7 @@ def test_pcap(
 
 @inject
 def test_lstm(
-        dn_service: DBDNService = Provide[
+        dn_service: DNService = Provide[
             Suite2Container.dbdn_service
         ],
         lstm_service: LSTMService = Provide[

@@ -8,6 +8,8 @@ from typing import List
 import pandas as pd
 import psycopg2
 
+from suite2.dn.dn_service import DNService
+
 from ..subprocess.subprocess_service import SubprocessService
 
 from .pcap import PCAP
@@ -20,10 +22,12 @@ class PCAPService:
                  db: Database,
                  subprocess_service: SubprocessService,
                  message_service: MessageService,
+                 dn_service: DNService,
                 ) -> None:
         self.db = db
         self.subprocess_service = subprocess_service
         self.message_service = message_service
+        self.dn_service = dn_service
         pass
 
     def findby_hash(self, sha256: str):
@@ -61,6 +65,7 @@ class PCAPService:
         o1 = self.subprocess_service.launch_tcpdump(pcapfile)
         o2 = self.subprocess_service.launch_tshark(o1)
         return self.subprocess_service.launch_dns_parse(o2)
+
     
     def get(self, pcap_id: int) -> PCAP:
         with self.db.psycopg2().cursor() as cursor:
@@ -90,18 +95,25 @@ class PCAPService:
             pcap_ids.append(pcap_id)
             pass
 
+        if len(pcap_ids) == 0:
+            raise Exception("Number of pcap is 0.")
+
         for idx, pcapfile in enumerate(pcapfiles):
             print('Processing: ', pcapfile)
             pcap_id = pcap_ids[idx]
             outputcsvfile = self.process(pcapfile)
             df = pd.read_csv(outputcsvfile)
-            df = df.head(1000)
+            # df = df.head(1000)
+            df['dn_id'] = self.dn_service.add(df["dn"]) # important
             dfs.append(self.message_service.dns_parse_preprocess(df, pcap_id))
             pass
 
         self.message_service.create_partition(partition_name, pcap_ids)
         df = pd.concat(dfs)
         self.message_service.copy(partition_name, df)
+        
+        for pcapfile in pcapfiles:
+            self.subprocess_service.clean(pcapfile)
+            pass
         pass
-    
     pass

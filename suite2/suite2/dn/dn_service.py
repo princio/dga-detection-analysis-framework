@@ -1,5 +1,6 @@
 
 
+import logging
 from pathlib import Path
 from typing import Optional, Tuple, Union, Any
 import numpy as np
@@ -12,7 +13,7 @@ from ..defs import NN, NNType
 from ..db import Database
 from ..lstm.lstm_service import LSTMService
 
-class DBDNService:
+class DNService:
     def __init__(self, db: Database, nn_service: NNService, lstm_service: LSTMService, psltrie_service: PSLTrieService):
         self.db = db
         self.nn_service = nn_service
@@ -29,6 +30,7 @@ class DBDNService:
     def add(self, dn: pd.Series) -> pd.Series:
         codes, uniques = dn.factorize()
 
+        logging.debug(f"Adding {uniques.shape[0]} domain names.")
         with self.db.psycopg2().cursor() as cursor:
             args_str = b",".join([ cursor.mogrify("(%s)", (x,)) for x in uniques ])
             cursor.execute(b"""
@@ -38,16 +40,17 @@ class DBDNService:
                 args_str +
                 b" ON CONFLICT DO NOTHING RETURNING id")
         
+            logging.info(f"Added {cursor.rowcount} of {uniques.shape[0]} domain names.")
+
             if cursor.rowcount < uniques.shape[0]:
                 tuples = tuple( item for item in uniques )
                 cursor.execute("""SELECT id from dn WHERE dn.dn IN %s""", (tuples, ))
                 pass
             
             ids = [t[0] for t in cursor.fetchall()]
+
+            self.db.commit(cursor.connection)
             pass
-
-
-        self.db.commit(cursor.connection)
 
         s = pd.Series(ids).take(codes) # type: ignore
         s.index = dn.index

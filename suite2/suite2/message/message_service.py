@@ -4,15 +4,14 @@ from tempfile import NamedTemporaryFile
 import numpy as np
 import pandas as pd
 
-from ..dn.dn_service import DBDNService
+from ..dn.dn_service import DNService
 from ..db import Database
 
 
 class MessageService:
-    INSERT_COLS = [ "id", "pcap_id", "time_s", "fn", "fn_req", "dn_id", "qcode", "is_r", "rcode", "server", "answer" ]
-    def __init__(self, db: Database, dbdn_service: DBDNService):
+    INSERT_COLS = [ "id", "pcap_id", "time_s", "fn", "fn_req", "dn_id", "qcode", "is_r", "rcode", "src", "dst", "answer" ]
+    def __init__(self, db: Database):
         self.db = db
-        self.dbdn_service = dbdn_service
         pass
 
     def _insert_into(self, df, cursor, partition):
@@ -56,9 +55,9 @@ class MessageService:
         pass
 
     def dns_parse_preprocess(self, df: pd.DataFrame, pcap_id: int) -> pd.DataFrame:
-        df['server'] = df['server'].replace([np.nan], [None])
+        df['src'] = df['src'].replace([np.nan], [None])
+        df['dst'] = df['dst'].replace([np.nan], [None])
         df['answer'] = df['answer'].replace([np.nan], [None])
-        df['dn_id'] = self.dbdn_service.add(df["dn"])
         df["is_r"] = df["qr"] == "r"
         df["pcap_id"] = pcap_id
         return df.rename(columns={'time': 'time_s', 'fnreq': 'fn_req'})
