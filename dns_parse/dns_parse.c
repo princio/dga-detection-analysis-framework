@@ -467,6 +467,10 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
         printf("[info]: there are q#%d queries but all are null, ignoring packet.\n", dns->qdcount);
         return;
     }
+
+    if (dns->qr == 0) {
+        conf->fnreq++; // otherwise if the first packet is a response, it will start from 0
+    }
     
     sprintf(ts, "%d.%06d", (int)header->ts.tv_sec, (int)header->ts.tv_usec);
     fprintf(conf->csv_file, "%s,", ts);
@@ -478,10 +482,6 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     fprintf(conf->csv_file, "%s,", dns->qr ? (dns->AA ? "1" : "") : "");
     fprintf(conf->csv_file, "%d,", dns->rcode);
     fprintf(conf->csv_file, "%ld,", conf->fnreq);
-
-    if (dns->qr == 0) {
-        conf->fnreq++; //otherwise if the first packet is a response, it will start from -1
-    }
 
     if (dns->qdcount > 1) {
         printf("[debug]: more than one question (%d)\n", dns->qdcount);
