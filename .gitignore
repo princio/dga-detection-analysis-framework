@@ -110,3 +110,4 @@ lstm_dga/venv3.9
 suite/process/pcap/tmp/**
 
 dgarchive/api/*
+scripts/tmp/*
