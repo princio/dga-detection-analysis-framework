@@ -50,6 +50,14 @@ class PCAPService:
             return pcap_id
         pass
 
+    def set_time_min(self, pcap_id: int, time_s_min):
+        with self.db.psycopg2().cursor() as cursor:
+            cursor.execute("UPDATE pcap SET time_s_min=%s WHERE id=%s", (time_s_min, pcap_id,))
+            if cursor.rowcount == 0:
+                raise Exception('Impossible to update time_s_min of pcap %d.' % pcap_id)
+            pass
+        pass
+
     def processed_path(self, pcapname: str) -> Path:
         return self.subprocess_service.workdir.joinpath('dns_parse').joinpath(f'{pcapname}.tcpdump.tshark.dns_parse')
 
@@ -99,6 +107,7 @@ class PCAPService:
         try:
             pcap_id = self.insert(pcapfile, sha256, 2016, 'IT16', infected=None)
         except psycopg2.errors.UniqueViolation as e:
+            logging.getLogger(__name__).warning(e)
             e.cursor.connection.rollback() # type: ignore
             pcap_id = self.findby_hash(sha256)
             pass

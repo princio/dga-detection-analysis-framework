@@ -60,8 +60,7 @@ class MessageService:
         df['answer'] = df['answer'].replace([np.nan], [None])
         df["is_r"] = df["qr"] == "r"
         df["pcap_id"] = pcap_id
-        df['time_s'] = pd.to_datetime(df['time'], unit='s').dt.strftime('%Y-%m-%d %H:%M:%S.%f')
-
+        df['time_s'] = pd.to_datetime(df['time'] - df['time'].min(), unit='s').dt.strftime('%Y-%m-%d %H:%M:%S.%f')
         return df.rename(columns={'fnreq': 'fn_req'})
 
     def create_partition(self, partition, partition_ids):
@@ -76,6 +75,20 @@ class MessageService:
             self.db.commit(cursor.connection)
             pass
         pass
+
+    def exists(self, name: str):
+        with self.db.psycopg2().cursor() as cursor:
+            cursor.execute(f"SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema='public' AND table_name='{name}');")
+            return cursor.fetchone()[0] # type: ignore
+
+    def count(self, name: str):
+        with self.db.psycopg2().cursor() as cursor:
+            try:
+                cursor.execute(f"SELECT COUNT(*) FROM {name}")
+            except Exception as e:
+                cursor.connection.rollback()
+                raise e
+            return cursor.fetchone()[0] # type: ignore
 
     def insert(self, partition: str, df: pd.DataFrame):
         self._insert(partition, df, 'insert')

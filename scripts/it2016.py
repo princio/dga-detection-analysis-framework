@@ -10,6 +10,7 @@ import pandas as pd
 sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
 from suite2.dn.dn_service import DNService
 from suite2.pcap.pcap_service import PCAPService
+from suite2.message.message_service import MessageService
 from suite2.container import Suite2Container
 
 
@@ -45,12 +46,23 @@ def test_pcap(
         dn_service: DNService = Provide[
             Suite2Container.dn_service
         ],
+        message_service: MessageService = Provide[
+            Suite2Container.message_service
+        ],
 ) -> None:
-    for day in range(0,1):
+    for day in range(10):
         s7zip = Seven7Zip(ROOT.joinpath(f'Day{day}').with_suffix('.7z'))
+        partition_name = f'it2016_{day}'
+
+        if message_service.exists(f'message2_{partition_name}') \
+        and message_service.count(f'message2_{partition_name}') > 0:
+            logging.info(f'Partition `{partition_name}` already done, skipping.')
+            continue
+
+        logging.info(f'Processing pcaps for partition `{partition_name}`.')
 
         pcaps = []
-        for h in range(2):
+        for h in range(24):
             pcapname = s7zip.name(h)
             pcap_id = None
             try:
@@ -67,23 +79,26 @@ def test_pcap(
                     pcap_id = pcap_service.add(pcapfile)
                     pass
                 pass
-            pcaps.append((pcap_id, csvfile))
+            pcaps.append((pcap_id, csvfile, pcapname))
             pass
         
         dfs = []
         for pcap in pcaps:
             df = pd.read_csv(pcap[1])
-            df = df.head(1000)
             df['dn_id'] = pcap_service.dn_service.add(df["dn"]) # important
             dn_service.dbfill()
-            df = pcap_service.message_service.dns_parse_preprocess(df, pcap_id)
+            pcap_service.set_time_min(pcap_id, pd.to_datetime(df['time'].min(), unit='s').strftime('%Y-%m-%d %H:%M:%S.%f'))
+            df = message_service.dns_parse_preprocess(df, pcap_id)
             dfs.append(df)
             pass
 
-        partition_name = f'it2016_{day}'
-        pcap_service.message_service.create_partition(partition_name, [pcap[0] for pcap in pcaps])
+        message_service.create_partition(partition_name, [pcap[0] for pcap in pcaps])
         df = pd.concat(dfs)
-        pcap_service.message_service.copy(partition_name, df)
+        message_service.copy(partition_name, df)
+
+        for pcap in pcaps:
+            pcap_service.subprocess_service.clean(Path(pcap[2]))
+            pass
         pass
     pass
 
@@ -93,7 +108,7 @@ if __name__ == "__main__":
     application = Suite2Container()
     
     application.config.from_dict({
-        "env": "debug",
+        "env": "prod",
         "db": {
             "host": "localhost",
             "user": "postgres",

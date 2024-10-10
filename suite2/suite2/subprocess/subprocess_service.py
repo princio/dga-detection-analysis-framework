@@ -28,6 +28,7 @@ class SubprocessService:
         for bin in SubprocessService.BINARY_NAMES:
             files = self.workdir.joinpath(bin).glob(f'{input.name}*')
             for file in files:
+                logging.getLogger(__name__).debug(f'Removing file {file}.')
                 os.remove(file)
                 pass
             pass
