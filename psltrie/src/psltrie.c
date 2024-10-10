@@ -666,6 +666,20 @@ int pslt_domain_run(PSLT* pslt, PSLTObject* obj) {
     return suffixes_found;
 }
 
+void fprint_str(FILE* file, char * str) {
+    fputc('"', file);
+    for (size_t i = 0; i < strlen(str); i++) {
+        if (str[i] == '"') {
+            fputc('"', file);
+        }
+        if (str[i] > 127) {
+            fprintf(stderr, "Non-ascii char for «%s» at %ld: '%c'\n", str, i, str[i]);
+        }
+        fputc(str[i], file);
+    }
+    fputc('"', file);
+}
+
 int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_path[PATH_MAX]) {
     char* unused;
 
@@ -691,7 +705,7 @@ int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_pa
 
     unused = fgets(buffer, MAXROWSIZE, fp); // skip the header (one line)
 
-    fprintf(fp_write, "dn,bdn,rcode,tld,icann,private,dn_tld,dn_icann,dn_private\n");
+    fprintf(fp_write, "dn,bdn,rcode,tld,icann,private,dn_tld,dn_icann,dn_private,is_valid\n");
 
     int cursor = 0;
     size_t n = 0;
@@ -708,19 +722,37 @@ int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_pa
 
         int ret = pslt_domain_run(pslt, &object);
 
-        fprintf(fp_write, "%s,", object.domain);
-        fprintf(fp_write, "%s,", object.basedomain);
+        fprint_str(fp_write, object.domain);
+        fputc(',', fp_write);
+
+        fprint_str(fp_write, object.basedomain);
+        fputc(',', fp_write);
+
         fprintf(fp_write, "%d", ret);
 
         PSLT_FOR_GROUP(g) {
-            fprintf(fp_write, ",%s", object.suffixes[g] ? object.suffixes[g]->suffix->suffix : "");
+            fputc(',', fp_write);
+            fprint_str(fp_write, object.suffixes[g] ? object.suffixes[g]->suffix->suffix : "");
         }
 
         PSLT_FOR_GROUP(g) {
-            fprintf(fp_write, ",%s", object.suffixless[g]);
+            fputc(',', fp_write);
+            fprint_str(fp_write, object.suffixless[g]);
         }
 
-        fprintf(fp_write, "\n");
+        int is_valid = 1;
+        char unallowed[] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '+', '=', '{', '}', '[', ']', '|', '\\', '\'', ':', ';', '"', '<', '>', '?', '/', '~' };
+        for (size_t iv2 = 0; iv2 < sizeof(unallowed); iv2++) {
+            if (strchr(object.domain, unallowed[iv2]) != NULL) {
+                is_valid = 0;
+                break;
+            }
+        }
+
+        fputc(',', fp_write);
+        fputc(is_valid ? '1' : '0', fp_write);
+
+        fputc('\n', fp_write);
 
         if (n && n % 1000 == 0) {
             fflush(fp_write);
