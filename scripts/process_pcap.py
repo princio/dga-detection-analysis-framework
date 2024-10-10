@@ -2,12 +2,13 @@ import logging
 from pathlib import Path
 import subprocess
 import sys
-from tempfile import TemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryFile
 from dependency_injector.wiring import Provide, inject
 import pandas as pd
 import psycopg2
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
+from suite2.pcap import pcap_service
 from suite2.psltrie.psltrie_service import PSLTrieService
 from suite2.defs import NNType
 from suite2.dn.dn_service import DNService
@@ -17,49 +18,32 @@ from suite2.pcap.pcap_service import PCAPService
 from suite2.container import Suite2Container
 
 @inject
-def main(
-        dn_service: DNService = Provide[
-            Suite2Container.dn_service
-        ],
-        lstm_service: LSTMService = Provide[
-            Suite2Container.lstm_service
-        ],
-        nn_service: NNService = Provide[
-            Suite2Container.nn_service
+def test_pcap(
+        pcap_service: PCAPService = Provide[
+            Suite2Container.pcap_service
         ],
 ) -> None:
-    nns = nn_service.get_all()
+    path = Path('/Users/princio/Downloads/IT2016/Day0/20160424_055409.pcap')
+    o = pcap_service.process(path)
 
-    for nn in nns:
-        nn = nn_service.get_model(nn.id)
+    pcap_id = pcap_service.insert(path, 'asasas', 2000, 'tmp')
 
-        model = lstm_service.load_model(nn.model_json, Path(nn.hf5_file.name))
+    # pcap_service.message_service.create_partition('tmpp', [pcap_id])
 
-        df_dn = dn_service.get(1000, nn.id)
+    df = pd.read_csv(o)
+    df['dn_id'] = pcap_service.dn_service.add(df["dn"]) # important
+    df = pcap_service.message_service.dns_parse_preprocess(df, pcap_id)
+    pcap_service.message_service.copy('tmp', df)
 
-        dn_rev, Y = dn_service.run(df_dn['dn'], (nn.nntype, model), df_dn)
+    return
 
-        df_dn['rev'] = dn_rev
-        df_dn['Y'] = Y
-
-        y1 = (df_dn['eps'] - df_dn['Y'])
-        y2 = (df_dn['eps'] - df_dn['Y']).round(3) * 1e4
-        y2 = y2.astype(int)
-        mask = (0 == y2)
-
-        print(mask.all(), mask.sum()) # type: ignore
-        if not mask.all(): # type: ignore
-            df_dn['y1'] = y1
-            df_dn['y2'] = y2
-            print(df_dn[~mask].to_markdown())
-        pass
-    pass
 
 if __name__ == "__main__":
+
     application = Suite2Container()
     
     application.config.from_dict({
-        "env": "debug",
+        "env": "prod",
         "db": {
             "host": "localhost",
             "user": "postgres",
@@ -82,7 +66,7 @@ if __name__ == "__main__":
 
     application.wire(modules=[__name__])
 
-    main()
+    test_pcap()
 
     application.shutdown_resources()
 

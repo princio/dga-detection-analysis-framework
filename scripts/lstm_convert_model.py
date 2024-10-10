@@ -4,8 +4,7 @@ import subprocess
 import sys
 from tempfile import TemporaryFile
 from dependency_injector.wiring import Provide, inject
-import pandas as pd
-import psycopg2
+from packaging.version import Version
 
 sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
 from suite2.psltrie.psltrie_service import PSLTrieService
@@ -15,6 +14,26 @@ from suite2.lstm.lstm_service import LSTMService
 from suite2.nn.nn_service import NNService
 from suite2.pcap.pcap_service import PCAPService
 from suite2.container import Suite2Container
+
+
+def testnn_none(dn_service, lstm_service, model):
+    df_dn = dn_service.get(1000, 1)
+
+    dn_rev = lstm_service.reverse(df_dn['dn'].tolist())
+
+    df_dn['Y'] =  model(dn_rev)
+
+    y1 = (df_dn['eps'] - df_dn['Y'])
+    y2 = (df_dn['eps'] - df_dn['Y']).round(3) * 1e4
+    y2 = y2.astype(int)
+    mask = (0 == y2)
+
+    print(mask.all(), mask.sum()) # type: ignore
+    if not mask.all(): # type: ignore
+        df_dn['y1'] = y1
+        df_dn['y2'] = y2
+        print(df_dn[~mask].to_markdown())
+    pass
 
 @inject
 def main(
@@ -31,28 +50,24 @@ def main(
     nns = nn_service.get_all()
 
     for nn in nns:
-        nn = nn_service.get_model(nn.id)
-
-        model = lstm_service.load_model(nn.model_json, Path(nn.hf5_file.name))
-
-        df_dn = dn_service.get(1000, nn.id)
-
-        dn_rev, Y = dn_service.run(df_dn['dn'], (nn.nntype, model), df_dn)
-
-        df_dn['rev'] = dn_rev
-        df_dn['Y'] = Y
-
-        y1 = (df_dn['eps'] - df_dn['Y'])
-        y2 = (df_dn['eps'] - df_dn['Y']).round(3) * 1e4
-        y2 = y2.astype(int)
-        mask = (0 == y2)
-
-        print(mask.all(), mask.sum()) # type: ignore
-        if not mask.all(): # type: ignore
-            df_dn['y1'] = y1
-            df_dn['y2'] = y2
-            print(df_dn[~mask].to_markdown())
-        pass
+        import tensorflow as tf
+        print(tf.version.VERSION)
+        if Version(tf.version.VERSION) <= Version("2.13"):
+            model = tf.keras.models.load_model(nn.zipdir.name)
+            model.compile()
+            model.save(f'{nn.name}.tf.keras.hf5')
+            import keras
+            model = keras.models.load_model(nn.zipdir.name)
+            model.compile()
+            model.save(f'{nn.name}.keras.hf5')
+        else:
+            # model = keras.layers.TFSMLayer(nn.zipdir.name,
+            # call_endpoint='serving_default')
+            import keras
+            model = keras.models.load_model(f'{nn.name}.tf.keras.hf5')
+            pass
+        testnn_none(dn_service, lstm_service, model)
+        break
     pass
 
 if __name__ == "__main__":

@@ -22,7 +22,7 @@ def test_pcap(
             Suite2Container.pcap_service
         ],
 ) -> None:
-    for day in range(4,6):
+    for day in range(3,6):
         try:
             pcapfiles = list(Path(f'/Users/princio/Downloads/IT2016/Day{day}').glob('./*.pcap'))
             pcapfiles = pd.Series(pcapfiles).sort_values().to_list()
