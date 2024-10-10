@@ -3,6 +3,7 @@
 import logging
 from pathlib import Path
 from typing import Optional, Tuple, Union, Any
+import warnings
 import numpy as np
 import pandas as pd
 from psycopg2.extras import execute_values
@@ -30,7 +31,7 @@ class DNService:
     def add(self, dn: pd.Series) -> pd.Series:
         codes, uniques = dn.factorize()
 
-        logging.debug(f"Adding {uniques.shape[0]} domain names.")
+        logging.getLogger(__name__).debug(f"Adding {uniques.shape[0]} domain names.")
         with self.db.psycopg2().cursor() as cursor:
             args_str = b",".join([ cursor.mogrify("(%s)", (x,)) for x in uniques ])
             cursor.execute(b"""
@@ -40,7 +41,7 @@ class DNService:
                 args_str +
                 b" ON CONFLICT DO NOTHING RETURNING id")
         
-            logging.info(f"Added {cursor.rowcount} of {uniques.shape[0]} domain names.")
+            logging.getLogger(__name__).info(f"Added {cursor.rowcount} of {uniques.shape[0]} domain names.")
 
             if cursor.rowcount < uniques.shape[0]:
                 tuples = tuple( item for item in uniques )
@@ -106,79 +107,93 @@ class DNService:
         
         return dn_count[0] - dn_nn_count[0]
 
-
-    def db_lstm(self, nn: NN, batch_size = 10_000):
+    def db_lstm(self, nn: NN, batch_size = 100_000):
         model = self.lstm_service.load_model(nn.model_json, Path(nn.hf5_file.name))
-        count = self.db_lstm_to_do(nn.id)
-
-        if count == 0:
-            print("[info] no dn to be `lstm` processed.")
+        todo = self.db_lstm_to_do(nn.id)
+        if todo == 0:
             return
         
+        todo_done = 0
         with self.db.psycopg2().cursor() as cursor:
-            cursor.execute("""SELECT DN.ID, DN, TLD, ICANN, PRIVATE, NN_ID FROM DN LEFT JOIN DN_NN ON (DN.ID = DN_NN.DN_ID AND DN_NN.NN_ID = %s)  WHERE NN_ID is null""", (nn.id,))
+            cursor.execute("""SELECT DN.ID AS ID, DN, TLD, ICANN, PRIVATE, NN_ID FROM DN LEFT JOIN DN_NN ON (DN.ID = DN_NN.DN_ID AND DN_NN.NN_ID = %s)  WHERE NN_ID is null""", (nn.id,))
             while True:
                 rows = cursor.fetchmany(batch_size)
+                logging.getLogger(__name__).info(f'Processing with {nn.name}#{nn.id} {len(rows)} over {todo} domain names.')
                 if not rows:
                     break
 
-                df = pd.DataFrame.from_records(rows, columns=["id", "dn", "tld", "icann", "private", "nn_id", "psltrie_rcode"])
+                df = pd.DataFrame.from_records(rows, columns=["id", "dn", "tld", "icann", "private", "nn_id"])
                 
                 _, Y = self.run(df['dn'], (nn.nntype, model), df)
 
                 df["Y"] = Y
-                df["logit"] = np.log(Y / (1 - Y))
+                with warnings.catch_warnings():
+                    df["logit"] = np.log(Y / (1 - Y))
                 
-                with self.db.psycopg2().cursor() as cursor:
+                with self.db.psycopg2().cursor() as cursornn:
                     args_str = b",".join([cursor.mogrify("(%s, %s, %s, %s)", (row["id"], nn.id, row["Y"], row["logit"])) for _, row in df.iterrows()])
-                    cursor.execute(
-                        b"""
-                        INSERT INTO public.dn_nn(dn_id, nn_id, value, logit)
-                            VALUES """ +
-                            args_str
+                    cursornn.execute(
+                        b"""INSERT INTO public.dn_nn(dn_id, nn_id, value, logit) VALUES """ + args_str
                     )
-                    self.db.commit(cursor.connection)
+                    pass
+                self.db.commit(cursor.connection)
+                todo_done += len(rows)
+                logging.getLogger(__name__).info(f'Processed with {nn.name}#{nn.id} {todo_done}/{todo} domain names.')
                 pass # while true
             pass
-
-        print("Done %d dn for %s." % (count, nn.name))
         pass
 
-    def db_psltrie(self, batch_size=10_000):
-        psyconn = self.db.psycopg2()
-        cursor = psyconn.cursor()
+    def db_psltrie_to_do(self):
+        with self.db.psycopg2().cursor() as cursor:
+            cursor.execute("""SELECT COUNT(*) FROM DN WHERE DN.PSLTRIE_RCODE IS NULL""")
+            todo = cursor.fetchone()
+            if todo is None:
+                raise Exception('Query failed.')
+            pass
+        return todo[0]
+    
+    def db_psltrie(self, batch_size=100_000):
+        todo = self.db_psltrie_to_do()
+        logging.getLogger(__name__).info(f'The number of domains to be psltrie-processed are: {todo}.')
+        if todo == 0:
+            return
+        
+        todo_done = 0
+        with self.db.psycopg2().cursor() as cursor:
+            cursor.execute("SELECT ID, DN FROM DN WHERE DN.PSLTRIE_RCODE IS NULL ORDER BY ID")
+            while True:
+                rows = cursor.fetchmany(batch_size)
+                logging.getLogger(__name__).debug(f'Processing with psltrie {len(rows)} over {todo} domains.' % len(rows))
+                if not rows:
+                    break
 
-        cursor.execute("""SELECT ID, DN FROM DN WHERE DN.psltrie_rcode is null""")
+                df = self.psltrie_service.run(pd.Series([ row[1] for row in rows ]))
+                df['id'] = [ row[0] for row in rows ]
 
-        while True:
-            rows = cursor.fetchmany(batch_size)
-            if not rows:
-                break
+                df.rename(columns={ "rcode": "psltrie_rcode", "is_valid": "psltrie_isvalid" }, inplace=True)
+                df = df.replace(np.nan, None)
+                df['psltrie_isvalid'] = df['psltrie_isvalid'].astype(bool)
 
-            df = pd.DataFrame.from_records(rows, columns=["id", "dn"])
+                cols = ['bdn','tld','icann','private','psltrie_rcode','psltrie_isvalid']
+                sets = ", ".join([ f"{col}=data.{col}" for col in cols ])
 
-            df_out = self.psltrie_service.run(df['dn'])
+                with self.db.psycopg2().cursor() as update_cursor:
+                    sql = f"""UPDATE dn SET {sets} FROM (VALUES %s) AS data ({','.join(cols)},id) WHERE dn.id = data.id;"""
+                    values = df[cols + [ "id" ]].values.tolist()
+                    execute_values(update_cursor, sql, values)
+                    self.db.commit(update_cursor.connection)
+                    pass
 
-            df = pd.concat([ df["id"], df_out ], axis=1)
-
-            df.rename(columns={ "rcode": "psltrie_rcode" }, inplace=True)
-            df = df.replace(np.nan, None)
-
-            cols = "bdn,tld,icann,private,psltrie_rcode"
-            sets = ", ".join([ f"{col}=data.{col}" for col in cols.split(",") ])
-            values_cols = cols.split(",") + [ "id" ]
-            values_names = cols + ",id"
-
-            sql = """UPDATE dn SET """\
-                    + sets\
-                    + """ FROM (VALUES %s) AS data ("""\
-                    + values_names\
-                    + """) WHERE dn.id = data.id;"""
-
-            values = df[values_cols].values.tolist()
-
-            execute_values(cursor, sql, values)
-
-            self.db.commit(cursor.connection)
-            pass # while true
+                todo_done += len(rows)
+                logging.getLogger(__name__).info(f'Processed {todo_done}/{todo} domain names.')
+                pass # while true
+            pass # cursor
         pass # for nns
+
+    def dbfill(self):
+        self.db_psltrie()
+
+        for nn in self.nn_service.get_all():
+            self.db_lstm(nn)
+            pass
+        pass

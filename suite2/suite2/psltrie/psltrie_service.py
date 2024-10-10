@@ -1,8 +1,11 @@
 
 
+import csv
+from lib2to3.pgen2.parse import ParseError
 import logging
+from os import error
 from pathlib import Path
-from tempfile import TemporaryFile
+from tempfile import NamedTemporaryFile, TemporaryFile
 import pandas as pd
 from ..subprocess.subprocess_service import SubprocessService
 from ..psl_list.psl_list_service import PSLListService
@@ -27,14 +30,17 @@ class PSLTrieService:
         """
         self.psl_list_service.run()
 
-        with TemporaryFile('w') as inputfile:
-            input.to_csv(inputfile, index=False)
+        with NamedTemporaryFile('w', delete=False) as inputfile:
+            input.to_csv(inputfile, index=False, doublequote=False, quoting=csv.QUOTE_NONE)
+            inputfile.flush()
             output = self.subprocess_service.launch_psltrie(
                 Path(inputfile.name),
                 self.psl_list_service._listfile
             )
+            logging.getLogger(__name__).debug('input %s' % inputfile.name)
+            logging.getLogger(__name__).debug(output)
             pass
-        
+
         return pd.read_csv(output)
 
 

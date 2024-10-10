@@ -27,7 +27,7 @@ class Database:
     
     def commit(self, connection):
         if self.dev:
-            logging.debug("Commit disabled: environment is «debug».")
+            logging.getLogger(__name__).debug("Commit disabled: environment is «debug».")
         else:
             connection.commit()
         pass
@@ -45,10 +45,6 @@ class Database:
         for batch in range(n_batches):
             batch_start = batch_size * batch
             batch_end = batch_size * (batch + 1) if (batch + 1) < n_batches else df.shape[0]
-            print("Batching: %s/%s" % (batch+1, n_batches))
-
             df_batch = df.iloc[batch_start:batch_end]
-
             fun(df_batch, args)
-            
             pass

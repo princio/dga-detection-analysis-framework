@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import Optional, Union
+from typing import Any, Optional, Union
 import pandas as pd
 import os
 
@@ -27,6 +27,9 @@ class LSTMService:
         else:
             s_X = s_dn.copy()
         return s_X
+    
+    def reverse(self, dns: Any):
+        return [ ".".join(dn.split('.')[::-1]) for dn in dns ]
 
     def load_model(self, model_json: str, model_hf5: Path):
         if isinstance(model_json, dict):
@@ -40,7 +43,7 @@ class LSTMService:
 
         codes, uniques = s_X.factorize()
 
-        dn_reversed = [ ".".join(dn.split('.')[::-1]) for dn in uniques ]
+        dn_reversed = self.reverse(uniques)
 
         Xtf = self.layer(tf.strings.bytes_split(tf.strings.substr(dn_reversed, 0, self.max_len)))
         Xtf = pad_sequences(

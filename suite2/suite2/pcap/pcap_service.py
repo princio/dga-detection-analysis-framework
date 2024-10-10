@@ -46,9 +46,12 @@ class PCAPService:
                 ( pcapfile.name, sha256, infected, dataset, year )
             )
             pcap_id = cursor.fetchone()[0] # type: ignore
-            logging.info("pcap successfully inserted with id %s" % pcap_id)
+            logging.getLogger(__name__).info("pcap successfully inserted with id %s" % pcap_id)
             return pcap_id
         pass
+
+    def processed_path(self, pcapname: str) -> Path:
+        return self.subprocess_service.workdir.joinpath('dns_parse').joinpath(f'{pcapname}.tcpdump.tshark.dns_parse')
 
     def process(self, pcapfile: Path) -> Path:
         """Process a pcap file with the following consequential steps:
@@ -70,9 +73,7 @@ class PCAPService:
     def get(self, pcap_id: int) -> PCAP:
         with self.db.psycopg2().cursor() as cursor:
             cursor.execute(
-                """
-                SELECT id, name, sha256, infected, dataset, year FROM PCAP where id=%s
-                """,
+                "SELECT id, name, sha256, infected, dataset, year FROM PCAP where id=%s",
                 ( pcap_id, )
             )
             pcap = cursor.fetchone()
@@ -81,6 +82,28 @@ class PCAPService:
             return PCAP(pcap[0], pcap[1], pcap[2], pcap[3], pcap[4], pcap[5])
         pass
 
+    def getbyname(self, name: str) -> PCAP:
+        with self.db.psycopg2().cursor() as cursor:
+            cursor.execute(
+                "SELECT id, name, sha256, infected, dataset, year FROM PCAP where name=%s",
+                ( name, )
+            )
+            pcap = cursor.fetchone()
+            if pcap is None:
+                raise Exception(f'No pcap found with name «{name}».')
+            return PCAP(pcap[0], pcap[1], pcap[2], pcap[3], pcap[4], pcap[5])
+        pass
+
+    def add(self, pcapfile):
+        sha256 = subprocess.getoutput(f"shasum -a 256 {pcapfile}").split(' ')[0]
+        try:
+            pcap_id = self.insert(pcapfile, sha256, 2016, 'IT16', infected=None)
+        except psycopg2.errors.UniqueViolation as e:
+            e.cursor.connection.rollback() # type: ignore
+            pcap_id = self.findby_hash(sha256)
+            pass
+        return pcap_id
+    
     def new_partition(self, pcapfiles: List[Path], partition_name: str):
         pcap_ids = []
         dfs = []
@@ -99,7 +122,6 @@ class PCAPService:
             raise Exception("Number of pcap is 0.")
 
         for idx, pcapfile in enumerate(pcapfiles):
-            print('Processing: ', pcapfile)
             pcap_id = pcap_ids[idx]
             outputcsvfile = self.process(pcapfile)
             df = pd.read_csv(outputcsvfile)

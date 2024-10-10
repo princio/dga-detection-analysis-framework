@@ -9,6 +9,7 @@ from ..db import Database
 
 
 class MessageService:
+    TABLE = 'message2'
     INSERT_COLS = [ "id", "pcap_id", "time_s", "fn", "fn_req", "dn_id", "qcode", "is_r", "rcode", "src", "dst", "answer" ]
     def __init__(self, db: Database):
         self.db = db
@@ -18,7 +19,7 @@ class MessageService:
         values = df[MessageService.INSERT_COLS].to_numpy().tolist()
         args_str = b",".join([cursor.mogrify("(%s, %s,%s,%s,%s, %s, %s, %s,%s,%s, %s)", x) for x in values])
         cursor.execute(f"""
-            INSERT INTO public.message_{partition}
+            INSERT INTO {MessageService.TABLE}_{partition}
             ({','.join(MessageService.INSERT_COLS)})
             VALUES {args_str.decode('utf-8')}""")
         pass
@@ -26,10 +27,9 @@ class MessageService:
     def _copy(self, df, cursor, partition):
         df_message = df[MessageService.INSERT_COLS]
         with NamedTemporaryFile('w') as tmpf:
-            print(tmpf.name)
             df_message.to_csv(tmpf, index=False)
             cursor.execute(f"""
-                COPY public.message_{partition} ({','.join(MessageService.INSERT_COLS)})
+                COPY {MessageService.TABLE}_{partition} ({','.join(MessageService.INSERT_COLS)})
                 FROM '{tmpf.name}'
                 DELIMITER ','
                 CSV HEADER;"""
@@ -42,7 +42,7 @@ class MessageService:
         df = df.reset_index(drop=True).reset_index(names='fn')
         df['id'] = df['fn']
         with self.db.psycopg2().cursor() as cursor:
-            logging.info(f"MessageService inserts {df.shape[0]} rows in message_{partition} corresponding to {df.memory_usage(index=False).sum() / (1024 ** 2)} MB.")
+            logging.getLogger(__name__).info(f"MessageService inserts {df.shape[0]} rows in message_{partition} corresponding to {df.memory_usage(index=False).sum() / (1024 ** 2)} MB.")
             if how == "insert":
                 self._insert_into(df, cursor, partition)
             elif how == "copy":
@@ -60,14 +60,16 @@ class MessageService:
         df['answer'] = df['answer'].replace([np.nan], [None])
         df["is_r"] = df["qr"] == "r"
         df["pcap_id"] = pcap_id
-        return df.rename(columns={'time': 'time_s', 'fnreq': 'fn_req'})
+        df['time_s'] = pd.to_datetime(df['time'], unit='s').dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+
+        return df.rename(columns={'fnreq': 'fn_req'})
 
     def create_partition(self, partition, partition_ids):
         with self.db.psycopg2().cursor() as cursor:
             cursor.execute(
                 f"""
-                CREATE TABLE IF NOT EXISTS public.message_{partition}
-                PARTITION OF public.message FOR VALUES IN
+                CREATE TABLE IF NOT EXISTS {MessageService.TABLE}_{partition}
+                PARTITION OF {MessageService.TABLE} FOR VALUES IN
                 ({','.join(map(str, partition_ids))});
                 """
             )
