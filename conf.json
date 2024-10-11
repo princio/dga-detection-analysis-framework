@@ -1,11 +1,11 @@
 {
     "bin": {
-        "python": "/Users/princio/.pyenv/versions/3.9.19/bin/python",
+        "python": "/Users/princio/Repo/princio/malware-detection-predict-file/web/mwdb/pybackend/venv/bin/python3",
         "dns_parse": "/Users/princio/Repo/princio/malware-detection-predict-file/dns_parse/bin/dns_parse",
         "tcpdump": "/usr/sbin/tcpdump",
         "tshark": "/opt/homebrew/bin/tshark",
-        "python_lstm": "/Users/princio/Repo/princio/malware-detection-predict-file/lstm_dga/venv3.9/bin/python",
-        "python_psl_list": "/Users/princio/Repo/princio/malware-detection-predict-file/psl_list/venv3.9/bin/python",
+        "python_lstm": "/Users/princio/Repo/princio/malware-detection-predict-file/lstm_dga/venv3.8/bin/python",
+        "python_psl_list": "/Users/princio/Repo/princio/malware-detection-predict-file/psl_list/venv/bin/python",
         "psltrie": "/Users/princio/Repo/princio/malware-detection-predict-file/psltrie/bin/binary_prod"
     },
     "pyscript": {

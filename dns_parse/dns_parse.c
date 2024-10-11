@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
     conf.TCP_STATE_PATH = NULL;
     conf.DEDUPS = 10;
     conf.dedup_pos = 0;
-    conf.fnreq = -1;
+    conf.fnreq = 0;
 
     c = getopt(argc, argv, OPTIONS);
     while (c != -1) {
@@ -262,7 +262,7 @@ int main(int argc, char **argv) {
     }
 
 
-    fprintf(conf.csv_file, "time,size,protocol,server,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,");
+    fprintf(conf.csv_file, "time,size,protocol,src,dst,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,");
     fprintf(conf.csv_file, "dn,answer\n");
 
     // Load and prior TCP session info
@@ -469,14 +469,15 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     }
 
     if (dns->qr == 0) {
-        conf->fnreq++;
+        conf->fnreq++; // otherwise if the first packet is a response, it will start from 0
     }
     
     sprintf(ts, "%d.%06d", (int)header->ts.tv_sec, (int)header->ts.tv_usec);
     fprintf(conf->csv_file, "%s,", ts);
     fprintf(conf->csv_file, "%d,", trns->length);
     fprintf(conf->csv_file, "%c,", proto);
-    fprintf(conf->csv_file, "%s,", dns->qr ? iptostr(&ip->src) : iptostr(&ip->dst));
+    fprintf(conf->csv_file, "%s,", iptostr(&ip->src));
+    fprintf(conf->csv_file, "%s,", iptostr(&ip->dst));
     fprintf(conf->csv_file, "%c,", dns->qr ? 'r' : 'q');
     fprintf(conf->csv_file, "%s,", dns->qr ? (dns->AA ? "1" : "") : "");
     fprintf(conf->csv_file, "%d,", dns->rcode);
@@ -492,15 +493,44 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     fprintf(conf->csv_file, "%u,",  dns->arcount);
 
     fprintf(conf->csv_file, "%u,", qnext->type);
-    fprintf(conf->csv_file, "%s,", qnext->name);
+    fputc('"', conf->csv_file);
+    fprintf(conf->csv_file, "%s", qnext->name);
+    fputc('"', conf->csv_file);
+    fputc(',', conf->csv_file);
 
+    // int skipped_chars = 0;
+    // for (size_t q = 0; q < strlen(qnext->name); q++) {
+    //     if (qnext->name[q] <= 127) {
+    //         fputc(qnext->name[q], conf->csv_file);
+    //     }
+    //     else {
+    //         skipped_chars++;
+    //     }
+    // }
+    // if (skipped_chars) {
+    // }
+    // fprintf(stderr, "Warning: %d skipped chars for «%s».\n", skipped_chars, qnext->name);
+    // fputc(',', conf->csv_file);
 
     // Print it resource record type in turn (for those enabled).
     {
         rr_text text;
         memset(&text, 0, sizeof(text));
         print_rr_section(dns->answers, qnext->name, conf, &text, qnext->type, dns->id);
-        fprintf(conf->csv_file, "\"%s\",", text.A);
+        fputc('"', conf->csv_file);
+        for (size_t q = 0; q < strlen(text.A); q++) {
+            if (text.A[q] == '"') {
+                fputc('"', conf->csv_file);
+                fputc('"', conf->csv_file);
+            } else
+            // if (text.A[q] <= 127) {
+            // } else 
+            {
+                // skip
+                fputc(text.A[q], conf->csv_file);
+            }
+        }
+        fputc('"', conf->csv_file);
     }
 
     fprintf(conf->csv_file, "\n");

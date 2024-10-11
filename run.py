@@ -100,7 +100,7 @@ class Binaries:
 
             self.python: str = conf['bin']['python']
 
-            self.python_psl_list: str = conf['bin']['python_lstm']
+            self.python_psl_list: str = conf['bin']['python_psl_list']
 
             self.python_lstm: str = conf['bin']['python_lstm']
 

@@ -1,0 +1,5 @@
+{
+    "dns_parse": "/Users/princio/Repo/princio/malware-detection-predict-file/dns_parse/bin/dns_parse",
+    "tcpdump": "/usr/sbin/tcpdump",
+    "tshark": "/opt/homebrew/bin/tshark"
+}

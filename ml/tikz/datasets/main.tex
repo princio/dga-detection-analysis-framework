@@ -1,0 +1,138 @@
+
+\documentclass{standalone}
+\usepackage{tikz}
+\usetikzlibrary{positioning}     
+\usetikzlibrary{calc}      
+\usetikzlibrary{graphs}      
+
+\makeatletter
+\newif\ifmygrid@coordinates
+\tikzset{/mygrid/step line/.style={line width=0.80pt,draw=gray!80},
+         /mygrid/steplet line/.style={line width=0.25pt,draw=gray!80}}
+\pgfkeys{/mygrid/.cd,
+         step/.store in=\mygrid@step,
+         steplet/.store in=\mygrid@steplet,
+         coordinates/.is if=mygrid@coordinates}
+\def\mygrid@def@coordinates(#1,#2)(#3,#4){%
+    \def\mygrid@xlo{#1}%
+    \def\mygrid@xhi{#3}%
+    \def\mygrid@ylo{#2}%
+    \def\mygrid@yhi{#4}%
+}
+\newcommand\DrawGrid[3][]{%
+    \pgfkeys{/mygrid/.cd,coordinates=true,step=1,steplet=0.2,#1}%
+    \draw[/mygrid/steplet line, draw=black!10] #2 grid[step=\mygrid@steplet] #3;
+    \draw[/mygrid/step line,  draw=black!10] #2 grid[step=\mygrid@step] #3;
+    \mygrid@def@coordinates#2#3%
+    \ifmygrid@coordinates%
+        \draw[/mygrid/step line]
+        \foreach \xpos in {\mygrid@xlo,...,\mygrid@xhi} {%
+          (\xpos,\mygrid@ylo) -- ++(0,-3pt)
+                              node[anchor=north] {$\xpos$}
+        }
+        \foreach \ypos in {\mygrid@ylo,...,\mygrid@yhi} {%
+          (\mygrid@xlo,\ypos) -- ++(-3pt,0)
+                              node[anchor=east] {$\ypos$}
+        };
+    \fi%
+}
+\makeatother
+
+\begin{document}
+\begin{tikzpicture}[node distance=2cm]
+
+    
+    % \draw[color=gray, line width=0.2pt] (-2cm,1cm) to[grid with coordinates] (20cm, -20cm); % Crea una griglia di 5x3 unità
+    \DrawGrid{(-2,1)}{(16,-9)};
+    % \draw[color=gray, line width=0.2pt] (-1cm,1cm) rectangle (21cm, -11cm); % Crea una griglia di 5x3 unità
+
+    % Definizione degli stili delle forme
+    \tikzstyle{box} = [rectangle, rounded corners, minimum width=3cm, minimum height=0.7cm, draw=black, fill=gray!10] \tikzstyle{circled} = [circle, minimum width=0.5cm, text centered, draw=black,
+    fill=gray!10, font=\small] \tikzstyle{arrow} = [thick,->,>=stealth]
+
+    % Disegna le caselle principali
+    \node (alexa) [box] {Alexa Top List};
+    \node (whitelist) [box, below=0.5cm of alexa] {Whitelisting List};
+    \node (realtraffic) [box, below=0.5cm of whitelist] {Real Traffic};
+
+    \node (minus) [circled, right of=realtraffic, xshift=1cm] {$-$};
+    \node (dnsfilter) [below=1cm of minus.south, anchor=north east, align=center] {DNS Packet\\Type Filtering}; 
+    \node (minus2) [circled, right of=minus, xshift=-0.25cm] {$-$};
+    \node (blacklisting) [below=1cm of minus2.south, anchor=center, align=center] {DGA\\Blacklists}; \draw [arrow] (minus) -- (minus2);
+    
+    \draw [arrow] (realtraffic) -- (minus);
+    \draw [arrow] (dnsfilter.north) -- ++(0,0.5cm) -| (minus);
+    \draw [arrow] (blacklisting) -- (minus2);
+
+    \node (h1) [right=of alexa, xshift=2.5cm, anchor=west, align=center] {$n$ healthy\\domains};
+    \node (h2) [right=of whitelist, xshift=2.5cm, anchor=west, align=center] {$n$ healthy\\domains};
+    \node (h3) [right=of realtraffic, xshift=2.5cm, anchor=west, align=center] {$n$ healthy\\domains};
+
+    \draw [arrow] (alexa) -- (h1);
+    \draw [arrow] (whitelist) -- (h2);
+    \draw [arrow] (minus2) -- (h3);
+
+
+
+    % Disegna le caselle principali
+    \node (dgarchive) at (0.5cm, -6cm) [box] {DGArchive};
+    \node (bambenek) [box, below =0.5cm of dgarchive] {Bambenek};
+    \node (reversed) [box, below =0.5cm of bambenek, align=center] {Reversed DGA\\Algorithms}; 
+    \node (netlab360) [box, below =0.5cm of reversed] {Netlab360};
+
+    \node (m1) [right=of dgarchive, xshift=2cm, anchor=west, align=center] {$n$ mAGD};
+    \node (m2) [right=of bambenek, xshift=2cm, anchor=west, align=center] {$n$ mAGD};
+    \node (m3) [right=of reversed, xshift=2cm, anchor=west, align=center] {$n$ mAGD};
+    \node (m4) [right=of netlab360, xshift=2cm, anchor=west, align=center] {$n$ mAGD};
+
+    
+    \draw [arrow] (dgarchive) -- (m1);
+    \draw [arrow] (bambenek) -- (m2);
+    \draw [arrow] (reversed) -- (m3);
+    \draw [arrow] (netlab360) -- (m4);
+
+
+    \node (hplus) [circled, right=1cm of h2] {$+$};
+
+    \draw (h1.east) -- ++(.5cm,0) |- (hplus);
+    \draw (h2.east) -- ++(.5cm,0) -- (hplus);
+    \draw (h3.east) -- ++(.5cm,0) |- (hplus);
+
+    \draw[arrow] (hplus.east) -- ++(.5cm,0) |- (10.5, -3cm);
+
+
+    \tikzstyle{sdomain} = [text width=2.5cm, minimum height=0.6cm, anchor=west, align=left];
+    \tikzstyle{slabel} = [text width=1.5cm, minimum height=0.6cm, anchor=west, align=left];
+    
+    \node (dataset) at (10.5cm, 0cm) [draw, anchor=north west, minimum width=6cm, minimum height=10cm] {};
+    
+    \node (hd0) at (11, -.4cm) [sdomain] {domain};
+    \node (hd0) at (14, -.4cm) [slabel] {label};
+
+    \draw (10.5cm, -.8cm) -- ++(6cm, 0);
+
+    \node (hd0) at (11, -1.5cm) [sdomain] {domain 1};
+    \node (hd0) [sdomain, below=0.2cm of hd0] {domain 2};
+    \node (hd0) [sdomain, below=0.2cm of hd0] {domain 3};
+    \node (hd0) [sdomain, below=0.2cm of hd0] {domain 4};
+    \node (hd0) [sdomain, below=0.2cm of hd0] {\dots};
+
+    \node (hd0) at (14, -1.5cm) [slabel, fill=green!20] {\textit{healthy}};
+    \node (hd0) [slabel, fill=green!20, below=0.2cm of hd0] {\textit{healthy}};
+    \node (hd0) [slabel, fill=green!20, below=0.2cm of hd0] {\textit{healthy}};
+    \node (hd0) [slabel, fill=green!20, below=0.2cm of hd0] {\textit{healthy}};
+    \node (hd0) [slabel, below=0.2cm of hd0] {\dots};
+
+    \node (hd0) at (11, -6cm) [sdomain] {domain $k$};
+    \node (hd0) [sdomain, below=0.2cm of hd0] {domain $k+1$};
+    \node (hd0) [sdomain, below=0.2cm of hd0] {domain $k+2$};
+    \node (hd0) [sdomain, below=0.2cm of hd0] {domain $k+3$};
+    \node (hd0) [sdomain, below=0.2cm of hd0] {\dots};
+
+    \node (hd0) at (14, -6cm) [slabel, fill=red!20] {\textit{mAGD}};
+    \node (hd0) [slabel, fill=red!20, below=0.2cm of hd0] {\textit{mAGD}};
+    \node (hd0) [slabel, fill=red!20, below=0.2cm of hd0] {\textit{mAGD}};
+    \node (hd0) [slabel, fill=red!20, below=0.2cm of hd0] {\textit{mAGD}};
+    \node (hd0) [slabel, below=0.2cm of hd0] {\dots};
+\end{tikzpicture}
+\end{document}

@@ -1,0 +1,1034 @@
+{
+    "guesses": [
+        {
+            "domain": "webpkgcache.com",
+            "regexed": [
+                "bigviktor_dga",
+                "qsnatch_dga",
+                "phorpiex_dga",
+                "murofet_dga",
+                "necurs_dga",
+                "pykspa2_dga",
+                "pykspa2s_dga",
+                "banjori_dga",
+                "conficker_dga",
+                "nymaim_dga",
+                "oderoor_dga",
+                "proslikefan_dga",
+                "pykspa_dga",
+                "tempedreve_dga",
+                "tempedrevetdd_dga",
+                "vidro_dga",
+                "vidrotid_dga",
+                "nymaim2_dga",
+                "goznym_dga",
+                "vawtrak_dga",
+                "ares_dga",
+                "dircrypt_dga",
+                "gameover_p2p",
+                "hesperbot_dga",
+                "qakbot_dga",
+                "ramnit_dga",
+                "shadowpad_dga",
+                "symmi_dga",
+                "tufik_dga",
+                "urlzone_dga",
+                "pushdo_dga"
+            ]
+        },
+        {
+            "domain": "cloudinfrastack.com",
+            "regexed": [
+                "bigviktor_dga",
+                "phorpiex_dga",
+                "murofet_dga",
+                "necurs_dga",
+                "pykspa2_dga",
+                "pykspa2s_dga",
+                "banjori_dga",
+                "nymaim2_dga",
+                "ares_dga",
+                "corebot_dga",
+                "dircrypt_dga",
+                "gameover_p2p",
+                "hesperbot_dga",
+                "qakbot_dga",
+                "ramnit_dga",
+                "shadowpad_dga",
+                "symmi_dga",
+                "tufik_dga",
+                "urlzone_dga",
+                "bedep_dga",
+                "chinad_dga",
+                "cryptolocker_dga",
+                "flashback_dga",
+                "flubot_dga",
+                "gozi_dga",
+                "matsnu_dga",
+                "xagent_dga"
+            ]
+        },
+        {
+            "domain": "nondescriptnote.com",
+            "regexed": [
+                "bigviktor_dga",
+                "phorpiex_dga",
+                "murofet_dga",
+                "necurs_dga",
+                "pykspa2_dga",
+                "pykspa2s_dga",
+                "banjori_dga",
+                "nymaim2_dga",
+                "ares_dga",
+                "corebot_dga",
+                "dircrypt_dga",
+                "gameover_p2p",
+                "hesperbot_dga",
+                "qakbot_dga",
+                "ramnit_dga",
+                "shadowpad_dga",
+                "symmi_dga",
+                "tufik_dga",
+                "urlzone_dga",
+                "bedep_dga",
+                "chinad_dga",
+                "cryptolocker_dga",
+                "flashback_dga",
+                "flubot_dga",
+                "gozi_dga",
+                "matsnu_dga"
+            ]
+        },
+        {
+            "domain": "hugersi.com",
+            "regexed": [
+                "bigviktor_dga",
+                "qsnatch_dga",
+                "phorpiex_dga",
+                "murofet_dga",
+                "necurs_dga",
+                "pykspa2_dga",
+                "pykspa2s_dga",
+                "banjori_dga",
+                "conficker_dga",
+                "nymaim_dga",
+                "oderoor_dga",
+                "proslikefan_dga",
+                "pykspa_dga",
+                "tempedreve_dga",
+                "tempedrevetdd_dga",
+                "vidro_dga",
+                "vidrotid_dga",
+                "diamondfox_dga",
+                "goznym_dga",
+                "vawtrak_dga",
+                "darkshell_dga"
+            ]
+        },
+        {
+            "domain": "pubmnet.com",
+            "regexed": [
+                "bigviktor_dga",
+                "qsnatch_dga",
+                "phorpiex_dga",
+                "murofet_dga",
+                "necurs_dga",
+                "pykspa2_dga",
+                "pykspa2s_dga",
+                "banjori_dga",
+                "conficker_dga",
+                "nymaim_dga",
+                "oderoor_dga",
+                "proslikefan_dga",
+                "pykspa_dga",
+                "tempedreve_dga",
+                "tempedrevetdd_dga",
+                "vidro_dga",
+                "vidrotid_dga",
+                "diamondfox_dga",
+                "goznym_dga",
+                "vawtrak_dga",
+                "darkshell_dga"
+            ]
+        },
+        {
+            "domain": "uidsync.net",
+            "regexed": [
+                "bigviktor_dga",
+                "qsnatch_dga",
+                "phorpiex_dga",
+                "murofet_dga",
+                "necurs_dga",
+                "pykspa2_dga",
+                "pykspa2s_dga",
+                "conficker_dga",
+                "nymaim_dga",
+                "oderoor_dga",
+                "proslikefan_dga",
+                "pykspa_dga",
+                "tempedreve_dga",
+                "tempedrevetdd_dga",
+                "vidro_dga",
+                "vidrotid_dga",
+                "diamondfox_dga",
+                "suppobox_dga"
+            ]
+        },
+        {
+            "domain": "adnxs.net",
+            "regexed": [
+                "bigviktor_dga",
+                "qsnatch_dga",
+                "phorpiex_dga",
+                "conficker_dga",
+                "nymaim_dga"
+            ]
+        },
+        {
+            "domain": "sznplayer.cz",
+            "regexed": [
+                "bigviktor_dga",
+                "qsnatch_dga",
+                "nymaim2_dga"
+            ]
+        },
+        {
+            "domain": "acctcdnmsftuswe2.azureedge.net",
+            "regexed": [
+                "bigviktor_dga",
+                "ebury_dga"
+            ]
+        },
+        {
+            "domain": "acctcdn.trafficmanager.net",
+            "regexed": [
+                "bigviktor_dga",
+                "ebury_dga"
+            ]
+        },
+        {
+            "domain": "susyamog458dhref34.ddns.net",
+            "regexed": [
+                "corebot_dga",
+                "n3cr0m0rph_dga"
+            ]
+        },
+        {
+            "domain": "loopme.me",
+            "regexed": [
+                "bigviktor_dga",
+                "qsnatch_dga"
+            ]
+        },
+        {
+            "domain": "smis.cc",
+            "regexed": [
+                "bigviktor_dga",
+                "qsnatch_dga"
+            ]
+        },
+        {
+            "domain": "com.akadns.net",
+            "regexed": [
+                "bigviktor_dga"
+            ]
+        },
+        {
+            "domain": "cdnhongkongbm.ai",
+            "regexed": [
+                "bigviktor_dga"
+            ]
+        },
+        {
+            "domain": "com.edgekey.net",
+            "regexed": [
+                "bigviktor_dga"
+            ]
+        },
+        {
+            "domain": "system-notify.app",
+            "regexed": [
+                "bigviktor_dga"
+            ]
+        },
+        {
+            "domain": "ahledl.ir",
+            "regexed": [
+                "bigviktor_dga"
+            ]
+        },
+        {
+            "domain": "m2abtuuecba.8psvqz5etvdjzjlrr",
+            "regexed": []
+        },
+        {
+            "domain": "dg2sz7pxs7llf2t25fsbutlvvrjij4pmojugn75cmxnvoshmju6dzcad.onion",
+            "regexed": []
+        },
+        {
+            "domain": "027453e65db868369316c7ac8ed535f5.edgekey.net",
+            "regexed": []
+        },
+        {
+            "domain": "imasdk.googleapis.com",
+            "regexed": []
+        },
+        {
+            "domain": "cj.akadns.net",
+            "regexed": []
+        },
+        {
+            "domain": "webpu.sh",
+            "regexed": []
+        },
+        {
+            "domain": "www.smile2smile.centerxmlrpc.php",
+            "regexed": []
+        }
+    ],
+    "hits": [
+        {
+            "domain": "crkprhmjnveudwcydqodixgp.net",
+            "domain_id": 874,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "wgovwoknqbewoinvkxrgyhlkvmrmn.org",
+            "domain_id": 873,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "ztortjughylbqcjftjpnffxw.info",
+            "domain_id": 872,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "bixvkqsfaifirlpxpndeilz.com",
+            "domain_id": 869,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "bycqmfhsamxoukkrwcijmjscvcye.info",
+            "domain_id": 868,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "fihkztsduxqocyxqwuoftxt.org",
+            "domain_id": 867,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "dnvcuxopbhxemxproqzhtgdgu.net",
+            "domain_id": 866,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "mzlzdeaggakfjruizigahuhah.biz",
+            "domain_id": 865,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "hgdeivkbmhbudlrkbeqtobcq.ru",
+            "domain_id": 864,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "nfviugpbjfrhyqgeysckvbeaulyd.com",
+            "domain_id": 863,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "dednrcunvlzwkmyhcqlbhfq.net",
+            "domain_id": 862,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "lznjornzzhylrgmhzhsgddiha.org",
+            "domain_id": 861,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "emcucimfgcecqcadihmautyhjbbe.biz",
+            "domain_id": 860,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "haylhaibhaqgeiyxpuamvaix.com",
+            "domain_id": 859,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "bqindhxzxhtwdmcqnrofkjtgxgi.ru",
+            "domain_id": 858,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "pxgdyxrcltqozpdidebidulj.com",
+            "domain_id": 857,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "kvplspjbadenzdaglzxgukjey.info",
+            "domain_id": 856,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "girtcvwbaskmjyxgwgtgjfzdu.net",
+            "domain_id": 854,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "cyppzlvoyxdilzhouovlamxwus.ru",
+            "domain_id": 852,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "xsduzcqjbaehorifnrpbhpswlrjn.biz",
+            "domain_id": 850,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "fehjbfefinfbaaidlnjbgipfp.org",
+            "domain_id": 849,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "rczppskxwifeysjnvgdbqkjdxgmz.info",
+            "domain_id": 848,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "kzlojlycmkftsdptwykbws.com",
+            "domain_id": 847,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "fhmxjfprsgsrgscqcpvprpvhmkj.ru",
+            "domain_id": 846,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "geeakvmxmftcliwcqhidipzucoj.biz",
+            "domain_id": 845,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "rznrucxjngecajbojtydpxgzt.info",
+            "domain_id": 844,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "lsktwscxsupbayxwoztttcrpf.org",
+            "domain_id": 843,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "nushztrovcfixwusvcrchiyxea.net",
+            "domain_id": 842,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "bswshhyeqvgbeojnvberw.com",
+            "domain_id": 841,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "lfgqmrkrnfwgryhxtopphvw.ru",
+            "domain_id": 840,
+            "family": "gameover_p2p",
+            "validity": {
+                "from": "2014-11-21 00:00:00",
+                "to": "2014-11-27 23:59:59"
+            }
+        },
+        {
+            "domain": "pcg.su",
+            "domain_id": 5776,
+            "family": "qsnatch_dga_3e060378",
+            "validity": {
+                "from": "2024-12-26 16:00:00",
+                "to": "2024-12-26 16:59:59"
+            }
+        },
+        {
+            "domain": "pcg.su",
+            "domain_id": 5771,
+            "family": "qsnatch_dga_3e060378",
+            "validity": {
+                "from": "2024-07-27 11:00:00",
+                "to": "2024-07-27 11:59:59"
+            }
+        },
+        {
+            "domain": "lyxylyj.com",
+            "domain_id": 786,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "gaqydaz.com",
+            "domain_id": 785,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "pufymiv.com",
+            "domain_id": 784,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "qexyluq.com",
+            "domain_id": 783,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "vowydet.com",
+            "domain_id": 782,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "lygymod.com",
+            "domain_id": 781,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "gacyzuh.com",
+            "domain_id": 780,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "purydel.com",
+            "domain_id": 779,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "qegyqov.com",
+            "domain_id": 778,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "vocyzum.com",
+            "domain_id": 777,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "lyryfyr.com",
+            "domain_id": 776,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "gahyqas.com",
+            "domain_id": 775,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "puvyxig.com",
+            "domain_id": 774,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "qetyfyl.com",
+            "domain_id": 773,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "vojyqac.com",
+            "domain_id": 772,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "lyvyxin.com",
+            "domain_id": 771,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "gatyfuw.com",
+            "domain_id": 770,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "pujywep.com",
+            "domain_id": 769,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "qebyxog.com",
+            "domain_id": 768,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "vopyguk.com",
+            "domain_id": 767,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "lykywex.com",
+            "domain_id": 766,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "ganycob.com",
+            "domain_id": 765,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "pupyguq.com",
+            "domain_id": 764,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "qekyryp.com",
+            "domain_id": 763,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "vonycaf.com",
+            "domain_id": 762,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "lysygij.com",
+            "domain_id": 761,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "galyryz.com",
+            "domain_id": 760,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "pumycav.com",
+            "domain_id": 759,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "qedyhiq.com",
+            "domain_id": 758,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "volyrut.com",
+            "domain_id": 757,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "lymyved.com",
+            "domain_id": 756,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "gadyhoh.com",
+            "domain_id": 755,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "puzytul.com",
+            "domain_id": 754,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "qeqyvev.com",
+            "domain_id": 753,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "vofyjom.com",
+            "domain_id": 752,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "lyxytur.com",
+            "domain_id": 751,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "gaqyvys.com",
+            "domain_id": 750,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "pufyjag.com",
+            "domain_id": 749,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "qexytil.com",
+            "domain_id": 748,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "vowybyc.com",
+            "domain_id": 747,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "lygyjan.com",
+            "domain_id": 746,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        },
+        {
+            "domain": "gacypiw.com",
+            "domain_id": 745,
+            "family": "simda_dga_23d0c655",
+            "validity": {
+                "from": "1970-01-01 00:00:00",
+                "to": "2106-02-07 07:28:15"
+            }
+        }
+    ],
+    "misses": [
+        {
+            "domain": "com.akadns.net"
+        },
+        {
+            "domain": "m2abtuuecba.8psvqz5etvdjzjlrr"
+        },
+        {
+            "domain": "hugersi.com"
+        },
+        {
+            "domain": "dg2sz7pxs7llf2t25fsbutlvvrjij4pmojugn75cmxnvoshmju6dzcad.onion"
+        },
+        {
+            "domain": "cdnhongkongbm.ai"
+        },
+        {
+            "domain": "027453e65db868369316c7ac8ed535f5.edgekey.net"
+        },
+        {
+            "domain": "acctcdnmsftuswe2.azureedge.net"
+        },
+        {
+            "domain": "acctcdn.trafficmanager.net"
+        },
+        {
+            "domain": "cloudinfrastack.com"
+        },
+        {
+            "domain": "webpkgcache.com"
+        },
+        {
+            "domain": "imasdk.googleapis.com"
+        },
+        {
+            "domain": "nondescriptnote.com"
+        },
+        {
+            "domain": "com.edgekey.net"
+        },
+        {
+            "domain": "susyamog458dhref34.ddns.net"
+        },
+        {
+            "domain": "uidsync.net"
+        },
+        {
+            "domain": "system-notify.app"
+        },
+        {
+            "domain": "adnxs.net"
+        },
+        {
+            "domain": "pubmnet.com"
+        },
+        {
+            "domain": "loopme.me"
+        },
+        {
+            "domain": "cj.akadns.net"
+        },
+        {
+            "domain": "webpu.sh"
+        },
+        {
+            "domain": "sznplayer.cz"
+        },
+        {
+            "domain": "www.smile2smile.centerxmlrpc.php"
+        },
+        {
+            "domain": "ahledl.ir"
+        },
+        {
+            "domain": "smis.cc"
+        }
+    ]
+}

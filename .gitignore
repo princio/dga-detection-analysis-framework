@@ -98,3 +98,16 @@ ml/pcap_plot/tikz/main.aux
 ml/pcap_plot/tikz/main.log
 ml/pcap_plot/tikz2/main.aux
 ml/pcap_plot/tikz2/main.log
+ml/highway/0.example/plot_**
+dgarchive/tmp/**
+dgarchive/api/tmp_*/**
+
+ml/traffics/**
+dgarchive/2020/full/**
+dgarchive/2020/DF.pickle
+lstm_dga/venv3.8
+lstm_dga/venv3.9
+suite/process/pcap/tmp/**
+
+dgarchive/api/*
+scripts/tmp/*
