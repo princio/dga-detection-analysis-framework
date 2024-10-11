@@ -54,13 +54,13 @@ class MessageService:
             pass
         pass
 
-    def dns_parse_preprocess(self, df: pd.DataFrame, pcap_id: int) -> pd.DataFrame:
+    def dns_parse_preprocess(self, df: pd.DataFrame, pcap_id: int, first_time) -> pd.DataFrame:
         df['src'] = df['src'].replace([np.nan], [None])
         df['dst'] = df['dst'].replace([np.nan], [None])
         df['answer'] = df['answer'].replace([np.nan], [None])
         df["is_r"] = df["qr"] == "r"
         df["pcap_id"] = pcap_id
-        df['time_s'] = pd.to_datetime(df['time'] - df['time'].min(), unit='s').dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+        df['time_s'] = pd.to_datetime(df['time'] - first_time, unit='s').dt.strftime('%Y-%m-%d %H:%M:%S.%f')
         return df.rename(columns={'fnreq': 'fn_req'})
 
     def create_partition(self, partition, partition_ids):

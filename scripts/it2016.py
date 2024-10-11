@@ -50,6 +50,8 @@ def test_pcap(
             Suite2Container.message_service
         ],
 ) -> None:
+    dn_service.dbfill()
+    
     for day in range(10):
         s7zip = Seven7Zip(ROOT.joinpath(f'Day{day}').with_suffix('.7z'))
         partition_name = f'it2016_{day}'
@@ -81,29 +83,36 @@ def test_pcap(
                 pass
             pcaps.append((pcap_id, csvfile, pcapname))
             pass
-        
+
         dfs = []
+        first_time = None
         for pcap in pcaps:
+            pcap_id = pcap[0]
             try:
                 df = pd.read_csv(pcap[1])
             except pd.errors.ParserError as e:
-                logging.getLogger().critical(f'Error in parsing {pcap[1]}.')
+                logging.getLogger().critical(f'Error in parsing {pcap_id}.')
                 raise e
             df['dn_id'] = pcap_service.dn_service.add(df["dn"]) # important
-            dn_service.dbfill()
             pcap_service.set_time_min(pcap_id, pd.to_datetime(df['time'].min(), unit='s').strftime('%Y-%m-%d %H:%M:%S.%f'))
-            df = message_service.dns_parse_preprocess(df, pcap_id)
+            if first_time is None:
+                first_time = df['time'].min()
+            df = message_service.dns_parse_preprocess(df, pcap_id, first_time)
             dfs.append(df)
             pass
+
 
         message_service.create_partition(partition_name, [pcap[0] for pcap in pcaps])
         df = pd.concat(dfs)
         message_service.copy(partition_name, df)
+        dn_service.dbfill()
 
         for pcap in pcaps:
             pcap_service.subprocess_service.clean(Path(pcap[2]))
             pass
         pass
+
+    print("remember to create indexes in message2.")
     pass
 
 

@@ -32,7 +32,6 @@ class PSLTrieService:
         dns = s_dns.tolist()
 
         with NamedTemporaryFile('w', delete=False) as inputfile:
-            logging.getLogger(__name__).critical('-----------%s' % inputfile)
             inputfile.write('0\n')
             inputfile.writelines([dn + '\n' for dn in dns])
             inputfile.flush()
