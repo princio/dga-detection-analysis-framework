@@ -493,7 +493,10 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     fprintf(conf->csv_file, "%u,",  dns->arcount);
 
     fprintf(conf->csv_file, "%u,", qnext->type);
-    fprintf(conf->csv_file, "%s,", qnext->name);
+    fputc('"', conf->csv_file);
+    fprintf(conf->csv_file, "%s", qnext->name);
+    fputc('"', conf->csv_file);
+    fputc(',', conf->csv_file);
 
     // int skipped_chars = 0;
     // for (size_t q = 0; q < strlen(qnext->name); q++) {
