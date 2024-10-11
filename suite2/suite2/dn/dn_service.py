@@ -163,9 +163,11 @@ class DNService:
             cursor.execute("SELECT ID, DN FROM DN WHERE DN.PSLTRIE_RCODE IS NULL ORDER BY ID")
             while True:
                 rows = cursor.fetchmany(batch_size)
-                logging.getLogger(__name__).debug(f'Processing with psltrie {len(rows)} over {todo} domains.' % len(rows))
                 if not rows:
+                    if todo_done < todo:
+                        raise Exception(f'Missing {todo - todo_done} over {todo} domain names to be psltrie-processed.')
                     break
+                logging.getLogger(__name__).debug(f'Processing with psltrie {len(rows)} over {todo} domains.')
 
                 df = self.psltrie_service.run(pd.Series([ row[1] for row in rows ]))
                 df['id'] = [ row[0] for row in rows ]
@@ -190,9 +192,12 @@ class DNService:
             pass # cursor
         pass # for nns
 
+    def db_dgarchive(self):
+        """UPDATE dn SET dac_id = dac.id FROM dac WHERE dac.dn=dn.dn"""
+        pass
+
     def dbfill(self):
         self.db_psltrie()
-
         for nn in self.nn_service.get_all():
             self.db_lstm(nn)
             pass

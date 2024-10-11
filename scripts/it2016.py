@@ -84,7 +84,11 @@ def test_pcap(
         
         dfs = []
         for pcap in pcaps:
-            df = pd.read_csv(pcap[1])
+            try:
+                df = pd.read_csv(pcap[1])
+            except pd.errors.ParserError as e:
+                logging.getLogger().critical(f'Error in parsing {pcap[1]}.')
+                raise e
             df['dn_id'] = pcap_service.dn_service.add(df["dn"]) # important
             dn_service.dbfill()
             pcap_service.set_time_min(pcap_id, pd.to_datetime(df['time'].min(), unit='s').strftime('%Y-%m-%d %H:%M:%S.%f'))

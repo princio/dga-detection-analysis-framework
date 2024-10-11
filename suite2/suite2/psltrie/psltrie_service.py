@@ -17,7 +17,7 @@ class PSLTrieService:
         self.psl_list_service = psl_list_service
         pass
 
-    def run(self, input: pd.Series) -> pd.DataFrame:
+    def run(self, s_dns: pd.Series) -> pd.DataFrame:
         """Return the dataframe output of prsltrie.
 
         Args:
@@ -29,9 +29,12 @@ class PSLTrieService:
             Missing suffixes has np.NaN value.
         """
         self.psl_list_service.run()
+        dns = s_dns.tolist()
 
         with NamedTemporaryFile('w', delete=False) as inputfile:
-            input.to_csv(inputfile, index=False, doublequote=False, quoting=csv.QUOTE_NONE)
+            logging.getLogger(__name__).critical('-----------%s' % inputfile)
+            inputfile.write('0\n')
+            inputfile.writelines([dn + '\n' for dn in dns])
             inputfile.flush()
             output = self.subprocess_service.launch_psltrie(
                 Path(inputfile.name),
