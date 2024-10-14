@@ -22,7 +22,7 @@ class NNService:
         
         tempfile = NamedTemporaryFile('wb')#, delete=False)
         tempfile.write(tmp[3])
-
+        tempfile.flush()
         return NN(nn_id, tmp[0], tmp[1], tmp[2], tmp[3], tmp[4])
 
     def get_all(self):

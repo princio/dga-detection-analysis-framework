@@ -24,6 +24,7 @@ class NN:
         self.hf5_data = hf5
         self.hf5_file = NamedTemporaryFile('wb', delete=True)
         self.hf5_file.write(hf5)
+        self.hf5_file.flush()
         
         self.zipdir = TemporaryDirectory()#delete=True)
         with zipfile.ZipFile(io.BytesIO(zip.tobytes()), 'r') as zip_ref:

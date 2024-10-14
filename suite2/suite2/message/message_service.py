@@ -10,7 +10,7 @@ from ..db import Database
 
 class MessageService:
     TABLE = 'message2'
-    INSERT_COLS = [ "id", "pcap_id", "time_s", "fn", "fn_req", "dn_id", "qcode", "is_r", "rcode", "src", "dst", "answer" ]
+    INSERT_COLS = [ "id", "pcap_id", "time_s", "fn", "fn_req", "dn_id", "qcode", "is_r", "rcode", "src", "dst", "answer", "dac_id" ]
     def __init__(self, db: Database):
         self.db = db
         pass
@@ -28,6 +28,7 @@ class MessageService:
         df_message = df[MessageService.INSERT_COLS]
         with NamedTemporaryFile('w') as tmpf:
             df_message.to_csv(tmpf, index=False)
+            tmpf.flush()
             cursor.execute(f"""
                 COPY {MessageService.TABLE}_{partition} ({','.join(MessageService.INSERT_COLS)})
                 FROM '{tmpf.name}'
@@ -38,6 +39,7 @@ class MessageService:
         pass
 
     def _insert(self, partition, df: pd.DataFrame, how):
+        logging.getLogger(__name__).info(f'Inserting {df.shape[0]} messages.')
         df = df.sort_values(by='time_s')
         df = df.reset_index(drop=True).reset_index(names='fn')
         df['id'] = df['fn']

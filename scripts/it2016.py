@@ -50,8 +50,6 @@ def test_pcap(
             Suite2Container.message_service
         ],
 ) -> None:
-    dn_service.dbfill()
-    
     for day in range(10):
         s7zip = Seven7Zip(ROOT.joinpath(f'Day{day}').with_suffix('.7z'))
         partition_name = f'it2016_{day}'
@@ -93,10 +91,11 @@ def test_pcap(
             except pd.errors.ParserError as e:
                 logging.getLogger().critical(f'Error in parsing {pcap_id}.')
                 raise e
-            df['dn_id'] = pcap_service.dn_service.add(df["dn"]) # important
             pcap_service.set_time_min(pcap_id, pd.to_datetime(df['time'].min(), unit='s').strftime('%Y-%m-%d %H:%M:%S.%f'))
             if first_time is None:
                 first_time = df['time'].min()
+            df['dn_id'] = pcap_service.dn_service.add(df["dn"]) # important
+            df['dac_id'] = pcap_service.dn_service.dac(df["dn"], first_time) # important
             df = message_service.dns_parse_preprocess(df, pcap_id, first_time)
             dfs.append(df)
             pass

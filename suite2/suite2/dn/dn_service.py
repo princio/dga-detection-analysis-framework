@@ -7,6 +7,7 @@ import warnings
 import numpy as np
 import pandas as pd
 from psycopg2.extras import execute_values
+from sqlalchemy import ExceptionContext
 
 from suite2.psltrie.psltrie_service import PSLTrieService
 from ..nn.nn_service import NNService
@@ -29,7 +30,7 @@ class DNService:
             return pd.DataFrame(rows, columns=['id','dn','tld','icann','private','eps'])
 
     def add(self, dn: pd.Series) -> pd.Series:
-        codes, uniques = dn.factorize()
+        codes, uniques = dn.str.lower().factorize()
 
         logging.getLogger(__name__).debug(f"Adding {uniques.shape[0]} domain names.")
         with self.db.psycopg2().cursor() as cursor:
@@ -39,24 +40,60 @@ class DNService:
                     dn)
                     VALUES """ +
                 args_str +
-                b" ON CONFLICT DO NOTHING RETURNING id")
+                b" ON CONFLICT DO NOTHING")
         
             logging.getLogger(__name__).info(f"Added {cursor.rowcount} of {uniques.shape[0]} domain names.")
 
-            if cursor.rowcount < uniques.shape[0]:
-                tuples = tuple( item for item in uniques )
-                cursor.execute("""SELECT id from dn WHERE dn.dn IN %s""", (tuples, ))
-                pass
+            tuples = tuple( dn for dn in uniques )
+            query = cursor.mogrify("SELECT id, dn FROM dn WHERE dn.dn IN %s""", (tuples,))
+            cursor.execute(query)
+            ids = cursor.fetchall()
+            if ids is None:
+                raise Exception('Impossible to fetch ids for %d domain names.' %
+                len(uniques))
             
-            ids = [t[0] for t in cursor.fetchall()]
+            df = pd.DataFrame({'dn': uniques }).merge(pd.DataFrame.from_records(ids, columns=['id','dn']), on='dn', how='left')
+            if not (all([ uniques[u] == df.loc[u, 'dn'] for u in range(len(uniques)) ])):
+                raise Exception("DN table fetching id procedure: uniques order is different from fetched id.")
 
             self.db.commit(cursor.connection)
             pass
 
-        s = pd.Series(ids).take(codes) # type: ignore
+        s = df['id'].take(codes) # type: ignore
         s.index = dn.index
         return s
 
+    def dac(self, dn: pd.Series, day: float) -> pd.Series:
+        codes, uniques = dn.str.lower().factorize()
+
+        logging.getLogger(__name__).debug(f"DAC-ing {uniques.shape[0]} domain names.")
+        with self.db.psycopg2().cursor() as cursor:
+            cursor.execute("CREATE TEMPORARY TABLE TEMP_DN_IDS (DN TEXT);")
+            query = b"INSERT INTO TEMP_DN_IDS (DN) VALUES " + b",".join([ cursor.mogrify("(%s)", (x,)) for x in uniques ]) + b";"
+            cursor.execute(query)
+            # cursor.execute("SELECT COALESCE(DAC.ID, NULL) AS ID, T.DN FROM TEMP_DN_IDS T LEFT JOIN DAC ON T.DN = DAC.DN WHERE %s BETWEEN DAC.date_begin AND DAC.date_end;", (day,))
+            cursor.execute("SELECT COALESCE(DAC.ID, NULL) AS ID, T.DN FROM TEMP_DN_IDS T LEFT JOIN DAC ON T.DN = DAC.DN;")
+            dac_ids = cursor.fetchall()
+            cursor.execute("DROP TABLE IF EXISTS temp_dn_ids;")
+            if dac_ids is None:
+                raise Exception('Impossible to fetch ids for %d domain names.' %
+                len(uniques))
+            
+            df = pd.DataFrame({'dn': uniques }).merge(pd.DataFrame.from_records(dac_ids, columns=['id', 'dn']).drop_duplicates(subset='dn'), on='dn', how='left')
+            if not (all([ uniques[u] == df.loc[u, 'dn'] for u in range(len(uniques)) ])):
+                pd.DataFrame({'dn': uniques }).to_csv('uniques.csv')
+                df.to_csv('uniques_df.csv')
+                raise Exception("DAC table fetching id procedure: uniques order is different from fetched id.")
+            
+            logging.getLogger(__name__).info(f"Fetched {len([t for t in dac_ids if t is not None])} over {uniques.shape[0]} domain names.")
+            pass
+        
+        df['id'] = df['id'].astype('Int64')
+        df['id'].to_csv('/tmp/dac.csv')
+        df[~df['id'].isna()].to_csv('/tmp/dac_notna.csv')
+        s = df['id'].take(codes) # type: ignore
+        s.index = dn.index
+        return s
 
     def run(self, dn_s: pd.Series, nn: Union[NN, Tuple[NNType, Any]], df_suffixes: Optional[pd.DataFrame] = None):
         """Execute psltrie and then run the nn-model.
