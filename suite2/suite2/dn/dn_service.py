@@ -209,11 +209,10 @@ class DNService:
                 df = self.psltrie_service.run(pd.Series([ row[1] for row in rows ]))
                 df['id'] = [ row[0] for row in rows ]
 
-                df.rename(columns={ "rcode": "psltrie_rcode", "is_valid": "psltrie_isvalid" }, inplace=True)
+                df.rename(columns={ "rcode": "psltrie_rcode" }, inplace=True)
                 df = df.replace(np.nan, None)
-                df['psltrie_isvalid'] = df['psltrie_isvalid'].astype(bool)
 
-                cols = ['bdn','tld','icann','private','psltrie_rcode','psltrie_isvalid']
+                cols = ['bdn','tld','icann','private','psltrie_rcode']
                 sets = ", ".join([ f"{col}=data.{col}" for col in cols ])
 
                 with self.db.psycopg2().cursor() as update_cursor:
