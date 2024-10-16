@@ -623,29 +623,47 @@ int _pslt_domain_basedomain(PSLT* pslt, PSLTObject* object) {
 int pslt_domain_run(PSLT* pslt, PSLTObject* obj) {
     int suffixes_found;
 
+    int mask = 0;
     if (!pslt) {
         LOG_WARN("PSLT is null", "");
-        return -1;
+        mask |= (1 << 0); // -1
     }
     if (!obj) {
         LOG_WARN("PSLT object is null", "");
-        return -1;
+        mask |= (1 << 1); // -2
     }
     if (obj->domain[0] == '.') {
         LOG_WARN("domain starting with a dot: %s", obj->domain);
-        return -1;
+        mask |= (1 << 2); // -4
     }
     if (obj->domain[strlen(obj->domain) - 1] == '.') {
-        LOG_WARN("domain   ending with a dot: %s", obj->domain);
-        return -1;
+        LOG_WARN("domain ending with a dot: %s", obj->domain);
+        mask |= (1 << 3); // -8
     }
     if (strlen(obj->domain) < 3) {
-        LOG_WARN("domain   too short: %s", obj->domain);
-        return -1;
+        LOG_WARN("domain too short: %s", obj->domain);
+        mask |= (1 << 4); // -16
     }
     if (pslt_domain_count_labels(obj->domain) <= 1) {
-        LOG_WARN("domain   having too many labels: %s", obj->domain);
-        return -1;
+        LOG_WARN("domain having too few labels: %s", obj->domain);
+        mask |= (1 << 5); // -32
+    }
+    {
+        int is_valid = 1;
+        char unallowed[] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '+', '=', '{', '}', '[', ']', '|', '\\', '\'', ':', ';', '"', '<', '>', '?', '/', '~' };
+        for (size_t iv2 = 0; iv2 < sizeof(unallowed); iv2++) {
+            if (strchr(obj->domain, unallowed[iv2])) {
+                printf("Domain %s: Char %c is not valid.", obj->domain, unallowed[iv2]);
+                is_valid = 0;
+                break;
+            }
+        }
+        if (!is_valid) {
+            mask |= (1 << 6);
+        }
+    }
+    if (mask > 0) {
+        return - mask;
     }
 
     for (size_t i = 0; i < strlen(obj->domain); i++) {
@@ -739,18 +757,6 @@ int pslt_csv(PSLT* pslt, int dn_col, char csv_in_path[PATH_MAX], char csv_out_pa
             fputc(',', fp_write);
             fprint_str(fp_write, object.suffixless[g]);
         }
-
-        int is_valid = 1;
-        char unallowed[] = { '!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '+', '=', '{', '}', '[', ']', '|', '\\', '\'', ':', ';', '"', '<', '>', '?', '/', '~' };
-        for (size_t iv2 = 0; iv2 < sizeof(unallowed); iv2++) {
-            if (strchr(object.domain, unallowed[iv2]) != NULL) {
-                is_valid = 0;
-                break;
-            }
-        }
-
-        fputc(',', fp_write);
-        fputc(is_valid ? '1' : '0', fp_write);
 
         fputc('\n', fp_write);
 
