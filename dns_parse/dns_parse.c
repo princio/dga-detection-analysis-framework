@@ -26,7 +26,7 @@ void print_packet(uint32_t, uint8_t *, uint32_t, uint32_t, u_int);
 int dedup(uint32_t, struct pcap_pkthdr *, uint8_t *,
           ip_info *, transport_info *, config *);
 
-void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
+void print_summary2(eth_info* eth, ip_info * ip, transport_info * trns, dns_info * dns,
                    struct pcap_pkthdr * header, config * conf);
 
 int main(int argc, char **argv) {
@@ -323,7 +323,7 @@ int main(int argc, char **argv) {
     }
 
 
-    fprintf(conf.csv_file, "time,size,protocol,src,dst,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,");
+    fprintf(conf.csv_file, "time,size,protocol,macsrc,macdst,src,dst,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,");
     fprintf(conf.csv_file, "dn,answer\n");
 
     // Load and prior TCP session info
@@ -417,7 +417,7 @@ void handler(uint8_t * args, const struct pcap_pkthdr *orig_header,
             }
         }
         pos = dns_parse(pos, &header, packet, &dns, conf, !FORCE);
-        print_summary2(&ip, &udp, &dns, &header, conf);
+        print_summary2(&eth, &ip, &udp, &dns, &header, conf);
     } else if (ip.proto == 6) {
         // Hand the tcp packet over for later reconstruction.
         tcp_parse(pos, &header, packet, &ip, conf); 
@@ -496,7 +496,7 @@ void print_summary(ip_info * ip, transport_info * trns, dns_info * dns,
 }
 
 
-void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
+void print_summary2(eth_info* eth, ip_info * ip, transport_info * trns, dns_info * dns,
                    struct pcap_pkthdr * header, config * conf) {
     char proto;
     char ts[40];
@@ -562,6 +562,8 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     fprintf(conf->csv_file, "%s,", ts);
     fprintf(conf->csv_file, "%d,", trns->length);
     fprintf(conf->csv_file, "%c,", proto);
+    fprintf(conf->csv_file, "%s,", mactostr(eth->srcmac));
+    fprintf(conf->csv_file, "%s,", mactostr(eth->dstmac));
     fprintf(conf->csv_file, "%s,", iptostr(&ip->src));
     fprintf(conf->csv_file, "%s,", iptostr(&ip->dst));
     fprintf(conf->csv_file, "%c,", dns->qr ? 'r' : 'q');

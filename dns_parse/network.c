@@ -10,6 +10,9 @@ uint32_t eth_parse(struct pcap_pkthdr *header, uint8_t *packet,
                    eth_info * eth, config * conf) {
     uint32_t pos = 0;
 
+    memset(eth->srcmac, 0, sizeof(eth->srcmac));
+    memset(eth->dstmac, 0, sizeof(eth->dstmac));
+
     if (header->len < 14) {
         fprintf(stderr, "Truncated Packet(eth)\n");
         return 0;
@@ -471,4 +474,15 @@ char * iptostr(ip_addr * ip) {
                   IP_STR_BUFF, INET6_ADDRSTRLEN);
     }
     return IP_STR_BUFF;
+}
+
+
+// Convert an ip struct to a string. The returned buffer is internal, 
+// and need not be freed. 
+char * mactostr(uint8_t mac[6]) {
+    sprintf(
+        MAC_STR_BUFF,
+        "%02x:%02x:%02x:%02x:%02x:%02x",
+        mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    return MAC_STR_BUFF;
 }
