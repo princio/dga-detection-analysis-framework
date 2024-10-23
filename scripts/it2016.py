@@ -54,8 +54,8 @@ def test_pcap(
         s7zip = Seven7Zip(ROOT.joinpath(f'Day{day}').with_suffix('.7z'))
         partition_name = f'it2016_{day}'
 
-        if message_service.exists(f'message2_{partition_name}') \
-        and message_service.count(f'message2_{partition_name}') > 0:
+        if message_service.exists(f'{MessageService.TABLE}_{partition_name}') \
+        and message_service.count(f'{MessageService.TABLE}_{partition_name}') > 0:
             logging.info(f'Partition `{partition_name}` already done, skipping.')
             continue
 
@@ -94,9 +94,11 @@ def test_pcap(
             pcap_service.set_time_min(pcap_id, pd.to_datetime(df['time'].min(), unit='s').strftime('%Y-%m-%d %H:%M:%S.%f'))
             if first_time is None:
                 first_time = df['time'].min()
+            df['ts'] = pd.to_datetime(df['time'], unit='s').dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+            df['seconds'] = df['time'] - first_time
             df['dn_id'] = pcap_service.dn_service.add(df["dn"]) # important
-            df['dac_id'] = pcap_service.dn_service.dac(df["dn"], first_time) # important
-            df = message_service.dns_parse_preprocess(df, pcap_id, first_time)
+            df['dac_id'] = pcap_service.dn_service.dac(df["dn"]) # important
+            df = message_service.dns_parse_preprocess(df, pcap_id)
             dfs.append(df)
             pass
 

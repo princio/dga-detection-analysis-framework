@@ -9,8 +9,8 @@ from ..db import Database
 
 
 class MessageService:
-    TABLE = 'message2'
-    INSERT_COLS = [ "id", "pcap_id", "time_s", "fn", "fn_req", "dn_id", "qcode", "is_r", "rcode", "src", "dst", "answer", "dac_id" ]
+    TABLE = 'message3'
+    INSERT_COLS = [ "id", "pcap_id", "ts", "seconds", "fn", "fn_req", "dn_id", "qcode", "is_r", "rcode", "macsrc", "macdst", "src", "dst", "answer" ]
     def __init__(self, db: Database):
         self.db = db
         pass
@@ -40,7 +40,7 @@ class MessageService:
 
     def _insert(self, partition, df: pd.DataFrame, how):
         logging.getLogger(__name__).info(f'Inserting {df.shape[0]} messages.')
-        df = df.sort_values(by='time_s')
+        df = df.sort_values(by='ts')
         df = df.reset_index(drop=True).reset_index(names='fn')
         df['id'] = df['fn']
         with self.db.psycopg2().cursor() as cursor:
@@ -56,13 +56,14 @@ class MessageService:
             pass
         pass
 
-    def dns_parse_preprocess(self, df: pd.DataFrame, pcap_id: int, first_time) -> pd.DataFrame:
+    def dns_parse_preprocess(self, df: pd.DataFrame, pcap_id: int) -> pd.DataFrame:
+        df['macsrc'] = df['macsrc'].replace([np.nan], [None])
+        df['macdst'] = df['macdst'].replace([np.nan], [None])
         df['src'] = df['src'].replace([np.nan], [None])
         df['dst'] = df['dst'].replace([np.nan], [None])
         df['answer'] = df['answer'].replace([np.nan], [None])
         df["is_r"] = df["qr"] == "r"
         df["pcap_id"] = pcap_id
-        df['time_s'] = pd.to_datetime(df['time'] - first_time, unit='s').dt.strftime('%Y-%m-%d %H:%M:%S.%f')
         return df.rename(columns={'fnreq': 'fn_req'})
 
     def create_partition(self, partition, partition_ids):

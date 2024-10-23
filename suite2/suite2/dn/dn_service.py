@@ -63,7 +63,7 @@ class DNService:
         s.index = dn.index
         return s
 
-    def dac(self, dn: pd.Series, day: float) -> pd.Series:
+    def dac(self, dn: pd.Series) -> pd.Series:
         codes, uniques = dn.str.lower().factorize()
 
         logging.getLogger(__name__).debug(f"DAC-ing {uniques.shape[0]} domain names.")
