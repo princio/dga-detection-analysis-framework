@@ -1,0 +1,50 @@
+
+
+\begin{frame}{Classificazione domini generati da DGA}
+  \begin{itemize}
+    \item Sono distinguibili dai domini legittimi.
+    \begin{itemize}
+      \item axsaoppa.org
+      \item okrpoisj.ru
+      \item acnlxxtamku.org
+    \end{itemize}
+    \item Sviluppo rete neurale \acfi{LSTM}.
+  \end{itemize}
+
+  \vspace{5mm}
+
+  \begin{center}
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}
+
+    % \pic {ggrid};
+    
+    
+    \node[text width=4cm, anchor=west] (dl) at (1,5) {\textcolor{blue}{337'500 domini legittimi}};
+    \node[text width=3.5cm, anchor=west] at (1.5,4.5) {\textcolor{blue}{Alexa}};
+    
+    \node[text width=3.5cm, anchor=west] (dm) at (1,3.5) {\textcolor{red}{337'500 domini DGA}};
+    \node[text width=3.5cm, anchor=west]  at (1.5,3) {\textcolor{red}{Netlab}};
+    \node[text width=3.5cm, anchor=west] (da) at (1.5,2.5) {\textcolor{red}{DGArchive}};
+    
+    \node[draw, rounded corners, fit=(dl) (da) (dm)] {};
+
+    \node[fill=white] at (2,5.7) {\bfseries \large Dataset};
+
+    \node[draw, rounded corners, text width=1.5cm, inner sep=0.2cm, font=\Huge] (svm) at (8,4) {\includegraphics[width=\textwidth]{ml.pdf}}; \node[fill=white,font=\large] at (svm.north) {\textbf{LSTM}};
+  
+    \draw[->] (5,4) -- (7,4);
+
+    \pause
+
+    \node at (12,5.7) {\textbf{Metriche di classificazione}};
+    \node at (12,4) {\large\begin{tabular}{llr}
+      accuracy & 0.976 \\
+      f1-score & 0.975 \\
+      FPR & 0.025 \\
+    \end{tabular}};
+
+  \end{tikzpicture}%
+  }
+\end{center}
+\end{frame}

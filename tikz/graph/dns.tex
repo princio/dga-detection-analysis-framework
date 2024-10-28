@@ -1,0 +1,314 @@
+
+
+
+\begin{frame}{Protocollo DNS}
+  \vfill
+  Protocollo \ac{DNS}:
+  \begin{itemize}
+    \item Per gli esseri umani è più facile ricordarsi un nome che un indirizzi IP.
+    \item Attuato automaticamente e \textit{risolve} nomi di dominio in indirizzi IP interrogando i server DNS.
+    \item Utilizzato da alcuni malware per connettersi al server di Command\&Control attraverso l'algoritmo \ac{DGA}.
+  \end{itemize}
+\vfill
+  % \begin{center}
+  %   \begin{tikzpicture}
+  %     \node {univpm.it};
+  %     \node at (4cm, 0) {193.205.131.122};
+  %   \end{tikzpicture}
+  % \end{center}
+\end{frame}
+
+\begin{frame}{Protocollo DNS}
+  \vfill
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}
+    \tikzset{
+        every node/.style={
+            font=\Large
+        }
+    }
+
+  % \pic {ggrid};
+
+  % \node[font=\Large] at (8,8) {"Risolve" un nome di dominio nel rispettivo indirizzo IP};
+  \node at (6,  7) {univpm.it};
+  \node at (10, 7) {193.205.131.122};
+
+  \node[minimum width=2.2cm,text width=2.5cm] (PC) at (1, 4.5) {\includegraphics[width=\textwidth]{laptop-svgrepo-com.pdf}};
+
+  \node[text width=2.5cm,inner sep=0] (univpm) at (15, 4.5) {\includegraphics[width=\textwidth]{univpm.png}};
+  \node[below=1mm of univpm] {\textit{univpm.it}};
+
+  \onslide<1>{
+    \draw[thick] (PC) -- (8,4.5);
+    \draw[loosely dashed,thick] (8,4.5) -- (univpm);
+    \node[fill=white,font=\Large] at(8,4.5) {\texttt{IP?}}  (univpm);
+  }
+
+  \onslide<2-3>{
+    \node[text width=2cm,inner sep=0] (dnsserver) at (8, 0) {\includegraphics[width=\textwidth]{dnsresolver.pdf}};
+    \node[below=-1mm of dnsserver,font=\large] {DNS Server};
+  }
+
+  \onslide<2>{
+    \draw[-{Stealth[scale=1.5]},thick] (PC) to[out=290,in=180] (dnsserver);
+    \node[fill=white,font=\Large] at(3,1.2) {Qual è l'indirizzo IP di \textit{univpm.it}?};
+  }
+
+  \onslide<3>{
+    \draw[{Stealth[scale=1.5]}-,thick] (PC) to[out=290,in=180] (dnsserver);
+    \node[fill=white,font=\Large] at(3,1.2) {L'indirizzo IP è 193.205.131.122};
+  }
+
+  \end{tikzpicture}%
+  }
+\end{frame}
+
+
+
+\begin{frame}{Protocollo DNS}
+  \vfill
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}
+    \node[minimum width=2.2cm,text width=2.5cm] (PC) at (1, 4.5) {\includegraphics[width=\textwidth]{laptop-svgrepo-com.pdf}};
+
+    \node[text width=2.5cm,inner sep=0] (univpm) at (15, 4.5) {\includegraphics[width=\textwidth]{univpm.png}};
+    \node[below=1mm of univpm] {\textit{univpm.it}};
+
+    \draw[-{Stealth[scale=1.5]},thick] (PC) -- (univpm) node[fill=white,pos=0.5,font=\Large]{193.205.131.122};
+
+  \end{tikzpicture}%
+  }
+\end{frame}
+
+
+
+\begin{frame}{Domain Generation Algorithm}
+  \vfill
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}
+    \tikzset{
+        every node/.style={
+            font=\Large
+        }
+    }
+
+  % \pic {ggrid};
+
+  \node[minimum width=2.2cm,text width=2.5cm] (PC) at (1, 4.5) {\includegraphics[width=\textwidth]{laptop-svgrepo-com.pdf}};
+  \node[text width=1.75cm] (worm) at (PC) {\includegraphics[width=\textwidth]{botnet.pdf}};
+
+  \node[text width=2cm,inner sep=0] (cc) at (15, 4.5) {\includegraphics[width=\textwidth]{cc.pdf}};
+  \node[below=1mm of cc,align=center,font=\itshape\large] (ccl) {Command\\\&\\Control};
+
+  \onslide<2>{
+    \draw[thick] (PC) -- (8,4.5);
+    \draw[loosely dashed,thick] (8,4.5) -- (cc);
+    \node[fill=white,font=\Large] at(8,4.5) {\texttt{IP?}}  (cc);
+  }
+
+  \onslide<3>{
+    \node[align=center] (hc) at(2,8) {67.54.3.92};
+    \draw (worm) to[out=90,in=240]  node[pos=0.5,fill=white] {hardcoded} (hc);
+    % \draw[-{Rays[scale=3]},thick] (PC) -- (8.25,4.5);
+  }
+
+  \onslide<4>{
+    \draw[-{Stealth[scale=1.5]}] (PC) -- (cc);
+    \draw[-{Stealth[scale=1.5]},thick] (PC) -- (cc);
+    \node[fill=white,font=\Large] at (8,4.5) {67.54.3.92};
+  }
+
+  \onslide<5>{
+    \draw[-{Stealth[scale=1.5]},thick] (PC) -- (cc);
+    \node[draw=red,fill=white,font=\Large] at (8,4.5) (tmp){67.54.3.92};
+    \draw (tmp) -- ++(0,-1cm) node {\textbf{blacklisted}};
+  }
+
+\end{tikzpicture}%
+}
+\end{frame}
+
+
+
+
+\begin{frame}{Domain Generation Algorithm}
+  \vfill
+  \resizebox{!}{0.8\textheight}{%
+  \begin{tikzpicture}
+    \tikzset{
+        every node/.style={
+            font=\Large
+        }
+    }
+
+  % \pic {ggrid};
+  % \clip (0, 0) rectangle (16, 9);
+
+  
+  \node[text width=2cm,inner sep=0] (cc) at (14,4.5) {\includegraphics[width=\textwidth]{cc.pdf}};
+  \node[below=1mm of cc,align=center,font=\itshape\large] (ccl) {Command\\\&\\Control};
+  
+  \onslide<1-2>{
+  \begin{scope}[shift={(6,4.5)}]
+    \foreach \i in {0,...,10} {
+      \pgfmathsetmacro{\r}{100+((260-100)/10)*\i}
+      \node[text width=0.5cm] (worm\i) at (\r:4.5cm) {\includegraphics[width=\textwidth]{botnet.pdf}};
+      \draw[->] (cc) -- (worm\i);
+    }
+  \end{scope}
+  }
+
+  \onslide<2>{
+  \node[draw,above=of cc,align=center] {67.54.3.92\\\textbf{blacklisted}};
+  % }
+
+  % \onslide<3>{
+    \begin{scope}[shift={(6,4.5)}]
+      \foreach \i in {0,...,10} {
+        \pgfmathsetmacro{\r}{100+((260-100)/10)*\i}
+        \node[text width=0.5cm] (worm\i) at (\r:4.5cm) {\includegraphics[width=\textwidth]{botnet.pdf}};
+        \draw[-{Rays[scale=3]}] (cc) -- ($(worm\i)!0.3!(cc)$);
+        \draw[loosely dashed] (worm\i) -- ($(worm\i)!0.3!(cc)$);
+      }
+    \end{scope}
+  }
+
+\end{tikzpicture}%
+}
+\end{frame}
+
+
+
+% \begin{frame}{Domain Generation Algorithm}
+%   \vfill
+%   \resizebox{\textwidth}{!}{%
+%   \begin{tikzpicture}
+%     \tikzset{
+%         every node/.style={
+%             font=\Large
+%         }
+%     }
+%   \pic {ggrid};
+
+%   \onslide<2>{
+%     \node[draw,align=center,font=\large\bfseries] at (5,3) {\texttt{67.54.3.92}\\ blacklisted};
+%   }
+
+%   \node[minimum width=2.2cm,text width=2.5cm] (PC) at (0, -1) {\includegraphics[width=\textwidth]{laptop-svgrepo-com.pdf}};
+%   \node[text width=1.75cm] (worm) at (PC) {\includegraphics[width=\textwidth]{botnet.pdf}};
+
+%   \node[text width=2cm] (dnsserver) at (15, 4.5) {\includegraphics[width=\textwidth]{dnsresolver.pdf}};
+%   \node[above=0mm of dnsserver] {DNS Server};
+%   \node[text width=1.5cm,inner sep=0] (cc) at (15, -1) {\includegraphics[width=\textwidth]{cc.pdf}};
+%   \node[below=1mm of cc] (cctext) {67.54.3.92};
+
+%   \draw[->] (cc) -- (dnsserver) node[midway,fill=white, align=center] {acnlxxtamku.org};
+
+%   \draw[->] (PC) -- (cc) node[midway,fill=white] {IP?};
+
+%   \node[draw, rounded corners, font=\Huge, inner sep=2.5mm] at (0,4.5cm) {DGA};
+    
+%   \onslide<3>{
+%     \pic[pic text={\textit{axsaoppa.org}}] (dnsq1) at (4,6.5cm) {dnsq};
+%     \draw[->] (dnsq1-node) -- ++(8, 0);
+%   }
+%   \onslide<4->{
+%     \pic[pic text={\textit{axsaoppa.org}\\\textbf{not found}}] (dnsr1) at (11, 6.5) {dnsq};
+%     \draw[->] (dnsr1-node) -- (3, 6.5);
+%   }
+
+%   \onslide<5>{
+%     \pic[pic text={\textit{okrpoisj.ru}}] (dnsq2) at (4,4.5cm) {dnsq};
+%     \draw[->] (dnsq2-node) -- ++(8, 0);
+%   }
+%   \onslide<6->{
+%     \pic[pic text={\textit{okrpoisj.ru}\\\textbf{not found}}] (dnsr2) at (11, 4.5) {dnsq};
+%     \draw[->] (dnsr2-node) -- (3, 4.5);
+%   }
+
+%   \onslide<7>{
+%     \pic[pic text={\textit{acnlxxtamku.org}}] (dnsq3) at (4,2.5cm) {dnsq};
+%     \draw[->] (dnsq3-node) -- ++(8, 0);
+%   }
+%   \onslide<8->{
+%     \pic[pic text={\textbf{6.34.124.76}}] (dnsr3) at (11, 2.5) {dnsq};
+%     \draw[->] (dnsr3-node) -- (3, 2.5);
+%   }
+
+%   \end{tikzpicture}%
+%   }
+% \end{frame}
+
+
+
+\begin{frame}{Domain Generation Algorithm}
+  \vfill
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}
+    \tikzset{
+        every node/.style={
+            font=\Large
+        }
+    }
+
+  \def\pcx{0};
+  \def\dsx{7};
+  \def\ccx{14};
+
+  \node[minimum width=2.2cm,text width=2.5cm] (PC) at (\pcx, 9) {\includegraphics[width=\textwidth]{laptop-svgrepo-com.pdf}};
+  \node[text width=1.75cm] (worm) at (PC) {\includegraphics[width=\textwidth]{botnet.pdf}};
+
+  \node[text width=2cm] (dnsserver) at (\dsx, 9) {\includegraphics[width=\textwidth]{dnsresolver.pdf}};
+  \node[above=-1mm of dnsserver] {DNS Server};
+
+
+  \node[text width=2cm,inner sep=0] (cc) at (\ccx, 9) {\includegraphics[width=\textwidth]{cc.pdf}};
+    
+    \pgfmathsetmacro{\ystep}{1.4}
+    \pgfmathsetmacro{\y}{6.5}
+    \node[text width=4cm,align=center] (e3) at (\ccx, \y) {88.76.11.103\\\textit{axsaoppa.org}};
+    \pause
+    \node[text width=4cm,align=center] (reg) at (\dsx, \y) {registrazione};
+    \draw[-Stealth] (e3) -- (reg);
+    \pause
+    \pgfmathsetmacro{\y}{\y-\ystep}
+    \node[text width=4cm,align=center] (e41) at (\dsx, \y) {\textbf{not found}};
+    \node[text width=4cm,align=center] (e40) at (\pcx, \y) {\textit{okrpoisj.org}};
+    \draw[-Stealth] (e40) -- (e41);
+    \pause
+    \pgfmathsetmacro{\y}{\y-\ystep}
+    \node[text width=4cm,align=center] (e50) at (\pcx, \y) {\textit{acnlxxtamku.ru}};
+    \node[text width=4cm,align=center] (e51) at (\dsx, \y) {\textbf{not found}};
+    \draw[-Stealth] (e50) -- (e51);
+    \pause
+    \pgfmathsetmacro{\y}{\y-\ystep}
+    \node[text width=4cm,align=center] () at (\pcx, \y+0.2) {...};
+    \node[text width=4cm,align=center] () at (\pcx, \y) {...};
+    \node[text width=4cm,align=center] () at (\pcx, \y-0.2) {...};
+    \node[text width=4cm,align=center] () at (\dsx, \y) {\textbf{not found}};
+    \draw[-Stealth] (2.1,\y+0.2) -- (4.9,\y+0.2);
+    \draw[-Stealth] (2.1,\y) -- (4.9,\y);
+    \draw[-Stealth] (2.1,\y-0.2) -- (4.9,\y-0.2);
+    \pause
+    \pgfmathsetmacro{\y}{\y-\ystep}
+    \node[text width=4cm,align=center] (e60) at (\pcx, \y) {\textit{axsaoppa.org}};
+    \node[text width=4cm,align=center] (e61) at (\dsx, \y) {\textbf{88.76.11.103}};
+    \draw[-Stealth] (e60) -- (e61);
+    \pause
+    \pgfmathsetmacro{\y}{\y-\ystep}
+    \node[text width=4cm,align=center] (e70) at (\pcx, \y) {client};
+    \node[text width=4cm,align=center] (e71) at (\ccx, \y) {server};
+    \draw[Stealth-Stealth,thick] (e70) -- (e71);
+  \end{tikzpicture}%
+  }
+\end{frame}
+
+\begin{frame}{Domain Generation Algorithm}
+  \begin{itemize}
+    \item Per ottenere il dominio non c'è scambio di informazioni tra Malware e \ac{CC}.
+
+    \item Se un indirizzo IP viene blacklisted, la procedura riparte in automatico.
+  \end{itemize}
+\end{frame}
+

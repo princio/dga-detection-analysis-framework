@@ -1,0 +1,116 @@
+
+\tikzset{
+  comp/.style = {
+    minimum width  = 8cm,
+    minimum height = 4.5cm,
+    text width     = 8cm,
+    inner sep      = 0pt,
+    text           = black,
+    align          = center,
+    font           = \Huge,
+    transform shape,
+    thick
+  },
+  monitor/.style = {draw = none},%, xscale = 18/16, yscale = 11/9},
+  display/.style = {fill=white},%shading = axis},%, left color = black!60, right color = black},
+  ut/.style      = {fill = gray}
+}
+
+
+
+\definecolor{colordns}{RGB}{150, 150, 150}
+\definecolor{colordns_green}{RGB}{150, 150, 150}
+\definecolor{colordns_red}{RGB}{150, 150, 150}
+
+\tikzset{
+  dnsq/.pic={
+      % \draw[fill=black!10] (0.25,0) -- (2.0,0) -- (2.5,0.5) -- (2.0,1) -- (0.25,1) -- (0.25,0);
+      \node[draw, inner sep=2.5mm, rounded corners,minimum width=2.5cm, minimum height=1cm,anchor=center,align=center] at (0,0) (-node) {\tikzpictext};
+      % \node[fill=white, inner sep=1pt] at (1.25,1) {DNS};
+  },
+  dnsr/.pic={
+      % \draw[fill=black!10] (0,0.5) -- (0.5,0) -- (2.25,0) -- (2.25,1.0) -- (0.5,1.0) -- (0,0.5);
+      \node[draw,rounded corners,minimum width=2.5cm, minimum height=1.25cm] (-node) {\tikzpictext};
+      \node[fill=white, inner sep=1pt] at (1.25,1) {DNS};
+      % \node[anchor=north, inner sep=2pt] at (1.25,0) {response};
+  },
+  ggrid/.pic={
+    \draw[step=1cm, gray!50, very thin] (0,0) grid (16,9);
+
+    \foreach \x in {1, ..., 15}
+      \draw[gray, very thin] (\x, 0) -- (\x, 0) node[anchor=south,font=\small,inner sep=0] {\x};
+    
+    \foreach \y in {1,...,8} {
+      \draw[gray, very thin] (0, \y) -- (0, \y) node[anchor=west,font=\small,inner sep=0] {\y};
+      }
+      \draw[black!50] (8, 0) -- (8, 9);
+      \draw[black!50] (0, 4.5) -- (16, 4.5);
+  },
+  nnpic/.pic={
+    \node[draw, rounded corners, text width=1.5cm, inner sep=0.2cm, font=\Huge] (svm) {\includegraphics[width=\textwidth]{ml.pdf}};
+  },
+  seagull/.pic={
+    \coordinate (-origin) at (0,0);
+
+    \foreach[count=\i] \angle in {1,2,3,4,5,6} {
+      \node[text width=1cm,inner sep=0] (-t\i) at (60*\angle:2cm) {\resizebox{\textwidth}{!}{\includegraphics[]{laptop-svgrepo-com_no.pdf}}};
+      \node at (60*\angle:2cm) {\i};
+    }
+
+    \node[draw=none,fit=(-t1) (-t2) (-t3) (-t4) (-t5)] (-node) {};
+  },
+  ggraphempty/.pic={
+    \foreach[count=\i] \angle in {1,2,3,4,5,6} {
+      \node[circle,draw=blue,thick,minimum width=0.5cm,inner sep=0] (-t\i) at (60*\angle:2cm) {\i};
+    }
+  },
+  ggraph/.pic={
+      \foreach[count=\i] \angle in {1,2,3,4,5,6} {
+        \node[circle,draw=blue,thick,minimum width=0.5cm,inner sep=0] (-t\i) at (60*\angle:2cm) {\i};
+      }
+
+      \foreach[count=\i] \angle in {1,2,3,4,5,6} {
+        \foreach[count=\j] \angle in {1,2,3,4,5,6} {
+          \draw[<->,black!80,thick] (-t\i) .. controls (0, 0) .. (-t\j);
+        }
+      }
+  },
+  cdataset/.pic={
+      \pgfmathsetmacro{\sepp}{0.6}
+      \node[anchor=center] at(0, 8) {\textbf{CIC-2017}};
+      \foreach \ci in {0,1,2,4,5,6,8} {
+        \node[minimum width=4cm] at(0, 7-\ci*\sepp) {\textcolor{blue}{$\bm{conn}_{\ci}$}};
+        % \node[anchor=mid west] at(0.02, 7-\ci*\sepp) {\textcolor{blue}{good}};
+      }
+      \foreach \ci in {3,7,9} {
+        \node[] at(0, 7-\ci*\sepp) {\textcolor{red}{$\bm{conn}_{\ci}$}};
+        % \node[anchor=mid west] at(0.02, 7-\ci*\sepp) {\textcolor{red}{malicious}};
+      }
+      \node[font=\Large\bfseries] at(0,7-10*\sepp) {...};
+  },
+  gdataset/.pic={
+      \pgfmathsetmacro{\sepp}{0.6}
+      \node[anchor=center] at(0, 8) {\textbf{Graph Dataset}};
+      \foreach \ci in {0,1,2,4,5,6,8} {
+        \node[minimum width=4cm] at(0, 7-\ci*\sepp) {graph features of \textcolor{blue}{$\bm{conn}_{\ci}$}};
+      }
+      \foreach \ci in {3,7,9} {
+        \node[] at(0, 7-\ci*\sepp) {graph features of \textcolor{red}{$\bm{conn}_{\ci}$}};
+        % \node[anchor=mid west] at(0.02, 7-\ci*\sepp) {\textcolor{red}{malicious}};
+      }
+      \node[font=\Large\bfseries] at(0,7-10*\sepp) {...};
+  },
+  gdatasettest/.pic={
+      \pgfmathsetmacro{\sepp}{0.6}
+      \node[anchor=center] at(0, 8) {\textbf{Graph Dataset}};
+      \foreach \ci in {0,3,5,4,7,8,9} {
+        \node[] at(0, 7-\ci*\sepp) {graph features of \textcolor{blue}{$\bm{conn}_{\ci}$}};
+        % \node[anchor=mid west] at(0.02, 7-\ci*\sepp) {\textcolor{blue}{good}};
+      }
+      \foreach \ci in {1,2,6} {
+        \node[] at(0, 7-\ci*\sepp) {graph features of \textcolor{red}{$\bm{conn}_{\ci}$}};
+        % \node[anchor=mid west] at(0.02, 7-\ci*\sepp) {\textcolor{red}{malicious}};
+      }
+      \node[font=\Large\bfseries] at(0,7-10*\sepp) {...};
+  }
+}

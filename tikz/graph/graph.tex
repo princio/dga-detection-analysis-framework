@@ -1,0 +1,171 @@
+
+\begin{frame}{Tema 3}
+
+  Sistema di rilevazione basato su monitoraggio traffico di rete utilizzando la Teoria dei Grafi.
+    \begin{itemize}
+      \item Si utilizza un grafo per modellare le connessioni che avvengono in una rete locale.
+      \item \textbf{Obiettivo}: Sviluppare un classificatore binario (benevole/malevole) di connessioni basato solo su graph features.
+      \item \textbf{Vantaggio}: non analizzando il contenuto dei pacchetti, supera le limitazioni di quando si utilizzano comunicazioni criptate o tecniche elusive.
+    \end{itemize}
+  
+  \end{frame}
+  
+  \begin{frame}{Graph-based NIDS}
+  
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}
+  
+      % \pic {ggrid};
+  
+      \node[font=\Large] at (4,8) {Local Network};
+      
+      \pic (seagull) at (4, 4.5) {seagull};
+      
+      \pause
+      
+      \node[font=\Large] at (12,8) {Graph};
+  
+      \coordinate (g-origin) at (12, 4.5);
+      \begin{scope}[xshift=12cm,yshift=4.5cm]
+        \foreach[count=\i] \angle in {1,2,3,4,5,6} {
+          \node[circle,draw=blue,thick,minimum width=0.5cm,inner sep=0] (gt\i) at (60*\angle:2cm) {\i};
+        }
+  
+        \foreach[count=\i] \angle in {1,2,3,4,5,6} {
+          \foreach[count=\j] \angle in {1,2,3,4,5,6} {
+            \draw[<->,black!60] (gt\i) .. controls (0, 0) .. (gt\j);
+          }
+        }
+      \end{scope}
+  
+      \pause
+  
+      \pgfmathsetmacro{\na}{2}
+      \pgfmathsetmacro{\nb}{4}
+  
+      \onslide<3-4>{
+        \draw[Stealth-Stealth,ultra thick, black!80] (seagull-t\na) .. controls (seagull-origin) .. (seagull-t\nb);
+        \node[draw,font=\large] at(8,1.5) {connessione tra terminale \na\ e \nb};
+      }
+  
+      \onslide<4>{
+        \node[circle,fill=white,draw=blue,ultra thick, font=\bfseries, minimum width=0.5cm,inner sep=0] at (gt\na) {\na};
+        \node[circle,fill=white,draw=blue,ultra thick, font=\bfseries, minimum width=0.5cm,inner sep=0] at (gt\nb) {\nb};
+        \draw[Stealth-Stealth,ultra thick, black!80] (gt\na) .. controls (g-origin) .. (gt\nb);
+        \draw[->,ultra thick] (7,4.5) -- (9,4.5) node[midway,above,font=\large]{update};
+      }
+  
+      \pgfmathsetmacro{\na}{1}
+      \pgfmathsetmacro{\nb}{6}
+      \onslide<5-6>{
+        \draw[Stealth-Stealth,ultra thick, black!80] (seagull-t\na) .. controls (seagull-origin) .. (seagull-t\nb);
+        \node[draw,font=\large] at(8,1.5) {connessione tra terminale \na\ e \nb};
+      }
+  
+      \onslide<6>{
+        \pgfmathsetmacro{\na}{1}
+        \pgfmathsetmacro{\nb}{6}
+        \node[circle,fill=white,draw=blue,ultra thick, font=\bfseries, minimum width=0.5cm,inner sep=0] at (gt\na) {\na};
+        \node[circle,fill=white,draw=blue,ultra thick, font=\bfseries, minimum width=0.5cm,inner sep=0] at (gt\nb) {\nb};
+        \draw[Stealth-Stealth,ultra thick, black!80] (gt\na) .. controls (g-origin) .. (gt\nb);
+        \node[draw,font=\large] at(8,1.5) {connessione tra terminale \na\ e \nb};
+        \draw[->,ultra thick] (7,4.5) -- (9,4.5) node[midway,above,font=\large]{update};
+      }
+  \end{tikzpicture}%
+  }
+  \end{frame}
+  
+  
+  \begin{frame}{Graph-based NIDS}
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}
+      % \pic at (0,0) {ggrid};
+  
+      \node[] (ln) at (8,1) {\textcolor{blue}{$\bm{conn}_i$}: normal activity};
+      \node[] (lm) at (8,0.5) {\textcolor{red}{$\bm{conn}_i$}: malicious activity};
+      \node[draw,inner sep=.2cm, fit=(ln) (lm)] (lfit) {};
+      \node[fill=white] at(lfit.north) {Label};
+  
+      \onslide<1>{
+        \pic at (2.2,0) {cdataset};
+        \pic at (8,4.5) {ggraphempty};
+        % \draw[-Stealth] (4,4.5) -- (5.5,4.5);
+      }
+  
+      \onslide<2>{
+        \pic at (2.2,0) {cdataset};
+        \pic at (8,4.5) {ggraph};
+        \draw[-Stealth] (4,4.5) -- (5.5,4.5);
+      }
+  
+      \onslide<3>{
+        \pic[opacity=0.2] at (2.2,0) {cdataset};
+        \pic at (13.8,0) {gdataset};
+        \pic at (8,4.5) {ggraph};
+        \draw[-Stealth] (10.4,4.5) -- (11.4,4.5);
+      }
+  
+    \end{tikzpicture}%
+    }
+  \end{frame}
+  
+  
+  \begin{frame}{Graph-based NIDS}
+    \resizebox{\textwidth}{!}{%
+    \begin{tikzpicture}
+      % \pic at (0,0) {ggrid};
+  
+      \onslide<1>{
+        
+        \node[font=\large,align=center] (split) at (8,8.5) {Graph dataset split};
+        \pic (gdataset) at (2.2,0) {gdataset}; \node (train) at (2,8.4) {\textbf{Training}};
+        \pic (gdatasettest) at (14,0) {gdatasettest}; \node (test) at (14,8.4) {\textbf{Test}};
+        \draw[->, thick] (split.west) -- ++(-2.5cm,-0.2cm);
+        \draw[->, thick] (split.east) -- ++(2.5cm,-0.2cm);
+  
+      }
+  
+      \onslide<2>{
+        \pic (gdataset) at (2.2,0) {gdataset}; \node (train) at (2,8.4) {\textbf{Training}};
+        \pic[opacity=0.3] (gdatasettest) at (14,0) {gdatasettest}; \node[opacity=0.3] (test) at (14,8.4) {\textbf{Test}};
+  
+        \node[draw, rounded corners, text width=1.5cm, inner sep=0.2cm, font=\Huge] (svm) at (8,4.5) {\includegraphics[width=\textwidth]{ml.pdf}}; \node[fill=white,font=\large] at (svm.north) {\textbf{SVM}};
+  
+        \draw[-Stealth, ultra thick] (4.2,4.5) -- (7,4.5) node[above,midway,font=\large] {training};
+      }
+      
+  
+      \onslide<3>{
+        \pic[opacity=0.3] (gdataset) at (2.2,0) {gdataset}; \node[opacity=0.3] (train) at (2,8.4) {\textbf{Training}};
+        \pic (gdatasettest) at (14,0) {gdatasettest}; \node (test) at (14,8.4) {\textbf{Test}};
+  
+        \node[draw, rounded corners, text width=1.5cm, inner sep=0.2cm, font=\Huge] (svm) at (8,4.5) {\includegraphics[width=\textwidth]{ml.pdf}}; \node[fill=white,font=\large] at (svm.north) {\textbf{SVM}};
+  
+        \draw[Stealth-, ultra thick] (9,4.5) -- (12,4.5) node[above,midway,font=\large] {testing};
+      }
+  
+  
+      
+  
+    \end{tikzpicture}%
+    }
+  \end{frame}
+  
+  \begin{frame}{Graph-based NIDS: risultati}
+    \begin{center}
+      \begin{tabular}{llr}
+      \multicolumn{3}{l}{\textbf{SVM test metrics}} \\\midrule
+      \multicolumn{2}{l}{F1 weighted avg} & \textbf{0.9988} \\[2mm]
+      \multicolumn{3}{l}{Negatives/Benign} \\
+       & False Positives & 272 \\
+       & F1 score & 0.9991 \\
+       & False Positive Ratio & 0.0002 \\[2mm]
+      \multicolumn{3}{l}{Positives/Attacks} \\
+       & False negatives & 2016 \\
+       & F1 & 0.9979 \\
+       & False Negative Ratio & 0.0037 \\ \bottomrule
+      \end{tabular}
+    \end{center}
+  \end{frame}
+  
+  
