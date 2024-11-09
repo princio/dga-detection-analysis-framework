@@ -43,7 +43,7 @@ class PSLTrieService:
             logging.getLogger(__name__).debug(output)
             pass
 
-        return pd.read_csv(output)
+        return pd.read_csv(output, low_memory=False)
 
 
         

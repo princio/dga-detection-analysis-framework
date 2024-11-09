@@ -126,7 +126,7 @@ class DNService:
             suffixes = suffixes.fillna('')
             pass
             
-        return self.lstm_service.run(model, dn_s, suffixes)
+        return self.lstm_service.run(model, dn_s, suffixes), suffixes
 
 
     def db_lstm_to_do(self, nn_id: int):
