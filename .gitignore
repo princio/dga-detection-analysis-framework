@@ -111,3 +111,6 @@ suite/process/pcap/tmp/**
 
 dgarchive/api/*
 scripts/tmp/*
+scripts/lstm_dac/merged.pickle
+scripts/lstm/dac/merged.pickle
+scripts/lstm/dac/plot.pdf

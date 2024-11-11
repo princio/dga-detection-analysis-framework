@@ -31,7 +31,6 @@ class PSL:
             pass
 
         return lines
-        
     def parse(self, etld: ETLD, force=False):
         lines = self.download(force)
 
