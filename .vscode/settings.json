@@ -168,5 +168,6 @@
     "python.analysis.extraPaths": [
         "ml/rule",
         "./suite2"
-    ]
+    ],
+    "commentTranslate.hover.enabled": true
 }

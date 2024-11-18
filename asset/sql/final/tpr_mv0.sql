@@ -1,6 +1,5 @@
 
 WITH 
-	
 	DIST AS (
 	SELECT
 		DISTINCT ON (DN_ID) *

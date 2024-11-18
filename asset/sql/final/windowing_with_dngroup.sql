@@ -1,38 +1,51 @@
 WITH
 	W AS (
-		SELECT
-			*
-		FROM
+		SELECT * FROM
 			MV3_0
 		WHERE
 			FLOOR(SECONDS / 360) = 0
+			AND DAC_FAMILY='modpack' OR DAC_FAMILY IS NULL
 	),
 	W_DN AS (
 		SELECT
+			DN_ID,
+			MAC,
 			COUNT(*) AS QR,
 			SUM((RCODE is NULL)::INT) AS Q,
 			SUM((RCODE = 3)::INT) AS NX
 		FROM
 			W
 		GROUP BY
-			DN_ID
+			DN_ID, MAC
 	),
 	W_DN_DESCRIBE AS (
 		SELECT
-			AVG(QR), AVG(Q), AVG(NX),
-			STDDEV(QR), STDDEV(Q), STDDEV(NX),
-			MAX(QR), MAX(Q), MAX(NX) FROM W_DN
+			MAC,
+			COUNT(*) AS "num DN",
+			AVG(QR)::real AS "avg DN/QR",
+			AVG(Q)::real AS "avg DN/Q",
+			AVG(NX)::real AS "avg DN/NX",
+			STDDEV(QR)::real AS "std DN/QR",
+			STDDEV(Q)::real AS  "std DN/Q",
+			STDDEV(NX)::real AS  "std DN/NX",
+			MAX(QR) AS "max DN/QR", 
+			MAX(Q) AS "max DN/Q", 
+			MAX(NX) AS "max DN/NX" 
+		FROM W_DN
+		GROUP BY
+			MAC
 	),
 	METRICS AS (
 		SELECT
+			MAC,
 			COUNT(*) FILTER (
 				WHERE
 					DAC_RANK = 1
-			) AS "label_1",
+			) AS "num DAC_RANK=1",
 			COUNT(*) FILTER (
 				WHERE
 					DAC_RANK <= 2
-			) AS "label_2",
+			) AS "num DAC_RANK>=2",
 			COUNT(*) AS QR,
 			COUNT(*) FILTER (
 				WHERE
@@ -40,18 +53,28 @@ WITH
 			) AS Q,
 			COUNT(*) FILTER (
 				WHERE
-					RCODE = 3
+					RCODE = 3 AND EPS1 >= 0.5
 			) AS NX,
-			-- max()
 			COUNT(*) FILTER (
 				WHERE
 					EPS1 >= 0.5
-			) AS P1
+			) AS QR_P1,
+			COUNT(*) FILTER (
+				WHERE
+					RCODE IS NULL AND EPS1 >= 0.5
+			) AS Q_P1,
+			COUNT(*) FILTER (
+				WHERE
+					RCODE = 3 AND EPS1 >= 0.5
+			) AS NX_P1
+			-- max()
 		FROM
 			W
+		GROUP BY
+			MAC
 	)
 SELECT
 	*
 FROM
-	METRICS
-	JOIN W_DN_DESCRIBE ON TRUE
+	METRICS M
+	JOIN W_DN_DESCRIBE W ON M.MAC=W.MAC
