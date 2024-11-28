@@ -52,7 +52,6 @@ def get_df(db: Database, mwname, pcap_id, g: bool, pt: str, slot_h=1.0, nn=1):
         where {where} and FLOOR(time_s_translated / {3600 * slot_h}) < {8/slot_h}
         """, db.engine)
 
-
     df = df.groupby("hour").aggregate({"pp": 'sum'})
     idx  = df.index.to_numpy().astype(int)
 
@@ -62,6 +61,9 @@ def get_df(db: Database, mwname, pcap_id, g: bool, pt: str, slot_h=1.0, nn=1):
         if i not in idx:
             index2.append(i)
             missing.append(0)
+            pass
+        pass
+    
     if len(missing) > 0:
         df = pd.concat([df, pd.Series(missing, index2, name='pp')]).sort_index()
         pass

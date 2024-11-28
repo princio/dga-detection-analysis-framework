@@ -18,9 +18,9 @@ def query_unique_nx(day: int, window_length: int, idxwindow: int, dac_family: st
             FROM get_window_all2({day}, {window_length}, {idxwindow}) 
             WHERE
 			(DAC_RANK=1 OR DAC_RANK=3)
-			AND (DAC_FAMILY={dac_family} OR DAC_FAMILY IS NULL)
+			AND (DAC_FAMILY='{dac_family}' OR DAC_FAMILY IS NULL)
             AND RN_QR_RCODE=1
-            AND RCODE=3
+            AND RCODE IS NULL
         ),
         W_DN AS (
             SELECT
@@ -67,40 +67,6 @@ def query_unique_nx(day: int, window_length: int, idxwindow: int, dac_family: st
         JOIN W_DN_DESCRIBE DN ON M.MAC=DN.MAC
 """
 
-
-def get_nwindows(db: Database, table_name: str, window_length:int) -> int:
-    print(f'Getting windows {table_name}..', end='')
-    with db.psycopg2().cursor() as cursor:
-        cursor.execute(f'SELECT MAX(seconds) FROM {table_name}')
-        seconds_max = cursor.fetchone()[0] # type: ignore
-        return math.ceil(seconds_max / window_length)
-    print('gotten.')
-    pass
-
-def create_index(db: Database, table_name: str):
-    print(f'Creating index for {table_name}..', end='')
-    with db.psycopg2().cursor() as cursor:
-        cursor.execute(f"""
-                        CREATE INDEX IF NOT EXISTS {table_name}_floor_idx
-                        ON public.{table_name} USING btree
-                        (floor(seconds / 360::double precision) ASC NULLS LAST)
-                        WITH (deduplicate_items=True)
-                        TABLESPACE pg_default;
-        """)
-        cursor.connection.commit()
-        pass
-    print('created.')
-    pass
-
-def drop_index(db: Database, table_name: str):
-    print(f'Dropping index {table_name}..', end='')
-    with db.psycopg2().cursor() as cursor:
-        cursor.execute(f'DROP INDEX IF EXISTS public.{table_name}_floor_idx')
-        cursor.connection.commit()
-        pass
-    print('dropped.')
-    pass
-
 @inject
 def main(
         db: Database = Provide[
@@ -109,20 +75,16 @@ def main(
 ) -> None:
     
     print('Starting.')
-    
-    nn = "virut"
+
+    U='queries'
     nn = "EPS1"
     window_length = 3600
     ndays=10
 
-    file = Path(f'windowing/windows_dac_{nn}_{window_length}_{ndays}.csv')
+    file = Path(f'windowing/windows_ALL2_dac_{nn}_{window_length}_{ndays}_unique{U}.csv')
 
-    dac_families = ['virut', 'modpack', 'healthy', 'necurs', 'pitou', 'conficker', 'suppobox', 'tofsee']
-
-    for idxday in range(10):
-        table_name = f'mv3_{idxday}'
-        create_index(db, table_name)
-        pass
+    dac_families = sorted(['virut', 'modpack', 'necurs', 'pitou', 'conficker', 'suppobox', 'tofsee'])
+    dac_families.append('healthy')
 
     day0 = 0
     dac_family0 = 0
@@ -148,7 +110,7 @@ def main(
             table_name = f'mv3_{idxday}'
             for idxw in range(idxw0, nwindows):
                 print('Eseguo get_metrics per tabella %s, dac_family %s, finestra %d/%d' % (table_name, dac_family, idxw, nwindows))
-                row = pd.read_sql(f'SELECT * FROM get_metrics_mw(\'{table_name}\', \'{dac_family}\', {window_length}, {idxw}, \'{nn}\')', db.sqlalchemy())
+                row = pd.read_sql(query_unique_nx(idxday, window_length, idxw, dac_family, nn), db.sqlalchemy())
                 row.insert(0, 'dac_family', dac_family)
                 row.insert(0, 'day', idxday)
                 row.insert(0, 'idxdaywindow', idxw)
