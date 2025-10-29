@@ -33,7 +33,7 @@ class Database:
         pass
     
     def sqlalchemy(self):
-        return create_engine(f"postgresql+psycopg2://{self.user}:@{self.host}:{self.port}/{self.dbname}")
+        return create_engine(f"postgresql+psycopg2://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}")
     pass
 
     def fetch_one(self, cursor):

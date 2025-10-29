@@ -29,6 +29,12 @@ int dedup(uint32_t, struct pcap_pkthdr *, uint8_t *,
 void print_summary2(eth_info* eth, ip_info * ip, transport_info * trns, dns_info * dns,
                    struct pcap_pkthdr * header, config * conf);
 
+
+
+char IP_STR_BUFF[INET6_ADDRSTRLEN];
+char MAC_STR_BUFF[18];
+
+
 int main(int argc, char **argv) {
     pcap_t * pcap_file;
     char errbuf[PCAP_ERRBUF_SIZE];
@@ -980,6 +986,9 @@ void print_rr_section(dns_rr * next, char * name, config * conf, rr_text *text, 
         char *name, *data;
         name = (next->name == NULL) ? "*empty*" : next->name;
         data = (next->data == NULL) ? "*empty*" : next->data;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-overflow"
+
         if (!strcmp(name, next->name) && next->type == qtype) {
             size_t l = strlen(text->A) + strlen(data);
             if (l > 2000) {
@@ -993,6 +1002,9 @@ void print_rr_section(dns_rr * next, char * name, config * conf, rr_text *text, 
             // printf("[debug]: skipping[%6u]: type=%u\tname=%-50s\tdata=%s\n", id, next->type, name, data);
         }
         next = next->next; 
+        
+#pragma GCC diagnostic pop
+
     }
     text->A[strlen(text->A)-1] = '\0';
 }

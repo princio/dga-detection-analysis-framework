@@ -144,16 +144,17 @@ $(STATICLIB): $(OBJECTS)
 	ar rcs $(LIBDIR)/$@ $^
 	cp $(LIBDIR)/$@ $(EXPORTDIR)/lib;
 
-binary: dirs $(SHAREDLIB) $(STATICLIB)
+bin/$(BINARY): dirs $(SHAREDLIB) $(STATICLIB)
 	@echo -en "$(BROWN)LD $(END_COLOR)";
 	$(CC) -o $(BINDIR)/$(BINARY) $(OBJECTS) $(CFLAGS_OPT) $(CFLAGS) $(LIBS)
 	cp $(SRCDIR)/*.h $(EXPORTDIR)/include/$(PROJECT_NAME)
-	@echo -en "\n--\nBinary file placed at" "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
-	cp $(BINDIR)/$(BINARY) $(BINDIR)/$(BINARY)_$(SUFFIX)
-	@rm $(BINDIR)/$(BINARY)
-	cp $(BINDIR)/$(BINARY)_$(SUFFIX) $(EXPORTDIR)/bin/$(PROJECT_NAME)
+	@echo -en "\n--\nBinary file placed at" \
+			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
+	cp $@ $@_$(SUFFIX)
+	@rm $@
+	cp $@_$(SUFFIX) $(EXPORTDIR)/bin/$(PROJECT_NAME)
 
-main: dirs $(SHAREDLIB) $(STATICLIB) binary
+main: dirs $(SHAREDLIB) $(STATICLIB) bin/$(BINARY)
 
 debug: SUFFIX := debug
 debug: CFLAGS_OPT := -g3 -DDEBUG=1

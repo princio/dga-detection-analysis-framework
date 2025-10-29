@@ -27,7 +27,7 @@ rr_data_parser escape;
 extern rr_parser_container rr_parsers[];
 
 // This is for handling rr's with errors or an unhandled rtype.
-rr_parser_container default_rr_parser;
+extern rr_parser_container default_rr_parser;
 
 void print_parsers();
 void print_parser_usage();

@@ -130,10 +130,10 @@ if __name__ == "__main__":
     application.config.from_dict({
         "env": "debug",
         "db": {
-            "host": "localhost",
+            "host": "172.26.197.241",
             "user": "postgres",
             "password": "postgre",
-            "dbname": "dns_mac",
+            "dbname": "postgres",
             "port": 5432
         },
         "binaries": {
