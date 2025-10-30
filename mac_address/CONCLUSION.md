@@ -1,0 +1,1 @@
+The MAC Address of the hostname which generates the DNS packet is not preserved.

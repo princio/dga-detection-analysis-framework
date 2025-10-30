@@ -54,8 +54,8 @@ def test_pcap(
         s7zip = Seven7Zip(ROOT.joinpath(f'Day{day}').with_suffix('.7z'))
         partition_name = f'it2016_{day}'
 
-        if message_service.exists(f'message2_{partition_name}') \
-        and message_service.count(f'message2_{partition_name}') > 0:
+        if message_service.exists(f'{MessageService.TABLE}_{partition_name}') \
+        and message_service.count(f'{MessageService.TABLE}_{partition_name}') > 0:
             logging.info(f'Partition `{partition_name}` already done, skipping.')
             continue
 
@@ -81,29 +81,39 @@ def test_pcap(
                 pass
             pcaps.append((pcap_id, csvfile, pcapname))
             pass
-        
+
         dfs = []
+        first_time = None
         for pcap in pcaps:
+            pcap_id = pcap[0]
             try:
                 df = pd.read_csv(pcap[1])
             except pd.errors.ParserError as e:
-                logging.getLogger().critical(f'Error in parsing {pcap[1]}.')
+                logging.getLogger().critical(f'Error in parsing {pcap_id}.')
                 raise e
-            df['dn_id'] = pcap_service.dn_service.add(df["dn"]) # important
-            dn_service.dbfill()
             pcap_service.set_time_min(pcap_id, pd.to_datetime(df['time'].min(), unit='s').strftime('%Y-%m-%d %H:%M:%S.%f'))
+            if first_time is None:
+                first_time = df['time'].min()
+            df['ts'] = pd.to_datetime(df['time'], unit='s').dt.strftime('%Y-%m-%d %H:%M:%S.%f')
+            df['seconds'] = df['time'] - first_time
+            df['dn_id'] = pcap_service.dn_service.add(df["dn"]) # important
+            df['dac_id'] = pcap_service.dn_service.dac(df["dn"]) # important
             df = message_service.dns_parse_preprocess(df, pcap_id)
             dfs.append(df)
             pass
 
+
         message_service.create_partition(partition_name, [pcap[0] for pcap in pcaps])
         df = pd.concat(dfs)
         message_service.copy(partition_name, df)
+        dn_service.dbfill()
 
         for pcap in pcaps:
             pcap_service.subprocess_service.clean(Path(pcap[2]))
             pass
         pass
+
+    print("remember to create indexes in message2.")
     pass
 
 

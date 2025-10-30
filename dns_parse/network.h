@@ -35,7 +35,8 @@ typedef struct ip_addr {
 // Convert an ip struct into a str. Like NTOA, this uses a single
 // buffer, so freeing it need not be freed, but it can only be used once
 // per statement.
-char IP_STR_BUFF[INET6_ADDRSTRLEN];
+extern char IP_STR_BUFF[INET6_ADDRSTRLEN];
+extern char MAC_STR_BUFF[18];
 
 // Compare two IP addresses.
 #define IP_CMP(ipA, ipB) ((ipA.vers == ipB.vers) &&\
@@ -111,4 +112,5 @@ void ip_frag_free(config *);
 // Convert an ip struct to a string. The returned buffer is internal, 
 // and need not be freed. 
 char * iptostr(ip_addr *);
+char * mactostr(uint8_t[6]);
 #endif

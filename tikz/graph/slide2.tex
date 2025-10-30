@@ -1,0 +1,113 @@
+\documentclass[10pt,xcolor=dvipsnames]{beamer}
+
+\usetheme{Warsaw}
+\usepackage{amsmath}
+\usepackage{bm}
+\usepackage{tikz}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{acronym}
+\usepackage{ifthen} 
+\usepackage{xcolor} 
+
+\usetikzlibrary{calc}
+\usetikzlibrary{fit}
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{scopes}
+\usetikzlibrary{positioning}
+
+\input{acros}
+\input{tikzdefs}
+
+\date{Ottobre, 2024} % Mostra solo mese e anno
+
+\title[{\makebox[.45\paperwidth]{Malware detection \hfill%
+       \insertframenumber/\inserttotalframenumber}}]{Innovative techniques based on traffic analysis and machine learning for malware and botnet detection in real networks}
+\author[Lorenzo Principi]{{\textbf{\Large Lorenzo Principi}\\\vspace{5mm}Co-finanziato da ASTEA SPA}}
+\institute{\vspace{1em}\\
+{\large Universit\`a Politecnica delle Marche}\vspace{1em} \\ {\large \href{mailto:l.principi@univpm.it}{l.principi@univpm.it}}}
+
+\begin{document}
+
+
+\frame[plain]{\titlepage}
+
+\begin{frame}{Attività di ricerca}
+  \vfill
+  Obbiettivo di ricerca:
+  \begin{quote}
+      Sviluppo di tecniche innovative di \acfi{NIDS} attraverso l'utilizzo di strumenti di \acfi{ML}.
+  \end{quote}
+  
+  \pause
+
+  Temi di ricerca:
+  \begin{enumerate}
+      \item \ac{NIDS} basato su monitoraggio del traffico DNS utilizzando una rete neurale \ac{LSTM}.
+      \item Studio impatto nella efficienza di rilevazione dell'evoluzione temporale del traffico malevolo.
+      \item \ac{NIDS} basato su monitoraggio del traffico di rete utilizzando la Teoria dei Grafi.
+  \end{enumerate}
+
+\end{frame}
+
+\section{DNS}
+\include{dns}
+
+
+\section{DGA NID}
+\include{nn}
+
+\include{llr}
+
+\include{healthy}
+
+\section{Graph-based NIDS}
+\include{graph}
+
+% \begin{frame}
+% Ricerca Venezia
+% \begin{itemize}
+%        \item traffico reale.
+%        \item uso LLR.
+%        \item detection senza falsi positivi possibile.
+% \end{itemize}
+% \end{frame}
+
+
+% \begin{frame}
+%        Ricerca Malesia
+%        \begin{itemize}
+%               \item traffico reale su traffico malevolo.
+%               \item traffico reale può compromettere la rilevazione.
+%        \end{itemize}
+% \end{frame}
+
+
+
+\section{Collaborazioni}
+\begin{frame}{Attività di ricerca: collaborazione con aziende}
+  Collaborazione con aziende o enti pubblici:
+  \begin{itemize}
+      \item ASTEA SPA:
+      \begin{itemize}
+          \item implementazione di applicazioni SIEM QRadar, Netbox.
+          \item sviluppo applicazione per controllo vulnerabilità degli assets dell'azienda.
+      \end{itemize}
+      \item Ancharia SRL: applicazione per la valutazione della sicurezza di un ente o un'azienda a partire dal suo dominio web, recuperando
+      dati di vulnerabilità e data breach da fonti di Open-Source Intelligence (OSINT).
+      \item Regione Marche: studio per l'implementazione di uno CSIRT regionale.
+      \item Montimage SRL, Parigi: sviluppo di un test-bed per esperimenti di NIDS su Blockchain DNS.
+  \end{itemize}
+\end{frame}
+
+\section{Pubblicazioni}
+  \begin{frame}{Attività di ricerca: collaborazione con aziende}
+    Atti di congresso internazionale censito nei database ISI:
+    \begin{itemize}
+      \item L. Principi, M. Baldi, A. Cucchiarelli, L. Spalazzi, “Efficiency of Malware Detection based on DNS Packet Analysis over Real Network Traffic”, Proc. IEEE CSR 2023, Venice, Italy, July 31 - August 2, 2023.
+      \item Zonneveld G., Principi L., Baldi L., “Using Graph Theory for Improving Machine Learning based Detection of Cyber Attacks”, Proc. IEEE ICMLCN 2024, Stockholm, Sweden, May 2024.
+      \item L. Principi, M. Baldi, “Applying Intrusion Detection based on Algorithmically Generated Domain Classification to Real Network Traffic”, Proc. IEEE CyberComp 2024, Melaka, Malaysia, 6 - 7 November, 2024.
+    \end{itemize}
+  \end{frame}
+
+\end{document}

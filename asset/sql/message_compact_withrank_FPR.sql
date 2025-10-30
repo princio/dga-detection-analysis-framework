@@ -1,0 +1,25 @@
+WITH TAB AS (
+	SELECT
+	
+		SUM((DAC_RANK<3)::int) AS P,
+		SUM((DNNN.EPS2 < 0.5 AND DAC_RANK<3)::int) AS FN,
+		SUM((DNNN.EPS2 >= 0.5 AND DAC_RANK<3)::int) AS TP,
+	
+		SUM((DAC_RANK>=3)::int) AS N0,
+		SUM((DNNN.EPS2 >= 0.5 AND DAC_RANK>=3)::int) AS FP0,
+		SUM((DNNN.EPS2 < 0.5 AND DAC_RANK>=3)::int) AS TN0,
+	
+		SUM((DAC_RANK>=3 AND DN_VALIDITY=1 AND WL_RANK>=4)::int) AS N,
+		SUM((DNNN.EPS2 >= 0.5 AND DAC_RANK>=3 AND DN_VALIDITY=1 AND WL_RANK>=4)::int) AS FP,
+		SUM((DNNN.EPS2 < 0.5 AND DAC_RANK>=3 AND DN_VALIDITY=1 AND WL_RANK>=4)::int) AS TN
+	FROM
+		MESSAGE2_IT2016_0_COMPACT M2
+		JOIN DN_NN_ALL DNNN ON M2.DN_ID = DNNN.DN_ID
+		WHERE M2.RN_QR_RCODE=1 AND RCODE=3
+	)
+SELECT 
+	-- n, fp, tn,
+	tp::double precision/p AS tpr,
+	fp0::double precision/n0 as fpr0,
+	fp::double precision/n as fpr
+	FROM TAB

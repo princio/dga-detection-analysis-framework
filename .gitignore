@@ -111,3 +111,7 @@ suite/process/pcap/tmp/**
 
 dgarchive/api/*
 scripts/tmp/*
+scripts/lstm_dac/merged.pickle
+scripts/lstm/dac/merged.pickle
+scripts/lstm/dac/plot.pdf
+scripts/windowing/windows_dac_EPS1_3600_10.csv.zip

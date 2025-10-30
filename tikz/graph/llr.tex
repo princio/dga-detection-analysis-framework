@@ -1,0 +1,260 @@
+
+
+\begin{frame}{Tema 1}
+  \vfill
+  Sistema di rilevazione malware DGA basato su monitoraggio del traffico DNS con rete neurale LSTM.
+  \vfill
+  \begin{itemize}
+    \item \textbf{Obbiettivo}: misurare efficienza di rilevazione..
+    \item Approccio con dati reali.
+    \item Utilizza metrica \ac{LLR}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Tema 1: approccio standard}
+
+  \begin{center}
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}
+    \tikzset{
+      % every node/.style={inner sep=0}
+    }
+
+    % \pic {ggrid};
+
+
+    
+    \node[text width=4cm, anchor=center, align=center, font=\large] (dl) at (2,5) {\textcolor{blue}{N domini legittimi}};
+    % \node[text width=3.5cm, anchor=center] at (1.5,4.5) {\textcolor{blue}{Repository Online}};
+    
+    \node[text width=4cm, anchor=center, align=center, font=\large] (dm) at (2,4) {\textcolor{red}{$N$ domini DGA}};
+    % % \node[text width=3.5cm, anchor=center]  at (1.5,3) {\textcolor{red}{Repository Online}};
+    
+    \draw[rounded corners] (0,3) rectangle (4,6);
+
+    \node[fill=white] at (2,6.0) {\bfseries \large Dataset};
+    
+    % \node[font=\large] at (3,7) {\textbf{Dataset}};
+
+    % \foreach \i in {0,...,6}
+    % \node[] at (3,6-\i*0.5) {domain \i};
+    % \node[] at (3,6-7*0.5) {...};
+
+    % \node at (3,1) {Source: Repository online};
+
+    \node[draw, rounded corners, text width=1.5cm, inner sep=0.2cm, font=\Huge] (svm) at (8,4.5) {\includegraphics[width=\textwidth]{ml.pdf}};
+
+    \draw[->] (4, 4.5) -- (7,4.5) node[midway, above] {train};
+    
+    \draw[->] (9, 4.5) -- (10.8,4.5)  node[midway, above] {test};
+
+    \node[anchor=west,font=\large] at (11,7) {\textbf{Classification Metrics}};
+    
+    \path
+    (11cm,6cm) node[font=\large,anchor=west,text width=5cm] {precision}
+    ++(0,-0.75cm)  node[font=\large,anchor=west,text width=5cm] {\ac{TPR}}
+    ++(0,-0.75cm)  node[font=\large,anchor=west,text width=5cm] {\ac{FPR}}
+    ++(0,-0.75cm)  node[font=\large,anchor=west,text width=5cm] {F1-Score}
+    ;
+    % node[text width=4cm] at (11,6) {precision};
+    % \node[text width=4cm] at (0, 1.5) {\ac{FPR}};
+    % \node[text width=4cm] at (0, -0.25) {\ac{TPR}};
+    % \node[text width=4cm] at (0, .) {f1-score};
+
+    \node[draw,font=\Large] at (8, 2) {Come viene generato un allarme?};
+  \end{tikzpicture}%
+  }
+\end{center}
+\end{frame}
+
+
+
+
+\begin{frame}{Tema 1: approccio con dati reali}
+
+  \begin{center}
+  \resizebox{\textwidth}{!}{%
+  \begin{tikzpicture}
+      
+    % \pic {ggrid};
+    % \clip (0,1) rectangle (16,8);
+    
+    \begin{scope}[xshift=4cm,yshift=5.5cm]
+      \pic (seagull) {seagull};
+        
+      \node at (0,3) {Local Area Network};
+      \foreach[count=\i] \angle in {1,2,3,4,5,6} {
+        \foreach[count=\j] \angle in {1,2,3,4,5,6} {
+          \draw[<->,black] (seagull-t\i) .. controls (0, 0) .. (seagull-t\j);
+        }
+      }
+    \end{scope}
+
+    \onslide<2-> {
+      
+      \begin{scope}[xshift=9cm,yshift=6.5cm]
+        \foreach \i in {0,...,12} {
+          \node[draw, fill=gray!50, minimum width=0.3cm, minimum height=0.4cm] (p\i) at (0.3 + \i*0.4,0.5) {};
+        }
+        \draw[-{Stealth[scale=1]}, thick] (0,0) -- (5.5,0) node[at end,below] {time};
+        \node[fit=(p0) (p12)] (ps) {};
+        \node[above=of ps.center, font=\large] {Traffico DNS};
+      \end{scope}
+    }
+    
+    % \onslide<3> {
+    %   \draw[ultra thin,black!75] (p3) -- ++(0,-2);%node[at end,below] {Pacchetti DNS};
+    %   \draw[ultra thin,black!75] (p5) -- ++(0,-2) node[at end,below] {Pacchetti DNS};
+    %   \draw[ultra thin,black!75] (p6) -- ++(0,-2);% node[at end,below] {Pacchetti DNS};
+    % }
+
+    \begin{scope}[xshift=9cm,yshift=4cm]
+      \onslide<3->{
+        \node[draw, fill=gray!50, minimum width=0.5cm, minimum height=0.67cm] (p) at (0, 0) {};
+        \node [below=2mm of p] {Pacchetto DNS};
+        % \draw[ultra thin,black!75] (p4) -- (p);%node[at end,below] {Pacchetti DNS};
+      }
+      \onslide<4->{
+        \node[draw, opacity=0,rounded corners, text width=1cm, inner sep=0.1cm, font=\Huge] at (3,0) (lstm) {\includegraphics[width=\textwidth]{ml.pdf}};
+        \draw[->] (p) -- (lstm) node[pos=0.5,above,text width=1.cm,font=\normalsize] {domain name};
+      }
+      \onslide<5->{
+        \node[draw, rounded corners, text width=1cm, inner sep=0.1cm, font=\Huge] at (3,0) (lstm) {\includegraphics[width=\textwidth]{ml.pdf}};
+        \node[fill=white,above=-1mm of lstm,font=\small]{LSTM};
+      }
+
+      \onslide<6-> {
+        \node[minimum width=0.5cm, minimum height=0.5cm,font=\Huge] (eps) at (6, 0) {$\varepsilon$};
+        \draw[->] (lstm) -- (eps);
+      }
+      \onslide<7->{
+        \node[draw,font=\large,inner sep=0.25cm,below=of lstm] {{\Huge$\varepsilon$} è la probabilità che il dominio sia DGA.};
+      }
+    \end{scope}
+
+  \end{tikzpicture}%
+  }
+\end{center}
+\end{frame}
+
+
+
+% \begin{frame}{Domini DGA}
+
+%   \begin{center}
+%   \resizebox{\textwidth}{!}{%
+%   \begin{tikzpicture}
+      
+%     % \pic {ggrid};
+%     \node[draw, fill=gray!50, minimum width=0.5cm, minimum height=0.5cm] (p) at (0, 0) {};
+%     \node [below=2mm of p] {Pacchetto DNS};
+%     \node[draw, rounded corners, text width=1.5cm, inner sep=0.1cm, font=\Huge] at (6,0) (lstm) {\includegraphics[width=\textwidth]{ml.pdf}};
+%     \node[fill=white,above=-2mm of lstm]{LSTM};
+
+%     \onslide<2->{
+      
+%       \draw[->] (p) -- (lstm) node[pos=0.5,above,font=\normalsize] {domain name};
+      
+%     }
+%     \onslide<3-> {
+%       \node[minimum width=0.5cm, minimum height=0.5cm,font=\Huge] (eps) at (12, 0) {$\varepsilon$};
+%       \draw[->] (lstm) -- (eps);
+%     }
+%     \onslide<4->{
+%       \node[draw,font=\large,inner sep=0.25cm] at (6, -3) {{\Huge$\varepsilon$} è la probabilità che il dominio sia DGA.};
+%     }
+
+%   \end{tikzpicture}%
+%   }
+% \end{center}
+% \end{frame}
+
+
+\begin{frame}{Generazione allarme}
+
+  Quando genero un allarme?
+  \vfill
+
+  \begin{block}{Metodo a singolo dominio}
+    \vfill
+    \begin{itemize}
+      \item Ogni dominio classificato come DGA genera un allerta.
+    \end{itemize}
+
+    \begin{equation*}
+      \varepsilon > 0.5% \longrightarrow \text{Allarme}
+    \end{equation*}
+    \vfill
+  \end{block}
+  \vfill
+  Svantaggi:
+  \begin{itemize}
+    \item Ogni falso positivo corrisponde ad un allarme.
+  \end{itemize}
+
+\end{frame}
+
+
+\begin{frame}{Generazione allarme}
+  Quando genero un allarme?
+  \vfill
+  \begin{block}{Threshold-Based Alert}
+    \vfill
+    \begin{itemize}
+      \item Raggruppamento temporale (es, pacchetti generati nell'ora $x$).
+      \item Scelta soglia $th$.
+      \item Quando il numero di domini classificato DGA supera la soglia $th$.
+    \end{itemize}
+
+    \begin{equation*}
+      \left( \sum_i \varepsilon_i > 0.5 \right) > th% \longrightarrow \text{Allarme}
+    \end{equation*}
+    \vfill
+  \end{block}
+  \vfill
+
+  % Svantaggi:
+  % \begin{itemize}
+  %   \item Ignora le classificazioni legittime (non DGA).
+  % \end{itemize}
+  
+\end{frame}
+
+
+
+\begin{frame}{Generazione allarme}
+  \begin{block}{Threshold-Based Alert with LLR}
+    \vfill
+    \begin{itemize}
+      \item Come il Threshold-Based Alert ma utilizza lo \acl{LLR}.
+      \item Maggiore flessibilità nella scelta della soglia.
+    \end{itemize}
+
+    \begin{equation*}
+        \sum_i \log\left( \frac{\varepsilon_i}{1 - \varepsilon_i} \right) > th% \longrightarrow \text{Allarme}
+    \end{equation*}
+    \vfill
+  \end{block}
+  \vfill
+  % Vantaggi:
+  % \begin{itemize}
+  %   \item Permette una maggiore flessibilità nella scelta della soglia.
+  % \end{itemize}
+\end{frame}
+
+\begin{frame}{Risultati}
+  \begin{itemize}
+    \item Dataset formato da \ac{PCAP} ottenuti da Statosphere Repository.
+    \item Analisi parametrica di $256$ configurazioni.
+    % \item È necessario un solo allarme per rilevare la minaccia.
+    \item Il rapporto tra allarmi generati e allarmi da generare varia tra 52.2\% e 88.2\%, quando il numero di falsi allarmi è zero.
+  \end{itemize}
+
+  Inoltre:
+  \begin{itemize}
+    \item Si è dimostrato che le metriche di classificazione non corrispondono alle capacità di rilevamento della minaccia.
+  \end{itemize}
+
+\end{frame}
+
+

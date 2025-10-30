@@ -26,8 +26,14 @@ void print_packet(uint32_t, uint8_t *, uint32_t, uint32_t, u_int);
 int dedup(uint32_t, struct pcap_pkthdr *, uint8_t *,
           ip_info *, transport_info *, config *);
 
-void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
+void print_summary2(eth_info* eth, ip_info * ip, transport_info * trns, dns_info * dns,
                    struct pcap_pkthdr * header, config * conf);
+
+
+
+char IP_STR_BUFF[INET6_ADDRSTRLEN];
+char MAC_STR_BUFF[18];
+
 
 int main(int argc, char **argv) {
     pcap_t * pcap_file;
@@ -39,6 +45,67 @@ int main(int argc, char **argv) {
     int arg_failure = 0;
 
     const char * OPTIONS = "cdfhi:m:o:MnrtD:x:s:S";
+
+    if (0) {
+        FILE*csv = fopen("/Users/princio/Desktop/psql_domains.csv", "r");
+        FILE*out = fopen("/Users/princio/Desktop/psql_domains.csv.toremove", "w");
+
+        size_t nline = 0;
+        char buffer[1000];
+        fgets(buffer, 1000, csv); // header
+        while(fgets(buffer, 1000, csv)) {
+            // printf("Line%9ld: «%s»\n", nline, buffer);
+            if (buffer[0] != '"') {
+                printf("Line%9ld: «%s»\n", nline, buffer);
+                printf("Error#%10ld: first char is not quote: %c.\n", nline, buffer[0]);
+            }
+            if (buffer[strlen(buffer) - 1] != '\n') {
+                printf("Line%9ld: «%s»\n", nline, buffer);
+                printf("Error#%10ld: last char is not newline: %d.\n", nline, (int) buffer[strlen(buffer) - 1]);
+            }
+            int a = buffer[strlen(buffer) - 2] == '\r';
+            if (buffer[strlen(buffer) - 1 - a] == '"') {
+                printf("Line%9ld: «%s»\n", nline, buffer);
+                printf("Error#%10ld: next to last char is not quote: %d.\n", nline, (int) buffer[strlen(buffer) - 1]);
+            }
+
+            char domain[1000];
+            memset(domain, 0, 1000);
+            if (strlen(buffer) - 4 <= 0) {
+                exit(10);
+            }
+            memcpy(domain, &buffer[1], strlen(buffer) - 4); // first ", last " and \n
+
+            char badchars[] = { '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '`', '{', '|', '}', '~' };
+            int is_bad = 0;
+            for (size_t i = 0; i < strlen(domain); i++) {
+                const char c = domain[i];
+                if (c < 32 || c == 127) {
+                    is_bad = 1;
+                    printf("[info]: non-printable char in «%s»: %c.\n", domain, c);
+                    break;
+                }
+                for (size_t k = 0; k < sizeof(badchars); k++) {
+                    if (c == badchars[k]) {
+                        is_bad = 1;
+                        printf("[info]: bad char in «%s»: %d.\n", domain, (int) c);
+                        break;
+                    }
+                }
+                if (is_bad) {
+                    break;
+                }
+            }
+
+            if (is_bad) {
+                printf("[info]: bad domain «%s» at line %9ld\n", domain, nline);
+                fprintf(out, "%ld,\"%s\"\n", nline, domain);
+            }
+
+            nline++;
+        }
+        exit(0);
+    }
 
     // Setting configuration defaults.
     uint8_t TCP_SAVE_STATE = 1;
@@ -262,7 +329,7 @@ int main(int argc, char **argv) {
     }
 
 
-    fprintf(conf.csv_file, "time,size,protocol,src,dst,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,");
+    fprintf(conf.csv_file, "time,size,protocol,macsrc,macdst,src,dst,qr,AA,rcode,fnreq,qdcount,ancount,nscount,arcount,qcode,");
     fprintf(conf.csv_file, "dn,answer\n");
 
     // Load and prior TCP session info
@@ -356,7 +423,7 @@ void handler(uint8_t * args, const struct pcap_pkthdr *orig_header,
             }
         }
         pos = dns_parse(pos, &header, packet, &dns, conf, !FORCE);
-        print_summary2(&ip, &udp, &dns, &header, conf);
+        print_summary2(&eth, &ip, &udp, &dns, &header, conf);
     } else if (ip.proto == 6) {
         // Hand the tcp packet over for later reconstruction.
         tcp_parse(pos, &header, packet, &ip, conf); 
@@ -435,7 +502,7 @@ void print_summary(ip_info * ip, transport_info * trns, dns_info * dns,
 }
 
 
-void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
+void print_summary2(eth_info* eth, ip_info * ip, transport_info * trns, dns_info * dns,
                    struct pcap_pkthdr * header, config * conf) {
     char proto;
     char ts[40];
@@ -468,6 +535,31 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
         return;
     }
 
+    char badchars[] = { '!', '"', '#', '$', '%', '&', '\'', '(', ')', '*', '+', ',', '/', ':', ';', '<', '=', '>', '?', '@', '[', '\\', ']', '^', '`', '{', '|', '}', '~' };
+    int is_bad = 0;
+    for (size_t i = 0; i < strlen(qnext->name); i++) {
+        const char c = qnext->name[i];
+        if (c < 32 || c == 127) {
+            is_bad = 1;
+            printf("[info]: query %s is bad because of %c.\n", qnext->name, c);
+            break;
+        }
+        for (size_t k = 0; k < sizeof(badchars); k++) {
+            if (c == badchars[k]) {
+                is_bad = 1;
+                printf("[info]: query %s is bad because of %c.\n", qnext->name, c);
+                break;
+            }
+        }
+        if (is_bad) {
+            break;
+        }
+    }
+    if (is_bad) {
+        printf("[info]: query %s is bad.\n", qnext->name);
+        return;
+    }
+
     if (dns->qr == 0) {
         conf->fnreq++; // otherwise if the first packet is a response, it will start from 0
     }
@@ -476,6 +568,8 @@ void print_summary2(ip_info * ip, transport_info * trns, dns_info * dns,
     fprintf(conf->csv_file, "%s,", ts);
     fprintf(conf->csv_file, "%d,", trns->length);
     fprintf(conf->csv_file, "%c,", proto);
+    fprintf(conf->csv_file, "%s,", mactostr(eth->srcmac));
+    fprintf(conf->csv_file, "%s,", mactostr(eth->dstmac));
     fprintf(conf->csv_file, "%s,", iptostr(&ip->src));
     fprintf(conf->csv_file, "%s,", iptostr(&ip->dst));
     fprintf(conf->csv_file, "%c,", dns->qr ? 'r' : 'q');
@@ -892,6 +986,9 @@ void print_rr_section(dns_rr * next, char * name, config * conf, rr_text *text, 
         char *name, *data;
         name = (next->name == NULL) ? "*empty*" : next->name;
         data = (next->data == NULL) ? "*empty*" : next->data;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-overflow"
+
         if (!strcmp(name, next->name) && next->type == qtype) {
             size_t l = strlen(text->A) + strlen(data);
             if (l > 2000) {
@@ -902,9 +999,12 @@ void print_rr_section(dns_rr * next, char * name, config * conf, rr_text *text, 
             }
         }
         else {
-            printf("[debug]: skipping[%6u]: type=%u\tname=%-50s\tdata=%s\n", id, next->type, name, data);
+            // printf("[debug]: skipping[%6u]: type=%u\tname=%-50s\tdata=%s\n", id, next->type, name, data);
         }
         next = next->next; 
+        
+#pragma GCC diagnostic pop
+
     }
     text->A[strlen(text->A)-1] = '\0';
 }

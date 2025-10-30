@@ -32,7 +32,6 @@ class PSLTrieService:
         dns = s_dns.tolist()
 
         with NamedTemporaryFile('w', delete=False) as inputfile:
-            logging.getLogger(__name__).critical('-----------%s' % inputfile)
             inputfile.write('0\n')
             inputfile.writelines([dn + '\n' for dn in dns])
             inputfile.flush()
@@ -44,7 +43,7 @@ class PSLTrieService:
             logging.getLogger(__name__).debug(output)
             pass
 
-        return pd.read_csv(output)
+        return pd.read_csv(output, low_memory=False)
 
 
         

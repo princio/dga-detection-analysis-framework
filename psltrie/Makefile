@@ -125,6 +125,7 @@ OBJECTS :=$(patsubst %,$(LIBDIR)/%.o,$(NAMES))
 
 dirs:
 	mkdir -p $(LIBDIR)/;
+	mkdir -p $(BINDIR)/;
 	mkdir -p $(EXPORTDIR)/bin;
 	mkdir -p $(EXPORTDIR)/lib;
 	mkdir -p $(EXPORTDIR)/include/$(PROJECT_NAME)
@@ -143,17 +144,16 @@ $(STATICLIB): $(OBJECTS)
 	ar rcs $(LIBDIR)/$@ $^
 	cp $(LIBDIR)/$@ $(EXPORTDIR)/lib;
 
-bin/$(BINARY): dirs $(SHAREDLIB) $(STATICLIB)
+binary: dirs $(SHAREDLIB) $(STATICLIB)
 	@echo -en "$(BROWN)LD $(END_COLOR)";
 	$(CC) -o $(BINDIR)/$(BINARY) $(OBJECTS) $(CFLAGS_OPT) $(CFLAGS) $(LIBS)
 	cp $(SRCDIR)/*.h $(EXPORTDIR)/include/$(PROJECT_NAME)
-	@echo -en "\n--\nBinary file placed at" \
-			  "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
-	cp $@ $@_$(SUFFIX)
-	@rm $@
-	cp $@_$(SUFFIX) $(EXPORTDIR)/bin/$(PROJECT_NAME)
+	@echo -en "\n--\nBinary file placed at" "$(BROWN)$(BINDIR)/$(BINARY)$(END_COLOR)\n";
+	cp $(BINDIR)/$(BINARY) $(BINDIR)/$(BINARY)_$(SUFFIX)
+	@rm $(BINDIR)/$(BINARY)
+	cp $(BINDIR)/$(BINARY)_$(SUFFIX) $(EXPORTDIR)/bin/$(PROJECT_NAME)
 
-main: dirs $(SHAREDLIB) $(STATICLIB) bin/$(BINARY)
+main: dirs $(SHAREDLIB) $(STATICLIB) binary
 
 debug: SUFFIX := debug
 debug: CFLAGS_OPT := -g3 -DDEBUG=1
@@ -224,28 +224,34 @@ clean:
 cd: clean debug
 db: debug
 	clear;
-	bin/binary $(PSLTSUFFIXFILE) google.co.uk
+	$(BINDIR)/binary $(PSLTSUFFIXFILE) google.co.uk
 dv: debug valgrind
 cdb: clean debug
 	clear;
-	bin/binary $(PSLTSUFFIXFILE) google.co.uk
+	$(BINDIR)/binary $(PSLTSUFFIXFILE) google.co.uk
 cdv: clean debug valgrind
 cdv2: clean debug valgrind2
 cat: clean debug
 	clear;
-	./bin/binary $(PSLTSUFFIXFILE) test google.co.uk > bin/log.log;
+	./$(BINDIR)/binary $(PSLTSUFFIXFILE) test google.co.uk > bin/log.log;
 
 
 cp: clean prod
 pb: prod
 	clear;
-	bin/binary $(PSLTSUFFIXFILE) google.co.uk
+	$(BINDIR)/binary $(PSLTSUFFIXFILE) google.co.uk
 pv: prod valgrind
 cpb: clean prod
 	clear;
-	bin/binary $(PSLTSUFFIXFILE) google.co.uk
+	$(BINDIR)/binary $(PSLTSUFFIXFILE) google.co.uk
 cpv: clean prod valgrind
 cpv2: clean prod valgrind2
 cpt: clean prod
 	clear;
-	./bin/binary $(PSLTSUFFIXFILE) test google.co.uk > bin/log.log;
+	./$(BINDIR)/binary $(PSLTSUFFIXFILE) test google.co.uk > bin/log.log;
+
+.PHONY: help
+
+help2:
+	@echo "Available targets:"
+	@grep -E '^[a-zA-Z0-9_-]+:.*?##' Makefile | awk 'BEGIN {FS = ":.*?## "}; {printf "  %-20s %s\n", $$1, $$2}'
