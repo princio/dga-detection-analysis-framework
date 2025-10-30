@@ -15,8 +15,8 @@
     "nndir": "/Users/princio/Repo/princio/malware-detection-predict-file/lstm_dga/nns",
     "postgre": {
         "host": "localhost", 
-        "dbname": "dns_mac",
-        "user": "postgres",
+        "dbname": "ti2016",
+        "user": "postgresas",
         "password": "postgres"
     },
     "pcaps": [
