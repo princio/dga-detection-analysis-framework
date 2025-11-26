@@ -1,4 +1,5 @@
 
+from ipaddress import collapse_addresses
 import logging
 import math
 from pathlib import Path
@@ -33,7 +34,7 @@ def query_unique_nx(day: int, window_length: int, idxwindow: int, dac_family: st
         ),
         W_DN_DESCRIBE AS (
             SELECT
-				MAC,
+				MAC AS MAC2,
                 COUNT(*) AS "num DN",
                 AVG(QR) AS "avg DN/QR",
                 AVG(Q) AS "avg DN/Q",
@@ -64,7 +65,7 @@ def query_unique_nx(day: int, window_length: int, idxwindow: int, dac_family: st
         )
         SELECT M.*, DN.*
         FROM METRICS M
-        JOIN W_DN_DESCRIBE DN ON M.MAC=DN.MAC
+        JOIN W_DN_DESCRIBE DN ON M.MAC=DN.MAC2
 """
 
 @inject
@@ -81,7 +82,9 @@ def main(
     window_length = 3600
     ndays=10
 
-    file = Path(f'windowing/windows_ALL2_dac_{nn}_{window_length}_{ndays}_unique{U}.csv')
+    dirs = Path(f'../output/windowing_py/')
+    dirs.mkdir(parents=True, exist_ok=True)
+    file = dirs.joinpath(f'windows_ALL2_dac_{nn}_{window_length}_{ndays}_unique{U}.csv')
 
     dac_families = sorted(['virut', 'modpack', 'necurs', 'pitou', 'conficker', 'suppobox', 'tofsee'])
     dac_families.append('healthy')
@@ -90,15 +93,25 @@ def main(
     dac_family0 = 0
     idxw0 = 0
     rows = []
+    DF = pd.DataFrame()
     if file.exists():
         df = pd.read_csv(file, index_col=0)
         rows = df.to_numpy().tolist()
         day0 = rows[-1][df.columns.to_list().index('day')]
         dac_family0 = dac_families.index(rows[-1][df.columns.to_list().index('dac_family')])
         idxw0 = rows[-1][df.columns.to_list().index('idxdaywindow')] + 1
-        rows= [df]
+        df.reset_index(drop=True, inplace=True)
+        DF = df
         pass
 
+    if 'mac.1' in DF.columns:
+        if not (DF['mac'] == DF['mac.1']).all():
+            print('Errore: le colonne mac e mac.1 non coincidono!')
+            exit(1)
+        else:
+            DF.drop(columns=['mac.1'], inplace=True)
+            pass
+        pass
 
     nwindows = math.ceil(3600 * 24 / window_length)
     print(f'EPS={nn}\twindow length={window_length}\tnwindows={nwindows}\tndays={ndays}')
@@ -110,13 +123,15 @@ def main(
             table_name = f'mv3_{idxday}'
             for idxw in range(idxw0, nwindows):
                 print('Eseguo get_metrics per tabella %s, dac_family %s, finestra %d/%d' % (table_name, dac_family, idxw, nwindows))
-                row = pd.read_sql(query_unique_nx(idxday, window_length, idxw, dac_family, nn), db.sqlalchemy())
-                row.insert(0, 'dac_family', dac_family)
-                row.insert(0, 'day', idxday)
-                row.insert(0, 'idxdaywindow', idxw)
-                row.insert(0, 'idxwindow', idxw + idxday * nwindows)
-                rows.append(row)
-                pd.concat(rows).reset_index(drop=True).to_csv(file)   
+                df = pd.read_sql(query_unique_nx(idxday, window_length, idxw, dac_family, nn), db.sqlalchemy())
+                df.insert(0, 'dac_family', dac_family)
+                df.insert(0, 'day', idxday)
+                df.insert(0, 'idxdaywindow', idxw)
+                df.insert(0, 'idxwindow', idxw + idxday * nwindows)
+                df.drop(columns=['mac2'], inplace=True)
+
+                DF = pd.concat([ DF, df ], ignore_index=True)
+                DF.to_csv(file)
                 pass
             idxw0 = 0
             pass
@@ -130,10 +145,10 @@ if __name__ == "__main__":
     application.config.from_dict({
         "env": "debug",
         "db": {
-            "host": "172.26.197.241",
-            "user": "postgres",
-            "password": "postgre",
-            "dbname": "postgres",
+            "host": "localhost",
+            "user": "princio",
+            "password": "postgres",
+            "dbname": "ti2016",
             "port": 5432
         },
         "binaries": {
