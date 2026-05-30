@@ -169,5 +169,5 @@
         "ml/rule",
         "./suite2"
     ],
-    "commentTranslate.hover.enabled": true
+    "commentTranslate.hover.enabled": false
 }
