@@ -105,8 +105,8 @@ PostgreSQL **17**. Datasets/DB names referenced in code: `ti2016` (main) and `dn
   `*_old.ipynb` are experimental and may not run end-to-end.
 - **Many branches exist** (`gatherer`, `gatherer_windows`, `refactor`, etc.); `main`
   is the integration branch (last merged from `gatherer_windows`).
-- **Git remotes**: SSH (`origin`, port 22) is firewalled in this environment — push via
-  the HTTPS remote `origin-http` instead.
+- **Git remotes**: two remotes point at the same GitHub repo — `origin` (SSH) and
+  `origin-http` (HTTPS). Both work; `origin` is the default for push/pull.
 
 ## Portfolio roadmap
 
