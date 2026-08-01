@@ -23,13 +23,14 @@ pcap files
   ├─ dns_parse/ (C)      raw pcap ─▶ human-readable DNS records
   ├─ psltrie/ (C)        domain ─▶ registered/effective domain (Public Suffix List trie)
   ├─ lstm_dga/ (Py/TF)   domain ─▶ DGA-vs-benign score (LSTM, 4 sub-models)
-  ├─ dgarchive/ (Py)     ground-truth malware-family labels (DGArchive)
+  ├─ dgarchive/ (Py)     ground-truth labels — joined in SQL/notebooks, NOT in suite2
   ├─ tranco / top10m     whitelisting against top-domain lists
   │
   ▼
-PostgreSQL (db: `ti2016`, also `dns_mac` in suite2) ── populated by scripts/
+PostgreSQL ── populated by scripts/
+  (`ti2016` main; `dns_mac` in suite2; `dns2` in the C windowing)
   │
-  ├─ asset/sql/          35 SQL queries: the big-data analysis layer
+  ├─ asset/sql/          34 SQL files: the big-data analysis layer
   ├─ windowing/ (C)      time-windowed features + k-fold validation + confusion matrices
   ├─ scripts/windowing*  Python windowing over the DB (ti2016 dataset)
   ├─ ml/ (notebooks)     analysis, datasets, simulations, FPR studies
@@ -44,12 +45,12 @@ PostgreSQL (db: `ti2016`, also `dns_mac` in suite2) ── populated by scripts/
 | `psltrie/` | C | Public Suffix List trie; fast registered-domain extraction. Built on a C project template (`make`, see `project.conf`). |
 | `windowing/` | C | Windowed feature calculation, k-cross-fold validation, confusion matrices. `make`. See `windowing/README.md`. |
 | `suite/` | Python | **Older** orchestration framework: pcap/psl/lstm/db processing. Dependency-injection based. |
-| `suite2/` | Python | **Newer** rewrite of `suite`. Prefer this. Entry point `suite2/suite2/__main__.py`; services under `suite2/suite2/*/`. |
+| `suite2/` | Python | **Newer** rewrite of `suite`. Prefer this. No CLI entry point (`__main__.py` is empty) — driven by `scripts/*.py`; services under `suite2/suite2/*/`. |
 | `lstm_dga/` | Python/TensorFlow | LSTM DGA classifier. `predict.py` / `predict_dns_parse_output.py`. Models in `nns/`. See `lstm_dga/README.md`. |
 | `dgarchive/` | Python (notebooks) | DGArchive ground-truth malware/DGA labels. |
-| `ml/` | Python/Jupyter | 57 notebooks: analysis, datasets, simulations, false-positive-rate studies. |
+| `ml/` | Python/Jupyter | 36 notebooks (57 repo-wide): analysis, datasets, simulations, false-positive-rate studies. |
 | `scripts/` | Python | DB population, materialized views, per-dataset analysis (`ti2016`). |
-| `asset/sql/` | SQL | 35 hand-written analysis queries (Postgres 17). |
+| `asset/sql/` | SQL | 34 hand-written SQL files — queries, DDL and functions (Postgres 17). |
 | `tranco/`, `top10m.py` | Python | Whitelisting / top-domain lists. |
 | `mac_address/` | Notebook | Investigation: concluded the source MAC is **not** preserved (`CONCLUSION.md`). |
 | `web/mwdb/` | TS (Next/Nest) + Py | Web UI to browse results. |
@@ -58,8 +59,10 @@ PostgreSQL (db: `ti2016`, also `dns_mac` in suite2) ── populated by scripts/
 
 ### Component status (which to prefer)
 
-- **`suite2` supersedes `suite`.** `suite` is effectively deprecated; its own README
-  notes it is no longer used by `scripts/`. Do new Python orchestration work in `suite2`.
+- **`suite2` supersedes `suite`.** `suite` is effectively deprecated; the root README
+  notes it is never used from `scripts/`. Do new Python orchestration work in `suite2`.
+  Note `suite2/suite2/__main__.py` is a 0-byte file: the real entry points are the
+  `scripts/*.py`, each of which builds its own `Suite2Container`.
 - `scripts/windowing_ti2016/` is the renamed/maintained windowing; the top-level
   `scripts/windowing.py` writes output to `../output/windowing_py/`.
 
@@ -87,17 +90,22 @@ python scripts/<name>.py
 Requirements files: `lstm_dga/requirements.txt`, `suite/psl_list/requirements.txt`.
 
 ### Database
-PostgreSQL **17**. Datasets/DB names referenced in code: `ti2016` (main) and `dns_mac`
-(suite2). Scripts populate materialized views (`scripts/create_materialized_view.py`,
+PostgreSQL **17**. Datasets/DB names referenced in code: `ti2016` (main), `dns_mac`
+(suite2) and `dns2` (hardcoded in `windowing/src/stratosphere*.c`). Scripts populate materialized views (`scripts/create_materialized_view.py`,
 `scripts/dbfill.py`).
 
 ## Conventions & gotchas
 
 - **Hardcoded config is everywhere.** DB credentials, and absolute paths like
   `/Users/princio/...`, are embedded in `conf.json`, `suite/config.py`,
-  `suite2/suite2/__main__.py`, `scripts/*`, etc. These are **local-dev throwaway**
+  `suite2/suite2/suite2_run.py`, `scripts/*`, etc. These are **local-dev throwaway**
   values, not secrets to protect — but they make components non-portable. When running,
   expect to edit the inline `config`/`from_dict({...})` block at the bottom of each script.
+- **`DNService.db_dgarchive()` is an empty stub.** DGArchive labels reach the data only
+  through SQL (`dac`, `dac_dn`, the `_compact` / `mv3_0` views) and notebooks — not through
+  the `suite2` pipeline.
+- **`run.py` is broken** (SQLite-style `?` placeholders with psycopg2, a duplicated INSERT
+  column list, no commit). Use the `scripts/*.py` entry points.
 - **Italian notes/comments** appear throughout (READMEs, comments, the root README).
 - **`pass` as a block terminator**: the Python style here closes most blocks with a
   trailing `pass`. Match the surrounding style when editing.
