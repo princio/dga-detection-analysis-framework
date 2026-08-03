@@ -154,7 +154,7 @@ pass.
 | `suite2/` | orchestration services, driven by `scripts/` |
 | `scripts/` | entry points: DB population, materialized views, windowing |
 | `asset/sql/` | 33 hand-written analysis queries, DDL and functions |
-| `ml/` | 36 notebooks: analysis, datasets, simulations, FPR studies |
+| [`ml/`](ml/) | 30 analysis notebooks — a scratchpad; see [`ml/README.md`](ml/README.md) |
 | [`dgarchive/`](dgarchive/) | DGArchive ground-truth ingestion into the `dac` tables |
 | [`whitelisting/`](whitelisting/) | whitelist preparation and loading (Tranco / top10m) |
 | `web/mwdb/` | prototype UI for assembling pcap datasets and generating detection plots (Next.js + NestJS + Flask; incomplete, unmaintained since 2024) |

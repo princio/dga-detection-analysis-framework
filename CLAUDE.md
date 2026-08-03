@@ -48,7 +48,7 @@ PostgreSQL ── populated by scripts/
 | `suite2/` | Python | **Newer** rewrite of `suite`. Prefer this. No CLI entry point (`__main__.py` is empty) — driven by `scripts/*.py`; services under `suite2/suite2/*/`. |
 | `lstm_dga/` | Python/TensorFlow | LSTM DGA classifier. `predict.py` / `predict_dns_parse_output.py`. Models in `nns/`. See `lstm_dga/README.md`. |
 | `dgarchive/` | Python (notebooks) | DGArchive ground-truth malware/DGA labels. |
-| `ml/` | Python/Jupyter | 36 notebooks (57 repo-wide): analysis, datasets, simulations, false-positive-rate studies. |
+| `ml/` | Python/Jupyter | 30 notebooks: analysis, datasets, simulations, FPR studies. Scratchpad — see `ml/README.md`. |
 | `scripts/` | Python | DB population, materialized views, per-dataset analysis (`ti2016`). |
 | `asset/sql/` | SQL | 33 hand-written SQL files — queries, DDL and functions (Postgres 17). |
 | `whitelisting/` | Python/SQL | Tranco + top10m whitelist preparation and loading. See `whitelisting/README.md`. |
@@ -146,16 +146,17 @@ unless asked — but keep the destination in mind when touching nearby code.
 - [ ] **Audit git history for real secrets** — confirm no API keys, dataset tokens, or
   private/internal IPs (an internal IP `172.26.197.241` already appears in history).
   Rotate anything real; consider history rewrite only if a genuine secret leaked.
-- [ ] **Add per-component READMEs** where missing (e.g. `suite2/`, `scripts/`, `ml/`)
-  with a one-paragraph "what + how to run".
+- [x] **Per-component READMEs** added for `windowing/`, `scripts/`, `ml/`, `dgarchive/`,
+  `whitelisting/`. Still missing: `suite2/`, `asset/`, `web/mwdb/`.
 
 ### Phase 3 — Make it tidy
 - [x] **Deleted the deprecated `suite/`.** Its one live part, `psl_list/`, was promoted to
   the root-level `psl_list/` (it had been reached through a tracked symlink); the other
   35 files were superseded by `suite2` and are recoverable from git history.
-- [ ] **Remove scratch files** — `tmp.py`, `ml/analysis/Untitled.ipynb`,
-  `ml/fpr_normal_approach copy.ipynb`, `*_old.ipynb`, etc. (move to an `archive/`
-  branch if you want to keep them out of the way without losing them).
+- [x] **Removed scratch files** — the `Untitled.ipynb` set, `*_old.ipynb`, `* copy.ipynb`,
+  `*.ipynbbak`, `scripts/tmp.py`, `clean.py`, and the tracked LaTeX build artifacts.
+  Remaining: root `tmp.py`, `.vscode/tmp.txt`, `asset/tmp/compare.txt`,
+  `psltrie/Makefile copy`, `web/mwdb/pybackend/tmp/*.txt`.
 - [ ] **Prune branches** — collapse the ~10 experimental branches down to `main`
   (+ maybe one active dev branch).
 - [x] **Pinned dependencies** — root `pyproject.toml` with `[analysis]`, `[lstm]` and
@@ -207,10 +208,9 @@ one-shot operation to schedule deliberately, not something to do piecemeal.
 ### 3. Scratch files (safe to delete any time — no history rewrite needed)
 
 `tmp.py` · `.vscode/tmp.txt` · `asset/tmp/compare.txt` ·
-`ml/analysis/Untitled.ipynb` · `ml/pcap_analysis/Untitled.ipynb` ·
-`ml/simulation/Untitled.ipynb` · `ml/traffics/Untitled.ipynb` ·
-`ml/fpr_normal_approach copy.ipynb` · `ml/book/dataset4_old.ipynb` ·
 `psltrie/Makefile copy` · `web/mwdb/pybackend/tmp/{sql,sql2,svg}.txt`
+
+(The `ml/` entries in this list have been removed.)
 
 Keep `lstm_dga/test_model_loading.py`, `scripts/smoke_test_lstm.py`,
 `windowing/test/main.c` — thin, but real tests.
@@ -219,10 +219,9 @@ Keep `lstm_dga/test_model_loading.py`, `scripts/smoke_test_lstm.py`,
 
 | Item | Size | Note |
 |---|---|---|
-| `ml/book/slots-pcap.svg` | 17 MB | Largest file in the repo. Re-export as PNG or drop. |
 | `scripts/it16/megaplot/malware_hour.ipynb` | 8.3 MB | Bloated by embedded output images — strip outputs. |
-| `ml/pcap_plot/main.ipynb`, `ml/book/translate_expand.ipynb`, `ml/rule/_.simulate_with_real_TP.ipynb` | 3.7 / 3.3 / 1.7 MB | Same. |
 | `scripts/it16/megaplot/plot_malwares.svg` | 1.8 MB | PDF twin is 140 KB; figure already exported to `docs/figures/`. |
+| `ml/pcap_plot/main.ipynb`, `ml/book/translate_expand.ipynb`, `ml/rule/_.simulate_with_real_TP.ipynb` | 3.7 / 3.3 / 1.7 MB | Same. |
 | `lstm_dga/nns/json_tf2.13/{none,tld,icann,private}/model.h5` | 4.8 MB | Duplicates the sibling `model_*.h5` in the parent dir — pick one layout. |
 | `lstm_dga/nns/json/*.h5` | 4.8 MB | Pre-2.13 model set, superseded. |
 

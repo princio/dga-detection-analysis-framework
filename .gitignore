@@ -125,3 +125,14 @@ docs/figures/*.log
 
 # Local backups of files removed from git (see CLAUDE.md)
 /backup/
+
+# LaTeX build artifacts under ml/
+ml/**/*.aux
+ml/**/*.log
+
+# Python build artifacts
+*.egg-info/
+build/
+dist/
+__pycache__/
+*.pyc
