@@ -30,7 +30,7 @@ pcap files
 PostgreSQL ── populated by scripts/
   (`ti2016` main; `dns_mac` in suite2; `dns2` in the C windowing)
   │
-  ├─ asset/sql/          34 SQL files: the big-data analysis layer
+  ├─ asset/sql/          33 SQL files: the big-data analysis layer
   ├─ windowing/ (C)      time-windowed features + k-fold validation + confusion matrices
   ├─ scripts/windowing*  Python windowing over the DB (ti2016 dataset)
   ├─ ml/ (notebooks)     analysis, datasets, simulations, FPR studies
@@ -50,8 +50,8 @@ PostgreSQL ── populated by scripts/
 | `dgarchive/` | Python (notebooks) | DGArchive ground-truth malware/DGA labels. |
 | `ml/` | Python/Jupyter | 36 notebooks (57 repo-wide): analysis, datasets, simulations, false-positive-rate studies. |
 | `scripts/` | Python | DB population, materialized views, per-dataset analysis (`ti2016`). |
-| `asset/sql/` | SQL | 34 hand-written SQL files — queries, DDL and functions (Postgres 17). |
-| `tranco/`, `top10m.py` | Python | Whitelisting / top-domain lists. |
+| `asset/sql/` | SQL | 33 hand-written SQL files — queries, DDL and functions (Postgres 17). |
+| `whitelisting/` | Python/SQL | Tranco + top10m whitelist preparation and loading. See `whitelisting/README.md`. |
 | `mac_address/` | Notebook | Investigation: concluded the source MAC is **not** preserved (`CONCLUSION.md`). |
 | `web/mwdb/` | TS (Next/Nest) + Py | Web UI to browse results. |
 | `tikz/` | LaTeX | Thesis diagrams. |

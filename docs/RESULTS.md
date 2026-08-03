@@ -26,7 +26,7 @@ source CSVs no longer exist; their numbers are deliberately excluded.
 
 > Sources: `asset/sql/message2_count.sql` lines 19–28 (recorded `RAISE NOTICE` output,
 > partitions 0–9, summed); `scripts/lstm/dac/main.ipynb` cell 7 (`tp count` summed over
-> 56 families = 482,476,192 across 4 sub-models); `top10m.py:36`;
+> 56 families = 482,476,192 across 4 sub-models); `whitelisting/load_top10m.py:36`;
 > `asset/ml/dataset_training_mterics.ipynb`.
 
 ![DNS activity per family across the 10-day capture](figures/traffic_by_family.png)

@@ -57,7 +57,7 @@ DATASETS = {
         'rows': 674_898,
     },
     'tranco': {
-        'source': '../tranco/tranco_1m.csv',
+        'source': '../whitelisting/tranco_1m.csv',
         'read_csv': dict(),
         'columns': ['id', 'whitelist_id', 'dn', 'rank'],
         'keep': ['id', 'whitelist_id', 'dn', 'rank'],
