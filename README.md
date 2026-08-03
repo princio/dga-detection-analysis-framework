@@ -22,6 +22,13 @@ most of them return NXDOMAIN. **The question this project asks is whether an inf
 can be identified from its DNS traffic alone** — first by classifying individual domain
 names, then by looking at a host's query behaviour over time.
 
+Answering the second half needed a tool that did not exist, so this repo contains one:
+[**`windowing/`**](windowing/), a purpose-built C engine that aggregates hundreds of
+millions of DNS messages into per-host time windows, computes 36 behavioural features per
+window, and runs *k*-fold cross-validation over the result — talking to PostgreSQL
+directly, because doing this in Python at this scale was not viable. At 8,855 lines it is
+the largest hand-written component here.
+
 ---
 
 ## Pipeline
@@ -36,7 +43,7 @@ names, then by looking at a host's query behaviour over time.
 | Classification | [`lstm_dga/`](lstm_dga/) | Python / TensorFlow | 4 LSTM sub-models → DGA probability + logit |
 | Storage | [`asset/sql/`](asset/sql/) | PostgreSQL 17 | list-partitioned message log, materialized views |
 | Ground truth | [`dgarchive/`](dgarchive/) | SQL / notebooks | DGArchive family labels, Tranco/top10m whitelisting |
-| Host detection | [`windowing/`](windowing/) | C | time-windowed features, *k*-fold CV, confusion matrices |
+| **Host detection** | [**`windowing/`**](windowing/) | C | **per-host time windows, 36 behavioural features, *k*-fold CV, confusion matrices — 8.9k lines** |
 | Analysis | [`ml/`](ml/), [`scripts/`](scripts/) | Python / Jupyter | scikit-learn experiments, plots, FPR studies |
 
 Orchestration lives in [`suite2/`](suite2/) (dependency-injection services), driven by the
@@ -89,9 +96,12 @@ reason the project moves on from classifying domains to classifying **hosts** ov
 windows — a host running a word-list DGA still produces an anomalous volume and failure
 pattern of DNS queries even when each individual name looks ordinary.
 
-That second problem is **not solved here**: within-family host detection works, but
-cross-family generalization does not, and the labelled data is thin (6–138 windows per
-family). [docs/RESULTS.md §4](docs/RESULTS.md#4-host-level-detection-over-time-windows-open-problem)
+That second problem is **not solved here**. The machinery to attack it exists and runs —
+`windowing/` produces the features, the folds and the confusion matrices — but the science
+stops short: within-family host detection works, cross-family generalization does not, and
+with only 6–138 labelled windows per family the data is too thin to say why. The bottleneck
+is labelled infected-host traffic, not tooling.
+[docs/RESULTS.md §4](docs/RESULTS.md#4-host-level-detection-over-time-windows-open-problem)
 reports it honestly, including the failure cases.
 
 ---
@@ -103,17 +113,27 @@ reports it honestly, including the failure cases.
 
 | Language | Files | Lines |
 |---|---|---|
-| Python | 111 | 11,422 |
 | C / headers | 72 | 13,360 |
-| SQL | 35 | 2,246 |
+| — of which [`windowing/`](windowing/) | 59 | **8,855** |
+| — of which [`psltrie/`](psltrie/) | 3 | 1,232 |
+| — of which `dns_parse/` (third-party) | 10 | 3,273 |
+| Python | 111 | 11,422 |
 | TypeScript / TSX | 83 | 3,779 |
+| SQL | 35 | 2,246 |
 | LaTeX | 16 | 2,134 |
 | Jupyter notebooks | 57 | — |
 
-Notable engineering: a 393M-row message log partitioned by capture; per-partition
-materialized views that fold in DGArchive labels, whitelist ranks and domain-validity
-ranks in one pass; and a C implementation of the windowing/*k*-fold experiment that talks
-to PostgreSQL directly for speed.
+**Notable engineering.** [`windowing/`](windowing/) is the centrepiece: a standalone C
+engine — its own logger, reference-counted list containers and an endian-normalised binary
+serialization format (`io.c`, explicit big-endian conversion on every write) — that streams DNS
+messages out of PostgreSQL over `libpq`, buckets them into per-host time windows across a
+configurable parameter sweep, caches each windowing to disk keyed by its parameter set, and
+then runs *k*-fold cross-validation and confusion-matrix computation over the cached
+results. Python could not carry 393M messages through this; C could.
+
+Around it: a 393M-row message log partitioned by capture, and per-partition materialized
+views that fold in DGArchive labels, whitelist ranks and domain-validity ranks in a single
+pass.
 
 ---
 
@@ -123,7 +143,7 @@ to PostgreSQL directly for speed.
 |---|---|
 | `dns_parse/` | pcap → CSV DNS parser (C). Third-party, LANL — see [`MODIFICATIONS.md`](dns_parse/MODIFICATIONS.md) |
 | `psltrie/` | Public Suffix List trie (C) |
-| `windowing/` | windowed features, *k*-fold CV, confusion matrices (C) |
+| `windowing/` | **the host-detection engine** — per-host time windows, *k*-fold CV, confusion matrices (C, 8.9k lines) |
 | `lstm_dga/` | the LSTM classifier and its trained models |
 | `suite2/` | current orchestration services (supersedes `suite/`) |
 | `suite/` | **deprecated** — kept for reference, unused by `scripts/` |
