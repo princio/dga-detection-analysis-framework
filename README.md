@@ -41,7 +41,7 @@ configurations vary and why.
 |---|---|---|---|
 | Capture filtering | — | `tshark` | keep well-formed DNS packets only |
 | Packet parsing | [`dns_parse/`](dns_parse/) | C | pcap → 18-column CSV, one row per DNS message |
-| Suffix splitting | [`psltrie/`](psltrie/) | C | Public Suffix List trie → `bdn`, `tld`, `icann`, `private` |
+| Suffix splitting | [`psl_list/`](psl_list/) + [`psltrie/`](psltrie/) | Python + C | PSL fetched and parsed to CSV, then a trie → `bdn`, `tld`, `icann`, `private` |
 | Classification | [`lstm_dga/`](lstm_dga/) | Python / TensorFlow | 4 LSTM sub-models → DGA probability + logit |
 | Storage | [`asset/sql/`](asset/sql/) | PostgreSQL 17 | list-partitioned message log, materialized views |
 | Ground truth | [`dgarchive/`](dgarchive/), [`whitelisting/`](whitelisting/) | SQL / notebooks | DGArchive family labels; Tranco/top10m whitelisting |
@@ -147,7 +147,8 @@ pass.
 | Path | What it is |
 |---|---|
 | `dns_parse/` | pcap → CSV DNS parser (C). Third-party, LANL — see [`MODIFICATIONS.md`](dns_parse/MODIFICATIONS.md) |
-| `psltrie/` | Public Suffix List trie (C) |
+| `psl_list/` | fetches and parses the Public Suffix List → `psl_list.csv` (Python) |
+| `psltrie/` | Public Suffix List trie over that CSV (C) |
 | `windowing/` | **the host-detection engine** — request-count windows, 7,680-config sweep, *k*-fold CV (C, 8.9k lines) — [parameter reference](windowing/README.md#the-parameters) |
 | `lstm_dga/` | the LSTM classifier and its trained models |
 | `suite2/` | orchestration services, driven by `scripts/` |

@@ -42,6 +42,7 @@ PostgreSQL ── populated by scripts/
 | Path | Lang | Role |
 |------|------|------|
 | `dns_parse/` | C | Parse pcap → trivially-parseable ASCII DNS. Third-party (LANL, Paul Ferrell), `make` to build. |
+| `psl_list/` | Python | Fetches and parses the Public Suffix List, IANA and TLD lists into `psl_list.csv`. Standalone; consumed by `psltrie/`. |
 | `psltrie/` | C | Public Suffix List trie; fast registered-domain extraction. Built on a C project template (`make`, see `project.conf`). |
 | `windowing/` | C | Windowed feature calculation, k-cross-fold validation, confusion matrices. `make`. See `windowing/README.md`. |
 | `suite2/` | Python | **Newer** rewrite of `suite`. Prefer this. No CLI entry point (`__main__.py` is empty) — driven by `scripts/*.py`; services under `suite2/suite2/*/`. |
@@ -59,7 +60,7 @@ PostgreSQL ── populated by scripts/
 ### Component status (which to prefer)
 
 - **`suite2` is the only orchestration package.** The older `suite/` was deleted; its
-  public-suffix-list helper now lives at `suite2/suite2/libs/psl_list/`.
+  public-suffix-list helper is now the standalone `psl_list/` at the repository root.
   Note `suite2/suite2/__main__.py` is a 0-byte file: the real entry points are the
   `scripts/*.py`, each of which builds its own `Suite2Container`.
 - `scripts/windowing_ti2016/` is the renamed/maintained windowing; the top-level
@@ -86,7 +87,7 @@ pip install pandas psycopg2-binary sqlalchemy dependency_injector requests tabul
 python scripts/<name>.py
 ```
 
-Requirements files: `lstm_dga/requirements.txt`, `suite2/suite2/libs/psl_list/requirements.txt`.
+Requirements files: `lstm_dga/requirements.txt`, `psl_list/requirements.txt`.
 
 ### Database
 PostgreSQL **17**. Datasets/DB names referenced in code: `ti2016` (main), `dns_mac`
@@ -147,7 +148,7 @@ unless asked — but keep the destination in mind when touching nearby code.
 
 ### Phase 3 — Make it tidy
 - [x] **Deleted the deprecated `suite/`.** Its one live part, `psl_list/`, was promoted to
-  `suite2/suite2/libs/psl_list/` (it had been reached through a tracked symlink); the other
+  the root-level `psl_list/` (it had been reached through a tracked symlink); the other
   35 files were superseded by `suite2` and are recoverable from git history.
 - [ ] **Remove scratch files** — `tmp.py`, `ml/analysis/Untitled.ipynb`,
   `ml/fpr_normal_approach copy.ipynb`, `*_old.ipynb`, etc. (move to an `archive/`

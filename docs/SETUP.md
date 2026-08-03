@@ -169,7 +169,7 @@ None of the datasets are in this repository, and most cannot be redistributed:
 |---|---|
 | **DGArchive** | Request access from [Fraunhofer FKIE](https://dgarchive.caad.fkie.fraunhofer.de/) |
 | **Tranco** | Download a list from [tranco-list.eu](https://tranco-list.eu/) |
-| **Public Suffix List** | Fetched at runtime from `publicsuffix.org` by `suite2/suite2/libs/psl_list/` |
+| **Public Suffix List** | Fetched at runtime from `publicsuffix.org` by `psl_list/` |
 | **CTU / Stratosphere pcaps** | [Stratosphere IPS](https://www.stratosphereips.org/datasets-overview) |
 | **ti2016** | A private 10-day university network capture — not distributable |
 
