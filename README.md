@@ -23,11 +23,13 @@ can be identified from its DNS traffic alone** — first by classifying individu
 names, then by looking at a host's query behaviour over time.
 
 Answering the second half needed a tool that did not exist, so this repo contains one:
-[**`windowing/`**](windowing/), a purpose-built C engine that aggregates hundreds of
-millions of DNS messages into per-host time windows, computes 36 behavioural features per
-window, and runs *k*-fold cross-validation over the result — talking to PostgreSQL
-directly, because doing this in Python at this scale was not viable. At 8,855 lines it is
-the largest hand-written component here.
+[**`windowing/`**](windowing/), a purpose-built C engine that slices each capture into
+windows of *N* consecutive DNS requests, scores every window as a **sum of LSTM logits**,
+and sweeps **7,680 parameter configurations** over the result before running *k*-fold
+cross-validation — talking to PostgreSQL directly, because doing this in Python at this
+scale was not viable. At 8,855 lines it is the largest hand-written component here.
+See [the parameter reference](windowing/README.md#the-parameters) for what those 7,680
+configurations vary and why.
 
 ---
 
@@ -43,7 +45,7 @@ the largest hand-written component here.
 | Classification | [`lstm_dga/`](lstm_dga/) | Python / TensorFlow | 4 LSTM sub-models → DGA probability + logit |
 | Storage | [`asset/sql/`](asset/sql/) | PostgreSQL 17 | list-partitioned message log, materialized views |
 | Ground truth | [`dgarchive/`](dgarchive/) | SQL / notebooks | DGArchive family labels, Tranco/top10m whitelisting |
-| **Host detection** | [**`windowing/`**](windowing/) | C | **per-host time windows, 36 behavioural features, *k*-fold CV, confusion matrices — 8.9k lines** |
+| **Host detection** | [**`windowing/`**](windowing/) | C | **request-count windows, logit-sum scoring, 7,680-config parameter sweep, *k*-fold CV — 8.9k lines** |
 | Analysis | [`ml/`](ml/), [`scripts/`](scripts/) | Python / Jupyter | scikit-learn experiments, plots, FPR studies |
 
 Orchestration lives in [`suite2/`](suite2/) (dependency-injection services), driven by the
@@ -126,10 +128,13 @@ reports it honestly, including the failure cases.
 **Notable engineering.** [`windowing/`](windowing/) is the centrepiece: a standalone C
 engine — its own logger, reference-counted list containers and an endian-normalised binary
 serialization format (`io.c`, explicit big-endian conversion on every write) — that streams DNS
-messages out of PostgreSQL over `libpq`, buckets them into per-host time windows across a
-configurable parameter sweep, caches each windowing to disk keyed by its parameter set, and
-then runs *k*-fold cross-validation and confusion-matrix computation over the cached
-results. Python could not carry 393M messages through this; C could.
+messages out of PostgreSQL over `libpq`, slices each capture into fixed-count request
+windows, and evaluates **all 7,680 parameter configurations in a single pass over the data**
+rather than re-reading it per configuration (`stratosphere.c:190-196`). Results are cached
+to disk with a SHA-256 of their contents stored alongside, so a reload is *verified* rather
+than trusted and a sweep is resumable. *k*-fold cross-validation and
+confusion-matrix computation then run over the cached results. Python could not carry 393M
+messages through this; C could.
 
 Around it: a 393M-row message log partitioned by capture, and per-partition materialized
 views that fold in DGArchive labels, whitelist ranks and domain-validity ranks in a single
@@ -143,7 +148,7 @@ pass.
 |---|---|
 | `dns_parse/` | pcap → CSV DNS parser (C). Third-party, LANL — see [`MODIFICATIONS.md`](dns_parse/MODIFICATIONS.md) |
 | `psltrie/` | Public Suffix List trie (C) |
-| `windowing/` | **the host-detection engine** — per-host time windows, *k*-fold CV, confusion matrices (C, 8.9k lines) |
+| `windowing/` | **the host-detection engine** — request-count windows, 7,680-config sweep, *k*-fold CV (C, 8.9k lines) — [parameter reference](windowing/README.md#the-parameters) |
 | `lstm_dga/` | the LSTM classifier and its trained models |
 | `suite2/` | current orchestration services (supersedes `suite/`) |
 | `suite/` | **deprecated** — kept for reference, unused by `scripts/` |

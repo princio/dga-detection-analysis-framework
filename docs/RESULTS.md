@@ -170,10 +170,16 @@ even when the individual names look benign.
 
 ## 4. Host-level detection over time windows (open problem)
 
-The windowing experiment aggregates DNS behaviour per host into hourly windows — 36
-features including query counts, NXDOMAIN counts, unique-domain counts and the LSTM
-scores — and trains a Random Forest with backward Sequential Feature Selection.
-Trained on days 0–3, tested on days 4–9.
+This experiment aggregates DNS behaviour per host into hourly windows — 36 features
+including query counts, NXDOMAIN counts, unique-domain counts and the LSTM scores — and
+trains a Random Forest with backward Sequential Feature Selection. Trained on days 0–3,
+tested on days 4–9.
+
+> These results come from the **Python** windowing in `scripts/windowing_ti2016/`, which
+> uses hourly windows. The C engine in `windowing/` is a different implementation —
+> fixed-count request windows and a 7,680-configuration logit-sum sweep, documented in
+> [`windowing/README.md`](../windowing/README.md). Do not read the numbers below as an
+> evaluation of it.
 
 ![Cross-family TPR and FPR](figures/windowing_tpr_fpr.svg)
 
