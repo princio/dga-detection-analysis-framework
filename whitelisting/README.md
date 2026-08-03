@@ -83,7 +83,8 @@ not recorded here.
 - **`../scripts/score_domains.py tranco`** — scores the Tranco list through all four LSTM
   sub-models. Scoring, not loading, so it lives with the other entry points.
 - **`../asset/sql/message2_dac_whitelist.sql`** — an analysis query over the result.
-- **`../suite/suite/whitelisting.py`** — a third implementation: batched inserts straight
-  into `whitelist_list`, creating a partition per list. It is the most complete of the
-  three, but it is part of the deprecated `suite/` and imports that package's `config` and
-  `utils`, so it has been left in place rather than moved here.
+- **`suite/suite/whitelisting.py`** — a third implementation existed in the old `suite/`
+  package: batched inserts straight into `whitelist_list`, creating a partition per list.
+  It was the most complete of the three, but it imported that package's `config` and
+  `utils` and could not survive its deletion. Recoverable from git history if the batching
+  is ever wanted.

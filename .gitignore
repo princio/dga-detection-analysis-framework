@@ -122,3 +122,6 @@ scripts/windowing/windows_dac_EPS1_3600_10.csv.zip
 docs/figures/*.pdf
 docs/figures/*.aux
 docs/figures/*.log
+
+# Local backups of files removed from git (see CLAUDE.md)
+/backup/

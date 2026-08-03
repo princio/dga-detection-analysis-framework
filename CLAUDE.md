@@ -44,7 +44,6 @@ PostgreSQL ── populated by scripts/
 | `dns_parse/` | C | Parse pcap → trivially-parseable ASCII DNS. Third-party (LANL, Paul Ferrell), `make` to build. |
 | `psltrie/` | C | Public Suffix List trie; fast registered-domain extraction. Built on a C project template (`make`, see `project.conf`). |
 | `windowing/` | C | Windowed feature calculation, k-cross-fold validation, confusion matrices. `make`. See `windowing/README.md`. |
-| `suite/` | Python | **Older** orchestration framework: pcap/psl/lstm/db processing. Dependency-injection based. |
 | `suite2/` | Python | **Newer** rewrite of `suite`. Prefer this. No CLI entry point (`__main__.py` is empty) — driven by `scripts/*.py`; services under `suite2/suite2/*/`. |
 | `lstm_dga/` | Python/TensorFlow | LSTM DGA classifier. `predict.py` / `predict_dns_parse_output.py`. Models in `nns/`. See `lstm_dga/README.md`. |
 | `dgarchive/` | Python (notebooks) | DGArchive ground-truth malware/DGA labels. |
@@ -59,8 +58,8 @@ PostgreSQL ── populated by scripts/
 
 ### Component status (which to prefer)
 
-- **`suite2` supersedes `suite`.** `suite` is effectively deprecated; the root README
-  notes it is never used from `scripts/`. Do new Python orchestration work in `suite2`.
+- **`suite2` is the only orchestration package.** The older `suite/` was deleted; its
+  public-suffix-list helper now lives at `suite2/suite2/libs/psl_list/`.
   Note `suite2/suite2/__main__.py` is a 0-byte file: the real entry points are the
   `scripts/*.py`, each of which builds its own `Suite2Container`.
 - `scripts/windowing_ti2016/` is the renamed/maintained windowing; the top-level
@@ -87,7 +86,7 @@ pip install pandas psycopg2-binary sqlalchemy dependency_injector requests tabul
 python scripts/<name>.py
 ```
 
-Requirements files: `lstm_dga/requirements.txt`, `suite/psl_list/requirements.txt`.
+Requirements files: `lstm_dga/requirements.txt`, `suite2/suite2/libs/psl_list/requirements.txt`.
 
 ### Database
 PostgreSQL **17**. Datasets/DB names referenced in code: `ti2016` (main), `dns_mac`
@@ -97,7 +96,7 @@ PostgreSQL **17**. Datasets/DB names referenced in code: `ti2016` (main), `dns_m
 ## Conventions & gotchas
 
 - **Hardcoded config is everywhere.** DB credentials, and absolute paths like
-  `/Users/princio/...`, are embedded in `conf.json`, `suite/config.py`,
+  `/Users/princio/...`, are embedded in `conf.json`,
   `suite2/suite2/suite2_run.py`, `scripts/*`, etc. These are **local-dev throwaway**
   values, not secrets to protect — but they make components non-portable. When running,
   expect to edit the inline `config`/`from_dict({...})` block at the bottom of each script.
@@ -113,6 +112,9 @@ PostgreSQL **17**. Datasets/DB names referenced in code: `ti2016` (main), `dns_m
   `*_old.ipynb` are experimental and may not run end-to-end.
 - **Many branches exist** (`gatherer`, `gatherer_windows`, `refactor`, etc.); `main`
   is the integration branch (last merged from `gatherer_windows`).
+- **`backup/` is gitignored.** Local holding area for files removed from git that are
+  worth keeping on disk — currently `suite/assets/models_univpm/` (byte-identical to
+  `lstm_dga/nns/json_tf2.13/`). Not synced anywhere; git history is the real backup.
 - **Git remotes**: two remotes point at the same GitHub repo — `origin` (SSH) and
   `origin-http` (HTTPS). Both work; `origin` is the default for push/pull.
 
@@ -134,7 +136,7 @@ unless asked — but keep the destination in mind when touching nearby code.
 
 ### Phase 2 — Make it credible
 - [ ] **Scrub hardcoded config** — move DB creds and absolute `/Users/princio/...` paths
-  out of `conf.json`, `suite*/config`, `scripts/*` into a `config.example.json` /
+  out of `conf.json`, `suite2/*`, `scripts/*` into a `config.example.json` /
   `.env.example` template + a small loader. (Low security risk — these are throwaway
   local creds — but high credibility cost as-is.)
 - [ ] **Audit git history for real secrets** — confirm no API keys, dataset tokens, or
@@ -144,8 +146,9 @@ unless asked — but keep the destination in mind when touching nearby code.
   with a one-paragraph "what + how to run".
 
 ### Phase 3 — Make it tidy
-- [ ] **Clarify or delete the deprecated `suite/`** — either remove it or add a banner
-  pointing to `suite2`. Resolve the "I don't remember the difference" ambiguity.
+- [x] **Deleted the deprecated `suite/`.** Its one live part, `psl_list/`, was promoted to
+  `suite2/suite2/libs/psl_list/` (it had been reached through a tracked symlink); the other
+  35 files were superseded by `suite2` and are recoverable from git history.
 - [ ] **Remove scratch files** — `tmp.py`, `ml/analysis/Untitled.ipynb`,
   `ml/fpr_normal_approach copy.ipynb`, `*_old.ipynb`, etc. (move to an `archive/`
   branch if you want to keep them out of the way without losing them).
@@ -206,7 +209,7 @@ one-shot operation to schedule deliberately, not something to do piecemeal.
 `psltrie/Makefile copy` · `web/mwdb/pybackend/tmp/{sql,sql2,svg}.txt`
 
 Keep `lstm_dga/test_model_loading.py`, `scripts/smoke_test_lstm.py`,
-`suite/tests/test.py`, `windowing/test/main.c` — thin, but real tests.
+`windowing/test/main.c` — thin, but real tests.
 
 ### 4. Bloat and duplicates (~30 MB; only shrinks the clone if rewritten)
 
@@ -216,7 +219,6 @@ Keep `lstm_dga/test_model_loading.py`, `scripts/smoke_test_lstm.py`,
 | `scripts/it16/megaplot/malware_hour.ipynb` | 8.3 MB | Bloated by embedded output images — strip outputs. |
 | `ml/pcap_plot/main.ipynb`, `ml/book/translate_expand.ipynb`, `ml/rule/_.simulate_with_real_TP.ipynb` | 3.7 / 3.3 / 1.7 MB | Same. |
 | `scripts/it16/megaplot/plot_malwares.svg` | 1.8 MB | PDF twin is 140 KB; figure already exported to `docs/figures/`. |
-| `suite/assets/models_univpm/` | 4.8 MB | Byte-identical to `lstm_dga/nns/json_tf2.13/`, inside deprecated `suite/`. |
 | `lstm_dga/nns/json_tf2.13/{none,tld,icann,private}/model.h5` | 4.8 MB | Duplicates the sibling `model_*.h5` in the parent dir — pick one layout. |
 | `lstm_dga/nns/json/*.h5` | 4.8 MB | Pre-2.13 model set, superseded. |
 

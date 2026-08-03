@@ -82,13 +82,6 @@ pyenv activate lstm
 pip install -r requirements.txt
 ```
 
-### Required symlink
-
-`suite2` reaches the public-suffix-list helper through a symlink that is not in git:
-
-```sh
-ln -s ../../../suite/psl_list suite2/suite2/libs/psl_list
-```
 
 ---
 
@@ -176,7 +169,7 @@ None of the datasets are in this repository, and most cannot be redistributed:
 |---|---|
 | **DGArchive** | Request access from [Fraunhofer FKIE](https://dgarchive.caad.fkie.fraunhofer.de/) |
 | **Tranco** | Download a list from [tranco-list.eu](https://tranco-list.eu/) |
-| **Public Suffix List** | Fetched at runtime from `publicsuffix.org` by `suite/psl_list/` |
+| **Public Suffix List** | Fetched at runtime from `publicsuffix.org` by `suite2/suite2/libs/psl_list/` |
 | **CTU / Stratosphere pcaps** | [Stratosphere IPS](https://www.stratosphereips.org/datasets-overview) |
 | **ti2016** | A private 10-day university network capture — not distributable |
 
@@ -201,4 +194,3 @@ Being explicit so you do not lose time to them:
   `/home/princio/Desktop/…`, `psltrie` logs to `/tmp/psltrie.log`).
 - **Database credentials are hardcoded** in roughly 25 files, including three C sources
   and `web/mwdb/backend/src/app.module.ts`. They are throwaway local values, not secrets.
-- **`suite/` is deprecated** — superseded by `suite2/`, and unused by `scripts/`.

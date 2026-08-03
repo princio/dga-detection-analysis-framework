@@ -150,8 +150,7 @@ pass.
 | `psltrie/` | Public Suffix List trie (C) |
 | `windowing/` | **the host-detection engine** — request-count windows, 7,680-config sweep, *k*-fold CV (C, 8.9k lines) — [parameter reference](windowing/README.md#the-parameters) |
 | `lstm_dga/` | the LSTM classifier and its trained models |
-| `suite2/` | current orchestration services (supersedes `suite/`) |
-| `suite/` | **deprecated** — kept for reference, unused by `scripts/` |
+| `suite2/` | orchestration services, driven by `scripts/` |
 | `scripts/` | entry points: DB population, materialized views, windowing |
 | `asset/sql/` | 33 hand-written analysis queries, DDL and functions |
 | `ml/` | 36 notebooks: analysis, datasets, simulations, FPR studies |
