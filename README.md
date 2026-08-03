@@ -131,7 +131,7 @@ to PostgreSQL directly for speed.
 | `asset/sql/` | 34 hand-written analysis queries, DDL and functions |
 | `ml/` | 36 notebooks: analysis, datasets, simulations, FPR studies |
 | `dgarchive/`, `tranco/` | ground truth and whitelisting |
-| `web/mwdb/` | web UI for browsing results (Next.js + NestJS + Flask) |
+| `web/mwdb/` | prototype UI for assembling pcap datasets and generating detection plots (Next.js + NestJS + Flask; incomplete, unmaintained since 2024) |
 | `docs/` | [setup](docs/SETUP.md), [results](docs/RESULTS.md), figures |
 | `tikz/` | thesis and paper diagrams |
 
