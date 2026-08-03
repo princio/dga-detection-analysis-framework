@@ -129,8 +129,8 @@ The entry points are the scripts in `scripts/`. Each one builds the `suite2` dep
 container itself, so **there is no single CLI** — you run a script directly:
 
 ```sh
-python scripts/dbfill.py
-python scripts/create_materialized_view.py
+python scripts/fill_dn_columns.py
+python scripts/build_materialized_views.py
 python scripts/windowing.py
 ```
 
@@ -157,8 +157,8 @@ Typical order for populating a database from scratch:
 
 1. `PCAPService.new_partition` — ingest pcaps: `tcpdump` → `tshark` → `dns_parse` → the
    `dn` and partitioned `message3` tables.
-2. `scripts/dbfill.py` — fill in `psltrie` columns on `dn`, then LSTM scores into `dn_nn`.
-3. `scripts/create_materialized_view.py` — build the per-partition `*_compact` views.
+2. `scripts/fill_dn_columns.py` — fill in `psltrie` columns on `dn`, then LSTM scores into `dn_nn`.
+3. `scripts/build_materialized_views.py` — build the per-partition `*_compact` views.
 4. `scripts/windowing.py` or the `windowing` C binary — windowed features and k-fold
    experiments.
 

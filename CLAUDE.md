@@ -91,8 +91,8 @@ Requirements files: `lstm_dga/requirements.txt`, `suite/psl_list/requirements.tx
 
 ### Database
 PostgreSQL **17**. Datasets/DB names referenced in code: `ti2016` (main), `dns_mac`
-(suite2) and `dns2` (hardcoded in `windowing/src/stratosphere*.c`). Scripts populate materialized views (`scripts/create_materialized_view.py`,
-`scripts/dbfill.py`).
+(suite2) and `dns2` (hardcoded in `windowing/src/stratosphere*.c`). Scripts populate materialized views (`scripts/build_materialized_views.py`,
+`scripts/fill_dn_columns.py`).
 
 ## Conventions & gotchas
 
@@ -199,13 +199,13 @@ one-shot operation to schedule deliberately, not something to do piecemeal.
 
 ### 3. Scratch files (safe to delete any time — no history rewrite needed)
 
-`tmp.py` · `scripts/tmp.py` · `.vscode/tmp.txt` · `asset/tmp/compare.txt` ·
+`tmp.py` · `.vscode/tmp.txt` · `asset/tmp/compare.txt` ·
 `ml/analysis/Untitled.ipynb` · `ml/pcap_analysis/Untitled.ipynb` ·
 `ml/simulation/Untitled.ipynb` · `ml/traffics/Untitled.ipynb` ·
 `ml/fpr_normal_approach copy.ipynb` · `ml/book/dataset4_old.ipynb` ·
 `psltrie/Makefile copy` · `web/mwdb/pybackend/tmp/{sql,sql2,svg}.txt`
 
-Keep `lstm_dga/test_model_loading.py`, `scripts/test_db.py`, `scripts/test_lstm.py`,
+Keep `lstm_dga/test_model_loading.py`, `scripts/smoke_test_lstm.py`,
 `suite/tests/test.py`, `windowing/test/main.c` — thin, but real tests.
 
 ### 4. Bloat and duplicates (~30 MB; only shrinks the clone if rewritten)

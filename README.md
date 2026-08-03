@@ -180,7 +180,7 @@ pip install tensorflow==2.13.0
 pip install pandas psycopg2-binary sqlalchemy dependency_injector requests tabulate
 
 # run a pipeline stage
-python scripts/dbfill.py
+python scripts/fill_dn_columns.py
 ```
 
 Rebuild the pipeline diagram with `docs/figures/build.sh` (needs `pdflatex` and `pdf2svg`).
