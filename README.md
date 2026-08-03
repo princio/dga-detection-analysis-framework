@@ -206,9 +206,19 @@ This is a research codebase, not a product, and it is honest about that:
 Lorenzo Principi, *Innovative techniques based on traffic analysis and machine learning
 for malware and botnet detection in real networks* — Università Politecnica delle Marche.
 
-- IEEE CSR 2023, Venice
-- IEEE ICMLCN 2024, Stockholm
-- IEEE CyberComp 2024, Melaka
+- L. Principi, M. Baldi, A. Cucchiarelli, L. Spalazzi, "Efficiency of Malware Detection
+  based on DNS Packet Analysis over Real Network Traffic", **IEEE CSR 2023**, Venice.
+- G. Zonneveld, L. Principi, M. Baldi, "Using Graph Theory for Improving Machine Learning
+  based Detection of Cyber Attacks", **IEEE ICMLCN 2024**, Stockholm.
+- L. Principi, M. Baldi, "Applying Intrusion Detection based on Algorithmically Generated
+  Domain Classification to Real Network Traffic", **IEEE CyberComp 2024**, Melaka.
+
+See [`CITATION.cff`](CITATION.cff) for machine-readable citation metadata.
+
+## License
+
+MIT — see [`LICENSE`](LICENSE). Third-party components keep their own terms; see
+[`NOTICE`](NOTICE) for the full list.
 
 ## Attribution
 

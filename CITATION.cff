@@ -1,0 +1,84 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite the paper below."
+title: "DGA Detection & Analysis Framework"
+abstract: >-
+  An end-to-end research pipeline for detecting Domain Generation Algorithm
+  (DGA) malware in DNS traffic at scale: pcap parsing, Public Suffix List
+  splitting, LSTM domain classification, PostgreSQL storage of ~393 million DNS
+  messages, and windowed host-level analysis.
+type: software
+authors:
+  - family-names: Principi
+    given-names: Lorenzo
+    email: l.principi8@gmail.com
+    affiliation: "Università Politecnica delle Marche"
+repository-code: "https://github.com/princio/dga-detection-analysis-framework"
+license: MIT
+keywords:
+  - DGA
+  - malware detection
+  - DNS
+  - LSTM
+  - network traffic analysis
+  - botnet detection
+
+preferred-citation:
+  type: conference-paper
+  title: "Efficiency of Malware Detection based on DNS Packet Analysis over Real Network Traffic"
+  authors:
+    - family-names: Principi
+      given-names: Lorenzo
+    - family-names: Baldi
+      given-names: Marco
+    - family-names: Cucchiarelli
+      given-names: Alessandro
+    - family-names: Spalazzi
+      given-names: Luca
+  collection-title: "Proceedings of the IEEE International Conference on Cyber Security and Resilience (CSR)"
+  conference:
+    name: "IEEE CSR 2023"
+    city: Venice
+    country: IT
+  year: 2023
+  month: 8
+
+references:
+  - type: conference-paper
+    title: "Applying Intrusion Detection based on Algorithmically Generated Domain Classification to Real Network Traffic"
+    authors:
+      - family-names: Principi
+        given-names: Lorenzo
+      - family-names: Baldi
+        given-names: Marco
+    collection-title: "Proceedings of IEEE CyberComp 2024"
+    conference:
+      name: "IEEE CyberComp 2024"
+      city: Melaka
+      country: MY
+    year: 2024
+    month: 11
+
+  - type: conference-paper
+    title: "Using Graph Theory for Improving Machine Learning based Detection of Cyber Attacks"
+    authors:
+      - family-names: Zonneveld
+        given-names: G.
+      - family-names: Principi
+        given-names: Lorenzo
+      - family-names: Baldi
+        given-names: Marco
+    collection-title: "Proceedings of the IEEE International Conference on Machine Learning for Communication and Networking (ICMLCN)"
+    conference:
+      name: "IEEE ICMLCN 2024"
+      city: Stockholm
+      country: SE
+    year: 2024
+    month: 5
+
+# TODO, needs details this repository does not record:
+#   - the PhD thesis ("Innovative techniques based on traffic analysis and
+#     machine learning for malware and botnet detection in real networks",
+#     Università Politecnica delle Marche) - defence year and supervisor;
+#   - DOIs for the three papers above;
+#   - Zonneveld's given name, abbreviated to "G." in the only source in this
+#     repository (tikz/graph/slide2.tex).

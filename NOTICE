@@ -1,0 +1,37 @@
+Third-party components
+======================
+
+This repository is licensed under the MIT License (see LICENSE), with the
+exceptions listed below. Each component keeps its own licence file; nothing
+here overrides them.
+
+dns_parse/
+----------
+Originally authored by Paul Ferrell <pferrell@lanl.gov> at Los Alamos National
+Laboratory, under U.S. Department of Energy contract DE-AC52-06NA25396.
+Distributed under the terms in dns_parse/LICENSE, which require that this
+notice and any statement of authorship be reproduced on all copies, and that
+modified versions be clearly marked so as not to be confused with the version
+available from LANL.
+
+THE COPY IN THIS REPOSITORY IS MODIFIED. See dns_parse/MODIFICATIONS.md for
+what was changed. Do not report issues with it to LANL.
+
+psltrie/ and windowing/
+-----------------------
+Built on pantuza/c-project-template (https://github.com/pantuza/c-project-template),
+MIT Licence, Copyright (c) 2016 Gustavo Pantuza Coelho Pinto. The build system,
+directory layout and Makefile derive from that template; the application source
+under src/ is original work, Copyright (c) 2023-2026 Lorenzo Principi. Both
+copyrights are recorded in psltrie/LICENSE and windowing/LICENSE.
+
+Data sources (not redistributed)
+--------------------------------
+None of the following are included in this repository. See docs/SETUP.md for
+how to obtain them.
+
+  Public Suffix List   publicsuffix.org, Mozilla, MPL 2.0
+  DGArchive            Fraunhofer FKIE - licensed, access on request
+  Tranco               tranco-list.eu
+  CTU / Stratosphere   stratosphereips.org
+  ti2016               private university network capture, not distributable
