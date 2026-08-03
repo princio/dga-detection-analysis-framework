@@ -44,7 +44,7 @@ configurations vary and why.
 | Suffix splitting | [`psltrie/`](psltrie/) | C | Public Suffix List trie → `bdn`, `tld`, `icann`, `private` |
 | Classification | [`lstm_dga/`](lstm_dga/) | Python / TensorFlow | 4 LSTM sub-models → DGA probability + logit |
 | Storage | [`asset/sql/`](asset/sql/) | PostgreSQL 17 | list-partitioned message log, materialized views |
-| Ground truth | [`dgarchive/`](dgarchive/) | SQL / notebooks | DGArchive family labels, Tranco/top10m whitelisting |
+| Ground truth | [`dgarchive/`](dgarchive/), [`tranco/`](tranco/) | SQL / notebooks | DGArchive family labels; Tranco/top10m whitelisting |
 | **Host detection** | [**`windowing/`**](windowing/) | C | **request-count windows, logit-sum scoring, 7,680-config parameter sweep, *k*-fold CV — 8.9k lines** |
 | Analysis | [`ml/`](ml/), [`scripts/`](scripts/) | Python / Jupyter | scikit-learn experiments, plots, FPR studies |
 
@@ -155,7 +155,8 @@ pass.
 | `scripts/` | entry points: DB population, materialized views, windowing |
 | `asset/sql/` | 34 hand-written analysis queries, DDL and functions |
 | `ml/` | 36 notebooks: analysis, datasets, simulations, FPR studies |
-| `dgarchive/`, `tranco/` | ground truth and whitelisting |
+| [`dgarchive/`](dgarchive/) | DGArchive ground-truth ingestion into the `dac` tables |
+| [`tranco/`](tranco/) | whitelist preparation (Tranco / top10m) |
 | `web/mwdb/` | prototype UI for assembling pcap datasets and generating detection plots (Next.js + NestJS + Flask; incomplete, unmaintained since 2024) |
 | `docs/` | [setup](docs/SETUP.md), [results](docs/RESULTS.md), figures |
 | `tikz/` | thesis and paper diagrams |
