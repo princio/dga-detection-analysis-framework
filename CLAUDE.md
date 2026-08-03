@@ -159,3 +159,70 @@ unless asked — but keep the destination in mind when touching nearby code.
   run a slice of the pipeline end-to-end.
 - [ ] **CI smoke test** — build the C binaries + import the Python packages on push.
 - [ ] **License + citation** — add a `LICENSE` and a `CITATION.cff` linking the thesis/papers.
+
+## Pre-public removal checklist
+
+Audited 2026-08-03. **Nothing here is urgent while the repo is private** — but items 1, 2
+and 4 must all be done in a *single* `git filter-repo` pass, before the repo is ever made
+public, because deleting at the tip leaves the data reachable in history. That rewrite
+changes every commit hash and invalidates existing clones and pushed branches, so it is a
+one-shot operation to schedule deliberately, not something to do piecemeal.
+
+### 1. Licensed data — must not be redistributed (blocking)
+
+- [ ] **`asset/ml/dataset_training.tar.gz`** (7.4 MB → `dataset_training.csv`, 20 MB,
+  674,898 rows `legit,class,dn`). **Confirmed by the author to contain DGArchive records
+  or equivalent.** DGArchive is request-only ground truth from Fraunhofer FKIE; publishing
+  this redistributes it. Tracked since its commit, so it needs history removal, not `git rm`.
+  Note `docs/RESULTS.md` cites the 674,898 figure via `asset/ml/dataset_training_mterics.ipynb`
+  — keep the notebook and the number, drop the data.
+- [ ] **`pslregex2/data/flashstart/dataset.txt`** (12 MB) — *history only*, not in the
+  working tree. Labelled `domain,is_malware,is_dga` list from **FlashStart**, a commercial
+  DNS-filtering vendor. Reachable via commits `162485f` and `18cd128`.
+- [ ] `asset/ctu-sme-11/Windows Client VM 1.md` — verbatim prose from the CTU-SME-11
+  dataset documentation. Check the Stratosphere license (probably permissive); replace with
+  a link if not.
+
+### 2. Privacy
+
+- [ ] **6 distinct MAC addresses** in notebook *outputs*:
+  `scripts/windowing_ti2016/classification/MAINMAIN.ipynb`,
+  `.../main_isolationforest.ipynb`, `scripts/windowing_ti2016/plots/main.ipynb`.
+  OUIs resolve to network gear (Extreme, Cisco, Tekelec) plus two locally-administered —
+  infrastructure, not end-user devices, consistent with `mac_address/CONCLUSION.md`. Low
+  risk, but they identify hardware on a real university network. Strip outputs.
+- [ ] **`172.26.197.241`** — internal IP, history only. Goes away with the same pass.
+- Not a concern: the RFC1918 addresses in `conf.json` / `.vscode/launch.json`
+  (`192.168.1.108`, `.209`) are lab VMs from the public CTU dataset. Nor are the
+  credentials — the only ones present are `postgres`/`postgre` against `localhost`.
+  No API keys or tokens anywhere in the tree or history.
+
+### 3. Scratch files (safe to delete any time — no history rewrite needed)
+
+`tmp.py` · `scripts/tmp.py` · `.vscode/tmp.txt` · `asset/tmp/compare.txt` ·
+`ml/analysis/Untitled.ipynb` · `ml/pcap_analysis/Untitled.ipynb` ·
+`ml/simulation/Untitled.ipynb` · `ml/traffics/Untitled.ipynb` ·
+`ml/fpr_normal_approach copy.ipynb` · `ml/book/dataset4_old.ipynb` ·
+`psltrie/Makefile copy` · `web/mwdb/pybackend/tmp/{sql,sql2,svg}.txt`
+
+Keep `lstm_dga/test_model_loading.py`, `scripts/test_db.py`, `scripts/test_lstm.py`,
+`suite/tests/test.py`, `windowing/test/main.c` — thin, but real tests.
+
+### 4. Bloat and duplicates (~30 MB; only shrinks the clone if rewritten)
+
+| Item | Size | Note |
+|---|---|---|
+| `ml/book/slots-pcap.svg` | 17 MB | Largest file in the repo. Re-export as PNG or drop. |
+| `scripts/it16/megaplot/malware_hour.ipynb` | 8.3 MB | Bloated by embedded output images — strip outputs. |
+| `ml/pcap_plot/main.ipynb`, `ml/book/translate_expand.ipynb`, `ml/rule/_.simulate_with_real_TP.ipynb` | 3.7 / 3.3 / 1.7 MB | Same. |
+| `scripts/it16/megaplot/plot_malwares.svg` | 1.8 MB | PDF twin is 140 KB; figure already exported to `docs/figures/`. |
+| `suite/assets/models_univpm/` | 4.8 MB | Byte-identical to `lstm_dga/nns/json_tf2.13/`, inside deprecated `suite/`. |
+| `lstm_dga/nns/json_tf2.13/{none,tld,icann,private}/model.h5` | 4.8 MB | Duplicates the sibling `model_*.h5` in the parent dir — pick one layout. |
+| `lstm_dga/nns/json/*.h5` | 4.8 MB | Pre-2.13 model set, superseded. |
+
+Model duplication alone is ~14 MB of the 43 MB `.git`.
+
+### Done
+
+- [x] `web/mwdb/frontend/` — superseded CRA frontend and its nested `tmp/` duplicate
+  removed in `5ebeaea` (42 files, −40,346 lines; dropped 2 of the 4 tracked lockfiles).
