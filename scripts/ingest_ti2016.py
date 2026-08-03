@@ -2,12 +2,10 @@ import logging
 from pathlib import Path
 import re
 import subprocess
-import sys
 from tempfile import TemporaryDirectory
 from dependency_injector.wiring import Provide, inject
 import pandas as pd
 
-sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
 from suite2.dn.dn_service import DNService
 from suite2.pcap.pcap_service import PCAPService
 from suite2.message.message_service import MessageService

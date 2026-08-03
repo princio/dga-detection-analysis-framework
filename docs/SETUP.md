@@ -55,19 +55,25 @@ pyenv virtualenv 3.12.12 phd     # create a virtualenv named "phd"
 pyenv activate phd               # activate it
 ```
 
-**Install TensorFlow first**, then everything else — the other packages then resolve
-their versions against it rather than fighting it:
+Then install the project itself, in editable mode:
 
 ```sh
-pip install tensorflow==2.13.0
-pip install pandas psycopg2-binary sqlalchemy dependency_injector requests tabulate
+pip install -e .              # psl_list and suite2, plus their dependencies
+pip install -e '.[analysis]'  # adds scikit-learn, scipy, matplotlib, mlxtend, jupyter
 ```
 
-> **TensorFlow version conflict.** Three sources disagree, and this has not been
-> reconciled: `lstm_dga/requirements.txt` pins `tensorflow==2.12.0`, both the root and
+That is all the path setup there is. `pyproject.toml` registers `psl_list` and `suite2`
+as real packages, so `import suite2` and `import psl_list` resolve from anywhere — the
+scripts in `scripts/` no longer manipulate `sys.path`, and there is no symlink to create.
+
+> **TensorFlow is deliberately not installed by the above**, and is an optional extra
+> (`pip install -e '.[lstm]'`) rather than a core dependency, because the versions do not
+> reconcile. `lstm_dga/requirements.txt` pins `tensorflow==2.12.0`, both the root and
 > `lstm_dga` READMEs say `2.13.0`, and the model directory actually loaded at runtime is
-> `lstm_dga/nns/json_tf2.13/`. The directory name is the strongest evidence, so **2.13.0**
-> is the version to prefer.
+> `lstm_dga/nns/json_tf2.13/` — so **2.13.0** is the version to prefer. But TensorFlow
+> 2.13 does not support Python 3.12, which is what the main environment is pinned to.
+> Anything that loads a model therefore needs the 3.10 environment below. This is a real
+> unresolved problem, recorded rather than papered over.
 
 ### LSTM environment — Python 3.10
 

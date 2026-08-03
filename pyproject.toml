@@ -1,0 +1,81 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dga-detection-analysis-framework"
+version = "0.1.0"
+description = "Detecting DGA malware in DNS traffic at scale: pcap parsing, LSTM classification, PostgreSQL analysis"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.12"
+authors = [
+    { name = "Lorenzo Principi", email = "l.principi8@gmail.com" },
+]
+
+# The main environment. TensorFlow is deliberately NOT here -- see the `lstm`
+# extra below and docs/SETUP.md.
+dependencies = [
+    "pandas>=2.0",
+    "numpy>=1.25",
+    "requests>=2.31",
+    "lxml>=4.9",
+    "psycopg2-binary>=2.9",
+    "SQLAlchemy>=2.0",
+    "dependency-injector>=4.41",
+    "tabulate>=0.9",
+]
+
+[project.optional-dependencies]
+# Analysis notebooks under ml/ and scripts/*/.
+analysis = [
+    "scikit-learn>=1.3",
+    "scipy>=1.11",
+    "matplotlib>=3.7",
+    "mlxtend>=0.23",
+    "jupyter",
+]
+
+# Model loading and scoring.
+#
+# TensorFlow is an extra rather than a core dependency because the versions do
+# not reconcile: lstm_dga/requirements.txt pins 2.12.0, the READMEs say 2.13.0,
+# the model directory loaded at runtime is lstm_dga/nns/json_tf2.13/ -- and
+# TensorFlow 2.13 does not support Python 3.12, which is what requires-python
+# above asks for. Installing this extra therefore needs a separate 3.10/3.11
+# environment. This is a real unresolved problem, recorded rather than papered
+# over; see docs/SETUP.md.
+lstm = [
+    "tensorflow==2.13.0",
+]
+
+# The Flask plotting backend under web/mwdb/pybackend/.
+web = [
+    "flask>=3.0",
+    "flask-cors>=4.0",
+]
+
+[project.urls]
+Repository = "https://github.com/princio/dga-detection-analysis-framework"
+
+# Two packages live here. psl_list sits at the repository root next to psltrie/,
+# the C binary that consumes its output; suite2 is nested one level down, so it
+# needs an explicit package-dir mapping. Listing the packages explicitly rather
+# than using find: a `where` of both roots also matches suite2.suite2.
+[tool.setuptools]
+packages = [
+    "psl_list",
+    "suite2",
+    "suite2.dn",
+    "suite2.lstm",
+    "suite2.message",
+    "suite2.nn",
+    "suite2.pcap",
+    "suite2.psl_list",
+    "suite2.psltrie",
+    "suite2.subprocess",
+]
+
+[tool.setuptools.package-dir]
+psl_list = "psl_list"
+suite2 = "suite2/suite2"

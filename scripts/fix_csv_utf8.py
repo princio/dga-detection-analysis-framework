@@ -1,14 +1,11 @@
 import logging
 from pathlib import Path
 import subprocess
-import sys
 from tempfile import NamedTemporaryFile, TemporaryFile
 from dependency_injector.wiring import Provide, inject
 import pandas as pd
 import psycopg2
 
-
-sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
 from suite2.subprocess.subprocess_service import SubprocessService
 from suite2.pcap.pcap_service import PCAPService
 from suite2.container import Suite2Container

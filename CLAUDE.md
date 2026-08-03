@@ -82,10 +82,13 @@ cd windowing && make          # → bin/...        (config in project.conf)
   it is run in its own venv, separate from the main 3.12 env.
 
 ```sh
-pip install tensorflow==2.13.0
-pip install pandas psycopg2-binary sqlalchemy dependency_injector requests tabulate
+pip install -e '.[analysis]'      # psl_list + suite2 + analysis deps
 python scripts/<name>.py
 ```
+
+`pyproject.toml` at the root registers `psl_list` and `suite2` as real packages — the
+scripts no longer touch `sys.path`. TensorFlow is the `[lstm]` extra, not a core
+dependency: 2.13 is the version the models need and it does not support Python 3.12.
 
 Requirements files: `lstm_dga/requirements.txt`, `psl_list/requirements.txt`.
 
@@ -155,8 +158,8 @@ unless asked — but keep the destination in mind when touching nearby code.
   branch if you want to keep them out of the way without losing them).
 - [ ] **Prune branches** — collapse the ~10 experimental branches down to `main`
   (+ maybe one active dev branch).
-- [ ] **Pin dependencies** — a top-level `requirements.txt` / `pyproject.toml` and a
-  note on the two Python envs (3.12 main vs 3.8–3.11 for `lstm_dga`).
+- [x] **Pinned dependencies** — root `pyproject.toml` with `[analysis]`, `[lstm]` and
+  `[web]` extras, and the two-environment note in `docs/SETUP.md`.
 
 ### Phase 4 — Nice-to-have
 - [ ] **Reproducibility** — a tiny sample pcap + a one-command demo so a reviewer can

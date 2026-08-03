@@ -1,12 +1,8 @@
 
 
 from pathlib import Path
-import sys
 import pandas as pd
 
-# psl_list is a standalone component at the repository root, next to psltrie/
-# which consumes the CSV it produces. Same sys.path idiom as scripts/*.py.
-sys.path.append(str(Path(__file__).resolve().parents[3]))
 import psl_list
 
 class PSLListService:

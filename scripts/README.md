@@ -5,11 +5,15 @@
 the services directly. Every `.py` in this directory follows that shape:
 
 ```python
-sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
+from suite2.container import Suite2Container
 ...
 application = Suite2Container()
 application.config.from_dict({ ... })   # <- edit this before running
 ```
+
+The import works because the repository root `pyproject.toml` registers `suite2` as a real
+package — run `pip install -e .` first. These scripts used to prepend `sys.path` by hand;
+they no longer do.
 
 > **Edit the config block first.** Database credentials, paths and the target database
 > name are inline at the bottom of each file. Note especially `"env": "debug"`, under which

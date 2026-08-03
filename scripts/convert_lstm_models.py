@@ -1,12 +1,10 @@
 import logging
 from pathlib import Path
 import subprocess
-import sys
 from tempfile import TemporaryFile
 from dependency_injector.wiring import Provide, inject
 from packaging.version import Version
 
-sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
 from suite2.psltrie.psltrie_service import PSLTrieService
 from suite2.defs import NNType
 from suite2.dn.dn_service import DNService

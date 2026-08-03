@@ -1,10 +1,8 @@
 import logging
 from pathlib import Path
-import sys
 from dependency_injector.wiring import Provide, inject
 import pandas as pd
 
-sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
 from suite2.db import Database
 from suite2.dn.dn_service import DNService
 from suite2.container import Suite2Container

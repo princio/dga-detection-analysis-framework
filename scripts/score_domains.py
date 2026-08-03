@@ -19,13 +19,11 @@ import argparse
 import logging
 import math
 from pathlib import Path
-import sys
 import time
 
 from dependency_injector.wiring import Provide, inject
 import pandas as pd
 
-sys.path.append(str(Path(__file__).resolve().parent.parent.joinpath('suite2').absolute()))
 from suite2.dn.dn_service import DNService
 from suite2.lstm.lstm_service import LSTMService
 from suite2.nn.nn_service import NNService

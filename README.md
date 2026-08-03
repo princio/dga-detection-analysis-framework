@@ -176,8 +176,7 @@ cd windowing && make prod     # -> bin/binary_prod   (needs libpq)
 
 # Python (main environment)
 pyenv virtualenv 3.12.12 phd && pyenv activate phd
-pip install tensorflow==2.13.0
-pip install pandas psycopg2-binary sqlalchemy dependency_injector requests tabulate
+pip install -e '.[analysis]'
 
 # run a pipeline stage
 python scripts/fill_dn_columns.py
